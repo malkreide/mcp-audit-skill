@@ -26,6 +26,8 @@ cd mcp-audit-skill
 
 Das Setup-Script symlinkt `.claude/commands/audit-mcp.md` nach `~/.claude/commands/`, damit `/audit-mcp` global in jeder Claude-Code-Session verfügbar ist. Optional kannst du `MCP_AUDIT_SKILL_PATH` in deiner Shell-RC setzen, damit der Command den Skill-Pfad nicht jedes Mal erfragen muss.
 
+**Cloud-Modus (seit v0.5):** Wenn kein lokaler Klon vorhanden ist (z.B. Claude Code on the web oder restriktive Sandbox), lädt der Command Manifest, Check-Files und Templates automatisch via `WebFetch` aus `raw.githubusercontent.com/malkreide/mcp-audit-skill/main`. Kein Setup nötig — `/audit-mcp <repo>` funktioniert direkt, sofern der Slash-Command-File im aktuellen Workspace verfügbar ist (z.B. via `.claude/commands/audit-mcp.md` im Target-Repo oder global hinterlegt).
+
 Verwendung:
 
 ```bash
@@ -117,7 +119,7 @@ Details siehe [`SKILL.md`](./SKILL.md).
 
 ## Status
 
-**Version:** v0.1.0 (initial release)
+**Version:** v0.5.0 — Cloud-Modus für Slash-Command via WebFetch-Fallback
 
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`)
