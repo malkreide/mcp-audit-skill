@@ -114,15 +114,15 @@ Einige der oben gelisteten Checks brauchen Profil-Felder, die im aktuellen Audit
 
 Empfohlene Reihenfolge nach Priorisierung Schulamt-Portfolio:
 
-**Phase v0.2.1 — Critical Security (Schwerpunkt):**
-1. SEC-002 (Token Passthrough)
-2. SEC-004 (SSRF)
-3. SEC-009 (Session-Hijacking)
-4. SEC-010 (OAuth State)
-5. SEC-016 (0.0.0.0-Binding)
-6. ARCH-005 (Hardcoded Secrets)
+**Phase v0.2.1 — Critical Security (Schwerpunkt): ✅ ABGESCHLOSSEN 2026-04-26**
+1. ✅ SEC-002 (Token Passthrough)
+2. ✅ SEC-004 (SSRF)
+3. ✅ SEC-009 (Session-Hijacking)
+4. ✅ SEC-010 (OAuth State)
+5. ✅ SEC-016 (0.0.0.0-Binding)
+6. ✅ ARCH-005 (Hardcoded Secrets)
 
-**Phase v0.2.2 — Architektur & SDK:**
+**Phase v0.2.2 — Architektur & SDK (NEXT):**
 - alle ARCH-Checks
 - alle SDK-Checks
 
