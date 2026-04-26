@@ -122,11 +122,18 @@ Empfohlene Reihenfolge nach Priorisierung Schulamt-Portfolio:
 5. ✅ SEC-016 (0.0.0.0-Binding)
 6. ✅ ARCH-005 (Hardcoded Secrets)
 
-**Phase v0.2.2 — Architektur & SDK (NEXT):**
-- alle ARCH-Checks
-- alle SDK-Checks
+**Phase v0.2.2 — Architektur & SDK: ✅ ABGESCHLOSSEN 2026-04-26**
+- ✅ ARCH-002 (Tool-Beschreibung mit Use-Case-Tags)
+- ✅ ARCH-003 ("Not Found" Anti-Pattern)
+- ✅ ARCH-004 (Inversion of Control)
+- ✅ ARCH-006 (Tool-Budget)
+- ✅ ARCH-007 (Capability-Aggregation)
+- ✅ SDK-001 (FastMCP Lifespan)
+- ✅ SDK-002 (Pydantic v2 Returns)
+- ✅ SDK-003 (Context Injection)
+- ✅ SDK-004 (CORS Mcp-Session-Id)
 
-**Phase v0.2.3 — Skalierung & Observability:**
+**Phase v0.2.3 — Skalierung & Observability (NEXT):**
 - alle SCALE-Checks
 - alle OBS-Checks
 
