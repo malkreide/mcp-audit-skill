@@ -4,6 +4,37 @@ Alle wesentlichen Änderungen am Skill und am Check-Katalog werden hier dokument
 Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
+## [v0.5.0] — 2026-04-26
+
+### Hinzugefügt — Cloud-Modus für Slash-Command (WebFetch-Fallback)
+
+`/audit-mcp` funktioniert jetzt **ohne lokalen Klon** des Skill-Repos. Wenn weder `MCP_AUDIT_SKILL_PATH` gesetzt ist noch eine der bekannten lokalen Pfad-Heuristiken trifft, lädt der Command Manifest, Check-Files und Templates via `WebFetch` direkt aus `https://raw.githubusercontent.com/malkreide/mcp-audit-skill/main/`. Damit ist der Audit-Workflow auch in pure-Cloud-Umgebungen (Claude Code on the web, restriktive Sandboxes) ohne vorbereiteten Filesystem-Klon nutzbar.
+
+**Architektur-Entscheidungen:**
+- Zwei Modi (`SKILL_MODE=local` vs. `remote`) werden in Schritt 0 deterministisch aufgelöst: lokale Pfade haben Priorität, GitHub-Raw ist Fallback
+- `SKILL_BASE` ist entweder ein lokaler Pfad oder die Raw-URL — alle Folge-Schritte verzweigen pro Modus
+- Pin auf `main`-Branch: der Slash-Command wohnt im gleichen Repo und wird atomar mit dem Katalog versioniert. Reproduzierbarkeit für einen einzelnen Audit-Run liefert die Skill-Version aus dem CHANGELOG, die ohnehin im Audit-Report-Footer steht
+- Neuer File `checks/MANIFEST.txt` als kanonische Check-ID-Liste (eine ID pro Zeile) — ersetzt im remote-Modus das `ls` über das Filesystem
+- `WebFetch` zur `allowed-tools`-Liste ergänzt
+- Cache-Robustheit: bei zusammengefassten WebFetch-Antworten erzwingt der Command einen «wortgetreu»-Re-Fetch
+- Audit-Report-Metadata vermerkt den `SKILL_MODE`, damit Reproduzierbarkeit klar dokumentiert ist
+
+**Geänderte Files:**
+- `.claude/commands/audit-mcp.md` — Schritt 0/2/4/5/6 mit dual-mode Datenzugriff; `WebFetch` in allowed-tools
+- `checks/MANIFEST.txt` (neu) — kanonische Check-ID-Liste
+- `README.md` — Cloud-Modus-Hinweis im Schnellstart
+
+**Setup unverändert für lokale Nutzer:**
+```bash
+git clone https://github.com/malkreide/mcp-audit-skill.git
+cd mcp-audit-skill
+./setup-slash-command.sh
+```
+
+**Cloud-Setup (neu):** keiner. `/audit-mcp` aufrufen — der Command erkennt das fehlende lokale Skill und schaltet automatisch auf WebFetch um.
+
+---
+
 ## [v0.4.0] — 2026-04-26
 
 ### Hinzugefügt — Claude-Code-Slash-Command-Integration

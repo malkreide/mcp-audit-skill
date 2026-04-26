@@ -1,12 +1,12 @@
 ---
-description: Audit eines MCP-Servers gegen den mcp-audit-skill v0.3.0-Katalog (53 Checks). Lädt Profil, filtert anwendbare Checks, führt automatisierte Verifikation aus, erzeugt Findings-Stubs und Audit-Report.
+description: Audit eines MCP-Servers gegen den mcp-audit-skill v0.5.0-Katalog. Lädt Profil, filtert anwendbare Checks, führt automatisierte Verifikation aus, erzeugt Findings-Stubs und Audit-Report. Funktioniert mit lokalem Skill-Klon oder via WebFetch von GitHub-Raw (Cloud-Modus).
 argument-hint: <repo-url-or-local-path>
-allowed-tools: Bash(git:*), Bash(grep:*), Bash(find:*), Bash(curl:*), Bash(ls:*), Bash(cat:*), Bash(wc:*), Bash(head:*), Bash(tail:*), Bash(awk:*), Bash(sed:*), Bash(jq:*), Bash(test:*), Read, Write, Glob
+allowed-tools: Bash(git:*), Bash(grep:*), Bash(find:*), Bash(curl:*), Bash(ls:*), Bash(cat:*), Bash(wc:*), Bash(head:*), Bash(tail:*), Bash(awk:*), Bash(sed:*), Bash(jq:*), Bash(test:*), Read, Write, Glob, WebFetch
 ---
 
 # /audit-mcp — MCP-Server Audit-Workflow
 
-Du führst jetzt einen strukturierten Audit eines MCP-Servers durch, basierend auf dem `mcp-audit-skill v0.3.0`-Katalog (53 Checks in 7 Kategorien: ARCH, SDK, SEC, SCALE, OBS, HITL, CH).
+Du führst jetzt einen strukturierten Audit eines MCP-Servers durch, basierend auf dem `mcp-audit-skill v0.5.0`-Katalog (7 Kategorien: ARCH, SDK, SEC, SCALE, OBS, HITL, CH; vollständige Check-Liste in `checks/MANIFEST.txt`).
 
 Argument: `$ARGUMENTS` (Repo-URL oder lokaler Pfad zum Server-Repo)
 
@@ -18,14 +18,14 @@ Arbeite die folgenden sechs Schritte sequenziell ab. Nach jedem Schritt fasst du
 
 ### Schritt 0 — Setup und Repo-Zugriff
 
-1. **Skill-Pfad bestimmen.** Setze `SKILL_PATH` in dieser Reihenfolge:
-   - Falls die Umgebungsvariable `MCP_AUDIT_SKILL_PATH` gesetzt ist: nutze sie.
-   - Sonst prüfe `~/mcp-audit-skill/checks/`.
-   - Sonst prüfe `~/.claude/skills/mcp-audit-skill/checks/`.
-   - Sonst prüfe `./mcp-audit-skill/checks/` (relativ zum aktuellen Repo).
-   - Falls nichts existiert: bitte den User um den absoluten Pfad zum geclonten `mcp-audit-skill`-Repo. Speichere als `SKILL_PATH`.
+1. **Skill-Quelle bestimmen.** Setze `SKILL_BASE` und `SKILL_MODE` in dieser Reihenfolge:
+   - Falls die Umgebungsvariable `MCP_AUDIT_SKILL_PATH` gesetzt ist und `$MCP_AUDIT_SKILL_PATH/checks/` existiert: `SKILL_BASE=$MCP_AUDIT_SKILL_PATH`, `SKILL_MODE=local`.
+   - Sonst prüfe in dieser Reihenfolge `~/mcp-audit-skill/checks/`, `~/.claude/skills/mcp-audit-skill/checks/`, `./mcp-audit-skill/checks/` (relativ zum aktuellen Repo) — beim ersten Treffer: `SKILL_BASE=<dieser Pfad>`, `SKILL_MODE=local`.
+   - **Fallback (Cloud-Modus):** Falls kein lokaler Pfad existiert, setze `SKILL_BASE=https://raw.githubusercontent.com/malkreide/mcp-audit-skill/main` und `SKILL_MODE=remote`. Dieser Modus nutzt `WebFetch` und benötigt keinen lokalen Klon des Skills.
 
-   Verifiziere: `ls $SKILL_PATH/checks/*.md | wc -l` sollte 53 ergeben.
+   **Verifiziere:**
+   - `local`: `ls $SKILL_BASE/checks/MANIFEST.txt && wc -l $SKILL_BASE/checks/MANIFEST.txt` — Manifest muss existieren und ≥ 50 Check-IDs enthalten.
+   - `remote`: WebFetch `$SKILL_BASE/checks/MANIFEST.txt` mit dem Prompt «Gib den Inhalt unverändert zurück» — Antwort muss ≥ 50 Zeilen mit Check-IDs (z.B. `ARCH-001`) liefern. Falls WebFetch fehlschlägt: brich ab und bitte den User, das Skill-Repo lokal zu klonen oder `MCP_AUDIT_SKILL_PATH` zu setzen.
 
 2. **Target-Repo zugreifen.**
    - Wenn `$ARGUMENTS` mit `https://` beginnt: clone in temp-Verzeichnis: `git clone --depth 1 $ARGUMENTS /tmp/audit-target`. Setze `TARGET=/tmp/audit-target`.
@@ -35,7 +35,7 @@ Arbeite die folgenden sechs Schritte sequenziell ab. Nach jedem Schritt fasst du
 
 4. **Output-Verzeichnis bestimmen:** `<TARGET>/audits/YYYY-MM-DD-<server-name>/` und erstellen mit `mkdir -p`. Falls bereits existierend, mit `-vN`-Suffix versionieren.
 
-**Output Schritt 0:** Werte von `SKILL_PATH`, `TARGET`, `SERVER_NAME`, `OUTPUT_DIR`. Dann weiter zu Schritt 1.
+**Output Schritt 0:** Werte von `SKILL_BASE`, `SKILL_MODE`, `TARGET`, `SERVER_NAME`, `OUTPUT_DIR`. Dann weiter zu Schritt 1.
 
 ---
 
@@ -83,32 +83,32 @@ Daraus baust du das Profil mit folgenden Variablen (Defaults bei Unsicherheit):
 
 ### Schritt 2 — Catalog-Load
 
-Lies alle Check-Files aus dem Skill:
+Lade die Check-Liste aus dem Manifest und parse für jeden Check die Frontmatter (zwischen den ersten beiden `---`-Markern) mit den Feldern: `id`, `title`, `category`, `severity`, `applies_when`, `pdf_ref`, `evidence_required`.
+
+**Modus `local`:**
 
 ```bash
-ls $SKILL_PATH/checks/*.md | sort
-```
+# Manifest gibt die kanonische Liste; *.md ist Sanity-Check.
+cat $SKILL_BASE/checks/MANIFEST.txt
+ls $SKILL_BASE/checks/*.md | sort
 
-Für jeden Check extrahiere die Frontmatter (zwischen den `---`-Markern am File-Anfang) mit den Feldern:
-- `id`
-- `title`
-- `category`
-- `severity`
-- `applies_when` (Boolean-Expression über Profil-Variablen)
-- `pdf_ref`
-- `evidence_required`
-
-Verwende dafür `awk` oder `head -n 10` plus simples Parsing:
-
-```bash
-for f in $SKILL_PATH/checks/*.md; do
+# Frontmatter pro File extrahieren
+for f in $SKILL_BASE/checks/*.md; do
   awk '/^---$/{c++; next} c==1' "$f" | head -10
   echo "FILE: $f"
   echo "---"
 done
 ```
 
-**Output Schritt 2:** Kurze Zusammenfassung — Anzahl Checks total, Aufschlüsselung pro Kategorie. Sollten 53 Checks sein.
+**Modus `remote`:**
+
+1. WebFetch `$SKILL_BASE/checks/MANIFEST.txt` mit Prompt «Gib den Inhalt zeilenweise unverändert zurück.» Daraus die Check-ID-Liste bauen.
+2. Für jede ID: WebFetch `$SKILL_BASE/checks/<ID>.md` mit Prompt «Gib die YAML-Frontmatter zwischen den ersten beiden `---`-Markern unverändert zurück, plus alle Abschnitte `## Verification`, `## Pass Criteria` und `## Remediation` falls vorhanden.» Cache nutzen ist OK.
+3. Aus dem Ergebnis Frontmatter parsen.
+
+**Wichtig — kein Pattern-Erfinden im Cache:** WebFetch gibt teils zusammengefasste Antworten. Falls die zurückgegebene Frontmatter unvollständig wirkt (z.B. fehlt `applies_when`), wiederhole den Fetch mit explizitem Prompt «Gib den vollständigen Markdown-Quelltext der Datei wortgetreu zurück, ohne Zusammenfassung.»
+
+**Output Schritt 2:** Kurze Zusammenfassung — Anzahl Checks total (= Anzahl IDs im Manifest), Aufschlüsselung pro Kategorie. Falls die Anzahl der erfolgreich geladenen Checks vom Manifest abweicht: brich ab und liste die fehlenden IDs.
 
 ---
 
@@ -161,6 +161,10 @@ Pro Check die folgenden Verification-Modi unterscheiden:
 
 Lies pro anwendbarem Check das Check-File und identifiziere die Verification-Modi (typisch unter `## Verification` mit `### Modus 1: <name>` etc.). Für jeden Modus extrahiere die Bash-Snippets in den ` ```bash`-Blöcken und führe sie aus.
 
+**Modus-spezifischer Datenzugriff:**
+- `SKILL_MODE=local`: lies das Check-File direkt mit `Read $SKILL_BASE/checks/<ID>.md` (vollständiger Inhalt nötig, nicht nur Frontmatter aus Schritt 2).
+- `SKILL_MODE=remote`: WebFetch `$SKILL_BASE/checks/<ID>.md` mit Prompt «Gib alle ` ```bash`-Codeblöcke aus den Abschnitten `## Verification` / `### Modus *` wortgetreu zurück, plus die Abschnitte `## Pass Criteria`, `## Remediation`, `## Effort`.»
+
 **Wichtig — kein Pattern-Erfinden:** Nutze ausschliesslich die Bash-Snippets aus den Check-Files. Wenn kein Snippet vorhanden ist, markiere den Modus als `MANUAL` und lass den User entscheiden.
 
 **Wichtig — Output-Klassifikation:** Pro Check klassifizierst du das Ergebnis als:
@@ -178,7 +182,9 @@ Speichere die rohen Befehl-Outputs pro Check in `$OUTPUT_DIR/raw/<check-id>.txt`
 
 ### Schritt 5 — Findings-Generation
 
-Für jeden Check mit Status **Fail** oder **Partial** erstellst du ein Finding-Document basierend auf `$SKILL_PATH/templates/finding.md`.
+Für jeden Check mit Status **Fail** oder **Partial** erstellst du ein Finding-Document basierend auf dem Finding-Template:
+- `SKILL_MODE=local`: `Read $SKILL_BASE/templates/finding.md`.
+- `SKILL_MODE=remote`: WebFetch `$SKILL_BASE/templates/finding.md` mit Prompt «Gib den vollständigen Markdown-Quelltext wortgetreu zurück.»
 
 Pro Finding ein File: `$OUTPUT_DIR/findings/<check-id>-<short-slug>.md` mit:
 
@@ -198,7 +204,11 @@ Pro Finding ein File: `$OUTPUT_DIR/findings/<check-id>-<short-slug>.md` mit:
 
 ### Schritt 6 — Report-Output
 
-Fülle das `$SKILL_PATH/templates/audit-report.md`-Template mit den gesammelten Daten und schreibe es nach `$OUTPUT_DIR/audit-report.md`.
+Lade das Audit-Report-Template:
+- `SKILL_MODE=local`: `Read $SKILL_BASE/templates/audit-report.md`.
+- `SKILL_MODE=remote`: WebFetch `$SKILL_BASE/templates/audit-report.md` mit Prompt «Gib den vollständigen Markdown-Quelltext wortgetreu zurück.»
+
+Fülle das Template mit den gesammelten Daten und schreibe das Ergebnis nach `$OUTPUT_DIR/audit-report.md`.
 
 Pflicht-Sektionen:
 
@@ -220,6 +230,7 @@ Pflicht-Sektionen:
 - **Notion-Integration:** Wenn der User dir den Notion-Card-URL gegeben hat, gib am Ende einen Klartext-Block aus mit den Feld-Updates, die er manuell ins Notion eintragen kann (Findings-Anzahl, Audit-Status, Notiz-Link).
 - **Nichts überschreiben:** Wenn `$OUTPUT_DIR` bereits existiert (vorheriger Audit-Run), versionierst du mit `-vN`-Suffix (`audits/YYYY-MM-DD-zh-education-mcp-v2/`) statt zu überschreiben.
 - **Stop bei Profil-Unsicherheit:** Falls du in Schritt 1 mehr als zwei Default-Werte raten musstest, brichst du ab und fragst den User. Falsches Profil = falscher Filter = falscher Audit.
+- **Cloud-Modus (`SKILL_MODE=remote`):** Wenn der Skill via WebFetch geladen wird, erwähne das einmal früh im Output (z.B. nach Schritt 0) und im Audit-Report unter «Audit-Metadata», damit für die Reproduzierbarkeit klar ist, dass der Katalog-Stand aus `main` von `github.com/malkreide/mcp-audit-skill` kam. Bei flakigen WebFetch-Antworten (Cache-Zusammenfassung statt Quelltext) wiederhole mit explizitem «wortgetreu»-Prompt.
 
 ---
 
