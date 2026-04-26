@@ -4,6 +4,36 @@ Alle wesentlichen Änderungen am Skill und am Check-Katalog werden hier dokument
 Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
+## [v0.4.0] — 2026-04-26
+
+### Hinzugefügt — Claude-Code-Slash-Command-Integration
+
+Der Audit-Workflow ist nun als Claude-Code-Slash-Command `/audit-mcp <repo>` ausführbar. Standard-Automatisierungstiefe: alle `automated`/`config_check`/`documentation_check`-Modi laufen automatisch, `code_review`/`runtime_test`-Modi werden als TODOs mit Such-Pattern in den Report geschrieben.
+
+**Neue Files:**
+- `.claude/commands/audit-mcp.md` — Slash-Command-Definition (orchestriert die 6 Schritte aus `SKILL.md`)
+- `setup-slash-command.sh` — installiert den Symlink nach `~/.claude/commands/audit-mcp.md` für globale Verfügbarkeit
+
+**Architektur-Entscheidungen:**
+- File wohnt im Skill-Repo (versioniert mit Skill-Updates), wird via Symlink user-global verfügbar gemacht
+- `allowed-tools` strikt limitiert auf `Bash(grep|find|curl|git|ls|cat|...)`, `Read`, `Write`, `Glob` — keine Tool-Surface jenseits der Audit-Operationen
+- Profil-Load mit drei Fallback-Wegen: User-Conversation → Notion-Card-Copy-Paste → Repo-Inferenz (mit konservativen Defaults)
+- Bei mehr als zwei geratenen Profil-Werten bricht der Command ab und fragt — falsches Profil = falscher Audit
+- Nutzt ausschliesslich Bash-Snippets aus den Check-Files, kein erfundenes Pattern-Match
+- Output-Verzeichnis pro Audit: `<repo>/audits/YYYY-MM-DD-<server-name>/` mit `audit-report.md`, `findings/`, `raw/`
+- Bei wiederholtem Audit am gleichen Tag: `-vN`-Suffix statt Überschreiben
+
+**Setup:**
+```bash
+git clone https://github.com/malkreide/mcp-audit-skill.git
+cd mcp-audit-skill
+./setup-slash-command.sh
+```
+
+Danach in jeder Claude-Code-Session: `/audit-mcp <repo-url-or-path>`.
+
+---
+
 ## [v0.3.0] — 2026-04-26
 
 ### Hinzugefügt — SEC Edge-Cases (Final)

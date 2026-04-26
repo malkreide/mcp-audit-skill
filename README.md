@@ -14,22 +14,46 @@ Wenn du ein Portfolio von MCP-Servern betreibst, brauchst du irgendwann eine sys
 
 ## Schnellstart
 
-### Als Claude.ai Skill
+### Als Claude Code Slash-Command (`/audit-mcp`)
 
-```bash
-# Skill-Folder lokal klonen
-git clone https://github.com/malkreide/mcp-audit-skill.git ~/skills/mcp-audit
-```
-
-Dann in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`
-
-### Als Claude Code Skill
+Der Skill bringt einen Slash-Command mit, der den 6-Schritte-Workflow als Claude-Code-Workflow ausführt — Profil-Load, Applicability-Filter, automatisierte Check-Ausführung, Findings-Generierung und Report-Erstellung in einem Lauf.
 
 ```bash
 git clone https://github.com/malkreide/mcp-audit-skill.git
 cd mcp-audit-skill
-# In Claude Code: Skill ist via SKILL.md auffindbar
+./setup-slash-command.sh
 ```
+
+Das Setup-Script symlinkt `.claude/commands/audit-mcp.md` nach `~/.claude/commands/`, damit `/audit-mcp` global in jeder Claude-Code-Session verfügbar ist. Optional kannst du `MCP_AUDIT_SKILL_PATH` in deiner Shell-RC setzen, damit der Command den Skill-Pfad nicht jedes Mal erfragen muss.
+
+Verwendung:
+
+```bash
+# In einem MCP-Server-Repo oder beliebigen Verzeichnis
+claude
+```
+
+```
+> /audit-mcp .
+> /audit-mcp /pfad/zum/server-repo
+> /audit-mcp https://github.com/malkreide/zh-education-mcp
+```
+
+Der Command startet den 6-Schritte-Audit. Bei Profil-Unsicherheit fragt er nach. Output landet in `<repo>/audits/YYYY-MM-DD-<server-name>/` mit:
+
+- `audit-report.md` — Gesamtreport nach Template
+- `findings/<check-id>-*.md` — pro Fail/Partial-Check ein Finding
+- `raw/<check-id>.txt` — Roh-Output der Bash-Befehle für Audit-Trail
+
+Automatisierungstiefe ist **Standard**: alle `automated`/`config_check`/`documentation_check`-Modi laufen automatisch, `code_review`/`runtime_test`-Modi werden als TODO mit Such-Pattern in den Report geschrieben (kein Pattern-Match-Halluzinieren).
+
+### Als Claude.ai Skill (manuell)
+
+```bash
+git clone https://github.com/malkreide/mcp-audit-skill.git ~/skills/mcp-audit
+```
+
+Dann in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`. Der Workflow läuft dann interaktiv ohne Slash-Command-Automatisierung.
 
 ## Struktur
 
