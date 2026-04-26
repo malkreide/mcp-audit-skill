@@ -133,7 +133,18 @@ Empfohlene Reihenfolge nach Priorisierung Schulamt-Portfolio:
 - ✅ SDK-003 (Context Injection)
 - ✅ SDK-004 (CORS Mcp-Session-Id)
 
-**Phase v0.2.3 — Skalierung & Observability (NEXT):**
+**Phase v0.2.3 — Skalierung & Observability: ✅ ABGESCHLOSSEN 2026-04-26**
+- ✅ SCALE-001 (Streamable HTTP statt stdio)
+- ✅ SCALE-003 (Mcp-Session-Id Routing)
+- ✅ SCALE-004 (Multi-Stage Docker Builds)
+- ✅ SCALE-005 (MCP-Gateway Enterprise)
+- ✅ SCALE-006 (Resource-Limits)
+- ✅ OBS-002 (Mask Error Details)
+- ✅ OBS-003 (Structured Logging RFC 5424)
+- ✅ OBS-004 (stderr für stdio-Server) — CRITICAL
+- ✅ OBS-005 (SIEM-Integration)
+
+**Phase v0.2.4 — HITL & CH (NEXT):**
 - alle SCALE-Checks
 - alle OBS-Checks
 
