@@ -4,6 +4,38 @@ Alle wesentlichen Änderungen am Skill und am Check-Katalog werden hier dokument
 Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
+## [v0.2.3] — 2026-04-26
+
+### Hinzugefügt — Skalierung & Observability Wave
+
+Fünf SCALE-Checks und vier OBS-Checks. Komplettiert die Kategorien `SCALE` und `OBS` aus dem PDF.
+
+**Skalierung (5):**
+- `SCALE-001` — Streamable HTTP statt stdio für Cloud-Deployments
+- `SCALE-003` — Mcp-Session-Id Routing via Edge-LB (HAProxy Stick-Tables / NGINX Hash)
+- `SCALE-004` — Containerization mit Multi-Stage-Builds (Image-Grösse + Non-Root-User)
+- `SCALE-005` — MCP-Gateway für Enterprise (Anti-Shadow-MCP)
+- `SCALE-006` — Resource-Limits per Container (Memory, CPU, FDs)
+
+**Observability (4):**
+- `OBS-002` — Mask Error Details (keine Stacktraces / SQL ans LLM)
+- `OBS-003` — Structured Logging mit RFC 5424 Severity-Stufen
+- `OBS-004` — **stderr für stdio-Server** (CRITICAL — stdout reserviert für Protocol)
+- `OBS-005` — SIEM-Integration für Audit-Logs (Datadog EU / Splunk)
+
+### Status
+
+Check-Katalog: 31 von ~50 Checks vollständig. Verbleibend: ~10 Checks in v0.2.4 (HITL + CH).
+- `ARCH`: 7 / ~7 ✅ vollständig
+- `SDK`: 5 / ~5 ✅ vollständig
+- `SEC`: 7 / ~18 (kritische Subset komplett)
+- `SCALE`: 6 / ~6 ✅ vollständig
+- `OBS`: 5 / ~5 ✅ vollständig
+- `HITL`: 1 / ~4
+- `CH`: 1 / ~7
+
+---
+
 ## [v0.2.2] — 2026-04-26
 
 ### Hinzugefügt — Architektur & SDK Wave
