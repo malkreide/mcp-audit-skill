@@ -144,7 +144,27 @@ Empfohlene Reihenfolge nach Priorisierung Schulamt-Portfolio:
 - ✅ OBS-004 (stderr für stdio-Server) — CRITICAL
 - ✅ OBS-005 (SIEM-Integration)
 
-**Phase v0.2.4 — HITL & CH (NEXT):**
+**Phase v0.2.4 — HITL & CH: ✅ ABGESCHLOSSEN 2026-04-26**
+- ✅ HITL-001 (Sampling Request Review)
+- ✅ HITL-002 (Sampling Response Review)
+- ✅ HITL-003 (Data Redaction PII) — CRITICAL
+- ✅ HITL-004 (Sequential Thinking Sanitization)
+- ✅ CH-002 (DSG-Personendaten-Verarbeitung) — CRITICAL
+- ✅ CH-003 (Lehrpersonen-Einwilligung)
+- ✅ CH-004 (OGD-Lizenz CC BY 4.0)
+- ✅ CH-005 (ISDS Stadt Zürich)
+- ✅ CH-006 (Schulamt-Klassifikation)
+- ✅ CH-007 (Backup-Datenresidenz)
+- ✅ CH-008 (EDÖB-Meldepflicht) — CRITICAL
+
+**Phase v0.3 — Non-Critical SEC Edge-Cases (FUTURE):**
+
+Wird ergänzt, sobald entsprechende Server-Profile produktiv werden:
+- OAuth-Proxy: SEC-003, SEC-011, SEC-012
+- File-Tools: SEC-017
+- Multi-Server-Cluster: SEC-014, SEC-015
+- Local-Server-Härtung: SEC-006, SEC-007, SEC-008
+- Allgemein: SEC-005 (DNS-Pinning), SEC-013 (API-Key-Storage), SEC-018 (Input-Validation)
 - alle SCALE-Checks
 - alle OBS-Checks
 
