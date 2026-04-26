@@ -4,6 +4,38 @@ Alle wesentlichen Änderungen am Skill und am Check-Katalog werden hier dokument
 Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
+## [v0.2.2] — 2026-04-26
+
+### Hinzugefügt — Architektur & SDK Wave
+
+Fünf Architektur-Checks und vier SDK-Checks. Komplettiert die Kategorien `ARCH` und `SDK` aus dem PDF.
+
+**Architektur (5):**
+- `ARCH-002` — Tool-Beschreibung mit Use-Case-Tags (`<use_case>`, `<important_notes>`)
+- `ARCH-003` — «Not Found» Anti-Pattern: Fuzzy-Match + Suggestions statt leerer Antworten
+- `ARCH-004` — Inversion of Control: Transport-agnostische Server-Logik (stdio + SSE identisch)
+- `ARCH-006` — Tool-Budget: High-Level-Use-Cases statt API-Mapping 1:1
+- `ARCH-007` — Capability-Aggregation: Composability intern, Atomarität extern
+
+**SDK (4):**
+- `SDK-001` — FastMCP Lifespan via `@asynccontextmanager` + AsyncExitStack
+- `SDK-002` — Pydantic v2 / TypedDict / Dataclass als Tool-Returns
+- `SDK-003` — Context Injection für Progress-Reports und Logging
+- `SDK-004` — CORS `Mcp-Session-Id` Exposure bei HTTP/SSE-Deployments
+
+### Status
+
+Check-Katalog: 22 von ~50 Checks vollständig. Verbleibend: ~28 Checks in v0.2.3 + v0.2.4.
+- `ARCH`: 7 / ~7 ✅ vollständig
+- `SDK`: 5 / ~5 ✅ vollständig
+- `SEC`: 7 / ~18 (kritische Subset komplett)
+- `SCALE`: 1 / ~6
+- `OBS`: 1 / ~5
+- `HITL`: 1 / ~4
+- `CH`: 1 / ~7
+
+---
+
 ## [v0.2.1] — 2026-04-26
 
 ### Hinzugefügt — Critical Security Wave

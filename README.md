@@ -99,9 +99,9 @@ Details siehe [`SKILL.md`](./SKILL.md).
 - ✅ Methodik (`SKILL.md`)
 - ✅ Templates (Finding, Audit-Report)
 - ✅ Reference-Summary
-- ⚠️ Check-Katalog: 13 von ~50 Checks (v0.1.0: 7 Sample + v0.2.1: 6 Critical Security)
+- ✅ Check-Katalog: 22 von ~50 Checks (ARCH + SDK vollständig, SEC critical-Subset, je 1 für SCALE/OBS/HITL/CH als Format-Anker)
 
-Verbleibende ~37 Checks: siehe [`docs/roadmap.md`](./docs/roadmap.md).
+Verbleibende ~28 Checks: siehe [`docs/roadmap.md`](./docs/roadmap.md). Geplant für v0.2.3 (SCALE + OBS) und v0.2.4 (HITL + CH).
 
 ## Lizenz
 
