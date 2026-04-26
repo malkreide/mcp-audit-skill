@@ -79,15 +79,15 @@ mcp-audit-skill/
 
 ## Check-Kategorien
 
-| Code | Bereich | Quelle |
-|---|---|---|
-| `ARCH` | Tool-Design, Naming, Granularität | PDF Sec 2 |
-| `SDK` | FastMCP, TypeScript, Zod, Lifecycle | PDF Sec 3 |
-| `SEC` | Security (grösste Kategorie) | PDF Sec 4 |
-| `SCALE` | Transport, Load Balancing, Container | PDF Sec 5 |
-| `OBS` | Logging, Errors, SIEM | PDF Sec 6 |
-| `HITL` | Sampling, Human-in-the-Loop | PDF Sec 7 |
-| `CH` | DSG/EDÖB, Schweiz-Compliance | Custom |
+| Code | Bereich |
+|---|---|
+| `ARCH` | Tool-Design, Naming, Granularität |
+| `SDK` | FastMCP, TypeScript, Zod, Lifecycle |
+| `SEC` | Security (grösste Kategorie) |
+| `SCALE` | Transport, Load Balancing, Container |
+| `OBS` | Logging, Errors, SIEM |
+| `HITL` | Sampling, Human-in-the-Loop |
+| `CH` | DSG/EDÖB, Schweiz-Compliance |
 
 ## Severity-Stufen
 
