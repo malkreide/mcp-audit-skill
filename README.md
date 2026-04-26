@@ -109,4 +109,4 @@ MIT — siehe `LICENSE`
 
 ## Kontext
 
-Entwickelt im Rahmen des Swiss Public Data MCP Portfolio für die KI-Fachgruppe der Stadtverwaltung Zürich und das Schulamt der Stadt Zürich. Frei verwendbar von anderen Verwaltungen, Forschungsinstituten oder Privatpersonen, die MCP-Server systematisch auditieren wollen.
+Entwickelt im Rahmen des Swiss Public Data MCP Portfolio. Frei verwendbar von anderen Verwaltungen, Forschungsinstituten oder Privatpersonen, die MCP-Server systematisch auditieren wollen.
