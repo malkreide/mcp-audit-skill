@@ -99,11 +99,9 @@ Details siehe [`SKILL.md`](./SKILL.md).
 - ✅ Methodik (`SKILL.md`)
 - ✅ Templates (Finding, Audit-Report)
 - ✅ Reference-Summary
-- ✅ Check-Katalog: **42 von ~50 Checks** — operativ einsatzbereit
-  - 6 von 7 Kategorien vollständig (ARCH, SDK, SCALE, OBS, HITL, CH)
-  - SEC mit kritischer Subset vollständig (7/18)
+- ✅ Check-Katalog: **53 Checks, alle 7 Kategorien vollständig**
 
-Verbleibende ~11 Checks (Non-Critical SEC für OAuth-Proxy / File-Tools): siehe [`docs/roadmap.md`](./docs/roadmap.md). Geplant für v0.3, sobald entsprechende Server-Profile aktiv werden.
+Künftige Erweiterungen kommen aus Real-World-Findings beim Portfolio-Audit oder PDF-Updates der MCP-Steering-Group.
 
 ## Lizenz
 
@@ -111,4 +109,4 @@ MIT — siehe `LICENSE`
 
 ## Kontext
 
-Entwickelt im Rahmen des Swiss Public Data MCP Portfolio. Frei verwendbar von anderen Verwaltungen, Forschungsinstituten oder Privatpersonen, die MCP-Server systematisch auditieren wollen.
+Entwickelt im Rahmen des Swiss Public Data MCP Portfolio für die KI-Fachgruppe der Stadtverwaltung Zürich und das Schulamt der Stadt Zürich. Frei verwendbar von anderen Verwaltungen, Forschungsinstituten oder Privatpersonen, die MCP-Server systematisch auditieren wollen.

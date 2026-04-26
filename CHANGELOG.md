@@ -4,6 +4,56 @@ Alle wesentlichen Änderungen am Skill und am Check-Katalog werden hier dokument
 Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
+## [v0.3.0] — 2026-04-26
+
+### Hinzugefügt — SEC Edge-Cases (Final)
+
+Elf SEC-Checks komplettieren die Security-Kategorie. Geordnet nach Portfolio-Relevanz für das Schulamt-Portfolio (Universal → Lokal → File → DNS → OAuth → Multi-Server).
+
+**Cluster 1 — Universal (alle Server):**
+- `SEC-018` — Input-Validation an Tool-Boundaries (Pydantic strict / Zod)
+- `SEC-013` — API-Key-Storage: Secret Manager statt Plain-Text Env-Vars
+
+**Cluster 2 — Lokale stdio-Server:**
+- `SEC-006` — stdio-Transport zwingend für lokale Server (Netzwerk-Isolation)
+- `SEC-007` — Container-Sandboxing mit minimalen Privilegien
+- `SEC-008` — Pre-Configuration Consent für Local-Server-Installation
+
+**Cluster 3 — File-Tools:**
+- `SEC-017` — Path-Traversal-Prevention (Allow-List + safe_resolve)
+
+**Cluster 4 — DNS:**
+- `SEC-005` — DNS-Rebinding-Prevention via DNS-Pinning (TOCTOU-Schutz)
+
+**Cluster 5 — OAuth-Proxy:**
+- `SEC-003` — Progressive Scope-Minimierung mit WWW-Authenticate-Challenges
+- `SEC-011` — Cookie-Security: __Host-Prefix, Secure, HttpOnly, SameSite
+- `SEC-012` — Clickjacking-Protection: X-Frame-Options + CSP frame-ancestors
+
+**Cluster 6 — Multi-Server-Cluster:**
+- `SEC-014` — Tool-Allow-Listing via MCP-Gateway-Pattern
+- `SEC-015` — Pre-Flight Tool-Poisoning Detection
+
+### Status
+
+Check-Katalog: **53 von ~50 Checks** vollständig (Plan war ~50, finale Zählung +3 durch granularere Aufteilung mancher PDF-Themen). Alle sieben Kategorien komplett.
+
+- `ARCH`: 7 / 7 ✅
+- `SDK`: 5 / 5 ✅
+- `SEC`: **18 / 18 ✅**
+- `SCALE`: 6 / 6 ✅
+- `OBS`: 5 / 5 ✅
+- `HITL`: 5 / 5 ✅
+- `CH`: 8 / 8 ✅
+
+### v0.3 markiert das vollständige Skill
+
+Der Check-Katalog ist nun produktiv einsatzbereit für alle Server-Profile im Schulamt-Portfolio. Künftige Erweiterungen kommen aus zwei Quellen:
+1. Real-World-Findings beim Audit der 29 Server, die neue Pattern aufzeigen
+2. PDF-Updates mit neuen Best Practices (z.B. neue Specs der MCP-Steering-Group)
+
+---
+
 ## [v0.2.4] — 2026-04-26
 
 ### Hinzugefügt — HITL & Schweiz-Compliance Wave (Final)
