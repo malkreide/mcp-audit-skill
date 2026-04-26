@@ -4,6 +4,28 @@ Alle wesentlichen Änderungen am Skill und am Check-Katalog werden hier dokument
 Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
+## [v0.5.1] — 2026-04-26
+
+### Hinzugefügt — Skill-Auto-Discovery via Setup-Script
+
+`setup-slash-command.sh` legt nun **zusätzlich** einen Symlink von `~/.claude/skills/mcp-audit/` auf den Repo-Root an. Damit erkennt Claude Code Desktop den Skill automatisch und aktiviert ihn, wenn die Konversation auf das `description`-Feld in `SKILL.md` matcht (z.B. «ist mein Server sicher / production-ready», «Findings dokumentieren», «Audit», «Compliance-Check»).
+
+Der Slash-Command `/audit-mcp` bleibt parallel verfügbar — beide Mechanismen schliessen sich nicht aus.
+
+**Geändert:**
+- `setup-slash-command.sh` — neue `link_or_replace()`-Helper-Funktion; idempotent für Symlinks und Dateien/Verzeichnisse; legt jetzt beide Targets an
+- `README.md` — beschreibt beide Symlinks im Schnellstart
+
+**Anwender-Migration:**
+```bash
+cd mcp-audit-skill
+./setup-slash-command.sh   # legt nun zusätzlich den Skill-Symlink an
+```
+
+Bestehende Slash-Command-Symlinks bleiben unverändert; das Script meldet «Already linked» und ergänzt nur den fehlenden Skill-Symlink.
+
+---
+
 ## [v0.5.0] — 2026-04-26
 
 ### Hinzugefügt — Cloud-Modus für Slash-Command (WebFetch-Fallback)
