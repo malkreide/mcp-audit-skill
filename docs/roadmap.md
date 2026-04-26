@@ -157,14 +157,37 @@ Empfohlene Reihenfolge nach Priorisierung Schulamt-Portfolio:
 - ✅ CH-007 (Backup-Datenresidenz)
 - ✅ CH-008 (EDÖB-Meldepflicht) — CRITICAL
 
-**Phase v0.3 — Non-Critical SEC Edge-Cases (FUTURE):**
+**Phase v0.3 — SEC Edge-Cases: ✅ ABGESCHLOSSEN 2026-04-26**
 
-Wird ergänzt, sobald entsprechende Server-Profile produktiv werden:
-- OAuth-Proxy: SEC-003, SEC-011, SEC-012
-- File-Tools: SEC-017
-- Multi-Server-Cluster: SEC-014, SEC-015
-- Local-Server-Härtung: SEC-006, SEC-007, SEC-008
-- Allgemein: SEC-005 (DNS-Pinning), SEC-013 (API-Key-Storage), SEC-018 (Input-Validation)
+Cluster 1 — Universal:
+- ✅ SEC-018 (Input-Validation Pydantic strict / Zod)
+- ✅ SEC-013 (API-Key-Storage Secret Manager)
+
+Cluster 2 — Lokale stdio-Server:
+- ✅ SEC-006 (stdio-Transport zwingend)
+- ✅ SEC-007 (Container-Sandboxing)
+- ✅ SEC-008 (Pre-Configuration Consent)
+
+Cluster 3 — File-Tools:
+- ✅ SEC-017 (Path-Traversal-Prevention)
+
+Cluster 4 — DNS:
+- ✅ SEC-005 (DNS-Rebinding-Prevention via Pinning)
+
+Cluster 5 — OAuth-Proxy:
+- ✅ SEC-003 (Progressive Scope-Minimierung)
+- ✅ SEC-011 (Cookie-Security __Host-Prefix)
+- ✅ SEC-012 (Clickjacking-Protection)
+
+Cluster 6 — Multi-Server-Cluster:
+- ✅ SEC-014 (Tool-Allow-Listing)
+- ✅ SEC-015 (Tool-Poisoning Detection)
+
+**Skill ist nun vollständig. Künftige Erweiterungen sind organisch:**
+
+- Real-World-Findings beim Audit der 29 Server zeigen Pattern, die neue Checks rechtfertigen
+- PDF-Updates mit neuen MCP-Spec-Versionen
+- Neue Compliance-Anforderungen (z.B. EU AI Act, Schweizer KI-Gesetz)
 - alle SCALE-Checks
 - alle OBS-Checks
 
