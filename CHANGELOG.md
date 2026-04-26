@@ -4,6 +4,25 @@ Alle wesentlichen Änderungen am Skill und am Check-Katalog werden hier dokument
 Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
+## [v0.2.1] — 2026-04-26
+
+### Hinzugefügt — Critical Security Wave
+
+Sechs kritische Security-Checks aus dem PDF-Anhang. Alle haben Severity `critical` und müssen vor Production-Release bestanden sein.
+
+- `SEC-002` — Token Passthrough Prohibition (RFC 8707 Audience Validation)
+- `SEC-004` — SSRF-Prevention: HTTPS-Enforcement + IP-Blocklisting (mit DNS-Rebinding-Schutz)
+- `SEC-009` — Session-ID Cryptographic Binding an validierte user_id
+- `SEC-010` — OAuth State Parameter: Single-Use, max 10min TTL (Redis GETDEL)
+- `SEC-016` — 0.0.0.0-Binding-Prevention (NeighborJack-Schutz)
+- `ARCH-005` — Keine Hardcoded Secrets (Pydantic SecretStr + Gitleaks/Trufflehog CI)
+
+### Status
+
+Check-Katalog: 13 von ~50 Checks vollständig (v0.1.0: 7 Sample + v0.2.1: 6 Critical). Verbleibend: ~37 Checks in v0.2.2 bis v0.2.4.
+
+---
+
 ## [v0.1.0] — 2026-04-26
 
 ### Hinzugefügt — Initial Release

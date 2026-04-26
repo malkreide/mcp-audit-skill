@@ -62,15 +62,16 @@ Dieses Profil ist die **einzige Wahrheit** für `applies_when`-Auswertung in Sch
 
 ### 2.1 Sieben Kategorien
 
-| Kategorie | Quelle | Typische Anzahl Checks |
-|---|---|---|
-| `ARCH` | PDF Sec 2 — Tool-Design, Naming, Granularität | 6–8 |
-| `SDK` | PDF Sec 3 — FastMCP, TypeScript, Zod, Lifecycle | 5–7 |
-| `SEC` | PDF Sec 4 — Security (grösste Kategorie) | 15–20 |
-| `SCALE` | PDF Sec 5 — Transport, LB, Container, Gateway | 5–7 |
-| `OBS` | PDF Sec 6 — Logging, Errors, SIEM | 5–7 |
-| `HITL` | PDF Sec 7 — Sampling, Human-in-the-Loop | 4–5 |
-| `CH` | Custom — DSG/EDÖB, Schweiz-Compliance | 5–8 |
+| Kategorie | Quelle | Typische Anzahl Checks | Status v0.2.1 |
+|---|---|---|---|
+| `ARCH` | PDF Sec 2 — Tool-Design, Naming, Granularität | 6–8 | 2 / ~7 |
+| `SDK` | PDF Sec 3 — FastMCP, TypeScript, Zod, Lifecycle | 5–7 | 1 / ~5 |
+| `SEC` | PDF Sec 4 — Security (grösste Kategorie) | 15–20 | 5 / ~18 |
+| `SCALE` | PDF Sec 5 — Transport, LB, Container, Gateway | 5–7 | 1 / ~6 |
+| `OBS` | PDF Sec 6 — Logging, Errors, SIEM | 5–7 | 1 / ~5 |
+| `HITL` | PDF Sec 7 — Sampling, Human-in-the-Loop | 4–5 | 1 / ~4 |
+| `CH` | Custom — DSG/EDÖB, Schweiz-Compliance | 5–8 | 1 / ~7 |
+| **Total** | | **~50** | **13 / ~52** |
 
 ### 2.2 Severity-Stufen
 
