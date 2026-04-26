@@ -99,9 +99,11 @@ Details siehe [`SKILL.md`](./SKILL.md).
 - ✅ Methodik (`SKILL.md`)
 - ✅ Templates (Finding, Audit-Report)
 - ✅ Reference-Summary
-- ✅ Check-Katalog: 31 von ~50 Checks (ARCH + SDK + SCALE + OBS vollständig, SEC critical-Subset, je 1 für HITL/CH als Format-Anker)
+- ✅ Check-Katalog: **42 von ~50 Checks** — operativ einsatzbereit
+  - 6 von 7 Kategorien vollständig (ARCH, SDK, SCALE, OBS, HITL, CH)
+  - SEC mit kritischer Subset vollständig (7/18)
 
-Verbleibende ~10 Checks: siehe [`docs/roadmap.md`](./docs/roadmap.md). Geplant für v0.2.4 (HITL + CH).
+Verbleibende ~11 Checks (Non-Critical SEC für OAuth-Proxy / File-Tools): siehe [`docs/roadmap.md`](./docs/roadmap.md). Geplant für v0.3, sobald entsprechende Server-Profile aktiv werden.
 
 ## Lizenz
 

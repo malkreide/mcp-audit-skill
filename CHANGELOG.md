@@ -4,6 +4,47 @@ Alle wesentlichen Änderungen am Skill und am Check-Katalog werden hier dokument
 Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
+## [v0.2.4] — 2026-04-26
+
+### Hinzugefügt — HITL & Schweiz-Compliance Wave (Final)
+
+Vier HITL-Checks und sieben CH-Checks. Komplettiert die Kategorien `HITL` und `CH`. Damit ist der Check-Katalog operativ einsatzbereit für das Schulamt-Portfolio.
+
+**Human-in-the-Loop (4):**
+- `HITL-001` — Sampling Request Review: User-UI vor LLM-Send
+- `HITL-002` — Sampling Response Review: Output-Validation vor Server-Übergabe
+- `HITL-003` — **Data Redaction**: PII-Filter vor LLM-Send (CRITICAL bei nicht-public + Sampling)
+- `HITL-004` — Sequential Thinking Object-Sanitization gegen Key-Leaks
+
+**Schweiz-Compliance (7):**
+- `CH-002` — **DSG-konforme Personendaten-Verarbeitung** mit Rechtsgrundlage (CRITICAL bei PII)
+- `CH-003` — Lehrpersonen-Einwilligung bei Volksschule-Daten (Auskunfts-/Berichtigungsrecht)
+- `CH-004` — OGD-CH Lizenz-Compliance: CC BY 4.0 Attribution
+- `CH-005` — ISDS Stadt Zürich Schutzbedarfsklasse-Mapping (3 Schutzziele)
+- `CH-006` — Schulamt Klassifikationsschema (BUI/VERT/SVERT, Aggregations-Risiko)
+- `CH-007` — Datenresidenz Backup-Region (Backups als gleichwertige Verarbeitung)
+- `CH-008` — **EDÖB-Meldepflicht** bei Datenschutz-Verletzungen (CRITICAL, 72h-Frist)
+
+### Status
+
+Check-Katalog: **42 von ~50 Checks** vollständig. Alle sieben Kategorien mit operativ einsetzbarem Check-Set abgedeckt.
+
+- `ARCH`: 7 / ~7 ✅ vollständig
+- `SDK`: 5 / ~5 ✅ vollständig
+- `SEC`: 6 / ~18 (kritische Subset komplett, Rest in Roadmap für v0.3)
+- `SCALE`: 6 / ~6 ✅ vollständig
+- `OBS`: 5 / ~5 ✅ vollständig
+- `HITL`: 5 / ~5 ✅ vollständig
+- `CH`: 8 / ~8 ✅ vollständig
+
+### Verbleibend für v0.3
+
+Nicht-kritische SEC-Checks (~11): SEC-003 (Scope-Minimierung), SEC-005 (DNS-Pinning), SEC-006/007/008 (Local-Server / Container-Sandbox / Pre-Config-Consent), SEC-011/012 (Cookie-Security / Clickjacking), SEC-013 (API-Key-Storage), SEC-014/015 (Tool-Allow-Listing / Tool-Poisoning), SEC-017 (Path-Traversal), SEC-018 (Input-Validation).
+
+Diese Checks decken Edge-Cases ab, die im Schulamt-Portfolio aktuell noch nicht produktionsrelevant sind. Werden ergänzt, sobald Server in Production gehen, die OAuth-Proxy nutzen oder File-Tools exponieren.
+
+---
+
 ## [v0.2.3] — 2026-04-26
 
 ### Hinzugefügt — Skalierung & Observability Wave
