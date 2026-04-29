@@ -4,56 +4,58 @@ Alle wesentlichen Änderungen am Skill und am Check-Katalog werden hier dokument
 Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
-## [v0.5.1] — 2026-04-26
-
-### Hinzugefügt — Skill-Auto-Discovery via Setup-Script
-
-`setup-slash-command.sh` legt nun **zusätzlich** einen Symlink von `~/.claude/skills/mcp-audit/` auf den Repo-Root an. Damit erkennt Claude Code Desktop den Skill automatisch und aktiviert ihn, wenn die Konversation auf das `description`-Feld in `SKILL.md` matcht (z.B. «ist mein Server sicher / production-ready», «Findings dokumentieren», «Audit», «Compliance-Check»).
-
-Der Slash-Command `/audit-mcp` bleibt parallel verfügbar — beide Mechanismen schliessen sich nicht aus.
-
-**Geändert:**
-- `setup-slash-command.sh` — neue `link_or_replace()`-Helper-Funktion; idempotent für Symlinks und Dateien/Verzeichnisse; legt jetzt beide Targets an
-- `README.md` — beschreibt beide Symlinks im Schnellstart
-
-**Anwender-Migration:**
-```bash
-cd mcp-audit-skill
-./setup-slash-command.sh   # legt nun zusätzlich den Skill-Symlink an
-```
-
-Bestehende Slash-Command-Symlinks bleiben unverändert; das Script meldet «Already linked» und ergänzt nur den fehlenden Skill-Symlink.
-
----
-
 ## [v0.5.0] — 2026-04-26
 
-### Hinzugefügt — Cloud-Modus für Slash-Command (WebFetch-Fallback)
+### Hinzugefügt — Anhang-Coverage (Architektur-Disziplin + Security-Verstärkung + Operative Disziplin)
 
-`/audit-mcp` funktioniert jetzt **ohne lokalen Klon** des Skill-Repos. Wenn weder `MCP_AUDIT_SKILL_PATH` gesetzt ist noch eine der bekannten lokalen Pfad-Heuristiken trifft, lädt der Command Manifest, Check-Files und Templates via `WebFetch` direkt aus `https://raw.githubusercontent.com/malkreide/mcp-audit-skill/main/`. Damit ist der Audit-Workflow auch in pure-Cloud-Umgebungen (Claude Code on the web, restriktive Sandboxes) ohne vorbereiteten Filesystem-Klon nutzbar.
+Lücken-Analyse gegen `mcp-server-architecture-best-practice.pdf` zeigte, dass v0.4.0 etwa 65–70% des Anhang-Inhalts vollständig deckte. v0.5.0 schliesst die identifizierten Lücken mit 14 neuen Checks in drei Clustern.
 
-**Architektur-Entscheidungen:**
-- Zwei Modi (`SKILL_MODE=local` vs. `remote`) werden in Schritt 0 deterministisch aufgelöst: lokale Pfade haben Priorität, GitHub-Raw ist Fallback
-- `SKILL_BASE` ist entweder ein lokaler Pfad oder die Raw-URL — alle Folge-Schritte verzweigen pro Modus
-- Pin auf `main`-Branch: der Slash-Command wohnt im gleichen Repo und wird atomar mit dem Katalog versioniert. Reproduzierbarkeit für einen einzelnen Audit-Run liefert die Skill-Version aus dem CHANGELOG, die ohnehin im Audit-Report-Footer steht
-- Neuer File `checks/MANIFEST.txt` als kanonische Check-ID-Liste (eine ID pro Zeile) — ersetzt im remote-Modus das `ls` über das Filesystem
-- `WebFetch` zur `allowed-tools`-Liste ergänzt
-- Cache-Robustheit: bei zusammengefassten WebFetch-Antworten erzwingt der Command einen «wortgetreu»-Re-Fetch
-- Audit-Report-Metadata vermerkt den `SKILL_MODE`, damit Reproduzierbarkeit klar dokumentiert ist
+**Cluster 1 — Architektur-Disziplin (5 Checks):**
+- `ARCH-008` — Drei MCP-Primitive nutzen (Tools, Resources, Prompts)
+- `ARCH-009` — Tool Annotations explizit (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`)
+- `ARCH-010` — **Idempotency-Keys + Compensating Actions** (CRITICAL bei Write-Servern, schliesst die SOLID-Idempotency-Lücke)
+- `ARCH-011` — Standardisierte Repo-Struktur (Sormena-Pattern)
+- `ARCH-012` — protocolVersion-Pinning + CHANGELOG + SDK-Update-Disziplin
 
-**Geänderte Files:**
-- `.claude/commands/audit-mcp.md` — Schritt 0/2/4/5/6 mit dual-mode Datenzugriff; `WebFetch` in allowed-tools
-- `checks/MANIFEST.txt` (neu) — kanonische Check-ID-Liste
-- `README.md` — Cloud-Modus-Hinweis im Schnellstart
+**Cluster 2 — Security-Verstärkung (5 Checks):**
+- `SEC-019` — **Lethal Trifecta vermeiden** (CRITICAL, Server-Separation Read vs Write/Send)
+- `SEC-020` — **Command Injection Prevention** (CRITICAL, 43%-Lücke gemäss Equixly 2025)
+- `SEC-021` — Egress-Allow-List auf Code- und Network-Layer
+- `SEC-022` — Tool-Hash-Pinning + Namespace-Präfix gegen Rug Pull
+- `SEC-023` — DLP-Scanning auf Tool-Outputs (ergänzt HITL-003 für Non-Sampling-Pfad)
 
-**Setup unverändert für lokale Nutzer:**
-```bash
-git clone https://github.com/malkreide/mcp-audit-skill.git
-cd mcp-audit-skill
-./setup-slash-command.sh
-```
+**Cluster 3 — Operative Disziplin (4 Checks, neue Kategorie OPS):**
+- `OBS-006` — OpenTelemetry Distributed Tracing pro Tool-Call
+- `OPS-001` — Test-Strategie: Unit-Tests mocked + Live-Tests gemarkert
+- `OPS-002` — Doku-Standard: bilingualer README, ASCII-Diagramm, Limits-Sektion
+- `OPS-003` — Phasenarchitektur: Read-only First, dann Write, dann Multi-Agent
 
-**Cloud-Setup (neu):** keiner. `/audit-mcp` aufrufen — der Command erkennt das fehlende lokale Skill und schaltet automatisch auf WebFetch um.
+### Status
+
+Check-Katalog: **68 Checks**, alle 8 Kategorien.
+
+- `ARCH`: 12 / 12 ✅
+- `SDK`: 5 / 5 ✅
+- `SEC`: 23 / 23 ✅
+- `SCALE`: 6 / 6 ✅
+- `OBS`: 6 / 6 ✅
+- `HITL`: 5 / 5 ✅
+- `CH`: 8 / 8 ✅
+- `OPS`: 3 / 3 ✅ (neue Kategorie)
+
+**Severity-Verteilung:**
+- critical: 15 (22%)
+- high: 31 (46%)
+- medium: 22 (32%)
+
+### Gap-Coverage gegen Anhang
+
+Vollständige Abdeckung der drei Anhang-Sektionen:
+- A (Architektur): A1, A2, A3, A4, A5, A6, A7, A8, A9 — alle abgedeckt
+- B (Sicherheit): B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12 — alle abgedeckt
+- C (Operative Praxis): C1, C2, C3, C4 — alle abgedeckt
+
+Plus die SOLID-Eselsbrücke ist nun komplett: **S**andbox (SEC-007), **O**Auth (SEC-001/2/3), **L**east Privilege (SEC-003), **I**dempotency (ARCH-010), **D**efense-in-Depth (über alle Layer).
 
 ---
 

@@ -62,16 +62,17 @@ Dieses Profil ist die **einzige Wahrheit** für `applies_when`-Auswertung in Sch
 
 ### 2.1 Sieben Kategorien
 
-| Kategorie | Quelle | Typische Anzahl Checks | Status v0.3.0 |
+| Kategorie | Quelle | Typische Anzahl Checks | Status v0.5.0 |
 |---|---|---|---|
-| `ARCH` | PDF Sec 2 — Tool-Design, Naming, Granularität | 6–8 | 7 / 7 ✅ |
+| `ARCH` | PDF Sec 2 + Anhang A — Tool-Design, Annotations, Idempotency, Repo-Struktur, Spec-Versionierung | 10–12 | 12 / 12 ✅ |
 | `SDK` | PDF Sec 3 — FastMCP, TypeScript, Zod, Lifecycle | 5–7 | 5 / 5 ✅ |
-| `SEC` | PDF Sec 4 — Security (grösste Kategorie) | 15–20 | 18 / 18 ✅ |
+| `SEC` | PDF Sec 4 + Anhang B — Security (grösste Kategorie) | 20–25 | 23 / 23 ✅ |
 | `SCALE` | PDF Sec 5 — Transport, LB, Container, Gateway | 5–7 | 6 / 6 ✅ |
-| `OBS` | PDF Sec 6 — Logging, Errors, SIEM | 5–7 | 5 / 5 ✅ |
+| `OBS` | PDF Sec 6 + Anhang B10 — Logging, Errors, SIEM, Tracing | 5–7 | 6 / 6 ✅ |
 | `HITL` | PDF Sec 7 — Sampling, Human-in-the-Loop | 4–5 | 5 / 5 ✅ |
 | `CH` | Custom — DSG/EDÖB, Schweiz-Compliance | 5–8 | 8 / 8 ✅ |
-| **Total** | | **~50** | **53 / 53 ✅** |
+| `OPS` | Anhang C — Test-Strategie, Doku, Phasenarchitektur | 3–5 | 3 / 3 ✅ |
+| **Total** | | **~65** | **68 / 68 ✅** |
 
 ### 2.2 Severity-Stufen
 

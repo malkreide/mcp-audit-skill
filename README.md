@@ -24,13 +24,7 @@ cd mcp-audit-skill
 ./setup-slash-command.sh
 ```
 
-Das Setup-Script symlinkt zwei Dinge:
-- `.claude/commands/audit-mcp.md` → `~/.claude/commands/audit-mcp.md` — damit `/audit-mcp` global als Slash-Command verfügbar ist
-- den Repo-Root → `~/.claude/skills/mcp-audit/` — damit Claude Code Desktop den Skill **automatisch** aktiviert, wenn der User informell nach einem Audit fragt («ist mein Server gut gebaut?», «Findings dokumentieren», etc.)
-
-Optional kannst du `MCP_AUDIT_SKILL_PATH` in deiner Shell-RC setzen, damit der Command den Skill-Pfad nicht jedes Mal erfragen muss.
-
-**Cloud-Modus (seit v0.5):** Wenn kein lokaler Klon vorhanden ist (z.B. Claude Code on the web oder restriktive Sandbox), lädt der Command Manifest, Check-Files und Templates automatisch via `WebFetch` aus `raw.githubusercontent.com/malkreide/mcp-audit-skill/main`. Kein Setup nötig — `/audit-mcp <repo>` funktioniert direkt, sofern der Slash-Command-File im aktuellen Workspace verfügbar ist (z.B. via `.claude/commands/audit-mcp.md` im Target-Repo oder global hinterlegt).
+Das Setup-Script symlinkt `.claude/commands/audit-mcp.md` nach `~/.claude/commands/`, damit `/audit-mcp` global in jeder Claude-Code-Session verfügbar ist. Optional kannst du `MCP_AUDIT_SKILL_PATH` in deiner Shell-RC setzen, damit der Command den Skill-Pfad nicht jedes Mal erfragen muss.
 
 Verwendung:
 
@@ -85,15 +79,15 @@ mcp-audit-skill/
 
 ## Check-Kategorien
 
-| Code | Bereich |
-|---|---|
-| `ARCH` | Tool-Design, Naming, Granularität |
-| `SDK` | FastMCP, TypeScript, Zod, Lifecycle |
-| `SEC` | Security (grösste Kategorie) |
-| `SCALE` | Transport, Load Balancing, Container |
-| `OBS` | Logging, Errors, SIEM |
-| `HITL` | Sampling, Human-in-the-Loop |
-| `CH` | DSG/EDÖB, Schweiz-Compliance |
+| Code | Bereich | Quelle |
+|---|---|---|
+| `ARCH` | Tool-Design, Naming, Granularität | PDF Sec 2 |
+| `SDK` | FastMCP, TypeScript, Zod, Lifecycle | PDF Sec 3 |
+| `SEC` | Security (grösste Kategorie) | PDF Sec 4 |
+| `SCALE` | Transport, Load Balancing, Container | PDF Sec 5 |
+| `OBS` | Logging, Errors, SIEM | PDF Sec 6 |
+| `HITL` | Sampling, Human-in-the-Loop | PDF Sec 7 |
+| `CH` | DSG/EDÖB, Schweiz-Compliance | Custom |
 
 ## Severity-Stufen
 
@@ -123,15 +117,17 @@ Details siehe [`SKILL.md`](./SKILL.md).
 
 ## Status
 
-**Version:** v0.5.1 — Skill-Auto-Discovery via Setup-Script (Cloud-Modus seit v0.5.0)
+**Version:** v0.1.0 (initial release)
 
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`)
 - ✅ Templates (Finding, Audit-Report)
 - ✅ Reference-Summary
-- ✅ Check-Katalog: **53 Checks, alle 7 Kategorien vollständig**
+- ✅ Check-Katalog: **68 Checks, 8 Kategorien vollständig**
+- ✅ Slash-Command für Claude Code (siehe oben)
+- ✅ Vollständige Abdeckung gegen `mcp-server-architecture-best-practice.pdf` (Anhang-Sektionen A1–A9, B1–B12, C1–C4)
 
-Künftige Erweiterungen kommen aus Real-World-Findings beim Portfolio-Audit oder PDF-Updates der MCP-Steering-Group.
+Künftige Erweiterungen kommen aus Real-World-Findings beim Portfolio-Audit oder Spec-Updates der MCP-Steering-Group.
 
 ## Lizenz
 
@@ -139,4 +135,4 @@ MIT — siehe `LICENSE`
 
 ## Kontext
 
-Entwickelt im Rahmen des Swiss Public Data MCP Portfolio. Frei verwendbar von anderen Verwaltungen, Forschungsinstituten oder Privatpersonen, die MCP-Server systematisch auditieren wollen.
+Entwickelt im Rahmen des Swiss Public Data MCP Portfolio für die KI-Fachgruppe der Stadtverwaltung Zürich und das Schulamt der Stadt Zürich. Frei verwendbar von anderen Verwaltungen, Forschungsinstituten oder Privatpersonen, die MCP-Server systematisch auditieren wollen.
