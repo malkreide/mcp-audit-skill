@@ -313,23 +313,12 @@ Der Check-Katalog enthält in v0.1 nur 7 Sample-Checks zur Format-Validierung. D
 
 ---
 
-## Versions-Vergleichslinks
+## Versions-Historie
+
+Das Repository wurde mit **v0.5.0** publiziert. Frühere Versionen (v0.1.0 bis
+v0.4.0) sind in diesem CHANGELOG dokumentiert, existieren aber nicht als
+separate Git-Tags — sie repräsentieren Iterationsstände während der
+initialen Skill-Entwicklung vor dem GitHub-Push.
 
 [Unreleased]: https://github.com/malkreide/mcp-audit-skill/compare/v0.5.0...HEAD
 [v0.5.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.5.0
-[v0.4.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.4.0
-[v0.3.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.3.0
-[v0.2.4]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.2.4
-[v0.2.3]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.2.3
-[v0.2.2]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.2.2
-[v0.2.1]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.2.1
-[v0.1.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.1.0
-
-Damit diese Links funktionieren, müssen die Versionen als Git-Tags markiert sein:
-
-```bash
-git tag -a v0.5.0 -m "v0.5.0 — Vollständige Anhang-Coverage (68 Checks)"
-git push origin v0.5.0
-```
-
-Auf GitHub kann pro Tag dann optional eine Release-Page mit Release Notes erstellt werden.
