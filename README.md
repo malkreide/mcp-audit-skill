@@ -199,4 +199,4 @@ Pull Requests willkommen — insbesondere für ergänzende Compliance-Layer ande
 
 ---
 
-**Autor:** [Hayal Oezkan](https://github.com/malkreide) — Leiter Kommunikation Schulamt Stadt Zürich, Mitglied KI-Fachgruppe der Stadtverwaltung Zürich
+**Autor:** [Hayal Oezkan](https://github.com/malkreide)
