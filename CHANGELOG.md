@@ -4,6 +4,14 @@ Alle wesentlichen Änderungen am Skill und am Check-Katalog werden hier dokument
 Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+Pilot-Audit-Findings, organische Erweiterungen aus Real-World-Anwendung. Geplante Themen:
+
+- `reference/anti-patterns.md` mit wiederverwendbaren Code-Snippets aus wiederkehrenden Findings
+- CI-Lint im Skill-Repo, der das Frontmatter aller Check-Files validiert
+- Audit-Findings-Sub-DB unter dem Notion-Audit-Tracker
+
 ## [v0.5.0] — 2026-04-26
 
 ### Hinzugefügt — Anhang-Coverage (Architektur-Disziplin + Security-Verstärkung + Operative Disziplin)
@@ -64,6 +72,8 @@ Plus die SOLID-Eselsbrücke ist nun komplett: **S**andbox (SEC-007), **O**Auth (
 ### Hinzugefügt — Claude-Code-Slash-Command-Integration
 
 Der Audit-Workflow ist nun als Claude-Code-Slash-Command `/audit-mcp <repo>` ausführbar. Standard-Automatisierungstiefe: alle `automated`/`config_check`/`documentation_check`-Modi laufen automatisch, `code_review`/`runtime_test`-Modi werden als TODOs mit Such-Pattern in den Report geschrieben.
+
+> **Erratum (nachträglich, 2026-04-29):** Im ursprünglichen v0.4.0-Eintrag wurde die Anzahl Checks fälschlich mit 53 angegeben — tatsächlicher Stand zum Release-Zeitpunkt war 54. Die Diskrepanz entstand durch einen Off-by-one-Zählfehler beim Übergang von v0.3.0 zu v0.4.0. v0.5.0 baut korrekt auf 54 + 14 = 68 Checks auf.
 
 **Neue Files:**
 - `.claude/commands/audit-mcp.md` — Slash-Command-Definition (orchestriert die 6 Schritte aus `SKILL.md`)
@@ -303,9 +313,23 @@ Der Check-Katalog enthält in v0.1 nur 7 Sample-Checks zur Format-Validierung. D
 
 ---
 
-## [Geplant für v0.2.0]
+## Versions-Vergleichslinks
 
-- Vollständiger Check-Katalog (~50 Checks)
-- Slash-Command-Integration für Claude Code (`/audit-mcp <repo>`)
-- Automated Check-Runner Script (Python) für statische Checks
-- CI-Workflow im Skill-Repo: Lint von Check-Markdown auf Schema-Konformität
+[Unreleased]: https://github.com/malkreide/mcp-audit-skill/compare/v0.5.0...HEAD
+[v0.5.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.5.0
+[v0.4.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.4.0
+[v0.3.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.3.0
+[v0.2.4]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.2.4
+[v0.2.3]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.2.3
+[v0.2.2]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.2.2
+[v0.2.1]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.2.1
+[v0.1.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.1.0
+
+Damit diese Links funktionieren, müssen die Versionen als Git-Tags markiert sein:
+
+```bash
+git tag -a v0.5.0 -m "v0.5.0 — Vollständige Anhang-Coverage (68 Checks)"
+git push origin v0.5.0
+```
+
+Auf GitHub kann pro Tag dann optional eine Release-Page mit Release Notes erstellt werden.
