@@ -115,6 +115,21 @@ Output landet in `<repo>/audits/YYYY-MM-DD-<server-name>/` mit:
 
 Automatisierungstiefe ist **Standard**: alle `automated`/`config_check`/`documentation_check`-Modi laufen automatisch, `code_review`/`runtime_test`-Modi werden als TODO mit Such-Pattern in den Report geschrieben (kein Pattern-Match-Halluzinieren).
 
+### Portfolio-Batch-Audit (`audit-portfolio.sh`)
+
+Wenn du mehrere MCP-Server in einem Run auditieren willst, nutze das Top-Level-Script `audit-portfolio.sh`. Es liest deine `portfolio.yaml` (Server-Liste mit Profil pro Server), klont jedes Repo, ruft `claude -p` mit dem `/audit-mcp`-Slash-Command non-interactive auf und aggregiert die Findings in eine `portfolio-summary.md`.
+
+```bash
+cp portfolio.example.yaml portfolio.yaml
+$EDITOR portfolio.yaml          # deine Server-Liste anpassen
+./audit-portfolio.sh --dry-run  # Plan verifizieren, kein claude-Call
+./audit-portfolio.sh            # echter Run, alle Server sequenziell
+./audit-portfolio.sh zh-education-mcp foo-mcp   # Subset
+./audit-portfolio.sh --force    # auch heute schon auditierte Server neu
+```
+
+`portfolio.yaml` ist `.gitignore`d — committe deine Server-Liste nicht versehentlich. Dependencies: `yq` (Mike Farahs Go-yq oder kislyuks Python-yq + `jq`), `git`, `claude` CLI. Output landet in `portfolio-logs/<datum>/`.
+
 ### Als Claude.ai-Skill (manuell)
 
 ```bash
@@ -176,13 +191,14 @@ Komplementär nutzbar — keiner der Genannten ersetzt die anderen.
 
 ## Status
 
-**Version:** v0.5.0 (vollständige Anhang-Coverage)
+**Version:** v0.6.0 — Portfolio-Batch-Audit via `audit-portfolio.sh` (Anhang-Coverage seit v0.5.0)
 
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`) und Templates (Finding, Audit-Report)
 - ✅ Reference-Summary
 - ✅ Check-Katalog: **68 Checks, alle 8 Kategorien vollständig**
-- ✅ Slash-Command für Claude Code
+- ✅ Slash-Command für Claude Code (`/audit-mcp <repo>`)
+- ✅ Portfolio-Batch-Audit (`audit-portfolio.sh` für Multi-Server-Runs)
 - ✅ Vollständige Abdeckung beider Standards-Quellen (Hauptkatalog + Architektur-Anhang)
 
 Künftige Erweiterungen kommen aus Real-World-Findings beim Portfolio-Audit, MCP-Spec-Updates oder neuen Compliance-Anforderungen (EU AI Act, Schweizer KI-Gesetz). Versions-Roadmap siehe [`docs/roadmap.md`](./docs/roadmap.md).
