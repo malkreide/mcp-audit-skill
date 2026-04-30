@@ -79,6 +79,8 @@ Daraus baust du das Profil mit folgenden Variablen (Defaults bei Unsicherheit):
 
 **Output Schritt 1:** Vollständiges Profil als YAML-Block. **Bestätige mit dem User**, dass das Profil korrekt ist, bevor du weiter machst. Profil falsch = ganzer Audit falsch.
 
+**Headless-Modus (Batch-Audit via `audit-portfolio.sh`):** Falls die Konversation **vor** dem `/audit-mcp`-Aufruf bereits einen vollständigen Profil-YAML-Block enthält, der explizit als «autoritativ» oder «Headless-Modus» markiert ist, übernimm das Profil unverändert und überspringe die User-Bestätigung. Gehe direkt zu Schritt 2. Diesen Modus erkennst du am Marker-Text «Headless-Modus für /audit-mcp» oder «Profil ist autoritativ».
+
 ---
 
 ### Schritt 2 — Catalog-Load

@@ -1,0 +1,53 @@
+# portfolio.example.yaml
+#
+# Template für Portfolio-Audit. Kopiere nach portfolio.yaml und fülle die
+# Server-Liste mit deinen MCP-Servern. portfolio.yaml ist .gitignored, damit
+# Profil-Details (deployment, contexts) nicht versehentlich gepushed werden.
+#
+# Verwendung:
+#   ./audit-portfolio.sh                 # alle Server in portfolio.yaml
+#   ./audit-portfolio.sh <name>          # nur den genannten Server
+#   ./audit-portfolio.sh --dry-run       # Plan ausgeben, ohne claude zu rufen
+#
+# Pro Server sind name + repo + profile Pflicht. Die Profil-Werte werden
+# autoritativ an /audit-mcp übergeben — Schritt 1 (Profil-Bestätigung) wird
+# im Headless-Modus übersprungen.
+
+servers:
+  - name: zurich-opendata-mcp
+    repo: https://github.com/malkreide/zurich-opendata-mcp
+    profile:
+      transport: dual                              # stdio-only | dual | HTTP | SSE
+      auth_model: none                             # none | API-Key | OAuth-Proxy | OIDC
+      data_class: Public Open Data                 # Public Open Data | Verwaltungsdaten | PII
+      write_capable: false
+      deployment: [local-stdio, Railway]           # Liste: local-stdio | Railway | Render | Kubernetes | Docker
+      uses_sampling: false
+      uses_sequential_thinking: false
+      tools_include_filesystem: false
+      tools_make_external_requests: true
+      stadt_zuerich_context: true
+      schulamt_context: false
+      volksschule_context: false
+      enterprise_context: false
+      data_source:
+        is_swiss_open_data: true
+
+  - name: zh-education-mcp
+    repo: https://github.com/malkreide/zh-education-mcp
+    profile:
+      transport: stdio-only
+      auth_model: API-Key
+      data_class: Verwaltungsdaten
+      write_capable: false
+      deployment: [local-stdio]
+      uses_sampling: false
+      uses_sequential_thinking: false
+      tools_include_filesystem: false
+      tools_make_external_requests: true
+      stadt_zuerich_context: true
+      schulamt_context: true
+      volksschule_context: true
+      enterprise_context: false
+      data_source:
+        is_swiss_open_data: false

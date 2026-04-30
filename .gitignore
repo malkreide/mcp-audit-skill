@@ -8,3 +8,7 @@ __pycache__/
 node_modules/
 .env
 .env.local
+
+# Portfolio audit (user-specific server list and run logs)
+portfolio.yaml
+portfolio-logs/

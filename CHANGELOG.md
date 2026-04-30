@@ -11,6 +11,50 @@ Pilot-Audit-Findings, organische Erweiterungen aus Real-World-Anwendung. Geplant
 - `reference/anti-patterns.md` mit wiederverwendbaren Code-Snippets aus wiederkehrenden Findings
 - CI-Lint im Skill-Repo, der das Frontmatter aller Check-Files validiert
 - Audit-Findings-Sub-DB unter dem Notion-Audit-Tracker
+- Parallelism in `audit-portfolio.sh` via `xargs -P`
+
+---
+
+## [v0.6.0] — 2026-04-30
+
+### Hinzugefügt — Portfolio-Batch-Audit (Muster 1: headless via `claude -p`)
+
+Neues Top-Level-Script `audit-portfolio.sh` für sequenziellen Headless-Audit über mehrere MCP-Server hinweg. Pro Server: clone/pull → `claude -p` mit autoritativem Profil → Audit-Report einsammeln → in `portfolio-summary.md` aggregieren.
+
+**Architektur-Entscheidungen:**
+- **Sequenziell statt parallel** (vermeidet API-Rate-Limits beim ersten Run; Parallelism via `xargs -P` lässt sich später trivial nachrüsten)
+- **Profil autoritativ aus `portfolio.yaml`** — der Headless-Marker im Prompt («Profil ist autoritativ») weist `/audit-mcp` an, Schritt 1 (Profil-Bestätigung) zu überspringen. Kleine Ergänzung in `.claude/commands/audit-mcp.md` dokumentiert diesen Modus.
+- **`portfolio.yaml` ist `.gitignore`d**, nur `portfolio.example.yaml` als Template wird committet — verhindert versehentliches Pushen von Server-Listen / Deployment-Details.
+- **yq-Variant-Detection:** Script erkennt zur Laufzeit ob Mike Farahs Go-yq oder kislyuks Python-yq installiert ist; passt YAML-Output-Flag entsprechend an. Bei Python-yq wird zusätzlich `jq` geprüft (Python-yq ist ein jq-Wrapper).
+- **Skip-Logik standardmässig an:** wenn `<repo>/audits/<heute>-*` existiert, wird übersprungen. `--force` überschreibt.
+- **Subset-Filtering** via positionalen Args: `./audit-portfolio.sh zh-education-mcp foo-mcp`.
+- **Remote-URL-Validierung:** wenn ein lokaler Klon existiert, wird die `origin`-URL gegen `portfolio.yaml` geprüft — bei Abweichung Re-Clone, damit das Script keinen falschen Server unter altem Namen auditiert.
+- **Aggregation in `portfolio-summary.md`:** Tabelle mit Server | Status | Findings-Counts (critical/high/medium/low) | Production-Ready | Report-Pfad. Severity-Extraktion liest das Tabellen-Format aus `templates/finding.md` (`| **Severity** | critical |`).
+
+**Neue Files:**
+- `audit-portfolio.sh` — Orchestrator (executable)
+- `portfolio.example.yaml` — Template mit zwei Beispiel-Servern und allen Profil-Feldern
+
+**Geänderte Files:**
+- `.claude/commands/audit-mcp.md` — Headless-Modus-Hinweis in Schritt 1
+- `.gitignore` — `portfolio.yaml` und `portfolio-logs/`
+- `README.md` — Portfolio-Audit-Abschnitt
+- `checks/MANIFEST.txt` — mitgewachsen auf 68 IDs (inkl. v0.5.0-Anhang-Coverage)
+
+**Setup:**
+```bash
+cp portfolio.example.yaml portfolio.yaml
+$EDITOR portfolio.yaml         # Server-Liste anpassen
+./audit-portfolio.sh --dry-run # Plan verifizieren
+./audit-portfolio.sh           # echter Run
+```
+
+**Bekannte Einschränkungen:**
+- `claude -p` mit Slash-Commands inline ist abhängig von Claude-Code-Version; falls die Slash-Command-Erkennung im Headless-Mode nicht greift, kann der Prompt alternativ den `audit-mcp.md`-Inhalt direkt einbetten (Folge-Iteration).
+- Sequenziell: bei 30 Servern × ~10 min/Audit = ~5 h Wallclock. Parallelism ist v0.6.1-Material.
+- Profil-Inferenz (Schritt 1, Weg C) wird im Headless-Modus nicht genutzt — alle Profile müssen in `portfolio.yaml` explizit gesetzt sein.
+
+---
 
 ## [v0.5.0] — 2026-04-26
 
