@@ -12,6 +12,61 @@ Pilot-Audit-Findings, organische Erweiterungen aus Real-World-Anwendung. Geplant
 - CI-Lint im Skill-Repo, der das Frontmatter aller Check-Files validiert
 - Audit-Findings-Sub-DB unter dem Notion-Audit-Tracker
 - Parallelism in `audit-portfolio.sh` via `xargs -P`
+- Profile-Override-Layer (lokale Datei merged mit Tracker-Werten beim `pull`)
+
+---
+
+## [v0.7.0] — 2026-04-30
+
+### Hinzugefügt — Notion-Audit-Tracker-Integration (Muster 3, bidirektional)
+
+Neuer Stdlib-Python-Client `audit-notion-sync.py` als Brücke zwischen Notion-Tracker (`a2736a65-677d-4cf3-9f94-e874f74a1975`) und dem v0.6.0-Portfolio-Workflow. Drei Subcommands:
+
+- **`health`** — verifiziert `NOTION_TOKEN` + DB-Zugriff, listet Bot-Name, DB-Titel, Property-Count, warnt wenn die `Org-Kontext`-Spalte fehlt.
+- **`pull`** — liest Tracker-Entries (default-Filter: `Audit-Status` ∈ {`Triagiert`, `In Audit`}; `--all` für alle) und schreibt eine vollständige `portfolio.yaml`. Refused-by-default Overwrite ohne `--force`. Behandelt Notion-Pagination automatisch.
+- **`push`** — aktualisiert eine Tracker-Karte: setzt `Findings` (number), `Audit-Status` (select), appendet `Notizen` mit Report-Pfad/URL. `--dry-run` zeigt das Payload ohne PATCH-Call.
+
+`audit-portfolio.sh` bekommt zwei neue Flags:
+- `--from-notion` — `pull` läuft vorab und ersetzt `portfolio.yaml`.
+- `--sync-back` — nach jedem erfolgreichen Audit-Run wird automatisch `push <server> --findings N --status "Findings dokumentiert" --report <path>` aufgerufen.
+
+**Architektur-Entscheidungen:**
+- **Stdlib-only** (`urllib.request`, `json`, `argparse`) — keine `pip install`-Dependencies. Funktioniert auf jedem Python-3.9+-System.
+- **Token via `NOTION_TOKEN` env var, niemals committed** — `.env*` und `portfolio.yaml` sind gitignored.
+- **DB-ID konfigurierbar via `NOTION_AUDIT_DB_ID`** mit Default auf den Schulamt-Tracker; die alte falsche ID `308e0a91…` aus `SKILL.md` wurde gefixt auf die korrekte `a2736a65…`.
+- **Org-Kontext als `multi_select`-Spalte im Tracker:** Optionen `Stadt Zürich`, `Schulamt`, `Volksschule`, `Enterprise`. Der Pull-Script mappt diese 1:1 auf die context-Flags der `applies_when`-Expressions. Falls die Spalte fehlt, warnt `health` und context-Flags defaulten auf `false` (CH-Compliance-Checks greifen dann nicht).
+- **Konservative Defaults für nicht-modellierte Tech-Flags** (`uses_sampling=false`, `uses_sequential_thinking=false`, `tools_include_filesystem=false`, `tools_make_external_requests=true`) — pro Server manuell in `portfolio.yaml` overridebar.
+- **Custom YAML-Emitter** statt PyYAML-Dependency: dumpt den begrenzten Strukturraum (servers/profile/list/dict-of-scalars) deterministisch und yq-kompatibel.
+- **Pull verhindert versehentliches Überschreiben** — `--force` notwendig, sobald `portfolio.yaml` existiert. Verhindert Daten-Verlust bei manuellen Profil-Edits.
+- **Push referenziert Pages via Server-Name** statt Page-ID; Page-ID-Override via `--page-id` möglich. Bei mehrdeutigem Server-Name wird abgebrochen.
+- **Formula-Felder** (`Risiko-Score`, `Reife-Score`, `Prio`) werden gelesen aber niemals geschrieben — sind in Notion read-only.
+
+**Neue Files:**
+- `audit-notion-sync.py` — Notion-Bridge (executable)
+
+**Geänderte Files:**
+- `audit-portfolio.sh` — `--from-notion`, `--sync-back` Flags + Helper-Funktion `require_notion_sync`
+- `SKILL.md` — DB-ID-Fix `308e0a91…` → `a2736a65…`
+- `README.md` — Notion-Sync-Abschnitt
+- `CHANGELOG.md` — v0.7.0-Eintrag
+
+**Setup:**
+```bash
+# 1. Notion: Audit-Tracker → ••• → Connections → Add → "Claude Code"
+# 2. Multi-select-Property "Org-Kontext" anlegen mit Optionen:
+#    Stadt Zürich, Schulamt, Volksschule, Enterprise
+# 3. Lokal:
+export NOTION_TOKEN="ntn_..."     # in shell-rc, nicht committen
+python3 audit-notion-sync.py health
+python3 audit-notion-sync.py pull
+./audit-portfolio.sh              # liest portfolio.yaml; oder
+./audit-portfolio.sh --from-notion --sync-back   # bidirektionaler Lauf
+```
+
+**Bekannte Einschränkungen:**
+- Pull überschreibt manuelle `portfolio.yaml`-Edits (bis Override-Layer in v0.7.1 oder später kommt).
+- `Audit-Status` ist `select` (nicht `status`-Type) — das match unsere Konvention, aber falls du den Tracker auf `status` umstellst, muss der Push-Code auf das `status`-API-Format angepasst werden.
+- Sequenziell auch im Notion-Sync — paralleles Push würde Notion-Rate-Limits riskieren.
 
 ---
 

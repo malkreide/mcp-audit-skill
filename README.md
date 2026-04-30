@@ -130,6 +130,38 @@ $EDITOR portfolio.yaml          # deine Server-Liste anpassen
 
 `portfolio.yaml` ist `.gitignore`d — committe deine Server-Liste nicht versehentlich. Dependencies: `yq` (Mike Farahs Go-yq oder kislyuks Python-yq + `jq`), `git`, `claude` CLI. Output landet in `portfolio-logs/<datum>/`.
 
+### Notion-Sync (`audit-notion-sync.py`) — bidirektionale Tracker-Integration
+
+Wenn dein Audit-Tracker in Notion lebt, nutze `audit-notion-sync.py` für bidirektionale Synchronisation: Pull generiert `portfolio.yaml` aus dem Tracker, Push schreibt Findings-Anzahl und Audit-Status nach jedem Lauf zurück. Stdlib-only, kein `pip install` nötig.
+
+**Einmaliges Setup:**
+
+1. In Notion: Tracker → `•••` → **Connections** → **+ Add connections** → deine Internal Integration auswählen
+2. Im Tracker eine neue Property anlegen: Name `Org-Kontext`, Type `Multi-select`, Optionen `Stadt Zürich`, `Schulamt`, `Volksschule`, `Enterprise` — dann pro Server ankreuzen, was zutrifft
+3. Token in deine Shell-RC (niemals committen):
+   ```bash
+   export NOTION_TOKEN="ntn_..."
+   ```
+4. Verifizieren:
+   ```bash
+   python3 audit-notion-sync.py health
+   ```
+
+**Verwendung:**
+
+```bash
+# Nur Pull (Tracker → portfolio.yaml)
+python3 audit-notion-sync.py pull --force
+./audit-portfolio.sh
+
+# Oder kombiniert: Pull, Audit, Push in einem Run
+./audit-portfolio.sh --from-notion --sync-back
+```
+
+Der Pull filtert standardmässig auf Server mit `Audit-Status` ∈ {`Triagiert`, `In Audit`} — `--all` ignoriert den Filter. Der Push setzt `Findings` (number), `Audit-Status` (auf `Findings dokumentiert`) und appendet eine Notiz mit dem Report-Pfad. Formula-Felder (`Risiko-Score`, `Reife-Score`, `Prio`) bleiben unangetastet.
+
+Die DB-ID ist als Default auf `a2736a65-677d-4cf3-9f94-e874f74a1975` (Stadt Zürich Schulamt MCP Audit Tracker) gesetzt; `NOTION_AUDIT_DB_ID` env var überschreibt.
+
 ### Als Claude.ai-Skill (manuell)
 
 ```bash
@@ -191,7 +223,7 @@ Komplementär nutzbar — keiner der Genannten ersetzt die anderen.
 
 ## Status
 
-**Version:** v0.6.0 — Portfolio-Batch-Audit via `audit-portfolio.sh` (Anhang-Coverage seit v0.5.0)
+**Version:** v0.7.0 — Notion-Audit-Tracker-Integration (bidirektional, via `audit-notion-sync.py`)
 
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`) und Templates (Finding, Audit-Report)
@@ -199,6 +231,7 @@ Komplementär nutzbar — keiner der Genannten ersetzt die anderen.
 - ✅ Check-Katalog: **68 Checks, alle 8 Kategorien vollständig**
 - ✅ Slash-Command für Claude Code (`/audit-mcp <repo>`)
 - ✅ Portfolio-Batch-Audit (`audit-portfolio.sh` für Multi-Server-Runs)
+- ✅ Notion-Sync (`audit-notion-sync.py` für bidirektionale Tracker-Integration)
 - ✅ Vollständige Abdeckung beider Standards-Quellen (Hauptkatalog + Architektur-Anhang)
 
 Künftige Erweiterungen kommen aus Real-World-Findings beim Portfolio-Audit, MCP-Spec-Updates oder neuen Compliance-Anforderungen (EU AI Act, Schweizer KI-Gesetz). Versions-Roadmap siehe [`docs/roadmap.md`](./docs/roadmap.md).
