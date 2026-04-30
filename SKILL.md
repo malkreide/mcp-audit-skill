@@ -19,7 +19,7 @@ Jeder Audit folgt sechs Schritten in dieser Reihenfolge. Abweichungen sind mögl
 
 ## Schritt 1: Profil laden
 
-**Ziel:** Den Server-Kontext aus dem Notion MCP Audit Tracker (DB-ID `308e0a91-aadd-44ac-9051-2a0a31119db7`) holen, damit nachfolgende Schritte die richtigen Checks filtern können.
+**Ziel:** Den Server-Kontext aus dem Notion MCP Audit Tracker (DB-ID `a2736a65-677d-4cf3-9f94-e874f74a1975`) holen, damit nachfolgende Schritte die richtigen Checks filtern können.
 
 ### 1.1 Pflichtfelder aus dem Tracker
 

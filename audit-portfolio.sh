@@ -13,19 +13,26 @@
 #   ./audit-portfolio.sh --force                        # re-run already-audited
 #   ./audit-portfolio.sh --portfolio my-portfolio.yaml  # custom portfolio file
 #   ./audit-portfolio.sh --dry-run                      # plan only, no claude
+#   ./audit-portfolio.sh --from-notion                  # pull portfolio.yaml from Notion first
+#   ./audit-portfolio.sh --sync-back                    # push results to Notion after each audit
 #
 # Env vars:
-#   WORK_DIR    default: $HOME/mcp-audit-runs           (where target repos clone)
-#   LOG_DIR     default: ./portfolio-logs/<date>        (per-server stdout logs)
-#   CLAUDE_BIN  default: claude
+#   WORK_DIR             default: $HOME/mcp-audit-runs           (where target repos clone)
+#   LOG_DIR              default: ./portfolio-logs/<date>        (per-server stdout logs)
+#   CLAUDE_BIN           default: claude
+#   NOTION_TOKEN         required for --from-notion / --sync-back
+#   NOTION_AUDIT_DB_ID   optional; defaults to the Schulamt MCP Audit Tracker
 #
-# Dependencies: yq (Mike Farah Go-yq OR kislyuk Python-yq), git, claude CLI
+# Dependencies: yq (Mike Farah Go-yq OR kislyuk Python-yq), git, claude CLI.
+# Optional (only for Notion-Sync flags): python3 + audit-notion-sync.py.
 
 set -euo pipefail
 
 PORTFOLIO_FILE="portfolio.yaml"
 FORCE=0
 DRY_RUN=0
+FROM_NOTION=0
+SYNC_BACK=0
 declare -a SERVER_FILTER=()
 
 while [[ $# -gt 0 ]]; do
@@ -36,6 +43,10 @@ while [[ $# -gt 0 ]]; do
       FORCE=1; shift ;;
     --dry-run)
       DRY_RUN=1; shift ;;
+    --from-notion)
+      FROM_NOTION=1; shift ;;
+    --sync-back)
+      SYNC_BACK=1; shift ;;
     -h|--help)
       sed -n '2,/^$/p' "$0" | sed 's/^# *//; s/^#$//'
       exit 0 ;;
@@ -91,10 +102,40 @@ yq_yaml() {
   fi
 }
 
+# Notion-Sync helpers (only used with --from-notion / --sync-back).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NOTION_SYNC="$SCRIPT_DIR/audit-notion-sync.py"
+
+require_notion_sync() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "Error: python3 not found in PATH but required for Notion-Sync." >&2
+    exit 1
+  fi
+  if [[ ! -f "$NOTION_SYNC" ]]; then
+    echo "Error: $NOTION_SYNC not found." >&2
+    exit 1
+  fi
+  if [[ -z "${NOTION_TOKEN:-}" ]]; then
+    echo "Error: NOTION_TOKEN env var not set." >&2
+    exit 1
+  fi
+}
+
+if [[ $FROM_NOTION -eq 1 ]]; then
+  require_notion_sync
+  echo "Pulling portfolio from Notion → $PORTFOLIO_FILE"
+  python3 "$NOTION_SYNC" pull --output "$PORTFOLIO_FILE" --force
+  echo
+fi
+
 if [[ ! -f "$PORTFOLIO_FILE" ]]; then
   echo "Error: $PORTFOLIO_FILE not found." >&2
-  echo "  Copy portfolio.example.yaml to portfolio.yaml and fill in your servers." >&2
+  echo "  Copy portfolio.example.yaml to portfolio.yaml, or run with --from-notion." >&2
   exit 1
+fi
+
+if [[ $SYNC_BACK -eq 1 ]]; then
+  require_notion_sync
 fi
 
 count=$(yq -r '.servers | length' "$PORTFOLIO_FILE")
@@ -193,6 +234,21 @@ EOF
     if [[ -n "$report" && -f "$report/audit-report.md" ]]; then
       echo "  ✓ done — $report/audit-report.md"
       RESULTS_NAME+=("$name"); RESULTS_STATUS+=("done"); RESULTS_REPORT+=("$report/audit-report.md")
+
+      if [[ $SYNC_BACK -eq 1 ]]; then
+        findings_dir="$report/findings"
+        finding_count=0
+        if [[ -d "$findings_dir" ]]; then
+          finding_count=$(find "$findings_dir" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+        fi
+        echo "  ↑ syncing back to Notion (findings=$finding_count, status=Findings dokumentiert)"
+        if ! python3 "$NOTION_SYNC" push "$name" \
+              --findings "$finding_count" \
+              --status "Findings dokumentiert" \
+              --report "$report/audit-report.md" >> "$log" 2>&1; then
+          echo "  ⚠ sync-back failed — check $log"
+        fi
+      fi
     else
       echo "  ⚠ claude finished but no audit-report.md found — see $log"
       RESULTS_NAME+=("$name"); RESULTS_STATUS+=("no-report"); RESULTS_REPORT+=("-")
