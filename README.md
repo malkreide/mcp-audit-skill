@@ -82,6 +82,25 @@ Die 68 Checks sind systematische Übersetzungen aus zwei kuratierten Best-Practi
 
 ## Schnellstart
 
+### Voraussetzungen — Cross-Platform
+
+| Betriebssystem | Voraussetzung |
+|---|---|
+| Linux / macOS | Python 3.11+, Bash, `git`, `yq` |
+| Windows (Git Bash) | Python 3.11+ mit `PYTHONUTF8=1`, Git Bash, `git`, `yq` |
+
+**Windows-User:** Setze die Env-Var `PYTHONUTF8=1` in deinem Profil (oder pro Session), sonst crasht Python beim Schreiben von Umlauten/Emojis:
+
+```powershell
+# PowerShell
+[Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "User")
+
+# Git Bash
+echo 'export PYTHONUTF8=1' >> ~/.bashrc
+```
+
+Pfad-Helpers für Skill-Scripts liegen unter [`tools/paths.sh`](tools/paths.sh) (Bash) und [`tools/path_utils.py`](tools/path_utils.py) (Python). Sie konvertieren zwischen `/c/Users/foo` (Git Bash) und `C:\Users\foo` (Windows-native, was die Read/Edit/Write-Tools brauchen).
+
 ### Als Claude-Code-Slash-Command (`/audit-mcp`)
 
 Der Skill bringt einen Slash-Command mit, der den 6-Schritte-Workflow als Claude-Code-Workflow ausführt — Profil-Load, Applicability-Filter, automatisierte Check-Ausführung, Findings-Generierung und Report-Erstellung in einem Lauf.

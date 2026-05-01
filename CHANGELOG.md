@@ -6,13 +6,32 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-Pilot-Audit-Findings, organische Erweiterungen aus Real-World-Anwendung. Geplante Themen:
+### Hinzugefügt — Reproduzierbarkeits-Hardening nach erstem PowerShell-Audit
+
+Nach dem ersten realen Audit-Lauf (`srgssr-mcp`, 2026-04-30) auf Windows/Git Bash zeigten sich Reproduzierbarkeits- und Cross-Platform-Lücken. Behoben:
+
+- **Kanonischer `applies_when`-Evaluator** (`tools/eval_applicability.py`): hand-rolled recursive-descent parser, kein `eval()`. Strict-typed Vergleiche (string-vs-string, bool-vs-bool, list-vs-list-membership). Unbekannte Felder, Type-Mismatches und Parse-Errors werden laut, nicht stille `False`. Unterstützt CLI: `expr`, `catalog`. Funktioniert mit Bare-Profile, Wrapped-Profile, oder Portfolio-File.
+- **DSL-Spezifikation** (`docs/applies-when-dsl.md`): formale Grammar, Operator-Präzedenz, Type-Rules, bekannte Anti-Patterns.
+- **Pytest-Suite** (`tests/test_applicability.py`, 45 Cases): deckt alle DSL-Konstrukte, Error-Paths, und Real-World-Catalog-Regressionen ab.
+- **Cross-Platform-Pfad-Helpers** (`tools/path_utils.py`, `tools/paths.sh`): konvertieren zwischen POSIX-Drive-Form (`/c/Users/foo`) und Windows-Form (`C:\Users\foo`). Lösen das Read-Tool-Path-Problem auf Windows.
+- **UTF-8-Stdio-Force** (`force_utf8_stdio()` + `ensure_python_utf8`): vermeidet `cp1252`-Crashes bei Emojis/Umlauten.
+- **CI-Workflow** (`.github/workflows/test.yml`): pytest auf Ubuntu + Windows, Python 3.11 + 3.13.
+- **SKILL.md-Update**: neuer Schritt 0 mit Cross-Platform-Voraussetzungen; Schritt 3 verweist auf canonical evaluator.
+
+### Aufgedeckt durch den canonical evaluator
+
+Der Evaluator hat 9 Catalog-Bugs gefunden, in denen `deployment` (Liste) gegen einen String-Literal verglichen wird (Issue #16). Der Legacy-Evaluator hat diese silent zu `True` evaluiert; der canonical evaluator flagt sie als Type-Mismatch. Migration der Checks folgt in einem separaten PR.
+
+### Geplant (separate Issues)
 
 - `reference/anti-patterns.md` mit wiederverwendbaren Code-Snippets aus wiederkehrenden Findings
 - CI-Lint im Skill-Repo, der das Frontmatter aller Check-Files validiert
 - Audit-Findings-Sub-DB unter dem Notion-Audit-Tracker
 - Parallelism in `audit-portfolio.sh` via `xargs -P`
 - Profile-Override-Layer (lokale Datei merged mit Tracker-Werten beim `pull`)
+- Aggregator-Tool als Single-Source-of-Truth für Status-Counts (Issue #9)
+- Findings-Persistenz-Spec (Issue #8)
+- `write_access` vs. `write_capable`-Schema-Migration (Issue #13)
 
 ---
 

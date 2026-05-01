@@ -17,6 +17,62 @@ Jeder Audit folgt sechs Schritten in dieser Reihenfolge. Abweichungen sind mögl
 
 ---
 
+## Schritt 0: Umgebung vorbereiten
+
+Bevor irgendein Schritt beginnt, müssen Cross-Platform-Voraussetzungen erfüllt sein. Diese Sektion existiert, weil bei realen Audit-Läufen auf Windows wiederholt UTF-8- und Pfad-Probleme aufgetreten sind.
+
+### 0.1 UTF-8 für Python
+
+Auf Windows defaultet Python stdout/stderr zu `cp1252` und crasht bei Emojis oder Umlauten. Vor jedem Python-Snippet:
+
+```bash
+# Bash/PowerShell — vor Python-Aufrufen exportieren:
+export PYTHONUTF8=1            # Bash
+$env:PYTHONUTF8 = "1"          # PowerShell
+```
+
+Oder im Python-Code direkt:
+
+```python
+from tools.path_utils import force_utf8_stdio
+force_utf8_stdio()   # idempotent, sicher mehrfach aufzurufen
+```
+
+### 0.2 Pfad-Konventionen
+
+| Tool | Erwartetes Pfad-Format |
+|---|---|
+| Bash (`cat`, `grep`, `ls`) | POSIX (`/c/Users/foo`) |
+| Read / Edit / Write | OS-native (`C:\Users\foo` auf Windows) |
+| Python `pathlib.Path` | beides, aber konsistent halten |
+
+Helper im Repo:
+
+```bash
+# Bash — sourceable
+source tools/paths.sh
+native_path=$(to_native_path "/c/Users/foo")    # → C:\Users\foo auf Windows
+posix_path=$(to_posix_path "C:\\Users\\foo")    # → /c/Users/foo
+```
+
+```python
+# Python
+from tools.path_utils import to_native_path, to_posix_path, is_windows
+read_path = to_native_path(skill_base)   # für Read-Tool-Aufrufe
+```
+
+### 0.3 Inline-Heredocs vermeiden
+
+Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig durch Quoting. Nutze stattdessen Helper-Scripts unter `tools/`:
+
+```bash
+# Statt heredoc:
+python tools/eval_applicability.py catalog "$profile" --format table
+python tools/path_utils.py to-native "$path"
+```
+
+---
+
 ## Schritt 1: Profil laden
 
 **Ziel:** Den Server-Kontext aus dem Notion MCP Audit Tracker (DB-ID `a2736a65-677d-4cf3-9f94-e874f74a1975`) holen, damit nachfolgende Schritte die richtigen Checks filtern können.
@@ -111,7 +167,7 @@ Details siehe `templates/finding.md` und beliebige Datei in `checks/`.
 
 ### 3.1 Auswertung der `applies_when`-Klausel
 
-Die Klausel ist ein Boolean-Ausdruck gegen die Profil-Felder:
+Die Klausel ist ein Boolean-Ausdruck gegen die Profil-Felder. Die formale DSL-Spezifikation steht in [`docs/applies-when-dsl.md`](docs/applies-when-dsl.md), die Referenz-Implementierung in [`tools/eval_applicability.py`](tools/eval_applicability.py).
 
 | Operator | Beispiel | Bedeutung |
 |---|---|---|
@@ -120,6 +176,16 @@ Die Klausel ist ein Boolean-Ausdruck gegen die Profil-Felder:
 | `.includes(...)` | `deployment.includes("Railway")` | Multi-Select-Membership |
 | `and` / `or` | `transport == "HTTP/SSE" and auth_model == "OAuth-Proxy"` | Verknüpfung |
 | `always` | `always` | Check ist universell, läuft immer |
+
+**Pflicht: Verwende den kanonischen Evaluator, niemals Python `eval()` oder ad-hoc-Substitution.** Letzteres hat in der Vergangenheit zu nicht-reproduzierbaren Audits geführt (Listen-vs-String-Vergleiche, `True` vs `true`, etc.).
+
+```bash
+# Catalog-Auswertung gegen ein Profil
+python tools/eval_applicability.py catalog path/to/profile.yaml --format table
+
+# Einzelner Ausdruck testen
+python tools/eval_applicability.py expr 'auth_model != "none"' path/to/profile.yaml
+```
 
 ### 3.2 Typische Filter-Muster
 
