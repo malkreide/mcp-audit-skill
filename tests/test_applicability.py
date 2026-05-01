@@ -375,3 +375,21 @@ class TestFrontmatterParser:
     def test_parse_known_oauth_check(self):
         fm = parse_check_frontmatter(CHECKS_DIR / "SEC-001.md")
         assert "auth_model" in fm["applies_when"]
+
+    def test_parse_crlf_line_endings(self, tmp_path):
+        """Windows checkouts with autocrlf=true emit CRLF; the parser must
+        tolerate that without breaking the regex.
+        """
+        content = (
+            "---\r\n"
+            "id: TEST-001\r\n"
+            'applies_when: \'always\'\r\n'
+            "---\r\n"
+            "\r\n"
+            "body\r\n"
+        )
+        p = tmp_path / "TEST-001.md"
+        p.write_bytes(content.encode("utf-8"))
+        fm = parse_check_frontmatter(p)
+        assert fm["id"] == "TEST-001"
+        assert fm["applies_when"] == "always"

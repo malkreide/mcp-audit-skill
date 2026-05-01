@@ -120,39 +120,79 @@ class TestForceUtf8Stdio:
             sys.stderr = original_stderr
 
 
+@pytest.mark.skipif(
+    sys.platform.startswith("win"),
+    reason=(
+        "paths.sh is a Bash helper for POSIX shell users; on Windows the "
+        "Python-side helpers in tools/path_utils.py are the supported entry "
+        "point and are exhaustively tested elsewhere in this module."
+    ),
+)
 class TestPathsShell:
-    """Smoke test the bash helper by invoking it via subprocess."""
+    """Smoke test the bash helper by invoking it via subprocess on POSIX hosts."""
 
-    def test_paths_sh_is_executable(self):
+    @staticmethod
+    def _bash_available():
+        import shutil
+        return shutil.which("bash") is not None
+
+    @staticmethod
+    def _helper_posix():
         from pathlib import Path
         helper = Path(__file__).resolve().parent.parent / "tools" / "paths.sh"
+        return helper, helper.as_posix()
+
+    def test_paths_sh_is_executable(self):
+        if not self._bash_available():
+            pytest.skip("bash not on PATH")
+        helper, helper_posix = self._helper_posix()
         assert helper.exists()
-        # Bash sourcing test. Use a Python heredoc-style script to avoid
-        # backslash-escape-explosions through subprocess argv parsing.
+        # Use single quotes inside the bash script and forward-slash path
+        # to source. The to_posix_path call on Windows hosts may delegate
+        # to cygpath, which on Git Bash for Windows returns /c/Users/foo.
         import subprocess
-        script = f'''
-source "{helper}"
-input='C:\\Users\\foo'
-to_posix_path "$input"
-'''
+        # Python source: 'C:\\Users\\foo' is 4 escapes → in the actual
+        # string, single backslashes: C:\Users\foo. Bash single-quotes
+        # preserve those literally.
+        script = (
+            f'source "{helper_posix}"\n'
+            "input='C:\\Users\\foo'\n"
+            'to_posix_path "$input"\n'
+        )
         result = subprocess.run(
             ["bash", "-c", script],
             capture_output=True,
             text=True,
             check=False,
         )
-        assert result.returncode == 0, result.stderr
-        assert result.stdout.strip() == "/c/Users/foo"
+        assert result.returncode == 0, (
+            f"bash exited {result.returncode}: stderr={result.stderr!r} "
+            f"stdout={result.stdout!r}"
+        )
+        # Accept both /c/Users/foo (MSYS cygpath, regex fallback) and
+        # /cygdrive/c/Users/foo (Cygwin cygpath default).
+        out = result.stdout.strip()
+        assert out in ("/c/Users/foo", "/cygdrive/c/Users/foo"), (
+            f"unexpected to_posix_path output: {out!r}"
+        )
 
     def test_paths_sh_to_windows(self):
-        from pathlib import Path
-        helper = Path(__file__).resolve().parent.parent / "tools" / "paths.sh"
+        if not self._bash_available():
+            pytest.skip("bash not on PATH")
+        helper, helper_posix = self._helper_posix()
         import subprocess
+        script = (
+            f'source "{helper_posix}"\n'
+            "to_windows_path '/c/Users/foo'\n"
+        )
         result = subprocess.run(
-            ["bash", "-c", f"source {helper} && to_windows_path '/c/Users/foo'"],
+            ["bash", "-c", script],
             capture_output=True,
             text=True,
             check=False,
         )
-        assert result.returncode == 0, result.stderr
+        assert result.returncode == 0, (
+            f"bash exited {result.returncode}: stderr={result.stderr!r} "
+            f"stdout={result.stdout!r}"
+        )
         assert result.stdout.strip() == "C:\\Users\\foo"

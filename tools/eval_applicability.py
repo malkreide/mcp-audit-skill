@@ -354,7 +354,7 @@ def evaluate(expression: str, profile: dict[str, Any]) -> bool:
     return parser.parse_expr()
 
 
-_FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---", re.DOTALL)
+_FRONTMATTER_RE = re.compile(r"^---\s*\r?\n(.*?)\r?\n---", re.DOTALL)
 
 
 def parse_check_frontmatter(path: Path) -> dict[str, Any]:
@@ -362,7 +362,8 @@ def parse_check_frontmatter(path: Path) -> dict[str, Any]:
 
     We avoid PyYAML to keep the evaluator dependency-free. The frontmatter
     is line-oriented `key: value` only, which is exactly what every check
-    file uses.
+    file uses. Tolerates both LF and CRLF line endings so that Windows
+    checkouts with autocrlf=true don't break the regex.
     """
     text = path.read_text(encoding="utf-8")
     m = _FRONTMATTER_RE.match(text)
