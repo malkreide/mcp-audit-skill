@@ -67,6 +67,8 @@ Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig du
 
 | Aufgabe | Helper-Script |
 |---|---|
+| Run-ID + Output-Dir + audit-meta.json initialisieren | `python tools/audit_init.py init <server> --base-dir audits/ --catalog-dir checks/` |
+| Profil-Validierung (Placeholder/Schema-Gate) | `python tools/validate_profile.py path/to/profile.yaml` |
 | Catalog parsen (Frontmatter aller `*.md`) | `python tools/parse_catalog.py --format json` |
 | Catalog vs. Manifest validieren | `python tools/parse_catalog.py --format manifest-check` |
 | `applies_when` evaluieren | `python tools/eval_applicability.py catalog profile.yaml` |
@@ -78,6 +80,29 @@ Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig du
 | Pfad zu Native/POSIX konvertieren | `python tools/path_utils.py to-native <path>` |
 
 Wenn ein Audit ein Snippet braucht das hier nicht abgedeckt ist: erst Issue im Skill-Repo öffnen, dann Helper-Script bauen, dann verwenden. **Inline-Heredoc ist der Anti-Pattern, der nicht-reproduzierbare Audits erzeugt.**
+
+### 0.4 Run-ID + Audit-Meta initialisieren (verbindlich seit Issue #15)
+
+Niemals `date +%Y-%m-%d` für den Output-Verzeichnisnamen — das hat im ersten Audit zu Drift zwischen UTC-Container und lokalem Kalendertag geführt (`2026-04-30` statt `2026-05-01`). Stattdessen:
+
+```bash
+# Erzeugt Output-Dir mit ISO-Timestamp + Timezone-Offset, schreibt
+# initiale audit-meta.json mit Skill-Version + Catalog-Hash.
+python "$SKILL_BASE/tools/audit_init.py" init "$SERVER_NAME" \
+    --base-dir "$TARGET/audits/" \
+    --skill-version "0.9.x" \
+    --catalog-dir "$SKILL_BASE/checks/"
+# Output (JSON): { "run_id": "2026-05-02T091245-Z-srgssr-mcp", "output_dir": "...", "meta_path": "..." }
+```
+
+Run-ID-Format: `YYYY-MM-DDTHHMMSS-<offset>-<server>`, wobei `<offset>` `Z` (UTC) oder `+HHMM`/`-HHMM` ist. Bei Sekunden-genauer Kollision (Re-Audit unmittelbar danach) wird das Verzeichnis mit `-2`, `-3`, ... gesuffixt; die Run-ID selbst bleibt identisch.
+
+Die initiale `audit-meta.json` enthält:
+- `server_name`, `run_id`, `started_at` (ISO mit TZ-Suffix), `timezone_offset`
+- `skill_version`, `catalog_hash` (SHA-256 aller `checks/*.md` + `MANIFEST.txt`), `catalog_dir`
+- Leeres `agent_runs`-Array (wird in Step 4 von `agent_run_log.py` befüllt)
+
+Der `catalog_hash` ist der Reproduzierbarkeits-Anker: jeder Re-Audit kann verifizieren, dass derselbe Katalog-Stand verwendet wurde.
 
 ---
 
@@ -120,6 +145,23 @@ profile:
 Dieses Profil ist die **einzige Wahrheit** für `applies_when`-Auswertung in Schritt 3.
 
 **Schema-Hinweis (seit Issue #13):** Das kanonische Profil-Feld ist `write_capable: bool`. Das frühere `write_access: "read-only" | "write-capable"` (Enum-String) wurde abgelöst. Der Notion-Tracker behält das `Schreibzugriff`-Select-Feld zur besseren Lesbarkeit; `audit-notion-sync.py` mappt es beim `pull` automatisch auf `write_capable: bool`. Profile mit Legacy-Feld `write_access` führen beim Evaluator zu `UnknownFieldError` — das ist beabsichtigt (siehe `docs/applies-when-dsl.md` "loud failure"-Prinzip).
+
+### 1.3 Validation-Gate (verbindlich seit Issue #14)
+
+Bevor Step 2 startet, MUSS das Profil gegen Placeholder und Schema-Lücken geprüft werden. Im ersten realen Audit hatte der User versehentlich das Template mit `...`-Werten reingepastet — Claude hat das zwar erkannt, aber nur dank Defensive-Behavior. Jetzt verbindlich:
+
+```bash
+# Profil als YAML/JSON file-validieren (oder als Inline-Block)
+python "$SKILL_BASE/tools/validate_profile.py" path/to/profile.yaml
+# exit 0 = clean, exit 1 = Placeholder oder Schema-Fehler
+```
+
+Der Validator catcht:
+- **Placeholder-Werte:** `...`, `<placeholder>`, `<TODO>`, `TODO`, leere Strings, `null`/`None`, leere Listen, Listen mit Placeholder-Members
+- **Fehlende Pflichtfelder:** alle 15 Profil-Top-Level-Felder plus `data_source.is_swiss_open_data`
+- **Type-Mismatches:** `bool`-Feld mit String-Wert, `list`-Feld mit String-Wert, etc.
+
+Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Felder betroffen sind (`missing` / `placeholder` / `type_mismatch`). Nutze das, um den User zur Korrektur aufzufordern.
 
 ---
 

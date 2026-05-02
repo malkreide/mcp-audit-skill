@@ -33,7 +33,17 @@ Arbeite die folgenden sechs Schritte sequenziell ab. Nach jedem Schritt fasst du
 
 3. **Server-Namen identifizieren** aus `pyproject.toml` (`[project] name`), `package.json` (`"name"`), oder Repo-Verzeichnisname als Fallback.
 
-4. **Output-Verzeichnis bestimmen:** `<TARGET>/audits/YYYY-MM-DD-<server-name>/` und erstellen mit `mkdir -p`. Falls bereits existierend, mit `-vN`-Suffix versionieren.
+4. **Output-Verzeichnis + audit-meta.json initialisieren** via Helper-Script (NICHT mit `date +%Y-%m-%d` — Issue #15: UTC-Drift-Bug). Format: `YYYY-MM-DDTHHMMSS-<offset>-<server>`. Bei Kollision automatisches `-2`/`-3`-Suffix.
+
+   ```bash
+   python "$SKILL_BASE/tools/audit_init.py" init "$SERVER_NAME" \
+       --base-dir "$TARGET/audits/" \
+       --skill-version "0.9.x" \
+       --catalog-dir "$SKILL_BASE/checks/"
+   # → JSON mit run_id, output_dir, meta_path
+   ```
+
+   Setze `OUTPUT_DIR=<output_dir aus dem JSON>`.
 
 **Output Schritt 0:** Werte von `SKILL_BASE`, `SKILL_MODE`, `TARGET`, `SERVER_NAME`, `OUTPUT_DIR`. Dann weiter zu Schritt 1.
 
@@ -79,7 +89,16 @@ Daraus baust du das Profil mit folgenden Variablen (Defaults bei Unsicherheit):
 
 **Output Schritt 1:** Vollständiges Profil als YAML-Block. **Bestätige mit dem User**, dass das Profil korrekt ist, bevor du weiter machst. Profil falsch = ganzer Audit falsch.
 
-**Headless-Modus (Batch-Audit via `audit-portfolio.sh`):** Falls die Konversation **vor** dem `/audit-mcp`-Aufruf bereits einen vollständigen Profil-YAML-Block enthält, der explizit als «autoritativ» oder «Headless-Modus» markiert ist, übernimm das Profil unverändert und überspringe die User-Bestätigung. Gehe direkt zu Schritt 2. Diesen Modus erkennst du am Marker-Text «Headless-Modus für /audit-mcp» oder «Profil ist autoritativ».
+**Pflicht-Gate vor Step 2:** Speichere das Profil als Datei (z.B. `$OUTPUT_DIR/profile.yaml`) und ruf den Validator auf. Dieses Gate fängt versehentliche Template-Pastes mit `...`-Werten ab (Issue #14: User hat im ersten Audit das Template direkt eingefügt — Claude hat es zwar gefangen, aber das ist jetzt verbindlicher Skill-Schritt):
+
+```bash
+python "$SKILL_BASE/tools/validate_profile.py" "$OUTPUT_DIR/profile.yaml"
+# exit 0 = clean, exit 1 = Placeholder/Schema-Fehler im JSON-Output
+```
+
+Bei Exit 1: Step 2 NICHT starten. Zeige dem User die `placeholder`/`missing`/`type_mismatch`-Liste aus dem JSON und bitte um Korrektur.
+
+**Headless-Modus (Batch-Audit via `audit-portfolio.sh`):** Falls die Konversation **vor** dem `/audit-mcp`-Aufruf bereits einen vollständigen Profil-YAML-Block enthält, der explizit als «autoritativ» oder «Headless-Modus» markiert ist, übernimm das Profil unverändert und überspringe die User-Bestätigung. Auch im Headless-Modus läuft das `validate_profile.py`-Gate vorher; bei Exit 1 wird der Audit abgebrochen mit klarer Fehlermeldung.
 
 ---
 
