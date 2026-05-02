@@ -22,6 +22,7 @@ servers:
       data_class: Public Open Data                 # Public Open Data | Verwaltungsdaten | PII
       write_capable: false
       deployment: [local-stdio, Railway]           # Liste: local-stdio | Railway | Render | Kubernetes | Docker
+      is_cloud_deployed: true                      # derived: true iff deployment has anything besides local-stdio
       uses_sampling: false
       uses_sequential_thinking: false
       tools_include_filesystem: false
@@ -41,6 +42,7 @@ servers:
       data_class: Verwaltungsdaten
       write_capable: false
       deployment: [local-stdio]
+      is_cloud_deployed: false
       uses_sampling: false
       uses_sequential_thinking: false
       tools_include_filesystem: false

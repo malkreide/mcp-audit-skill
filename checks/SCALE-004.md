@@ -3,7 +3,7 @@ id: SCALE-004
 title: "Containerization mit Multi-Stage-Builds"
 category: SCALE
 severity: medium
-applies_when: 'deployment != "local-stdio"'
+applies_when: 'is_cloud_deployed == true'
 pdf_ref: "Sec 5.3"
 evidence_required: 2
 ---

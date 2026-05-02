@@ -111,8 +111,9 @@ profile:
   transport: dual
   auth_model: none
   data_class: Public Open Data
-  write_capable: false       # bool — kanonisches Feld (siehe Migration unten)
+  write_capable: false              # bool — kanonisches Feld (siehe Migration unten)
   deployment: [local-stdio, Railway]
+  is_cloud_deployed: true           # derived: true iff deployment hat irgendwas ausser local-stdio (siehe Issue #16)
   prio: 14  # aus Tracker-Formel
 ```
 
