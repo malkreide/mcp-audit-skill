@@ -6,6 +6,17 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — Catalog-Parser und Report-Builder (Issue #11)
+
+Inline-Heredocs sind jetzt vollständig durch dedizierte Helper-Scripts ersetzt. Im ersten realen Audit wurden Inline-Python-Blöcke ad hoc generiert, was auf Windows Git Bash mehrfach an Quoting gecrasht ist.
+
+- **`tools/parse_catalog.py`** — parst alle Check-Frontmatter, validiert MANIFEST.txt-Konsistenz, listet Kategorien/Severities. CLI: `--format {json,table,manifest-check}`. Pflicht-Felder werden hart enforced (jede Inkonsistenz crasht laut, statt stille Defaults).
+- **`tools/build_report.py`** — generiert `audit-report.md` aus `summary.json` + `findings/` + Profile. Sieben Pflicht-Sektionen, deterministisch reproduzierbar. Findings werden nach Severity sortiert; fehlende Finding-Docs werden im Report explizit als Validation-Lücke markiert.
+- **Standalone-Bootstrap fix** — `aggregate_results.py` und `parse_catalog.py` setzen jetzt `sys.path` für Direktaufruf via `python tools/<x>.py`. Vorher funktionierten sie nur via pytest.
+- **SKILL.md Step 0.3** — Inline-Heredocs sind jetzt explizit verboten; Tabelle aller Helper-Scripts mit Aufgabe/Aufruf.
+- **Slash-Command `audit-mcp.md`** — Step 2 und Step 6 rufen Helper-Scripts statt Inline-Loops auf. `python`/`python3` zu allowed-tools hinzugefügt.
+- **36 neue pytest cases** — `tests/test_parse_catalog.py` (16) + `tests/test_build_report.py` (20). Test-Total: 103 → 139.
+
 ### Hinzugefügt — Findings-Persistenz-Aggregator (Single-Source-of-Truth)
 
 Behebt Issues #8 (Findings-Persistenz) und #9 (Status-Drift). Im ersten Audit (`srgssr-mcp`, 2026-04-30) berichteten drei Stages drei verschiedene Zahlen für dieselben Daten — Step 5 sagte 15 Findings, Step 6 sagte 6, auf Disk waren 6. Strukturelle Lösung:
