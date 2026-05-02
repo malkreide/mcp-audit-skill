@@ -6,6 +6,18 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — Task-Agent-Validation-Gate (Issue #12)
+
+Im ersten realen Audit hat ein Task-Agent mit `Done (68 tool uses · 0 tokens · 2m 20s)` zurückgegeben — vollständiger stiller Fehlschlag. Der Skill hat das nicht erkannt, Claude hat manuell weitergemacht und das Problem ad hoc kompensiert. Bei einem unbeaufsichtigten Audit wäre das stiller Datenverlust gewesen.
+
+- **`tools/verify_raw_outputs.py`** — verifiziert, dass alle erwarteten Check-IDs eine nicht-leere Output-Datei in `raw/` haben. Catches die Empty-Placeholder-Files via `--min-bytes`-Threshold. Exit 0/1/2.
+- **`tools/agent_run_log.py`** — appendet pro Task-Agent-Aufruf einen Eintrag in `audit-meta.json` mit Tool-Uses, Tokens, Duration, Expected/Satisfied/Incomplete-IDs und einer 3-State-Klassifikation (`ok`/`empty`/`incomplete`). `summary`-Subcommand gibt Coverage-Aggregate.
+- **Drei-State-Klassifikation** — `empty` (Tokens=0, hard fail), `incomplete` (Tokens > 0 aber IDs fehlen), `ok`. Empty hat Vorrang, weil 0 Tokens immer auf einen Agent-Fehlschlag hindeutet.
+- **Retry-Policy in SKILL.md Step 4.5** — bei `incomplete`/`empty` max. 2 Retries nur für die fehlenden IDs (`--retry-of <run_index>`-Kette in audit-meta.json). Danach harter Abbruch.
+- **37 neue pytest cases** — `tests/test_verify_raw_outputs.py` (14) + `tests/test_agent_run_log.py` (23). Test-Total: 139 → 176.
+- **SKILL.md Step 0.3 erweitert** — Tabelle der Helper-Scripts um Verifier + Logger ergänzt.
+- **Slash-Command Step 4 erweitert** — Pflicht-Gate dokumentiert.
+
 ### Hinzugefügt — Catalog-Parser und Report-Builder (Issue #11)
 
 Inline-Heredocs sind jetzt vollständig durch dedizierte Helper-Scripts ersetzt. Im ersten realen Audit wurden Inline-Python-Blöcke ad hoc generiert, was auf Windows Git Bash mehrfach an Quoting gecrasht ist.

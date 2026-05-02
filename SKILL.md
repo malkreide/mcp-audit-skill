@@ -73,6 +73,8 @@ Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig du
 | Verification-Results aggregieren | `python tools/aggregate_results.py aggregate results.json --out summary.json` |
 | Findings-Set vs. Disk validieren | `python tools/aggregate_results.py validate <audit_dir>` |
 | Audit-Report generieren | `python tools/build_report.py <audit_dir>` |
+| Task-Agent-Output verifizieren | `python tools/verify_raw_outputs.py raw/ --expected-ids ID1,ID2` |
+| Task-Agent-Run loggen | `python tools/agent_run_log.py log --meta-path audit-meta.json ...` |
 | Pfad zu Native/POSIX konvertieren | `python tools/path_utils.py to-native <path>` |
 
 Wenn ein Audit ein Snippet braucht das hier nicht abgedeckt ist: erst Issue im Skill-Repo öffnen, dann Helper-Script bauen, dann verwenden. **Inline-Heredoc ist der Anti-Pattern, der nicht-reproduzierbare Audits erzeugt.**
@@ -285,6 +287,43 @@ Ein Check besteht **nur dann** als `pass`, wenn:
 - Keine `gaps` der Severity ≥ Check-Severity vorliegen
 
 Sonst: `partial` (wenn 50%+ erfüllt) oder `fail`.
+
+### 4.5 Task-Agent-Validation-Gate (verbindlich)
+
+Wenn die Check-Execution per Task-Agent delegiert wird (typisch bei Batch-Verarbeitung mehrerer Checks gleichzeitig), MUSS nach jedem Agent-Aufruf ein Verifikations-Gate laufen. Hintergrund: Im ersten realen Audit hat ein Task-Agent mit `Done (68 tool uses · 0 tokens · 2m 20s)` zurückgegeben — vollständiger stiller Fehlschlag — und der Skill hat das nicht erkannt.
+
+```bash
+# 1. Nach jedem Task-Agent-Aufruf: prüfen, dass alle erwarteten raw/-Files
+#    existieren UND nicht leer sind (catches the 0-token failure mode).
+python "$SKILL_BASE/tools/verify_raw_outputs.py" "$OUTPUT_DIR/raw/" \
+    --expected-ids ARCH-001,ARCH-002,SEC-021 \
+    --min-bytes 1
+
+# 2. Run-Metadata loggen — Tool-Uses, Tokens, Duration in audit-meta.json.
+#    Dieser Befehl exitet 1 wenn der Agent als `empty` oder `incomplete`
+#    klassifiziert wird.
+python "$SKILL_BASE/tools/agent_run_log.py" log \
+    --meta-path "$OUTPUT_DIR/audit-meta.json" \
+    --tool-uses 73 --tokens 108100 --duration 640 \
+    --expected ARCH-001,ARCH-002,SEC-021 \
+    --raw-dir "$OUTPUT_DIR/raw/"
+```
+
+**Retry-Policy bei Fehlschlag:**
+
+1. **Erster Aufruf** — alle anwendbaren Checks erwartet
+2. **Bei `incomplete_ids`** → erneuter Task-Agent-Aufruf nur mit den fehlenden IDs, Logging mit `--retry-of <run_index>`
+3. **Bei `empty`-Status (Tokens=0)** → identisch behandeln, der Aufruf zählt nicht als ausgeführt
+4. **Maximal 2 Retries.** Danach harter Abbruch mit der Liste der unfertigen IDs — der menschliche Auditor muss diese Checks manuell ausführen oder den Audit verschieben
+
+```bash
+# Am Ende von Step 4: Coverage-Summary
+python "$SKILL_BASE/tools/agent_run_log.py" summary \
+    --meta-path "$OUTPUT_DIR/audit-meta.json"
+# overall_status muss "ok" sein, sonst Step 5 nicht starten
+```
+
+Dieses Gate gilt nicht bei Single-Check-Bash-Aufrufen (kein Task-Agent involviert) — dort liefert die Bash-Pipeline ihren eigenen Exit-Code.
 
 ---
 
