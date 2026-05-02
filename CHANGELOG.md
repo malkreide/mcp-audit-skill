@@ -6,6 +6,25 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — Profile-Validation-Gate + ISO-Run-ID (Issues #14 und #15)
+
+Zwei P2-Quality-of-Life-Verbesserungen aus dem ersten realen Audit-Lauf, kombiniert in einem PR.
+
+**Issue #14 — Profile-Placeholder-Detection:** Im ersten Audit hat der User versehentlich das Template mit `...`-Werten reingepastet. Claude hat das durch Defensive-Behavior abgefangen, aber das war Eigeninitiative, nicht Skill-Spec. Jetzt verbindlich:
+
+- **`tools/validate_profile.py`** prüft Profile gegen `...`, `<placeholder>`, `<TODO>`, `TODO`/`FIXME`/`XXX`, leere Strings, `null`, leere Listen — plus Pflicht-Felder + Type-Mismatches (bool wo String, list wo String, etc.). 17 Placeholder-Patterns erfasst.
+- **SKILL.md Step 1.3** dokumentiert das Gate als verbindlich vor Step 2.
+- **Slash-Command** ruft den Validator vor dem Catalog-Load auf.
+
+**Issue #15 — ISO-Run-ID mit Timezone:** Im ersten Audit hat `date +%Y-%m-%d` `2026-04-30` zurückgegeben, obwohl der lokale Kalendertag `2026-05-01` war (UTC-Container-Drift). Output-Verzeichnis hatte falsches Datum, Re-Audits am gleichen Tag würden kollidieren.
+
+- **`tools/audit_init.py`** generiert deterministische Run-IDs im Format `YYYY-MM-DDTHHMMSS-<offset>-<server>` (z.B. `2026-05-02T091245-Z-srgssr-mcp` oder `...+0200-...` für CEST). Bei Sekunden-genauer Kollision: automatisches `-2`/`-3`-Suffix auf das Verzeichnis (Run-ID bleibt logisch identisch).
+- **`audit-meta.json`** wird beim Audit-Start initialisiert mit `started_at` (ISO mit TZ), `timezone_offset`, `skill_version`, `catalog_hash` (SHA-256 aller `*.md` + `MANIFEST.txt` — Reproduzierbarkeits-Anker). `agent_runs[]` (Issue #12) hängt sich daran an.
+- **SKILL.md Step 0.4** dokumentiert das verbindliche Init-Helper.
+- **Slash-Command Step 0** ruft `audit_init.py` auf, ersetzt `date +%Y-%m-%d`-Pattern.
+
+60 neue pytest cases (`tests/test_audit_init.py`: 24, `tests/test_validate_profile.py`: 36). Test-Total: 195 → 255.
+
 ### Geändert — `is_cloud_deployed`-Flag ersetzt 9 broken `deployment`-Checks (Issue #16)
 
 Der canonical evaluator (Issue #6) hatte 9 Checks identifiziert, die das Listen-Feld `deployment` mit einem String-Literal verglichen — `deployment != "local-stdio"`. Im alten ad-hoc-Evaluator (Python `eval`) lieferte das immer `True` (`["x"] != "x"` ist in Python immer wahr), wodurch die Checks fälschlich für jeden Server als anwendbar galten. Jetzt strukturell behoben.
