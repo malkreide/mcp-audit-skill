@@ -6,6 +6,18 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — Findings-Persistenz-Aggregator (Single-Source-of-Truth)
+
+Behebt Issues #8 (Findings-Persistenz) und #9 (Status-Drift). Im ersten Audit (`srgssr-mcp`, 2026-04-30) berichteten drei Stages drei verschiedene Zahlen für dieselben Daten — Step 5 sagte 15 Findings, Step 6 sagte 6, auf Disk waren 6. Strukturelle Lösung:
+
+- **`tools/aggregate_results.py`** — Single-Source-of-Truth-Aggregator. Liest `verification-results.json`, produziert `summary.json` mit canonical Counts, validiert `findings/` gegen `expected_ids`. CLI: `aggregate`, `expected-findings`, `validate`.
+- **Findings-Persistenz-Policies** — explizite Wahl zwischen `fail-or-partial` (Default), `fail-only`, `needs-attention`. Policy wird in `summary.json` persistiert.
+- **Schema-Validierung** — `CheckResult` rejectet ungültige Status- und Severity-Werte beim Laden.
+- **Validation-Gate** — `validate <audit_dir>` exitet mit Code 1 wenn `findings/*.md` nicht zu `expected_ids` passt. Pflicht-Schritt vor Audit-Abschluss.
+- **`docs/verification-results-schema.md`** — formale Spec der Datenkontrakte zwischen Step 4/5/6.
+- **`tests/test_aggregate_results.py`** (32 Cases) — inkl. Regression-Test, der den exakten srgssr-Bug reproduziert (nur 6 von 15 Findings persistiert) und vom Validator gefangen wird.
+- **SKILL.md Step 5/6-Update** — verbindliche Spec, dass alle Counts aus `summary.json` zu lesen sind, nie neu zu berechnen.
+
 ### Hinzugefügt — Reproduzierbarkeits-Hardening nach erstem PowerShell-Audit
 
 Nach dem ersten realen Audit-Lauf (`srgssr-mcp`, 2026-04-30) auf Windows/Git Bash zeigten sich Reproduzierbarkeits- und Cross-Platform-Lücken. Behoben:
@@ -29,8 +41,6 @@ Der Evaluator hat 9 Catalog-Bugs gefunden, in denen `deployment` (Liste) gegen e
 - Audit-Findings-Sub-DB unter dem Notion-Audit-Tracker
 - Parallelism in `audit-portfolio.sh` via `xargs -P`
 - Profile-Override-Layer (lokale Datei merged mit Tracker-Werten beim `pull`)
-- Aggregator-Tool als Single-Source-of-Truth für Status-Counts (Issue #9)
-- Findings-Persistenz-Spec (Issue #8)
 - `write_access` vs. `write_capable`-Schema-Migration (Issue #13)
 
 ---
