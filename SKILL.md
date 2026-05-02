@@ -111,12 +111,14 @@ profile:
   transport: dual
   auth_model: none
   data_class: Public Open Data
-  write_access: read-only
+  write_capable: false       # bool — kanonisches Feld (siehe Migration unten)
   deployment: [local-stdio, Railway]
   prio: 14  # aus Tracker-Formel
 ```
 
 Dieses Profil ist die **einzige Wahrheit** für `applies_when`-Auswertung in Schritt 3.
+
+**Schema-Hinweis (seit Issue #13):** Das kanonische Profil-Feld ist `write_capable: bool`. Das frühere `write_access: "read-only" | "write-capable"` (Enum-String) wurde abgelöst. Der Notion-Tracker behält das `Schreibzugriff`-Select-Feld zur besseren Lesbarkeit; `audit-notion-sync.py` mappt es beim `pull` automatisch auf `write_capable: bool`. Profile mit Legacy-Feld `write_access` führen beim Evaluator zu `UnknownFieldError` — das ist beabsichtigt (siehe `docs/applies-when-dsl.md` "loud failure"-Prinzip).
 
 ---
 

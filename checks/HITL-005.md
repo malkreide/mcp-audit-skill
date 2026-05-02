@@ -3,7 +3,7 @@ id: HITL-005
 title: "Destructive Operation Confirmation"
 category: HITL
 severity: critical
-applies_when: 'write_access == "write-capable"'
+applies_when: 'write_capable == true'
 pdf_ref: "Sec 7.2"
 evidence_required: 3
 ---
