@@ -61,15 +61,21 @@ from tools.path_utils import to_native_path, to_posix_path, is_windows
 read_path = to_native_path(skill_base)   # für Read-Tool-Aufrufe
 ```
 
-### 0.3 Inline-Heredocs vermeiden
+### 0.3 Inline-Heredocs sind verboten
 
-Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig durch Quoting. Nutze stattdessen Helper-Scripts unter `tools/`:
+Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig durch Quoting (Issue #11, real beobachtet im srgssr-Audit). Für jede nicht-triviale Operation existiert ein dediziertes Helper-Script unter `tools/`. **Verwende diese, schreibe niemals Inline-Python während eines Audits:**
 
-```bash
-# Statt heredoc:
-python tools/eval_applicability.py catalog "$profile" --format table
-python tools/path_utils.py to-native "$path"
-```
+| Aufgabe | Helper-Script |
+|---|---|
+| Catalog parsen (Frontmatter aller `*.md`) | `python tools/parse_catalog.py --format json` |
+| Catalog vs. Manifest validieren | `python tools/parse_catalog.py --format manifest-check` |
+| `applies_when` evaluieren | `python tools/eval_applicability.py catalog profile.yaml` |
+| Verification-Results aggregieren | `python tools/aggregate_results.py aggregate results.json --out summary.json` |
+| Findings-Set vs. Disk validieren | `python tools/aggregate_results.py validate <audit_dir>` |
+| Audit-Report generieren | `python tools/build_report.py <audit_dir>` |
+| Pfad zu Native/POSIX konvertieren | `python tools/path_utils.py to-native <path>` |
+
+Wenn ein Audit ein Snippet braucht das hier nicht abgedeckt ist: erst Issue im Skill-Repo öffnen, dann Helper-Script bauen, dann verwenden. **Inline-Heredoc ist der Anti-Pattern, der nicht-reproduzierbare Audits erzeugt.**
 
 ---
 

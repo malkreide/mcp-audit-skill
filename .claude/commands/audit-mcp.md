@@ -1,7 +1,7 @@
 ---
 description: Audit eines MCP-Servers gegen den mcp-audit-skill v0.5.0-Katalog. Lädt Profil, filtert anwendbare Checks, führt automatisierte Verifikation aus, erzeugt Findings-Stubs und Audit-Report. Funktioniert mit lokalem Skill-Klon oder via WebFetch von GitHub-Raw (Cloud-Modus).
 argument-hint: <repo-url-or-local-path>
-allowed-tools: Bash(git:*), Bash(grep:*), Bash(find:*), Bash(curl:*), Bash(ls:*), Bash(cat:*), Bash(wc:*), Bash(head:*), Bash(tail:*), Bash(awk:*), Bash(sed:*), Bash(jq:*), Bash(test:*), Read, Write, Glob, WebFetch
+allowed-tools: Bash(git:*), Bash(grep:*), Bash(find:*), Bash(curl:*), Bash(ls:*), Bash(cat:*), Bash(wc:*), Bash(head:*), Bash(tail:*), Bash(awk:*), Bash(sed:*), Bash(jq:*), Bash(test:*), Bash(python:*), Bash(python3:*), Read, Write, Glob, WebFetch
 ---
 
 # /audit-mcp — MCP-Server Audit-Workflow
@@ -87,20 +87,19 @@ Daraus baust du das Profil mit folgenden Variablen (Defaults bei Unsicherheit):
 
 Lade die Check-Liste aus dem Manifest und parse für jeden Check die Frontmatter (zwischen den ersten beiden `---`-Markern) mit den Feldern: `id`, `title`, `category`, `severity`, `applies_when`, `pdf_ref`, `evidence_required`.
 
-**Modus `local`:**
+**Modus `local` — bevorzugt: Helper-Script aufrufen, niemals Inline-Heredocs:**
 
 ```bash
-# Manifest gibt die kanonische Liste; *.md ist Sanity-Check.
-cat $SKILL_BASE/checks/MANIFEST.txt
-ls $SKILL_BASE/checks/*.md | sort
+# Single-Source-of-Truth-Parser. Ersetzt frühere awk/heredoc-Loops, die
+# auf Windows Git Bash mehrfach an Quoting-Bugs gecrasht sind.
+python "$SKILL_BASE/tools/parse_catalog.py" --checks-dir "$SKILL_BASE/checks" --format json > catalog.json
 
-# Frontmatter pro File extrahieren
-for f in $SKILL_BASE/checks/*.md; do
-  awk '/^---$/{c++; next} c==1' "$f" | head -10
-  echo "FILE: $f"
-  echo "---"
-done
+# Konsistenz-Gate (MANIFEST.txt vs *.md):
+python "$SKILL_BASE/tools/parse_catalog.py" --checks-dir "$SKILL_BASE/checks" --format manifest-check
+# exit 0 = consistent, exit 1 = drift (siehe in_manifest_only / in_catalog_only)
 ```
+
+Für eine schnelle visuelle Übersicht: `--format table` zeigt ID, Kategorie, Severity, applies_when in einer Spalten-Ansicht.
 
 **Modus `remote`:**
 
@@ -206,20 +205,28 @@ Pro Finding ein File: `$OUTPUT_DIR/findings/<check-id>-<short-slug>.md` mit:
 
 ### Schritt 6 — Report-Output
 
-Lade das Audit-Report-Template:
-- `SKILL_MODE=local`: `Read $SKILL_BASE/templates/audit-report.md`.
-- `SKILL_MODE=remote`: WebFetch `$SKILL_BASE/templates/audit-report.md` mit Prompt «Gib den vollständigen Markdown-Quelltext wortgetreu zurück.»
+**Bevorzugt: Helper-Script aufrufen, niemals Inline-Python-Heredocs.** Letztere sind in der Vergangenheit auf Windows Git Bash an Quoting-Bugs gecrasht. Der Generator liest `summary.json` (Single-Source-of-Truth aus Step 5) und alle Files in `findings/` und produziert deterministisch denselben Report.
 
-Fülle das Template mit den gesammelten Daten und schreibe das Ergebnis nach `$OUTPUT_DIR/audit-report.md`.
+```bash
+# 1. Vor Step 6: Validation-Gate sicherstellen (siehe Step 5)
+python "$SKILL_BASE/tools/aggregate_results.py" validate "$OUTPUT_DIR"
 
-Pflicht-Sektionen:
+# 2. Report aus summary.json + findings/ rendern
+python "$SKILL_BASE/tools/build_report.py" "$OUTPUT_DIR" \
+    --profile path/to/profile.yaml
+```
 
-1. **Executive Summary** — 3 Sätze max: Anzahl anwendbarer Checks, Anzahl Findings nach Severity, Production-Readiness (✅ ja wenn 0 critical und ≤ 2 high; ❌ sonst).
-2. **Profile** — der bestätigte Profil-Block aus Schritt 1.
-3. **Coverage** — Tabelle pro Kategorie: Total / Anwendbar / Pass / Fail / Partial / TODO.
-4. **Findings** — Liste aller erzeugten Findings, gruppiert nach Severity.
-5. **Open TODOs** — Liste aller `TODO`-Status-Checks mit den Such-Pattern aus dem Check-File. Damit kann der menschliche Auditor die manuellen Schritte abarbeiten.
-6. **Anhang** — Liste der Roh-Output-Files in `raw/`.
+Der Output landet als `$OUTPUT_DIR/audit-report.md`. Sektionen werden aus `summary.json` gelesen — wenn dort etwas fehlt, ist `tools/aggregate_results.py` falsch aufgerufen worden, NICHT manuell den Report patchen.
+
+**Pflicht-Sektionen (vom Generator automatisch befüllt):**
+
+1. **Executive Summary** — Server, Anzahl Checks, Findings-Counts, Production-Readiness, Blocking-Findings.
+2. **Profile-Snapshot** — relevante Profil-Felder.
+3. **Applicability** — Tabelle pro Kategorie: Pass/Fail/Partial/TODO/N/A.
+4. **Findings-Übersicht** — alle Findings nach Severity sortiert.
+5. **Detail-Findings** — Inhalt der `findings/<ID>-*.md`-Files eingebettet.
+6. **Remediation-Plan** — Reihenfolge nach Severity.
+7. **Audit-Metadata** — Skill-Version, Catalog-Version, Policy.
 
 **Output Schritt 6:** Pfad zum Report-File. Plus Klartext-Empfehlung: «Production-Ready ja/nein, nächste Schritte sind: ...».
 

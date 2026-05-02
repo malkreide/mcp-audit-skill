@@ -34,7 +34,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
-from tools.path_utils import force_utf8_stdio
+# Make `tools.*` importable when this script is invoked directly
+# (e.g. `python tools/aggregate_results.py`) and not as part of a package.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from tools.path_utils import force_utf8_stdio  # noqa: E402
 
 
 VALID_STATUSES = ("pass", "fail", "partial", "todo", "n/a")
