@@ -286,6 +286,35 @@ Sonst: `partial` (wenn 50%+ erfüllt) oder `fail`.
 
 **Ziel:** Pro fehlgeschlagenem Check ein strukturiertes Finding erzeugen, das direkt in einen Remediation-Plan überführbar ist.
 
+### 5.0 Findings-Persistenz-Regel (verbindlich)
+
+Ein Finding-Document wird **genau dann** erzeugt, wenn der Check-Status in der **Findings-Policy** enthalten ist. Es gibt drei Policies, dokumentiert in [`tools/aggregate_results.py`](tools/aggregate_results.py):
+
+| Policy | Findings für Status | Wann verwenden |
+|---|---|---|
+| `fail-or-partial` (Default) | `fail` + `partial` | Standard-Audit, vollständige Remediation-Backlog |
+| `fail-only` | `fail` | Schnell-Audit, nur Showstopper |
+| `needs-attention` | `fail` + `partial` + `todo` | Pre-Production-Härtung, alles offene |
+
+Die Policy MUSS in jedem Audit-Run explizit gesetzt und in `summary.json` persistiert werden. **Vor Abschluss des Audits ist `tools/aggregate_results.py validate <audit_dir>` Pflicht** — sonst können die Findings-Counts in Step 5 und Step 6 auseinanderdriften (Real-World-Bug aus dem ersten Audit).
+
+```bash
+# 1. Verification-Results aus Step 4 in JSON serialisieren
+#    (Schema: siehe tools/aggregate_results.py docstring)
+# 2. Aggregieren — produziert summary.json als Single-Source-of-Truth
+python tools/aggregate_results.py aggregate \
+    audits/<run>/verification-results.json \
+    --policy fail-or-partial \
+    --out audits/<run>/summary.json
+
+# 3. Liste der zu schreibenden Findings ausgeben
+python tools/aggregate_results.py expected-findings \
+    audits/<run>/verification-results.json --policy fail-or-partial
+
+# 4. Nach dem Schreiben: Validation-Gate (hard fail bei Mismatch)
+python tools/aggregate_results.py validate audits/<run>/
+```
+
 ### 5.1 Finding-Template
 
 Verwendet `templates/finding.md`:
@@ -322,12 +351,17 @@ S (< 1d) | M (1-3d) | L (1-2w) | XL (>2w)
 
 ### 5.2 Findings-Anzahl zurück in Audit Tracker
 
-Nach Abschluss des Audits wird die `Findings`-Spalte in der Notion-Karte aktualisiert:
+Nach Abschluss des Audits wird die `Findings`-Spalte in der Notion-Karte aktualisiert. Der Wert MUSS aus `summary.json` gelesen werden, niemals neu gezählt:
+
+```bash
+# Korrekt: Single-Source-of-Truth
+total_findings=$(jq '.findings.expected_count' audits/<run>/summary.json)
+update_audit_tracker --server "$name" --findings "$total_findings" --status "Findings dokumentiert"
+```
 
 ```python
-# Pseudo-code für Tracker-Update
+# FALSCH: separate Re-Computation — riskiert Drift gegen Step 5/6
 total_findings = sum(1 for r in check_runs if r.status in ("fail", "partial"))
-update_audit_tracker(server=name, findings=total_findings, status="Findings dokumentiert")
 ```
 
 ### 5.3 Audit-Status-Transition
@@ -354,6 +388,19 @@ update_audit_tracker(server=name, findings=total_findings, status="Findings doku
 5. **Detail-Findings** (eines pro fehlgeschlagenem Check, vollständig)
 6. **Remediation-Plan** (Effort-Schätzung pro Finding, Vorschlag-Reihenfolge)
 7. **Audit-Metadata** (wer, wann, Skill-Version, Check-Katalog-Version)
+
+**Pflicht:** Alle Zahlen im Report (Status-Counts, Findings-Anzahl, Production-Ready-Flag, Blocking-Findings) MÜSSEN aus `summary.json` gelesen werden. Niemals direkt aus den `raw/`-Files oder über Re-Aggregation neu berechnen — sonst entsteht der Drift-Bug aus dem srgssr-Audit (Step 4 zeigte 8 PASS, Final Report zeigte 13 PASS).
+
+```bash
+# Status-Counts im Report
+jq '.totals.by_status' audits/<run>/summary.json
+
+# Production-Ready
+jq '.production_ready' audits/<run>/summary.json
+
+# Blocking-Findings (failing critical/high)
+jq -r '.blocking_findings[]' audits/<run>/summary.json
+```
 
 ### 6.2 Sprache und Adressaten
 
