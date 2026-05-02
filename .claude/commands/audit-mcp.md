@@ -177,7 +177,25 @@ Lies pro anwendbarem Check das Check-File und identifiziere die Verification-Mod
 
 Speichere die rohen Befehl-Outputs pro Check in `$OUTPUT_DIR/raw/<check-id>.txt` für Audit-Trail.
 
-**Output Schritt 4:** Tabelle aller anwendbaren Checks mit Status (Pass/Fail/Partial/TODO). Plus Anzahl-Aufschlüsselung.
+**Pflicht-Gate bei Task-Agent-Delegation:** Wenn du einen Task-Agent aufrufst, um mehrere Checks parallel abzuarbeiten, MUSST du nach dem Aufruf verifizieren, dass alle erwarteten Files persistiert wurden. Hintergrund: Im ersten realen Audit hat ein Agent stillschweigend mit 0 Tokens zurückgegeben — der Skill hat das nicht gemerkt.
+
+```bash
+# Nach jedem Task-Agent-Aufruf:
+python "$SKILL_BASE/tools/verify_raw_outputs.py" "$OUTPUT_DIR/raw/" \
+    --expected-ids "$AGENT_BATCH_IDS" --min-bytes 1
+# exit 0 = vollständig, exit 1 = unvollständig (siehe incomplete_ids im JSON)
+
+# Run-Metadata loggen — Tool-Use-Count, Token-Count, Duration:
+python "$SKILL_BASE/tools/agent_run_log.py" log \
+    --meta-path "$OUTPUT_DIR/audit-meta.json" \
+    --tool-uses "$AGENT_TOOL_USES" --tokens "$AGENT_TOKENS" \
+    --duration "$AGENT_DURATION_SEC" \
+    --expected "$AGENT_BATCH_IDS" --raw-dir "$OUTPUT_DIR/raw/"
+```
+
+**Retry-Policy:** Bei `incomplete_ids` oder `empty`-Status (0 Tokens) wiederhole nur die fehlenden IDs, max. 2 Retries (`--retry-of <run_index>` mitgeben). Nach 2 Retries: harter Abbruch mit Liste der unfertigen IDs.
+
+**Output Schritt 4:** Tabelle aller anwendbaren Checks mit Status (Pass/Fail/Partial/TODO). Plus Anzahl-Aufschlüsselung. Plus `agent_run_log.py summary` zur Bestätigung dass `overall_status == "ok"`.
 
 ---
 
