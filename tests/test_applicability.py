@@ -366,6 +366,68 @@ class TestRealCatalog:
         assert results["SEC-001"]["applicable"] is True
 
 
+class TestWriteCapableSchemaMigration:
+    """Regression for issue #13: the catalog must use `write_capable: bool`
+    everywhere; the legacy `write_access` enum is dropped.
+    """
+
+    def test_no_check_uses_legacy_write_access_field(self):
+        from tools.parse_catalog import parse_catalog
+        catalog = parse_catalog(CHECKS_DIR)
+        offenders = [
+            cid for cid, fm in catalog.items()
+            if "write_access" in fm.get("applies_when", "")
+        ]
+        assert offenders == [], (
+            f"These checks still reference the deprecated write_access "
+            f"field: {offenders}. Migrate to write_capable == true/false."
+        )
+
+    def test_hitl_005_uses_canonical_field(self):
+        from tools.eval_applicability import parse_check_frontmatter
+        fm = parse_check_frontmatter(CHECKS_DIR / "HITL-005.md")
+        assert fm["applies_when"] == "write_capable == true"
+
+    def test_write_capable_false_skips_hitl_005(self, srgssr_profile):
+        # srgssr has write_capable=False → HITL-005 must NOT apply.
+        results = evaluate_catalog(srgssr_profile, CHECKS_DIR)
+        assert results["HITL-005"]["applicable"] is False
+
+    def test_write_capable_true_activates_hitl_005(self, cloud_oauth_profile):
+        # cloud_oauth has write_capable=True → HITL-005 must apply.
+        results = evaluate_catalog(cloud_oauth_profile, CHECKS_DIR)
+        assert results["HITL-005"]["applicable"] is True
+
+    def test_legacy_profile_with_only_write_access_fails_loudly(self):
+        # If a user provides a legacy profile (write_access only, no
+        # write_capable), every write-related check must error rather
+        # than silently default to False.
+        legacy_profile = {
+            "transport": "stdio-only",
+            "auth_model": "none",
+            "data_class": "Public Open Data",
+            "write_access": "read-only",  # legacy
+            # NOTE: no write_capable
+            "deployment": ["local-stdio"],
+            "uses_sampling": False,
+            "uses_sequential_thinking": False,
+            "tools_include_filesystem": False,
+            "tools_make_external_requests": False,
+            "stadt_zuerich_context": False,
+            "schulamt_context": False,
+            "volksschule_context": False,
+            "enterprise_context": False,
+            "sdk_language": "Python",
+            "data_source": {"is_swiss_open_data": False},
+        }
+        results = evaluate_catalog(legacy_profile, CHECKS_DIR)
+        # HITL-005 evaluates `write_capable == true` against a profile
+        # that only has `write_access` → UnknownFieldError surfaces as
+        # `unknown-field` reason in the catalog runner.
+        assert results["HITL-005"]["applicable"] is False
+        assert results["HITL-005"]["reason"].startswith("unknown-field")
+
+
 class TestFrontmatterParser:
     def test_parse_arch_001(self):
         fm = parse_check_frontmatter(CHECKS_DIR / "ARCH-001.md")

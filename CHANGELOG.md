@@ -6,6 +6,17 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — Schema-Migration `write_access` → `write_capable` (Issue #13)
+
+Der Skill hatte zwei parallele Profil-Felder für dieselbe Frage "schreibt der Server?": `write_access: "write-capable"` (Enum-String) und `write_capable: bool`. Damit hing die Applicability eines Checks davon ab, welche Variante das Profil zufällig setzte. Issue #6 (canonical evaluator) hat das offengelegt; jetzt aufgeräumt.
+
+**Entscheidung:** `write_capable: bool` ist das kanonische Feld (kürzer, eindeutig boolesch, konsistent mit `uses_sampling: bool`, `tools_make_external_requests: bool`). `write_access` ist deprecated und wird vom Evaluator als `UnknownFieldError` geflaggt — keine stille Backwards-Compatibility, weil das exakt die "loud failure"-Philosophie aus Issue #6 verletzt hätte.
+
+- **`checks/HITL-005.md`** migriert: `write_access == "write-capable"` → `write_capable == true`
+- **`SKILL.md`** Profil-Beispiel und Schema-Hinweis aktualisiert; klargestellt, dass das Notion-Tracker-Select `Schreibzugriff` durch `audit-notion-sync.py` automatisch zu `write_capable: bool` gemappt wird (Notion-UX bleibt unverändert)
+- **`tests/test_applicability.py`** — neue Klasse `TestWriteCapableSchemaMigration` mit 5 Cases: kein Check nutzt `write_access` mehr, HITL-005 nutzt das neue Feld, korrekte Applicability bei `write_capable=true/false`, Legacy-Profile werden laut abgelehnt
+- Test-Total: 176 → 181
+
 ### Hinzugefügt — Task-Agent-Validation-Gate (Issue #12)
 
 Im ersten realen Audit hat ein Task-Agent mit `Done (68 tool uses · 0 tokens · 2m 20s)` zurückgegeben — vollständiger stiller Fehlschlag. Der Skill hat das nicht erkannt, Claude hat manuell weitergemacht und das Problem ad hoc kompensiert. Bei einem unbeaufsichtigten Audit wäre das stiller Datenverlust gewesen.
