@@ -167,6 +167,10 @@ def build_profile(props: dict[str, Any]) -> dict[str, Any]:
         "data_class": data_class,
         "write_capable": write_access == "write-capable",
         "deployment": deployment,
+        # Derived flag (issue #16): true iff at least one deployment target
+        # is something other than `local-stdio`. Replaces the broken
+        # `deployment != "local-stdio"` list-vs-string comparison in 9 checks.
+        "is_cloud_deployed": any(d != "local-stdio" for d in deployment),
     }
     profile.update(DEFAULT_TECH_FLAGS)
     for option_name, flag_name in ORG_CONTEXT_OPTIONS.items():

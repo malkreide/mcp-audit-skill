@@ -38,6 +38,7 @@ def srgssr_profile() -> dict:
         "write_capable": False,
         "write_access": "read-only",
         "deployment": ["local-stdio"],
+        "is_cloud_deployed": False,
         "uses_sampling": False,
         "uses_sequential_thinking": False,
         "tools_include_filesystem": False,
@@ -61,6 +62,7 @@ def zh_education_profile() -> dict:
         "write_capable": False,
         "write_access": "read-only",
         "deployment": ["local-stdio"],
+        "is_cloud_deployed": False,
         "uses_sampling": False,
         "uses_sequential_thinking": False,
         "tools_include_filesystem": False,
@@ -84,6 +86,7 @@ def cloud_oauth_profile() -> dict:
         "write_capable": True,
         "write_access": "write-capable",
         "deployment": ["Railway"],
+        "is_cloud_deployed": True,
         "uses_sampling": True,
         "uses_sequential_thinking": True,
         "tools_include_filesystem": True,
@@ -307,12 +310,11 @@ class TestRealCatalog:
             f"({applicable})"
         )
 
-    # Checks with known broken applies_when (compare list field `deployment`
-    # to string literal). The canonical evaluator surfaces this as a
-    # type-mismatch; the legacy ad-hoc evaluator silently coerced these
-    # to True (Python `[...] != "x"` is always True). Tracked in a
-    # follow-up issue for catalog rewrite.
-    KNOWN_BUGGY_DEPLOYMENT_COMPARISON = {
+    # The 9 checks that previously had `deployment != "local-stdio"` were
+    # migrated to `is_cloud_deployed == true` in issue #16. The catalog
+    # must now be type-clean — every check evaluates without a
+    # type-mismatch error against any well-formed profile.
+    PREVIOUSLY_BUGGY_CHECKS = {
         "OBS-005",
         "OBS-006",
         "SCALE-003",
@@ -329,26 +331,41 @@ class TestRealCatalog:
         unexpected = {
             cid: r["reason"]
             for cid, r in results.items()
-            if not r["applicable"]
-            and r["reason"] != "no-match"
-            and cid not in self.KNOWN_BUGGY_DEPLOYMENT_COMPARISON
+            if not r["applicable"] and r["reason"] != "no-match"
         }
         assert unexpected == {}, (
             "Unexpected evaluator errors against srgssr profile (catalog drift?): "
             f"{unexpected}"
         )
 
-    def test_known_buggy_checks_still_flagged(self, srgssr_profile):
-        """Regression: ensure the canonical evaluator keeps flagging the
-        list-vs-string comparison bug. When the catalog is fixed, this
-        test plus the KNOWN_BUGGY set must be updated together.
+    def test_no_check_compares_deployment_list_to_string_literal(self):
+        """Regression for issue #16: no check may compare the `deployment`
+        list field directly to a string literal again. Migrated to
+        `is_cloud_deployed == true` instead.
         """
+        from tools.parse_catalog import parse_catalog
+        catalog = parse_catalog(CHECKS_DIR)
+        offenders = [
+            cid for cid, fm in catalog.items()
+            if 'deployment !=' in fm.get("applies_when", "")
+            or 'deployment ==' in fm.get("applies_when", "")
+        ]
+        assert offenders == [], (
+            f"These checks compare `deployment` to a string literal "
+            f"(issue #16): {offenders}. Use `is_cloud_deployed == true` "
+            f"or `deployment.includes(\"...\")` instead."
+        )
+
+    def test_previously_buggy_checks_now_evaluate_clean(self, srgssr_profile):
+        """The 9 checks migrated under #16 must produce no type-mismatch."""
         results = evaluate_catalog(srgssr_profile, CHECKS_DIR)
-        flagged = {
-            cid for cid, r in results.items()
-            if r["reason"].startswith("type-mismatch")
-        }
-        assert flagged == self.KNOWN_BUGGY_DEPLOYMENT_COMPARISON
+        for cid in self.PREVIOUSLY_BUGGY_CHECKS:
+            r = results.get(cid)
+            assert r is not None, f"{cid}: missing from catalog"
+            assert not r["reason"].startswith("type-mismatch"), (
+                f"{cid}: still produces a type-mismatch — migration "
+                f"incomplete? reason={r['reason']!r}"
+            )
 
     def test_arch_001_is_universal(self, srgssr_profile, cloud_oauth_profile):
         # ARCH-001 is `applies_when: 'always'` — must be applicable everywhere.
@@ -364,6 +381,81 @@ class TestRealCatalog:
     def test_oauth_proxy_check_active_for_oauth(self, cloud_oauth_profile):
         results = evaluate_catalog(cloud_oauth_profile, CHECKS_DIR)
         assert results["SEC-001"]["applicable"] is True
+
+
+class TestIsCloudDeployedFlag:
+    """Issue #16: the `is_cloud_deployed` flag replaces the broken
+    list-vs-string comparison `deployment != "local-stdio"`.
+    Semantic: `true` iff at least one deployment target is not `local-stdio`.
+    """
+
+    def test_local_stdio_only_skips_cloud_checks(self, srgssr_profile):
+        # srgssr has deployment=[local-stdio], is_cloud_deployed=False
+        results = evaluate_catalog(srgssr_profile, CHECKS_DIR)
+        # OBS-006 is `is_cloud_deployed == true` — must NOT apply
+        assert results["OBS-006"]["applicable"] is False
+        assert results["SCALE-004"]["applicable"] is False
+        assert results["SCALE-006"]["applicable"] is False
+
+    def test_cloud_deployment_activates_cloud_checks(self, cloud_oauth_profile):
+        # cloud_oauth has deployment=[Railway], is_cloud_deployed=True
+        results = evaluate_catalog(cloud_oauth_profile, CHECKS_DIR)
+        assert results["OBS-006"]["applicable"] is True
+        assert results["SCALE-004"]["applicable"] is True
+        assert results["SCALE-006"]["applicable"] is True
+
+    def test_sec_021_or_with_external_requests(self, srgssr_profile):
+        # srgssr has tools_make_external_requests=True so SEC-021 must
+        # apply via the OR-arm even though is_cloud_deployed=False.
+        results = evaluate_catalog(srgssr_profile, CHECKS_DIR)
+        assert results["SEC-021"]["applicable"] is True
+
+    def test_sec_021_skipped_for_pure_local_no_external(self):
+        # Local-stdio AND no external requests → SEC-021 must NOT apply
+        profile = {
+            "transport": "stdio-only",
+            "auth_model": "none",
+            "data_class": "Public Open Data",
+            "write_capable": False,
+            "deployment": ["local-stdio"],
+            "is_cloud_deployed": False,
+            "uses_sampling": False,
+            "uses_sequential_thinking": False,
+            "tools_include_filesystem": False,
+            "tools_make_external_requests": False,
+            "stadt_zuerich_context": False,
+            "schulamt_context": False,
+            "volksschule_context": False,
+            "enterprise_context": False,
+            "sdk_language": "Python",
+            "data_source": {"is_swiss_open_data": True},
+        }
+        results = evaluate_catalog(profile, CHECKS_DIR)
+        assert results["SEC-021"]["applicable"] is False
+
+    def test_dual_deployment_with_local_and_cloud_is_cloud(self):
+        # deployment=[local-stdio, Railway] → is_cloud_deployed=True
+        # The example portfolio's first server is exactly this case.
+        profile = {
+            "transport": "dual",
+            "auth_model": "none",
+            "data_class": "Public Open Data",
+            "write_capable": False,
+            "deployment": ["local-stdio", "Railway"],
+            "is_cloud_deployed": True,
+            "uses_sampling": False,
+            "uses_sequential_thinking": False,
+            "tools_include_filesystem": False,
+            "tools_make_external_requests": True,
+            "stadt_zuerich_context": True,
+            "schulamt_context": False,
+            "volksschule_context": False,
+            "enterprise_context": False,
+            "sdk_language": "Python",
+            "data_source": {"is_swiss_open_data": True},
+        }
+        results = evaluate_catalog(profile, CHECKS_DIR)
+        assert results["OBS-006"]["applicable"] is True
 
 
 class TestWriteCapableSchemaMigration:
@@ -397,6 +489,33 @@ class TestWriteCapableSchemaMigration:
         # cloud_oauth has write_capable=True → HITL-005 must apply.
         results = evaluate_catalog(cloud_oauth_profile, CHECKS_DIR)
         assert results["HITL-005"]["applicable"] is True
+
+    def test_legacy_profile_without_is_cloud_deployed_fails_loudly(self):
+        """A profile that lacks `is_cloud_deployed` must error rather
+        than silently default to False — Issue #16 design choice.
+        """
+        legacy_profile = {
+            "transport": "stdio-only",
+            "auth_model": "none",
+            "data_class": "Public Open Data",
+            "write_capable": False,
+            "deployment": ["local-stdio"],
+            # NOTE: no is_cloud_deployed
+            "uses_sampling": False,
+            "uses_sequential_thinking": False,
+            "tools_include_filesystem": False,
+            "tools_make_external_requests": False,
+            "stadt_zuerich_context": False,
+            "schulamt_context": False,
+            "volksschule_context": False,
+            "enterprise_context": False,
+            "sdk_language": "Python",
+            "data_source": {"is_swiss_open_data": False},
+        }
+        results = evaluate_catalog(legacy_profile, CHECKS_DIR)
+        # OBS-006 evaluates `is_cloud_deployed == true` — must error
+        assert results["OBS-006"]["applicable"] is False
+        assert results["OBS-006"]["reason"].startswith("unknown-field")
 
     def test_legacy_profile_with_only_write_access_fails_loudly(self):
         # If a user provides a legacy profile (write_access only, no

@@ -3,7 +3,7 @@ id: SCALE-003
 title: "Mcp-Session-Id Routing via Edge-LB (HAProxy Stick-Tables)"
 category: SCALE
 severity: high
-applies_when: '(transport == "HTTP/SSE" or transport == "dual") and deployment != "local-stdio"'
+applies_when: '(transport == "HTTP/SSE" or transport == "dual") and is_cloud_deployed == true'
 pdf_ref: "Sec 5.2"
 evidence_required: 2
 ---

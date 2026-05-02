@@ -99,13 +99,21 @@ If any segment is missing, evaluation raises `UnknownFieldError`. Silent fallbac
 applies_when: 'deployment != "local-stdio"'
 ```
 
-The legacy ad-hoc evaluator silently treated this as `True` for any non-empty list, leading to false-positive applicability. The canonical evaluator raises `TypeMismatchError`. See issue #16.
+The legacy ad-hoc evaluator silently treated this as `True` for any non-empty list, leading to false-positive applicability. The canonical evaluator raises `TypeMismatchError`. Resolved in issue #16: a derived boolean `is_cloud_deployed` was added to the profile schema, and the 9 affected checks were migrated.
 
-**Fix patterns:**
+**Canonical fix (since #16):**
 
 ```yaml
-# Positive disjunction over cloud targets
-applies_when: 'deployment.includes("Railway") or deployment.includes("Render") or deployment.includes("Kubernetes")'
+applies_when: 'is_cloud_deployed == true'
+```
+
+Semantic: `is_cloud_deployed` is `true` iff the `deployment` list contains at least one entry that is not `local-stdio`. The flag is derived automatically by `audit-notion-sync.py` from the Notion `Deployment` multi-select; portfolio.yaml authors must set it explicitly.
+
+**Alternative for finer-grained checks:**
+
+```yaml
+# Multi-select membership without the boolean shortcut
+applies_when: 'deployment.includes("Railway")'
 ```
 
 ### Capitalised booleans

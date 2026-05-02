@@ -6,6 +6,19 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `is_cloud_deployed`-Flag ersetzt 9 broken `deployment`-Checks (Issue #16)
+
+Der canonical evaluator (Issue #6) hatte 9 Checks identifiziert, die das Listen-Feld `deployment` mit einem String-Literal verglichen — `deployment != "local-stdio"`. Im alten ad-hoc-Evaluator (Python `eval`) lieferte das immer `True` (`["x"] != "x"` ist in Python immer wahr), wodurch die Checks fälschlich für jeden Server als anwendbar galten. Jetzt strukturell behoben.
+
+**Entscheidung (Option C aus Issue #16):** Neues Profil-Feld `is_cloud_deployed: bool`, abgeleitet aus dem `deployment`-Listen-Feld (`true` iff mindestens ein Eintrag ungleich `local-stdio`). Vorteile: explizite Intention, kein DSL-Change, gleichlautend zu `write_capable`/`uses_sampling`.
+
+- **9 Check-Files migriert:** `OBS-005`, `OBS-006`, `SCALE-003`, `SCALE-004`, `SCALE-006`, `SEC-014`, `SEC-015`, `SEC-021`, `SEC-022` — `applies_when` von `deployment != "local-stdio"` auf `is_cloud_deployed == true` umgestellt
+- **`audit-notion-sync.py build_profile`** leitet `is_cloud_deployed` automatisch aus `deployment` ab — Notion-Tracker bleibt unverändert (single source of truth: `Deployment`-Multi-Select)
+- **`portfolio.example.yaml` + `SKILL.md`** dokumentieren das neue Feld
+- **`docs/applies-when-dsl.md`** Anti-Pattern-Sektion aktualisiert: list-vs-string-Anti-Pattern explizit auf `is_cloud_deployed`-Lösung verwiesen
+- **Tests:** `KNOWN_BUGGY_DEPLOYMENT_COMPARISON`-Set entfernt (nun leer); neue `TestIsCloudDeployedFlag`-Klasse mit 5 Cases für die Flag-Semantik; `test_no_check_compares_deployment_list_to_string_literal` als Regression-Sweep über alle 68 Checks; neuer `tests/test_notion_sync.py` (7 Cases) verifiziert die Notion-Sync-Derivation
+- Test-Total: 181 → 195
+
 ### Geändert — Schema-Migration `write_access` → `write_capable` (Issue #13)
 
 Der Skill hatte zwei parallele Profil-Felder für dieselbe Frage "schreibt der Server?": `write_access: "write-capable"` (Enum-String) und `write_capable: bool`. Damit hing die Applicability eines Checks davon ab, welche Variante das Profil zufällig setzte. Issue #6 (canonical evaluator) hat das offengelegt; jetzt aufgeräumt.
