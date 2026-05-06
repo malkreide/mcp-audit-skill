@@ -242,7 +242,7 @@ Komplementär nutzbar — keiner der Genannten ersetzt die anderen.
 
 ## Status
 
-**Version:** v0.7.0 — Notion-Audit-Tracker-Integration (bidirektional, via `audit-notion-sync.py`)
+**Version:** v1.0.0 — Production-Ready Reproducibility (10 Helper-Scripts, 255 pytest cases, CI auf Ubuntu + Windows × py3.11 + py3.13). Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
 
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`) und Templates (Finding, Audit-Report)

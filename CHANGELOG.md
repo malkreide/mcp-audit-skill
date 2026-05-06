@@ -6,6 +6,24 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+_(noch keine Änderungen seit v1.0.0)_
+
+---
+
+## [v1.0.0] — 2026-05-02 — Production-Ready Reproducibility
+
+Erstes stabiles Release nach dem Reproduzierbarkeits-Hardening, das aus dem ersten realen Audit-Lauf (`srgssr-mcp`, 2026-04-30, PowerShell auf Windows) hervorging. Alle 11 Issues aus dem Retrospektiv (#6–#16) sind geschlossen, inklusive vollständiger Behebung des damals entdeckten Catalog-Bugs (Listen-vs-String-Vergleich in 9 Checks).
+
+### Highlights
+
+- **10 dedizierte Helper-Scripts unter `tools/`** ersetzen Inline-Heredocs, die auf Windows Git Bash unzuverlässig waren.
+- **Kanonischer DSL-Evaluator** für `applies_when` mit handgeschriebenem recursive-descent Parser — kein `eval()`, deterministisch reproduzierbar, strict-typed.
+- **Single-Source-of-Truth-Aggregator** für Status-Counts und Findings-Persistenz, mit Validation-Gate vor Audit-Abschluss.
+- **Cross-Platform-Härtung** — UTF-8-Stdio-Force, POSIX↔Windows-Pfad-Konvertierung, CRLF-tolerante Frontmatter, `.gitattributes` mit `eol=lf`.
+- **CI-Pipeline** auf GitHub Actions: pytest auf Ubuntu + Windows × Python 3.11 + 3.13.
+- **255 pytest cases** über 11 Test-Files, inkl. Regression-Tests die den exakten srgssr-Bug reproduzieren.
+- **Deterministische Run-IDs** im Format `YYYY-MM-DDTHHMMSS-<offset>-<server>` mit Catalog-Hash als Reproduzierbarkeits-Anker in `audit-meta.json`.
+
 ### Hinzugefügt — Profile-Validation-Gate + ISO-Run-ID (Issues #14 und #15)
 
 Zwei P2-Quality-of-Life-Verbesserungen aus dem ersten realen Audit-Lauf, kombiniert in einem PR.
@@ -72,9 +90,9 @@ Inline-Heredocs sind jetzt vollständig durch dedizierte Helper-Scripts ersetzt.
 - **Slash-Command `audit-mcp.md`** — Step 2 und Step 6 rufen Helper-Scripts statt Inline-Loops auf. `python`/`python3` zu allowed-tools hinzugefügt.
 - **36 neue pytest cases** — `tests/test_parse_catalog.py` (16) + `tests/test_build_report.py` (20). Test-Total: 103 → 139.
 
-### Hinzugefügt — Findings-Persistenz-Aggregator (Single-Source-of-Truth)
+### Hinzugefügt — Findings-Persistenz-Aggregator (Issues #8 und #9)
 
-Behebt Issues #8 (Findings-Persistenz) und #9 (Status-Drift). Im ersten Audit (`srgssr-mcp`, 2026-04-30) berichteten drei Stages drei verschiedene Zahlen für dieselben Daten — Step 5 sagte 15 Findings, Step 6 sagte 6, auf Disk waren 6. Strukturelle Lösung:
+Im ersten Audit (`srgssr-mcp`, 2026-04-30) berichteten drei Stages drei verschiedene Zahlen für dieselben Daten — Step 5 sagte 15 Findings, Step 6 sagte 6, auf Disk waren 6. Strukturelle Lösung:
 
 - **`tools/aggregate_results.py`** — Single-Source-of-Truth-Aggregator. Liest `verification-results.json`, produziert `summary.json` mit canonical Counts, validiert `findings/` gegen `expected_ids`. CLI: `aggregate`, `expected-findings`, `validate`.
 - **Findings-Persistenz-Policies** — explizite Wahl zwischen `fail-or-partial` (Default), `fail-only`, `needs-attention`. Policy wird in `summary.json` persistiert.
@@ -84,9 +102,9 @@ Behebt Issues #8 (Findings-Persistenz) und #9 (Status-Drift). Im ersten Audit (`
 - **`tests/test_aggregate_results.py`** (32 Cases) — inkl. Regression-Test, der den exakten srgssr-Bug reproduziert (nur 6 von 15 Findings persistiert) und vom Validator gefangen wird.
 - **SKILL.md Step 5/6-Update** — verbindliche Spec, dass alle Counts aus `summary.json` zu lesen sind, nie neu zu berechnen.
 
-### Hinzugefügt — Reproduzierbarkeits-Hardening nach erstem PowerShell-Audit
+### Hinzugefügt — Reproduzierbarkeits-Hardening (Issues #6, #7, #10)
 
-Nach dem ersten realen Audit-Lauf (`srgssr-mcp`, 2026-04-30) auf Windows/Git Bash zeigten sich Reproduzierbarkeits- und Cross-Platform-Lücken. Behoben:
+Initiale Hardening-Welle nach dem srgssr-Audit-Lauf auf Windows/Git Bash:
 
 - **Kanonischer `applies_when`-Evaluator** (`tools/eval_applicability.py`): hand-rolled recursive-descent parser, kein `eval()`. Strict-typed Vergleiche (string-vs-string, bool-vs-bool, list-vs-list-membership). Unbekannte Felder, Type-Mismatches und Parse-Errors werden laut, nicht stille `False`. Unterstützt CLI: `expr`, `catalog`. Funktioniert mit Bare-Profile, Wrapped-Profile, oder Portfolio-File.
 - **DSL-Spezifikation** (`docs/applies-when-dsl.md`): formale Grammar, Operator-Präzedenz, Type-Rules, bekannte Anti-Patterns.
@@ -94,16 +112,16 @@ Nach dem ersten realen Audit-Lauf (`srgssr-mcp`, 2026-04-30) auf Windows/Git Bas
 - **Cross-Platform-Pfad-Helpers** (`tools/path_utils.py`, `tools/paths.sh`): konvertieren zwischen POSIX-Drive-Form (`/c/Users/foo`) und Windows-Form (`C:\Users\foo`). Lösen das Read-Tool-Path-Problem auf Windows.
 - **UTF-8-Stdio-Force** (`force_utf8_stdio()` + `ensure_python_utf8`): vermeidet `cp1252`-Crashes bei Emojis/Umlauten.
 - **CI-Workflow** (`.github/workflows/test.yml`): pytest auf Ubuntu + Windows, Python 3.11 + 3.13.
+- **`.gitattributes`** mit `eol=lf` für `*.sh`/`*.py`/`*.yml`/`*.yaml`/`*.md`/`*.txt` — verhindert CRLF-Probleme auf Windows-Checkouts mit `autocrlf=true`.
+- **CRLF-tolerante Frontmatter-Regex** als Defence-in-Depth, falls `.gitattributes` mal nicht greift.
 - **SKILL.md-Update**: neuer Schritt 0 mit Cross-Platform-Voraussetzungen; Schritt 3 verweist auf canonical evaluator.
 
-### Aufgedeckt durch den canonical evaluator
+### Roadmap nach v1.0.0
 
-Der Evaluator hat 9 Catalog-Bugs gefunden, in denen `deployment` (Liste) gegen einen String-Literal verglichen wird (Issue #16). Der Legacy-Evaluator hat diese silent zu `True` evaluiert; der canonical evaluator flagt sie als Type-Mismatch. Migration der Checks folgt in einem separaten PR.
-
-### Geplant (separate Issues)
+Nicht-blockierende Features für künftige Releases:
 
 - `reference/anti-patterns.md` mit wiederverwendbaren Code-Snippets aus wiederkehrenden Findings
-- CI-Lint im Skill-Repo, der das Frontmatter aller Check-Files validiert
+- CI-Lint im Skill-Repo, der das Frontmatter aller Check-Files validiert (über `parse_catalog.py manifest-check` hinaus)
 - Audit-Findings-Sub-DB unter dem Notion-Audit-Tracker
 - Parallelism in `audit-portfolio.sh` via `xargs -P`
 - Profile-Override-Layer (lokale Datei merged mit Tracker-Werten beim `pull`)
