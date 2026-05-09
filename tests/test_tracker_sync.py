@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -163,7 +164,7 @@ def _run(args: list[str], env: dict[str, str] | None = None) -> subprocess.Compl
     if env:
         full_env.update(env)
     return subprocess.run(
-        ["python3", "tools/tracker_sync.py"] + args,
+        [sys.executable, "tools/tracker_sync.py"] + args,
         cwd=str(REPO_ROOT),
         capture_output=True, text=True, env=full_env,
     )

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -234,15 +235,16 @@ class TestChangelog:
 # CLI behaviour: production-ready gating
 # ---------------------------------------------------------------------------
 
-PROPOSE_BIN = ["python3", "tools/propose_release.py"]
+PROPOSE_BIN = [sys.executable, "tools/propose_release.py"]
 
 
 def _run_propose(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
+    import os
     return subprocess.run(
         PROPOSE_BIN + args,
         cwd=str(Path(__file__).resolve().parent.parent),
         capture_output=True, text=True,
-        env={**__import__("os").environ, "PYTHONUTF8": "1"},
+        env={**os.environ, "PYTHONUTF8": "1"},
     )
 
 
