@@ -6,7 +6,29 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-_(noch keine Änderungen seit v1.0.0)_
+### Hinzugefügt — Release-Automatisierung für auditierte Server (Schritt 7)
+
+Nach den Audit-/Remediation-Schleifen schlägt der Skill jetzt automatisch einen versionierten Release des **auditierten MCP-Servers** vor (nicht des Skill-Repos), inklusive CHANGELOG-Eintrag und GitHub-Release-Draft.
+
+- **`tools/propose_release.py`** — `propose`-Modus generiert Vorschlag (semver-Bump, CHANGELOG-Entry, Tag- und Release-Befehle) und modifiziert nichts; `apply`-Modus schreibt CHANGELOG, committet, erzeugt annotated git tag und optional einen `gh release --draft`. Pusht **nie** automatisch — Maintainer-Verantwortung.
+- **Production-Ready-Gate** — `propose`/`apply` weigern sich, wenn `summary.production_ready == false`. `--force` existiert für dokumentierte Hotfix-Eskalationen.
+- **Versions-Detection** — liest `pyproject.toml`/`package.json`/letztes git-Tag (in dieser Reihenfolge); ändert Version-Strings in den Manifesten **nicht** (Bump-Konvention liegt beim Projekt).
+- **CHANGELOG-Integration** — `## [Unreleased]`-Block bleibt erhalten; neue Einträge werden direkt darunter eingefügt. Audit-Metadaten (run-id, skill_version, catalog_hash, by_status) werden im Eintrag persistiert für Audit-Trail.
+- **SKILL.md Schritt 7** + **Slash-Command Schritt 7** dokumentieren den verbindlichen Vorschlag-Bestätigung-Apply-Workflow. Slash-Command darf Apply **nur nach explizitem OK** des Users ausführen.
+- **23 neue pytest cases** (`tests/test_propose_release.py`).
+
+### Hinzugefügt — Pluggable Tracker-Backends (Notion + CSV)
+
+Der bisherige `audit-notion-sync.py` band den Skill an Notion. Neue Abstraktion erlaubt anderen Datenbanken-Backends, damit alle Auditoren den Skill nutzen können — nicht nur die mit Notion-Workspace.
+
+- **`tools/tracker_sync.py`** — pluggable Backend-Layer mit gemeinsamer `TrackerBackend.get/update/list_all`-Schnittstelle. Aktuelle Adapter: `csv` (zero-deps, Default) und `notion` (wraps die existierende API). Backend-Wahl via `--backend` oder `MCP_AUDIT_TRACKER_BACKEND`-Env.
+- **CSV-Backend** — schreibt `tracker.csv` mit kanonischen Spalten (`server_name`, `audit_status`, `findings`, `last_audit_run`, `last_audit_at`, `production_ready`, `released_version`, `notes`). Datei wird beim ersten Schreibzugriff samt Header erzeugt; Updates merge-tolerant.
+- **Notion-Backend** — selbe Field-Semantik, mappt auf existierende Tracker-Properties plus optional `Released Version`/`Production Ready`/`Last Audit Run/At`. Felder, die in Notion fehlen, werden ignoriert ohne Drama.
+- **`--from-summary`** — zieht `findings`, `production_ready`, `last_audit_run`, `last_audit_at` direkt aus `summary.json` (Single-Source-of-Truth, kein Re-Counting). Ersetzt die manuelle `jq`-Pipeline aus dem alten Workflow.
+- **SKILL.md Schritt 5.2 + 7.3** dokumentieren beide Backends; Anleitung zum Hinzufügen weiterer Adapter (Airtable, Google Sheets) enthalten.
+- **19 neue pytest cases** (`tests/test_tracker_sync.py`).
+
+Test-Total: 255 → 297.
 
 ---
 

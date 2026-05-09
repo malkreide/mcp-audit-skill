@@ -1,7 +1,7 @@
 ---
 description: Audit eines MCP-Servers gegen den mcp-audit-skill v0.5.0-Katalog. Lädt Profil, filtert anwendbare Checks, führt automatisierte Verifikation aus, erzeugt Findings-Stubs und Audit-Report. Funktioniert mit lokalem Skill-Klon oder via WebFetch von GitHub-Raw (Cloud-Modus).
 argument-hint: <repo-url-or-local-path>
-allowed-tools: Bash(git:*), Bash(grep:*), Bash(find:*), Bash(curl:*), Bash(ls:*), Bash(cat:*), Bash(wc:*), Bash(head:*), Bash(tail:*), Bash(awk:*), Bash(sed:*), Bash(jq:*), Bash(test:*), Bash(python:*), Bash(python3:*), Read, Write, Glob, WebFetch
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(grep:*), Bash(find:*), Bash(curl:*), Bash(ls:*), Bash(cat:*), Bash(wc:*), Bash(head:*), Bash(tail:*), Bash(awk:*), Bash(sed:*), Bash(jq:*), Bash(test:*), Bash(python:*), Bash(python3:*), Read, Write, Glob, WebFetch
 ---
 
 # /audit-mcp — MCP-Server Audit-Workflow
@@ -266,6 +266,66 @@ Der Output landet als `$OUTPUT_DIR/audit-report.md`. Sektionen werden aus `summa
 7. **Audit-Metadata** — Skill-Version, Catalog-Version, Policy.
 
 **Output Schritt 6:** Pfad zum Report-File. Plus Klartext-Empfehlung: «Production-Ready ja/nein, nächste Schritte sind: ...».
+
+---
+
+### Schritt 7 — Release-Vorschlag (nur bei `production_ready: true`)
+
+Dieser Schritt läuft **nur**, wenn `summary.json` `production_ready: true` zeigt. Bei offenen `critical`/`high`-Findings überspringst du Schritt 7 vollständig und weist den User auf die Blocker hin.
+
+**7.1 Vorschlag generieren** (modifiziert nichts):
+
+```bash
+python "$SKILL_BASE/tools/propose_release.py" propose \
+    "$OUTPUT_DIR" "$TARGET" \
+    --bump patch \
+    --format json
+# exit 0 = Vorschlag, exit 2 = nicht production-ready
+```
+
+Output enthält `current_version`, `next_version`, `changelog_entry`, vorgeschlagene `git tag`/`gh release`-Befehle.
+
+**7.2 Vorschlag dem User präsentieren** und auf explizite Bestätigung warten. Format:
+
+```
+Audit zeigt production_ready=true. Vorschlag:
+  Current version : 0.4.2 (from pyproject)
+  Next version    : 0.4.3 (--bump patch)
+  CHANGELOG entry : <gekürzt>
+  
+Soll ich apply (CHANGELOG schreiben + git tag + draft GH release)?
+```
+
+**Frage zwingend nach** — keinen Apply-Modus ohne explizites OK des Users. Erlaube auch den User-Override `--bump minor` / `--bump major` / `--next-version 1.0.0`.
+
+**7.3 Apply nach Bestätigung:**
+
+```bash
+python "$SKILL_BASE/tools/propose_release.py" apply \
+    "$OUTPUT_DIR" "$TARGET" \
+    --bump <wie bestätigt> \
+    --notes "<vom User oder aus Audit-Findings abgeleitet>" \
+    --gh-release
+```
+
+Apply schreibt CHANGELOG, committet, erzeugt einen annotated git tag und optional einen Draft-GitHub-Release. **Pusht nicht** — das macht der User selbst.
+
+**7.4 Tracker-Update:**
+
+```bash
+# Default-Backend ist CSV (lokal). User kann via --backend notion umschalten,
+# falls NOTION_TOKEN gesetzt ist.
+python "$SKILL_BASE/tools/tracker_sync.py" update "$SERVER_NAME" \
+    --from-summary "$OUTPUT_DIR/summary.json" \
+    --set "audit_status=Released" \
+    --set "released_version=$NEXT_VERSION"
+```
+
+Die Backend-Wahl ist user-konfigurierbar via `MCP_AUDIT_TRACKER_BACKEND` (`csv`/`notion`) und `MCP_AUDIT_TRACKER_PATH` (für CSV). Wenn der User Notion nutzt: `--backend notion` plus `NOTION_TOKEN` im Environment.
+
+**Output Schritt 7:** Tag-Name, CHANGELOG-Diff (kurz), Tracker-Backend + aktualisierte Felder, sowie die nächsten manuellen Schritte (`git push origin HEAD`, `git push origin <tag>`, Draft-Release veröffentlichen).
+
+Wenn der Server **nicht** production-ready ist: nenne die `blocking_findings` aus `summary.json` und stoppe nach Schritt 6.
 
 ---
 

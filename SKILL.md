@@ -77,6 +77,9 @@ Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig du
 | Audit-Report generieren | `python tools/build_report.py <audit_dir>` |
 | Task-Agent-Output verifizieren | `python tools/verify_raw_outputs.py raw/ --expected-ids ID1,ID2` |
 | Task-Agent-Run loggen | `python tools/agent_run_log.py log --meta-path audit-meta.json ...` |
+| Release-Vorschlag (Schritt 7) | `python tools/propose_release.py propose <audit_dir> <target_repo>` |
+| Release anwenden (CHANGELOG + Tag) | `python tools/propose_release.py apply <audit_dir> <target_repo> --bump <patch\|minor\|major>` |
+| Tracker-Update (CSV/Notion) | `python tools/tracker_sync.py update <server> --from-summary <summary.json>` |
 | Pfad zu Native/POSIX konvertieren | `python tools/path_utils.py to-native <path>` |
 
 Wenn ein Audit ein Snippet braucht das hier nicht abgedeckt ist: erst Issue im Skill-Repo öffnen, dann Helper-Script bauen, dann verwenden. **Inline-Heredoc ist der Anti-Pattern, der nicht-reproduzierbare Audits erzeugt.**
@@ -439,20 +442,30 @@ Verwendet `templates/finding.md`:
 S (< 1d) | M (1-3d) | L (1-2w) | XL (>2w)
 ```
 
-### 5.2 Findings-Anzahl zurück in Audit Tracker
+### 5.2 Findings-Anzahl zurück in den Audit-Tracker
 
-Nach Abschluss des Audits wird die `Findings`-Spalte in der Notion-Karte aktualisiert. Der Wert MUSS aus `summary.json` gelesen werden, niemals neu gezählt:
+Nach Abschluss des Audits wird die `Findings`-Spalte im Tracker aktualisiert. Der Wert MUSS aus `summary.json` gelesen werden, niemals neu gezählt:
 
 ```bash
-# Korrekt: Single-Source-of-Truth
-total_findings=$(jq '.findings.expected_count' audits/<run>/summary.json)
-update_audit_tracker --server "$name" --findings "$total_findings" --status "Findings dokumentiert"
+# Korrekt: Single-Source-of-Truth via tracker_sync
+python "$SKILL_BASE/tools/tracker_sync.py" update "$name" \
+    --from-summary "audits/<run>/summary.json" \
+    --set "audit_status=Findings dokumentiert"
 ```
 
 ```python
 # FALSCH: separate Re-Computation — riskiert Drift gegen Step 5/6
 total_findings = sum(1 for r in check_runs if r.status in ("fail", "partial"))
 ```
+
+**Backend-Auswahl:** Der Tracker-Sync ist pluggable, damit der Skill nicht an Notion gebunden ist:
+
+| Backend | Aktivierung | Verwendung |
+|---|---|---|
+| `csv` (Default) | `--backend csv --csv-path tracker.csv` oder `MCP_AUDIT_TRACKER_PATH=...` | Lokal, zero-deps. Perfekt für User ohne Cloud-DB. |
+| `notion` | `--backend notion`, plus `NOTION_TOKEN` (+ optional `NOTION_AUDIT_DB_ID`) | Stadt-Zürich-Setup; bestehender Audit-Tracker. |
+
+Das CSV-Backend erzeugt die Datei beim ersten Schreibzugriff inklusive Header-Zeile. Felder sind backend-agnostisch: `server_name`, `audit_status`, `findings`, `last_audit_run`, `last_audit_at`, `production_ready`, `released_version`, `notes`. Wer Airtable oder Google Sheets braucht, fügt einen Adapter in `tools/tracker_sync.py` hinzu — Interface ist `TrackerBackend.get/update/list_all`.
 
 ### 5.3 Audit-Status-Transition
 
@@ -497,6 +510,71 @@ jq -r '.blocking_findings[]' audits/<run>/summary.json
 - **GL / KI-Fachgruppe:** Deutsch, Executive Summary + Findings-Tabelle reichen
 - **Entwickler / Maintainer:** Deutsch oder Englisch, vollständiger Detail-Report
 - **Externe Auditoren / Compliance:** Englisch, vollständig + Profile-Snapshot
+
+---
+
+## Schritt 7: Release-Vorschlag (nur bei `production_ready: true`)
+
+**Ziel:** Wenn der Server nach den Audit-/Remediation-Schleifen production-ready ist, einen versionierten Release des **auditierten Server-Repos** vorschlagen — inklusive CHANGELOG-Eintrag und GitHub-Release-Draft. Nicht für das Skill-Repo selbst.
+
+Schritt 7 läuft nur, wenn `summary.production_ready == true` (keine offenen `critical`/`high`-Fails). Bei offenen Blockern wird der Release verweigert; das ist Absicht.
+
+### 7.1 Release-Vorschlag generieren
+
+```bash
+# Liest summary.json, ermittelt aktuelle Version (pyproject.toml /
+# package.json / git tag) und schlägt einen CHANGELOG-Eintrag vor.
+python "$SKILL_BASE/tools/propose_release.py" propose \
+    "$OUTPUT_DIR" "$TARGET" \
+    --bump patch \
+    --notes "Schliesst HITL-005 und SEC-007. Audit run-id wie unten." \
+    --format json
+# exit 0 = Vorschlag generiert, exit 2 = nicht production-ready (mit Begründung)
+```
+
+Der Vorschlag enthält: aktuelle Version + Quelle (`pyproject` / `package` / `git`), nächste Version (semver-Bump), CHANGELOG-Diff, vorgeschlagene `git tag`/`gh release`-Befehle und die Audit-Metadaten (run-id, skill_version, catalog_hash, by_status). **Im Propose-Modus wird nichts geschrieben** — der User sieht den Vorschlag und bestätigt.
+
+### 7.2 Release anwenden (nach Bestätigung)
+
+```bash
+# Schreibt CHANGELOG, committet (chore(release): vX.Y.Z), erzeugt
+# annotated git tag, optional gh release --draft. Nichts wird gepusht.
+python "$SKILL_BASE/tools/propose_release.py" apply \
+    "$OUTPUT_DIR" "$TARGET" \
+    --bump patch \
+    --notes "..." \
+    --gh-release
+```
+
+Der Apply-Modus ist bewusst defensiv: kein `git push`, kein non-draft Release. Der User entscheidet, wann der Tag und der Release veröffentlicht werden. Die Skill-Verantwortung endet beim Draft.
+
+**Wichtig:** Wenn `pyproject.toml` oder `package.json` eine Version pinnen, ist diese die kanonische Quelle. Der Skill ändert diese Files **nicht** — der Maintainer bumpt die Version-Zahl im Manifest selbst, bevor er den Tag pushed. Begründung: Skill kennt die Bump-Konvention des Projekts nicht (pre-release tags, scope-prefix, etc.).
+
+### 7.3 Tracker-Update nach Release
+
+Nach dem Release wird der Tracker-Eintrag aktualisiert — backend-agnostisch via `tracker_sync.py`:
+
+```bash
+# Default: CSV (lokal, zero-deps)
+python "$SKILL_BASE/tools/tracker_sync.py" update "$SERVER_NAME" \
+    --from-summary "$OUTPUT_DIR/summary.json" \
+    --set "audit_status=Released" \
+    --set "released_version=$NEXT_VERSION"
+
+# Notion (alternativ, falls NOTION_TOKEN gesetzt)
+python "$SKILL_BASE/tools/tracker_sync.py" --backend notion update "$SERVER_NAME" \
+    --from-summary "$OUTPUT_DIR/summary.json" \
+    --set "audit_status=Released" \
+    --set "released_version=$NEXT_VERSION"
+```
+
+`--from-summary` zieht `findings`, `production_ready`, `last_audit_run` und `last_audit_at` automatisch aus der Audit-Summary — Single-Source-of-Truth, kein Re-Counting. Felder, die im Notion-Tracker fehlen (z.B. `Released Version`), werden ohne Drama übersprungen, wenn sie via Property-Map nicht definiert sind.
+
+### 7.4 Anti-Patterns
+
+- **Release ohne grünen Audit:** `propose_release.py` weigert sich. `--force` existiert für absolute Notfälle (z.B. Hotfix-Release mit dokumentierter Risiko-Akzeptanz), aber das ist eine Eskalation, nicht Routine.
+- **Skill bumpt die Manifest-Version automatisch:** macht er nicht. Versionen in `pyproject.toml`/`package.json` sind Maintainer-Verantwortung; Skill schreibt nur CHANGELOG + Tag.
+- **`git push` automatisch:** macht der Skill nicht. Apply-Modus bleibt lokal, Pushen ist eine bewusste Maintainer-Aktion.
 
 ---
 
