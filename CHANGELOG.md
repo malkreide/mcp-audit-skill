@@ -6,6 +6,30 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — Neue Kategorie `FID` (Datentreue), 5 Checks
+
+Der Katalog wächst von 68 auf **73 Checks** in **neun Kategorien**. Die neue Kategorie `FID` (Data Fidelity) schliesst eine Lücke, die ein realer Portfolio-Vorfall sichtbar gemacht hat: Alle bisherigen acht Kategorien prüfen, ob ein Server **korrekt gebaut** ist. Keine prüfte, ob er **liefert, was die Quelle hat**.
+
+Anlass war [`termdat-mcp#11`](https://github.com/malkreide/termdat-mcp/issues/11). Der Server sendete `ClassificationIds` nur bei explizitem Aufruf; die TERMDAT-API schränkt eine ID-lose Suche auf `VARIA` ein — eine von 23 Klassifikationen. Jede Default-Suche lief damit gegen ein Dreiundzwanzigstel des Bestands und meldete das Ergebnis als gewöhnliche Leermenge. Der Server hatte das Audit mit 68 Checks bestanden. Gefunden hat den Fehler ein User mit dem offiziellen Web-UI daneben.
+
+| ID | Titel | Severity |
+|---|---|---|
+| `FID-001` | Scope-Defaults: Filter-Parameter explizit senden, nie erben | critical |
+| `FID-002` | Recall-Ground-Truth: Referenzqueries gegen die offizielle Oberfläche | high |
+| `FID-003` | Leermenge von Abwesenheit unterscheidbar — keine Konfabulations-Einladung | high |
+| `FID-004` | Parameter-Gruppen vollständig senden — Teilmengen erben Server-Defaults | medium |
+| `FID-005` | Query-Syntax in der Tool-Description, nicht im README | medium |
+
+Zwei Eigenheiten der Kategorie, die bei der Katalogpflege relevant sind:
+
+- **`FID-001` und `FID-002` sind nicht per `code_review` verifizierbar.** Man sieht dem Code nicht an, dass ein *fehlender* Parameter Schaden anrichtet — der Beleg liegt in der Parameterbeschreibung der Spec und im Live-Vergleich gegen Ground Truth. Beide Checks führen `runtime_test` als Pflichtmodus. Das ist der erste Katalog-Teil, bei dem statische Analyse strukturell nicht ausreicht.
+- **`FID-003` behandelt die Tool-Description als Halluzinations-Oberfläche.** Im gemeldeten Transkript hat das Modell die Leermenge mit dem hauseigenen Caveat «an empty result usually means the term is out of scope» kombiniert und eine erfundene Antwort produziert. Eine Formulierung, die eine Leermenge erklärt, erzeugt Konfabulation zuverlässiger als gar keine Formulierung.
+
+Alle fünf Checks gelten bei `tools_make_external_requests == true`, also für jeden Server, der eine Upstream-Datenquelle abfragt — im Portfolio praktisch alle.
+
+- **Katalog-Metadaten:** `checks/MANIFEST.txt` auf 73 IDs, Kategorien-Tabellen in `SKILL.md` (2.1) und `README.md` um `FID` ergänzt, Severity-Verteilung neu **16 critical · 33 high · 24 medium**
+- **Tests:** hartcodierte Katalog-Zählungen in `tests/test_parse_catalog.py` und `tests/test_applicability.py` auf 73 gehoben, `FID: 5` in die Kategorien-Verteilung aufgenommen (297 Tests grün)
+
 ### Hinzugefügt — Release-Automatisierung für auditierte Server (Schritt 7)
 
 Nach den Audit-/Remediation-Schleifen schlägt der Skill jetzt automatisch einen versionierten Release des **auditierten MCP-Servers** vor (nicht des Skill-Repos), inklusive CHANGELOG-Eintrag und GitHub-Release-Draft.

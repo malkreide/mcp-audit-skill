@@ -1,8 +1,8 @@
 # Roadmap — mcp-audit-skill
 
-Stand: **v0.5.0 (2026-04-26) — vollständig.**
+Stand: **73 Checks in 9 Kategorien.** v0.5.0 ist vollständig gegen beide PDFs; die Kategorie `FID` kam danach aus einem Portfolio-Fundstück hinzu (siehe CHANGELOG `[Unreleased]`).
 
-Der Skill enthält 68 Checks in 8 Kategorien und deckt alle Sektionen der ursprünglichen Best-Practice-PDF sowie der Anhang-PDF (`mcp-server-architecture-best-practice.pdf`) ab.
+Der v0.5.0-Katalog mit 68 Checks in 8 Kategorien deckt alle Sektionen der ursprünglichen Best-Practice-PDF sowie der Anhang-PDF (`mcp-server-architecture-best-practice.pdf`) ab. Die Tabelle unten hält diesen Stand als Momentaufnahme fest.
 
 ---
 
@@ -39,6 +39,7 @@ Der Skill enthält 68 Checks in 8 Kategorien und deckt alle Sektionen der urspr�
 | v0.3.0 | 2026-04-26 | +11 SEC Edge-Cases |
 | v0.4.0 | 2026-04-26 | Slash-Command-Integration für Claude Code |
 | **v0.5.0** | **2026-04-26** | **+14 Checks aus Anhang-PDF (5 ARCH + 5 SEC + 1 OBS + 3 OPS)** |
+| _unreleased_ | 2026-07-27 | +5 `FID`-Checks (Datentreue) aus Portfolio-Fundstück `termdat-mcp#11` |
 
 ---
 
@@ -49,6 +50,8 @@ Der Skill wird nicht durch Vollständigkeit weitergetrieben — er ist vollstän
 ### 1. Real-World-Findings beim Portfolio-Audit
 
 Beim Audit der Server im Schweizer-Public-Data-MCP-Portfolio entstehen Pattern, die neue Checks rechtfertigen:
+
+**Dieser Mechanismus hat bereits einmal gefeuert:** Die Kategorie `FID` (5 Checks) entstand aus einem einzelnen Vorfall an `termdat-mcp` — ein Server, der das Audit mit 68 Checks bestanden hatte und trotzdem auf 22 von 23 Klassifikationen seiner Datenquelle blind war. Bemerkenswert war nicht die Häufigkeit, sondern die Klasse: Kein einziger der acht bestehenden Kategorien stellte die Frage, ob der Server liefert, was die Quelle hat. Ein Fund kann eine Kategorie rechtfertigen, wenn er eine ganze Prüfdimension sichtbar macht.
 
 - **Wiederkehrende Findings über mehrere Server:** zeigen einen System-Issue, der als eigener Check kodifiziert werden sollte
 - **Server-spezifische Patterns:** z.B. SPARQL-Endpoint-Eigenheiten, OData-Quirks, CKAN-spezifische Patterns — können als kontextabhängige Checks aufgenommen werden (`applies_when: data_source.type == "CKAN"`)
