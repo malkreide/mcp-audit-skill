@@ -1,0 +1,66 @@
+name: validate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Shell reference is syntactically valid
+        run: bash -n reference/probe_template.sh
+
+      - name: Python references are syntactically valid
+        run: python -m compileall -q reference/
+
+      - name: SKILL.md carries a well-formed frontmatter
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          python - <<'PY'
+          import re, sys
+          text = open("SKILL.md", encoding="utf-8").read()
+          m = re.match(r"^---\nname: (.+?)\ndescription: (.+?)\n---\n", text, re.S)
+          if not m:
+              sys.exit("SKILL.md: frontmatter missing or malformed")
+          name, desc = m.group(1).strip(), m.group(2).strip()
+          if name != "mcp-data-source-probe":
+              sys.exit(f"SKILL.md: unexpected name {name!r}")
+          if len(desc) > 1024:
+              sys.exit(f"SKILL.md: description too long ({len(desc)} > 1024)")
+          print(f"ok — name={name}, description={len(desc)} chars")
+          PY
+
+      - name: Cross-references in SKILL.md resolve to real sections
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          python - <<'PY'
+          import re, sys
+          text = open("SKILL.md", encoding="utf-8").read()
+          headings = set(re.findall(r"^#{2,4} (\d+\.\d+[a-z]?)", text, re.M))
+          referenced = set(re.findall(r"\((\d+\.\d+)[a-z]?\)", text))
+          missing = sorted(r for r in referenced if not any(h.startswith(r) for h in headings))
+          if missing:
+              sys.exit(f"SKILL.md references non-existent sections: {missing}")
+          print(f"ok — {len(headings)} numbered sections, all references resolve")
+          PY
+
+      - name: Referenced files exist
+        run: |
+          for f in reference/probe_template.sh \
+                   reference/befund_tabelle_template.md \
+                   reference/response_envelope.py \
+                   reference/retry_backoff.py; do
+            test -f "$f" || { echo "missing: $f"; exit 1; }
+          done
+          echo "ok — all reference files present"
