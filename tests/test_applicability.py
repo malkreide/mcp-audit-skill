@@ -301,7 +301,7 @@ class TestRealCatalog:
         # content changes, this number must be updated together with a
         # CHANGELOG entry.
         # Note: total count of checks
-        assert len(results) == 68
+        assert len(results) == 73
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
         # test fails loudly only on grammar drift.
