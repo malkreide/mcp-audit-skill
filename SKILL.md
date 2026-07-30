@@ -119,6 +119,43 @@ Ausgabe ist eine Zeile pro Parameter in der Befund-Tabelle:
 
 **Verwandter Fall — Teilmengen boolescher Flags.** Sendet man von einer Flag-Gruppe (`Field.*`, `include_*`) nur einige, behalten die übrigen ihren serverseitigen Default. Ein `fields`-Argument kann dann nur erweitern, nie einschränken — es ist ein No-op, der wie Steuerung aussieht. Gegenprobe: ein Call mit explizitem `false` für ein Default-true-Flag muss weniger liefern. Tut er das nicht, sendet der Server die Gruppe unvollständig.
 
+### 1.2c Struktur-Assertion — eine leere Probe ist noch kein Befund
+
+Bevor eine Null in die Befund-Tabelle wandert, muss feststehen, dass die Probe **an der richtigen Stelle** gesucht hat. Sonst dokumentiert das Protokoll einen Bedienfehler als Eigenschaft der Quelle — und zwar dauerhaft, denn die Tabelle ist später die Referenz.
+
+Belegfall aus dem Portfolio (2026-07): Eine Abfrage der MCP Registry lieferte konsequent nichts. Die Felder liegen dort unter `servers[].server.*`; die Probe suchte sie eine Ebene höher. Kein Fehler, kein Status-Code, keine Warnung — nur eine leere Liste, die exakt so aussieht wie «diese Quelle kennt den Eintrag nicht».
+
+```bash
+# FALSCH — unterscheidet nicht zwischen «nichts da» und «falsch gelesen»
+curl -s "$URL" | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d.get('servers',[])))"
+
+# RICHTIG — erst die Struktur bestätigen, dann zählen
+curl -s "$URL" | python3 - <<'EOF'
+import json, sys
+d = json.load(sys.stdin)
+assert "servers" in d, f"Antwort hat kein 'servers' — Keys: {list(d)[:10]}"
+rows = d["servers"]
+assert rows, "Huelle vorhanden, aber leer — das ist ein echter Nullbefund"
+sample = rows[0]
+assert "name" in sample or "name" in sample.get("server", {}), \
+    f"'name' weder oben noch unter 'server' — Struktur: {json.dumps(sample)[:200]}"
+print(len(rows))
+EOF
+```
+
+**Regel:** Jede Probe, die null meldet, druckt bei null zusätzlich die **obersten Schlüssel der Antwort** und einen gekürzten Rohauszug. Das kostet zwei Zeilen und trennt die beiden Fälle sofort.
+
+In der Befund-Tabelle bekommt jede Null eine Spalte «Struktur bestätigt»:
+
+| Endpoint | HTTP | Records | Struktur bestätigt | Bemerkung |
+|---|---|---:|---|---|
+| `/v0/servers?search=x` | 200 | 0 | ✅ Hülle + Beispielzeile geprüft | echter Nullbefund |
+| `/v0/servers?search=y` | 200 | 0 | ❌ noch offen | **kein** Befund, Probe nachziehen |
+
+Das ist dieselbe Regel wie 3.6 («Leermenge ≠ Abwesenheit»), eine Ebene höher: Dort schützt sie das Modell vor dem Tool, hier die Probe vor sich selbst.
+
+**Verwandt — aggregierte Endpoints hinken nach.** Liefert eine Quelle dieselbe Information über mehrere Wege, sind sie nicht gleich aktuell. Bei PyPI meldete der JSON-Sammel-Endpoint (`/pypi/<pkg>/json`) **dreimal in Folge** nach einem Release noch die Vorversion, während der Simple Index und eine echte Installation sofort korrekt waren. Für jede Freshness-Aussage im Protokoll gehört deshalb dazu, **welcher** Endpoint befragt wurde — und für die belastbare Aussage der autoritative, nicht der bequeme.
+
 ### 1.3 Befund-Tabelle erstellen
 
 Ausgabe von Schritt 1 ist **immer** eine Tabelle in diesem Format:
@@ -432,6 +469,8 @@ Nach Release (Tag `v0.1.0`) wird die Karte in der Notion-Datenbank `aa6b672a-e5e
 6. **«Dieser Server hat Auth, aber nur ein bisschen»** — entweder No-Auth-Teil isolieren oder Phase 2 machen. Kein Mischen.
 7. **«Optional heisst unbeschränkt»** — der teuerste Irrtum der Liste. Ein weggelassener Filter-Parameter bedeutet oft einen willkürlichen Teilausschnitt, nicht «alles». Nur die Parameterbeschreibung der Spec sagt es, und nur ein Recall-Delta beweist es. Siehe 1.2b.
 8. **«Null Treffer heisst, es gibt nichts»** — nicht ohne Wildcard-Retry und geprüften Scope. Und die Tool-Description darf diese Schlussfolgerung dem Modell nie nahelegen. Siehe 3.6.
+9. **«Meine Probe fand nichts, also hat die Quelle nichts»** — erst wenn die Antwortstruktur bestätigt ist. Eine falsch gelesene Verschachtelung liefert dieselbe leere Liste wie ein echter Nullbefund, nur ohne Fehler. Siehe 1.2c.
+10. **«Ein Endpoint reicht»** — aggregierte Endpoints hinken hinter den autoritativen her. Welcher befragt wurde, gehört ins Protokoll. Siehe 1.2c.
 
 ---
 
@@ -443,6 +482,8 @@ Vor `v0.1.0`-Tag alle folgenden Punkte abhaken:
 - [ ] Alle Endpoints mit 5 Probe-Calls getestet (inkl. Scope-Probe)
 - [ ] Befund-Tabelle im PR / README vorhanden
 - [ ] **Default-Matrix**: jeder optionale Parameter geprüft, Recall-Delta gemessen (1.2b)
+- [ ] **Struktur-Assertion**: jede Null in der Befund-Tabelle ist als echter Nullbefund bestätigt, nicht als ungeprüfte Leermenge (1.2c)
+- [ ] Bei mehreren Wegen zur selben Information: der befragte Endpoint ist protokolliert und autoritativ (1.2c)
 - [ ] Homepage-Zahlen vs. API-Zahlen verglichen
 - [ ] **Recall-Ground-Truth**: 3–5 Referenzbegriffe gegen das offizielle Web-UI, jedes Delta erklärt (1.4b)
 - [ ] Dump-Verfügbarkeit geprüft

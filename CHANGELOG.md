@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Section 1.2c — structural assertion before an empty probe counts as a
+  finding.** A misread nesting returns the same empty list as a genuine
+  zero-hit answer: no error, no status code, no warning. Evidence: an MCP
+  Registry query kept returning nothing because the fields live under
+  `servers[].server.*` and the probe looked one level up. Every probe that
+  reports zero must also print the response's top-level keys and a truncated
+  raw excerpt, and the finding table gains a "structure confirmed" column.
+  Same rule as 3.6, one layer up: there it protects the model from the tool,
+  here it protects the probe from itself.
+- **1.2c, second part — aggregated endpoints lag behind authoritative ones.**
+  PyPI's aggregate JSON endpoint reported the previous version after three
+  consecutive releases while the simple index and a real install were current.
+  Any freshness claim must record *which* endpoint was queried.
+- **Anti-patterns 9 and 10** plus two release-checklist items for the above.
+- **`mcp-data-fidelity` rule 6 — confirm the response shape before counting
+  it.** Rules 1–5 cover what the server *sends* and what it *tells* the model;
+  rule 6 covers what it *reads*. `payload.get("servers", [])` turns an upstream
+  shape change into a valid-looking empty result — the same confabulation
+  surface as rule 3, one layer down. A schema mismatch belongs in the error
+  channel, not in an empty list.
+- **`rows_of()` guard in `companion/mcp-data-fidelity/reference/patterns.py`**,
+  deliberately not full schema validation: it checks only the envelope and the
+  fields the caller actually reads. Verified against all four cases — valid,
+  missing envelope, wrong type, fields one level deeper — plus a genuine empty,
+  which still returns `[]`.
+
 - **Companion skill `mcp-data-fidelity`** under `companion/`, separately
   installable. Five rules for MCP tools that query an external data source:
   scope parameters sent explicitly, parameter groups sent in full, empty results

@@ -136,6 +136,39 @@ Untergrenzen, keine exakten Zahlen — grosszügig unter dem Ist-Wert, Faustrege
 
 ---
 
+## Regel 6 — Die Antwort auf Struktur prüfen, nicht durchgreifen
+
+Die Regeln 1–5 betreffen, was der Server **sendet** und was er dem Modell **sagt**. Es gibt eine dritte Stelle mit derselben Fehlerklasse: was er **liest**.
+
+Eine falsch angenommene Verschachtelung liefert exakt dieselbe leere Liste wie ein echter Nullbefund — ohne Exception, ohne Status-Code, ohne Log-Eintrag. Aus Sicht des Modells ist das nicht von «die Quelle kennt das nicht» zu unterscheiden, und damit ist es dieselbe Konfabulations-Einladung wie Regel 3.
+
+Belegfall (2026-07): Eine Abfrage der MCP Registry lieferte konsequent nichts. Die Felder liegen unter `servers[].server.*`, gesucht wurde eine Ebene höher. Der Code war syntaktisch einwandfrei und semantisch blind.
+
+```python
+# ✗ greift durch die Struktur hindurch — jede Änderung upstream wird zur Leermenge
+rows = payload.get("servers", [])
+names = [r.get("name", "") for r in rows]     # bleibt leer, wenn name eine Ebene tiefer liegt
+
+# ✓ Struktur bestätigen, bevor gezählt wird
+rows = payload.get("servers")
+if rows is None:
+    raise UpstreamSchemaError(
+        f"Antwort ohne 'servers'. Vorhandene Schlüssel: {sorted(payload)[:10]}"
+    )
+if rows and "name" not in rows[0]:
+    raise UpstreamSchemaError(
+        f"Zeile ohne 'name'. Struktur: {json.dumps(rows[0])[:200]}"
+    )
+```
+
+Der Unterschied liegt in der Behandlung des **unerwarteten** Falls: `.get(x, [])` macht aus einer Strukturänderung stillschweigend ein gültiges leeres Ergebnis. Ein Schema-Fehler ist aber ein Fehler und gehört als solcher gemeldet — laut, mit `isError`, wie jeder andere Upstream-Defekt. Eine Leermenge nach Regel 3 ist etwas anderes: dort war die Abfrage korrekt und die Quelle hat nichts.
+
+**Abgrenzung:** Das ist keine vollständige Schema-Validierung. Geprüft wird nur, was der Code tatsächlich anfasst — die Hülle und die gelesenen Felder. Alles darüber hinaus ist Aufwand ohne Ertrag und bricht bei jeder harmlosen Erweiterung upstream.
+
+**Warum Mocks das nicht fangen:** aus demselben Grund wie bei Regel 5. Der Mock bildet die angenommene Struktur ab. Ist die Annahme falsch, ist der Mock falsch. Diese Klasse fällt nur gegen die echte Antwort auf — im Live-Test oder in der Probe (siehe `mcp-data-source-probe`, Abschnitt 1.2c).
+
+---
+
 ## Checkliste vor dem Release eines datenabfragenden Tools
 
 - [ ] Jeder optionale Filter-/Scope-Parameter geprüft: Was bedeutet Weglassen? Beleg aus der Parameterbeschreibung
@@ -145,6 +178,8 @@ Untergrenzen, keine exakten Zahlen — grosszügig unter dem Ist-Wert, Faustrege
 - [ ] Keine Tool-Description erklärt oder entschuldigt eine Leermenge
 - [ ] Query-Syntax samt Matching-Granularität in der Description
 - [ ] Recall-Canary als Live-Test mit Untergrenzen
+- [ ] Antwortstruktur wird bestätigt, bevor gezählt wird — kein `.get(x, [])` auf dem Hauptpfad (Regel 6)
+- [ ] Eine Strukturabweichung upstream endet als Fehler, nicht als leeres Resultat (Regel 6)
 - [ ] Gegen die offizielle Oberfläche der Quelle verglichen, jedes Delta erklärt
 
 ## Woher diese Regeln stammen
