@@ -6,6 +6,19 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `OPS-004`: Gemessenes von Geschlossenem trennen
+
+Der Katalog wächst auf **79 Checks**. `OPS-004` überträgt die Regel aus `FID-003` vom Server auf den Auditor: Ein Audit-Report darf einen unerklärten Rest so wenig für den Leser deuten, wie ein Tool eine Leermenge für das Modell deuten darf.
+
+Anlass ist der Nachlauf zu [`termdat-mcp#11`](https://github.com/malkreide/termdat-mcp/issues/11), und es ist ein Eigenbefund. Nach der Behebung des eigentlichen Bugs blieb eine Differenz — Weboberfläche 12 Einträge, API 7 bei maximalem Recall. Dazu wurde eine plausible Erklärung veröffentlicht: das Web-UI zähle Benennungen statt Einträge, also eine Zähldifferenz. Die Formulierung war als Vermutung gekennzeichnet und trotzdem falsch. Der Melder schickte die zwölf Entry-IDs, alle verschieden; tatsächlich liefert die API zehn davon überhaupt nicht aus, auch nicht beim gezielten Abruf per ID. Die Vermutung stand zwei Tage als Quasi-Ergebnis im Raum. Hätte niemand nachgefragt, wäre sie zur Dokumentation geworden.
+
+- **`checks/OPS-004.md`** — drei Ausprägungen des Musters (Vermutung als Ergebnis, Rest weggerundet, Abwesenheit von Belegen als Beleg), Verifikation über Report-Struktur und Status-Vergabe.
+- **`templates/finding.md` und `templates/audit-report.md`** — neuer Pflichtabschnitt **Gemessen / Geschlossen / Offen**. Ohne ihn wäre der Check nicht erfüllbar; die Templates sind der Ort, an dem er praktisch wirkt.
+- **Zwei Regeln mit Zähnen.** Bleibt «Offen» leer, steht dort ausdrücklich *keine offenen Punkte* — ein weggelassener Abschnitt ist von einem unbearbeiteten nicht unterscheidbar. Und ein `pass` braucht einen positiven Beleg: Ein leerer `grep` ist nur dann ein `pass`, wenn das Suchmuster nachweislich greifen *würde*, sonst `not_verified`.
+- **Eine Technik, die im Ausgangsfall funktioniert hat**, ist als Anforderung kodiert: Jeder offene Punkt trägt **eine** Frage, deren Antwort zwischen den Hypothesen entscheidet. «Entsprechen die 12 Treffer 12 verschiedenen Entry-IDs?» hat den Fall in einer Runde erledigt.
+- **Severity `high`, nicht `medium`.** Ein einzelner falscher Befund ist ärgerlich; ein Report, der Vermutungen und Messungen vermischt, macht alle seine Befunde unzuverlässig, weil dem Leser das Unterscheidungsmerkmal fehlt.
+- Katalog-Metadaten: `MANIFEST.txt`, Kategorien-Tabellen in `SKILL.md` und `README.md`, Severity-Verteilung neu **16 critical · 35 high · 27 medium · 1 low**.
+
 ## [v1.1.1] — 2026-07-30 — Jede Zusage im Repo hat jetzt einen Test
 
 Der Katalog bleibt unverändert bei **78 Checks in zehn Kategorien**. Dieses Release ändert nichts an dem, was der Skill prüft — es schliesst die letzten beiden Stellen, an denen das Repo eigene Angaben nur auf Disziplin stützte.

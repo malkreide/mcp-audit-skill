@@ -25,7 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKS_DIR = REPO_ROOT / "checks"
 ROADMAP = REPO_ROOT / "docs" / "roadmap.md"
 
-# Stand: **78 Checks in 10 Kategorien.**
+# Stand: **79 Checks in 10 Kategorien.**
 STAND_LINE = re.compile(
     r"^Stand:\s*\*\*(?P<checks>\d+) Checks in (?P<categories>\d+) Kategorien"
 )

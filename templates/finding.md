@@ -54,6 +54,34 @@ Konkrete Belege, idealerweise mit Datei-Pfad und Zeilen-Nummer:
 - Test output: `<output of grep / curl / runtime test>`
 - Screenshot: (optional, nur wenn UI-relevant)
 
+### Gemessen / Geschlossen / Offen
+
+**Verbindlich seit `OPS-004`.** Die drei Blöcke trennen, was beobachtet wurde, von dem, was daraus gefolgert wurde, und von dem, was ungeklärt blieb. Vermutungssprache («vermutlich», «wahrscheinlich», «dürfte», «scheint») gehört ausschliesslich in die beiden letzten.
+
+```markdown
+**Gemessen**
+- `src/server.py:42` lädt `API_KEY` im Modul-Scope (Code gelesen, 2026-05-02).
+- Provozierter Crash mit `LOG_LEVEL=DEBUG` gibt den Schlüssel im Klartext aus
+  (Laufzeit-Test, Roh-Output unter `raw/SEC-013.txt`).
+
+**Geschlossen**
+- Der Schlüssel landet bei jedem unbehandelten Fehler im Log-Aggregator.
+  Begründung: derselbe Logger schreibt nach stdout, das in Produktion nach
+  Datadog geht (`deploy/README.md:31`).
+
+**Offen**
+- Ob die Log-Retention den Schlüssel über die Rotationsfrist hinaus vorhält,
+  wurde nicht geprüft — kein Zugriff auf die Datadog-Konfiguration.
+  Konkrete Frage an den Betrieb: «Wie lange werden stdout-Logs dieses Dienstes
+  vorgehalten, und wer hat Lesezugriff darauf?» Gestellt am 2026-05-02.
+```
+
+Bleibt «Offen» leer, steht dort ausdrücklich *keine offenen Punkte*. Ein weggelassener Abschnitt lässt sich nicht von einem unbearbeiteten unterscheiden.
+
+Jeder offene Punkt trägt **eine konkrete Frage**, deren Antwort zwischen den Hypothesen entscheidet — nicht eine Liste dessen, was man noch tun könnte. Eine gute Frage ist so gebaut, dass beide möglichen Antworten den Fall erledigen.
+
+Wird eine hier festgehaltene Schlussfolgerung später widerlegt, wird sie als **korrigiert** vermerkt statt stillschweigend ersetzt. Die falsche Erklärung überlebt sonst in Zitaten und Folgedokumenten, während die Korrektur es nicht tut.
+
 ### Risk Description
 
 Welcher konkrete Schaden kann entstehen? **Konkret, nicht theoretisch.**

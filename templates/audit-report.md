@@ -30,6 +30,34 @@ Release behoben werden.
 **Production-Readiness:** ✅ ja / ❌ nein
 **Empfohlenes nächstes Release:** *blockiert / freigegeben mit Auflage / freigegeben*
 
+### 1.1 Gemessen / Geschlossen / Offen
+
+**Verbindlich seit `OPS-004`.** Ein Audit endet selten sauber; fast immer bleibt ein Rest. Diese drei Blöcke trennen, was beobachtet wurde, von dem, was daraus gefolgert wurde, und von dem, was ungeklärt blieb. Vermutungssprache («vermutlich», «wahrscheinlich», «dürfte») gehört ausschliesslich in die beiden letzten — **nie** in die Executive Summary oben.
+
+```
+Beispiel:
+
+Gemessen
+- 23 anwendbare Checks ausgeführt, Roh-Outputs unter raw/.
+- 4 Checks mit Status fail, Belege je Finding unter findings/.
+- SEC-013: leerer grep nach Klartext-Keys; Suchmuster gegen einen bewusst
+  eingebauten Testfall verifiziert, es hätte gegriffen.
+
+Geschlossen
+- Production-readiness nicht erreicht. Begründung: SEC-010 ist critical und
+  betrifft den Auth-Pfad, der in Phase 2 exponiert wird.
+
+Offen
+- OBS-005 nicht verifizierbar: kein Zugriff auf die Log-Senke der
+  Produktivumgebung. Status not_verified, nicht pass.
+  Konkrete Frage an den Betrieb: «Läuft für diesen Dienst ein Log-Forwarding
+  nach Datadog, und wenn ja, mit welcher Retention?» Gestellt am YYYY-MM-DD.
+```
+
+Bleibt «Offen» leer, steht dort ausdrücklich *keine offenen Punkte*. Ein weggelassener Abschnitt lässt sich nicht von einem unbearbeiteten unterscheiden.
+
+Ein `pass` beruht auf einem positiven Beleg, nicht auf der Abwesenheit eines Negativbelegs. Ein leerer `grep` ist nur dann ein `pass`, wenn das Suchmuster nachweislich greifen *würde* — sonst lautet der Status `not_verified`, und der Check gehört unter «Offen».
+
 ---
 
 ## 2. Profil-Snapshot
