@@ -6,6 +6,25 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — Neue Kategorie `IDENT` (Identität und Versionstreue), 5 Checks
+
+Der Katalog wächst von 73 auf **78 Checks** in **zehn Kategorien**. `IDENT` beantwortet die Frage, **als welche Version sich ein Server nach aussen ausgibt** — bisher deckte kein Check sie ab. `ARCH-012` erwähnt zwar `importlib.metadata`, betrifft aber die MCP-Protokollversion des SDK, nicht die Version des Servers selbst.
+
+Anlass war ein Sweep über alle 30 Server des Portfolios am 2026-07-29: 12 Server meldeten im User-Agent eine falsche Version (4 davon eine falsche Major-Version), 20 hatten ein abgedriftetes `__version__`, einer meldete `"0.0.0"` — von einem echten Release nicht unterscheidbar.
+
+| ID | Titel | Severity |
+|---|---|---|
+| `IDENT-001` | User-Agent aus den Paket-Metadaten | high |
+| `IDENT-002` | `__version__` aus der installierten Distribution | medium |
+| `IDENT-003` | Pipeline-überschriebene Werte prüfen | medium |
+| `IDENT-004` | Dokumentierte Version erzwingen | low |
+| `IDENT-005` | Fallback darf nicht wie ein Release aussehen | medium |
+
+Der nicht-offensichtliche Befund des Sweeps, festgehalten in `IDENT-004`: Die **häufigste** Abweichung sass an der **unwichtigsten** Stelle — nicht die Wichtigkeit eines Werts bestimmt die Drift, sondern ob irgendetwas sie erzwingt.
+
+- **Katalog-Metadaten:** `checks/MANIFEST.txt` auf 78 IDs, Kategorien-Tabellen in `SKILL.md` (2.1) und `README.md` um `IDENT` ergänzt, Severity-Verteilung neu **16 critical · 34 high · 27 medium · 1 low** (`IDENT-004` ist der erste `low`-Check im Katalog)
+- **Tests:** hartcodierte Katalog-Zählungen in `tests/test_parse_catalog.py` und `tests/test_applicability.py` auf 78 gehoben, `IDENT: 5` in die Kategorien-Verteilung aufgenommen. Die Applicability-Bandbreite in `test_srgssr_profile_count` steigt von `25–40` auf `25–45`: alle fünf `IDENT`-Checks greifen bei diesem Profil, der Zuwachs von 36 auf 41 ist Katalogwachstum, kein Grammatik-Drift (297 Tests grün)
+
 ### Hinzugefügt — Neue Kategorie `FID` (Datentreue), 5 Checks
 
 Der Katalog wächst von 68 auf **73 Checks** in **neun Kategorien**. Die neue Kategorie `FID` (Data Fidelity) schliesst eine Lücke, die ein realer Portfolio-Vorfall sichtbar gemacht hat: Alle bisherigen acht Kategorien prüfen, ob ein Server **korrekt gebaut** ist. Keine prüfte, ob er **liefert, was die Quelle hat**.

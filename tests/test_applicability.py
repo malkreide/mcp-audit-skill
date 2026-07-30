@@ -301,11 +301,14 @@ class TestRealCatalog:
         # content changes, this number must be updated together with a
         # CHANGELOG entry.
         # Note: total count of checks
-        assert len(results) == 73
+        assert len(results) == 78
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
-        # test fails loudly only on grammar drift.
-        assert 25 <= len(applicable) <= 40, (
+        # test fails loudly only on grammar drift. Upper bound raised from
+        # 40 to 45 with the IDENT category: all five IDENT checks apply to
+        # this profile (Python, external requests), so catalog growth — not
+        # grammar drift — pushed the count from 36 to 41.
+        assert 25 <= len(applicable) <= 45, (
             f"Applicable count drifted: got {len(applicable)} "
             f"({applicable})"
         )

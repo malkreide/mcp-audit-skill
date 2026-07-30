@@ -29,7 +29,7 @@ CHECKS_DIR = REPO_ROOT / "checks"
 class TestRealCatalog:
     def test_count_matches_manifest(self):
         catalog = parse_catalog(CHECKS_DIR)
-        assert len(catalog) == 73
+        assert len(catalog) == 78
 
     def test_all_required_fields_present(self):
         catalog = parse_catalog(CHECKS_DIR)
@@ -42,8 +42,8 @@ class TestRealCatalog:
         assert report["consistent"] is True
         assert report["in_manifest_only"] == []
         assert report["in_catalog_only"] == []
-        assert report["manifest_count"] == 73
-        assert report["catalog_count"] == 73
+        assert report["manifest_count"] == 78
+        assert report["catalog_count"] == 78
 
     def test_category_distribution(self):
         catalog = parse_catalog(CHECKS_DIR)
@@ -54,6 +54,7 @@ class TestRealCatalog:
             "CH": 8,
             "FID": 5,
             "HITL": 5,
+            "IDENT": 5,
             "OBS": 6,
             "OPS": 3,
             "SCALE": 6,
@@ -66,7 +67,7 @@ class TestRealCatalog:
         counts = severity_counts(catalog)
         # Severities must be a subset of the canonical 4.
         assert set(counts).issubset({"critical", "high", "medium", "low"})
-        assert sum(counts.values()) == 73
+        assert sum(counts.values()) == 78
 
 
 # ---------------------------------------------------------------------------
