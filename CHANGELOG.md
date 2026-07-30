@@ -6,6 +6,12 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — Stand-Zeile in `docs/roadmap.md` gesichert
+
+Die dritte und letzte Stelle mit einer Katalog-Zahl. Anders als `README.md` und `SKILL.md` darf diese Datei **nicht** als Ganzes geprüft werden: Sie zitiert an mehreren Stellen historische Stände («Der v0.5.0-Katalog mit 68 Checks in 8 Kategorien», «+14 Checks aus Anhang-PDF»), die richtig sind und richtig bleiben sollen. Ein Test über alle Zahlen würde die Historie anmahnen — und wer ihn danach «grün macht», beschädigt sie.
+
+Aktuell zu halten ist genau eine Zeile: die mit `Stand:` beginnende Kopfzeile. **`tests/test_roadmap_counts.py`** prüft nur sie, gegen Anzahl Checks und Anzahl Kategorien. Zusätzlich verlangt der Test, dass es diese Zeile überhaupt gibt — sonst liesse sich der Anker still entfernen und die Prüfung ins Leere laufen.
+
 ### Hinzugefügt — SKILL.md-Zahlen gegen den Katalog gesichert
 
 Nach `README.md` jetzt auch `SKILL.md`, die zweite Stelle mit einer Kategorien-Übersicht. Das Format dort ist ein anderes: eine Spalte mit dem erwarteten Bereich («Typische Anzahl Checks», etwa `4–6`), eine mit dem Ist-Stand (`5 / 5 ✅`).
@@ -18,7 +24,7 @@ Ausgenommen sind die Schätzwerte in der Prosa («~50 Checks», «~15–20 Check
 
 `SKILL.md` war beim ersten Lauf korrekt; der Test wurde gegen vier künstliche Abweichungen geprüft (Einleitung, Ist-Stand einer Kategorie, Bereich, Total-Zeile) und schlägt bei jeder an.
 
-`docs/roadmap.md` bleibt bewusst ungesichert: Die Datei zitiert an mehreren Stellen historische Stände («68 Checks in 8 Kategorien»), die richtig sind und richtig bleiben sollen. Nur ihre `Stand:`-Zeile ist aktuell zu halten.
+`docs/roadmap.md` wird nur punktuell gesichert — siehe den Abschnitt darüber.
 
 ### Behoben — README-Zahlen gegen den Katalog gesichert
 
@@ -31,7 +37,7 @@ Der Test hat beim ersten Lauf zwei Bestandsfehler aufgedeckt, beide älter als `
 - **Severity-Profile in der Kategorien-Tabelle** stimmten bei fünf von zehn Kategorien nicht mit dem Katalog überein — `ARCH` (war `1 critical · 7 high · 4 medium`, ist `2 critical · 3 high · 7 medium`), `SEC` (war `14 critical · 8 high · 1 medium`, ist `8 critical · 12 high · 3 medium`), `OBS`, `HITL` und `CH`. Die Spaltensummen ergaben entsprechend nie die ausgewiesene Total-Zeile. Nur die Anzahl-Spalte war durchgehend korrekt.
 - **Provenance-Tabelle** hatte keine Zeile für den Identitäts-Layer, obwohl der Fliesstext darüber bereits von «drei eigenen Layern» spricht. Ergänzt; der Test verlangt jetzt für jede Custom-Kategorie eine Zeile.
 
-Dieselbe Auslassung betraf die reinen Zählungen: Badge, Header, Provenance-Fliesstext, Workflow-Schritt und Feature-Liste in `README.md` sowie die Stand-Zeile in `docs/roadmap.md` standen weiter auf 73 Checks in 9 Kategorien. Nachgezogen — und ab jetzt von `test_readme_counts.py` gehalten.
+Dieselbe Auslassung betraf die reinen Zählungen: Badge, Header, Provenance-Fliesstext, Workflow-Schritt und Feature-Liste in `README.md` sowie die Stand-Zeile in `docs/roadmap.md` standen weiter auf 73 Checks in 9 Kategorien. Nachgezogen; die README-Zahlen hält ab jetzt `test_readme_counts.py`.
 
 ### Hinzugefügt — Neue Kategorie `IDENT` (Identität und Versionstreue), 5 Checks
 
