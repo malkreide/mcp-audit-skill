@@ -1,4 +1,4 @@
-"""Copy-paste patterns for the five data-fidelity rules (FastMCP / httpx / pydantic v2).
+"""Copy-paste patterns for the six data-fidelity rules (FastMCP / httpx / pydantic v2).
 
 Each block is self-contained and annotated with the rule it implements. Adapt the
 names; keep the shape. The comments are deliberately verbose — they are the part
@@ -7,6 +7,7 @@ that survives into the target codebase and explains *why* to the next reader.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import httpx
@@ -171,3 +172,58 @@ async def test_wildcard_finds_compounds(client: Client) -> None:
     exact = await client.search("Quellensteuer", max_results=100)
     prefix = await client.search("Quellensteuer*", max_results=100)
     assert len(prefix) > len(exact)
+
+
+# ---------------------------------------------------------------------------
+# Rule 6 — confirm the response shape before counting it
+# ---------------------------------------------------------------------------
+
+class UpstreamSchemaError(RuntimeError):
+    """The upstream answered, but not in the shape this client reads.
+
+    Deliberately an error and not an empty result. A misread nesting produces
+    exactly the same empty list as a genuine zero-hit answer — no exception, no
+    status code, no log line — and the model cannot tell the two apart. That is
+    the same confabulation surface as rule 3, one layer down.
+    """
+
+
+def rows_of(payload: dict[str, Any], envelope: str, *required: str) -> list[dict]:
+    """Return the row list, or raise if the payload is not shaped as assumed.
+
+    Checks only what the caller actually reads: the envelope key and the fields
+    named in ``required`` on the first row. This is not schema validation — a
+    full schema breaks on every harmless upstream addition and buys nothing.
+
+    The failure this guards against is real: an MCP Registry query returned
+    nothing for a while because the fields sit under ``servers[].server.*`` and
+    the client looked one level up. Syntactically fine, semantically blind.
+    """
+    rows = payload.get(envelope)
+    if rows is None:
+        raise UpstreamSchemaError(
+            f"Response has no {envelope!r}. Keys present: {sorted(payload)[:10]}"
+        )
+    if not isinstance(rows, list):
+        raise UpstreamSchemaError(
+            f"{envelope!r} is {type(rows).__name__}, expected list"
+        )
+    if rows:
+        missing = [f for f in required if f not in rows[0]]
+        if missing:
+            raise UpstreamSchemaError(
+                f"Row misses {missing}; shape was {json.dumps(rows[0])[:200]}"
+            )
+    return rows
+
+
+async def fetch_rows(client: httpx.AsyncClient, url: str) -> list[dict]:
+    """Read path with the guard in place.
+
+    Note what is NOT written here: ``payload.get("servers", [])``. That default
+    turns an upstream shape change into a valid-looking empty result — the tool
+    reports "nothing found" for data that is present.
+    """
+    resp = await client.get(url)
+    resp.raise_for_status()
+    return rows_of(resp.json(), "servers", "name")
