@@ -1,12 +1,12 @@
 ---
-description: Audit eines MCP-Servers gegen den mcp-audit-skill v0.5.0-Katalog. Lädt Profil, filtert anwendbare Checks, führt automatisierte Verifikation aus, erzeugt Findings-Stubs und Audit-Report. Funktioniert mit lokalem Skill-Klon oder via WebFetch von GitHub-Raw (Cloud-Modus).
+description: Audit eines MCP-Servers gegen den kuratierten mcp-audit-skill-Katalog. Lädt Profil, filtert anwendbare Checks, führt automatisierte Verifikation aus, erzeugt Findings-Stubs und Audit-Report. Funktioniert mit lokalem Skill-Klon oder via WebFetch von GitHub-Raw (Cloud-Modus).
 argument-hint: <repo-url-or-local-path>
 allowed-tools: Bash(git:*), Bash(gh:*), Bash(grep:*), Bash(find:*), Bash(curl:*), Bash(ls:*), Bash(cat:*), Bash(wc:*), Bash(head:*), Bash(tail:*), Bash(awk:*), Bash(sed:*), Bash(jq:*), Bash(test:*), Bash(python:*), Bash(python3:*), Read, Write, Glob, WebFetch
 ---
 
 # /audit-mcp — MCP-Server Audit-Workflow
 
-Du führst jetzt einen strukturierten Audit eines MCP-Servers durch, basierend auf dem `mcp-audit-skill v0.5.0`-Katalog (7 Kategorien: ARCH, SDK, SEC, SCALE, OBS, HITL, CH; vollständige Check-Liste in `checks/MANIFEST.txt`).
+Du führst jetzt einen strukturierten Audit eines MCP-Servers durch, basierend auf dem `mcp-audit-skill`-Katalog (10 Kategorien: ARCH, SDK, SEC, SCALE, OBS, HITL, CH, OPS, FID, IDENT; vollständige Check-Liste in `checks/MANIFEST.txt`).
 
 Argument: `$ARGUMENTS` (Repo-URL oder lokaler Pfad zum Server-Repo)
 
@@ -38,7 +38,7 @@ Arbeite die folgenden sechs Schritte sequenziell ab. Nach jedem Schritt fasst du
    ```bash
    python "$SKILL_BASE/tools/audit_init.py" init "$SERVER_NAME" \
        --base-dir "$TARGET/audits/" \
-       --skill-version "1.0.0" \
+       --skill-version "1.1.0" \
        --catalog-dir "$SKILL_BASE/checks/"
    # → JSON mit run_id, output_dir, meta_path
    ```

@@ -93,7 +93,7 @@ Niemals `date +%Y-%m-%d` für den Output-Verzeichnisnamen — das hat im ersten 
 # initiale audit-meta.json mit Skill-Version + Catalog-Hash.
 python "$SKILL_BASE/tools/audit_init.py" init "$SERVER_NAME" \
     --base-dir "$TARGET/audits/" \
-    --skill-version "1.0.0" \
+    --skill-version "1.1.0" \
     --catalog-dir "$SKILL_BASE/checks/"
 # Output (JSON): { "run_id": "2026-05-02T091245-Z-srgssr-mcp", "output_dir": "...", "meta_path": "..." }
 ```
@@ -174,7 +174,7 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 
 ### 2.1 Zehn Kategorien
 
-| Kategorie | Quelle | Typische Anzahl Checks | Status v0.5.0 |
+| Kategorie | Quelle | Typische Anzahl Checks | Status |
 |---|---|---|---|
 | `ARCH` | PDF Sec 2 + Anhang A — Tool-Design, Annotations, Idempotency, Repo-Struktur, Spec-Versionierung | 10–12 | 12 / 12 ✅ |
 | `SDK` | PDF Sec 3 — FastMCP, TypeScript, Zod, Lifecycle | 5–7 | 5 / 5 ✅ |
