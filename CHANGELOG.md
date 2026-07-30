@@ -19,6 +19,43 @@ Anlass ist der Nachlauf zu [`termdat-mcp#11`](https://github.com/malkreide/termd
 - **Severity `high`, nicht `medium`.** Ein einzelner falscher Befund ist ärgerlich; ein Report, der Vermutungen und Messungen vermischt, macht alle seine Befunde unzuverlässig, weil dem Leser das Unterscheidungsmerkmal fehlt.
 - Katalog-Metadaten: `MANIFEST.txt`, Kategorien-Tabellen in `SKILL.md` und `README.md`, Severity-Verteilung neu **16 critical · 35 high · 27 medium · 1 low**.
 
+## [v1.1.1] — 2026-07-30 — Jede Zusage im Repo hat jetzt einen Test
+
+Der Katalog bleibt unverändert bei **78 Checks in zehn Kategorien**. Dieses Release ändert nichts an dem, was der Skill prüft — es schliesst die letzten beiden Stellen, an denen das Repo eigene Angaben nur auf Disziplin stützte.
+
+Damit ist keine Zahl und keine Versionsangabe im Repo mehr ungesichert:
+
+| Ort | Quelle der Wahrheit | Test |
+|---|---|---|
+| `checks/MANIFEST.txt`, Katalog-Grösse, Kategorien, Severities | Katalog | `test_parse_catalog.py`, `test_applicability.py` |
+| `README.md` | Katalog | `test_readme_counts.py` |
+| `SKILL.md` | Katalog | `test_skill_counts.py` |
+| `docs/roadmap.md` (`Stand:`-Zeile) | Katalog | `test_roadmap_counts.py` |
+| `.claude/commands/audit-mcp.md` (Kategorienliste) | Katalog | `test_command_counts.py` |
+| `--skill-version` (drei Fundorte) | CHANGELOG | `test_skill_version_literals.py` |
+
+Bewusst ausgenommen bleiben `CHANGELOG.md` und die historischen Stände in `docs/roadmap.md`: Dort ist eine veraltete Zahl die richtige Zahl.
+
+### Zur Versionsnummer
+
+Ein Patch, kein Minor: keine Katalogänderung, keine Verhaltensänderung, nur Absicherung bestehender Zusagen plus ein korrigiertes Doku-Literal. Für Anwender des Skills ändert sich nichts — die Tests wirken im Repo, nicht im Audit.
+
+Die neuen Test-Module sind sichtbare Arbeit, aber keine neue Fähigkeit des Skills. Wer `1.1.0` gegen `1.1.1` vergleicht, soll genau das erwarten dürfen.
+
+### Hinzugefügt — `--skill-version`-Literale an die Release-Version gebunden
+
+Die letzte ungesicherte Versionsangabe, und die einzige, die nicht am Katalog hängt: Quelle ist die oberste Release-Überschrift im CHANGELOG.
+
+Unbewacht ist dieser Wert besonders anfällig, weil er nirgends im Code vorkommt — `audit_init.py` kennt keinen Default ausser `"unspecified"`, die Doku-Beispiele sind die einzige Quelle. Wer den Befehl kopiert, schreibt den dort stehenden String in seine `audit-meta.json`, und daran hängt später, mit welcher Skill-Version ein Befund entstanden ist. Ein falscher Wert fällt nie auf und lässt sich im Nachhinein nicht rekonstruieren.
+
+**`tests/test_skill_version_literals.py`** durchsucht alle `.md`- und `.py`-Dateien nach `--skill-version <version>` und verlangt für jeden Fundort die aktuelle Release-Version. Ausgenommen sind `CHANGELOG.md` (dort ist jede Zahl historisch) und `tests/` (Fixtures brauchen freie Versionen). Zusätzlich geprüft werden die Existenz mindestens eines Fundorts und das Format der Release-Überschrift — ohne beides hinge der Test an einer leeren Quelle und liefe still grün.
+
+### Behoben — dritter `--skill-version`-Fundort war beim v1.1.0-Release übersehen worden
+
+Der Release-Eintrag zu v1.1.0 nennt `SKILL.md` und `.claude/commands/audit-mcp.md` als «die einzige Quelle». Das war unvollständig: Die Usage-Zeile in **`tools/audit_init.py`** trug dieselbe Angabe und stand weiter auf `1.0.0` — ausgerechnet in der Datei, die den Wert entgegennimmt.
+
+Gefunden hat ihn der Test oben beim ersten Lauf. Aufzählungen von Hand sind genau die Fehlerquelle, die er ersetzt; er zählt deshalb alle Fundorte, statt eine gepflegte Dateiliste abzuarbeiten.
+
 ### Hinzugefügt — Kategorienliste im Slash-Command gesichert
 
 Die vierte und letzte ungesicherte Katalog-Angabe, und die einzige, deren Fehler das **Verhalten** ändert statt nur eine Anzeige: `.claude/commands/audit-mcp.md` nennt die Kategorien in der Einleitung namentlich. Diese Zeile ist Instruktion, keine Dokumentation — sie sagt Claude, woraus der Katalog besteht, bevor ein einziger Check gelesen wird.
