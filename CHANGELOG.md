@@ -6,6 +6,18 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — Kategorienliste im Slash-Command gesichert
+
+Die vierte und letzte ungesicherte Katalog-Angabe, und die einzige, deren Fehler das **Verhalten** ändert statt nur eine Anzeige: `.claude/commands/audit-mcp.md` nennt die Kategorien in der Einleitung namentlich. Diese Zeile ist Instruktion, keine Dokumentation — sie sagt Claude, woraus der Katalog besteht, bevor ein einziger Check gelesen wird.
+
+Bis v1.1.0 stand dort «7 Kategorien: ARCH, SDK, SEC, SCALE, OBS, HITL, CH». `OPS` fehlte schon zu v1.0.0-Zeiten, `FID` und `IDENT` kamen danach dazu: drei von zehn unterschlagen, und nichts hat es gemeldet. Korrigiert wurde die Zeile im v1.1.0-Release, gesichert ist sie erst jetzt.
+
+**`tests/test_command_counts.py`** vergleicht die Liste **elementweise** gegen den Katalog, nicht bloss ihre Länge — eine falsche Länge ist der harmlosere Fehler, ein falscher Name der stille. Geprüft werden ausserdem die vorangestellte Zahl gegen die Anzahl gelisteter Einträge, Duplikate in der Liste und die Existenz des Ankers selbst.
+
+Gegen fünf Mutationen geprüft, darunter die historische Regression (`7 Kategorien` mit verkürzter Liste), ein erfundener Kategoriename, eine Zahl die nicht zur Liste passt, ein Duplikat und das ersatzlose Entfernen der Zeile. Jede schlägt an.
+
+Damit ist keine Katalog-Angabe im Repo mehr ungesichert: `checks/MANIFEST.txt`, `README.md`, `SKILL.md`, die `Stand:`-Zeile in `docs/roadmap.md` und der Slash-Command hängen alle am geparsten Katalog.
+
 ## [v1.1.0] — 2026-07-30 — Datentreue, Identität und gesicherte Doku-Zahlen
 
 Der Katalog wächst von **68 auf 78 Checks** in **zehn statt acht Kategorien**. Beide neuen Kategorien kamen nicht aus einer Quelle, sondern aus dem Betrieb: `FID` aus einem einzelnen Vorfall an `termdat-mcp`, `IDENT` aus einem Sweep über alle 30 Server des Portfolios. Severity-Verteilung neu **16 critical · 34 high · 27 medium · 1 low** (v1.0.0: 15 · 31 · 22).
