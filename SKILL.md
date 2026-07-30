@@ -5,7 +5,7 @@ description: Reproduzierbares Audit von MCP-Servern gegen einen versionierten Be
 
 # MCP Audit — Standardisiertes Audit-Vorgehen
 
-Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz- und Datentreue-Layer, 73 Checks in neun Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
+Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer, 78 Checks in zehn Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
 
 **Das Mantra in drei Zeilen:**
 
@@ -172,7 +172,7 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 
 **Ziel:** Den vollständigen Katalog (`checks/*.md`) parsen und nach `category` + `severity` indizieren.
 
-### 2.1 Neun Kategorien
+### 2.1 Zehn Kategorien
 
 | Kategorie | Quelle | Typische Anzahl Checks | Status v0.5.0 |
 |---|---|---|---|
@@ -185,7 +185,8 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 | `CH` | Custom — DSG/EDÖB, Schweiz-Compliance | 5–8 | 8 / 8 ✅ |
 | `OPS` | Anhang C — Test-Strategie, Doku, Phasenarchitektur | 3–5 | 3 / 3 ✅ |
 | `FID` | Custom — Datentreue: Scope, Recall, Leermengen | 4–6 | 5 / 5 ✅ |
-| **Total** | | **~70** | **73 / 73 ✅** |
+| `IDENT` | Custom — Identität: User-Agent, `__version__`, Manifest, Doku-Version | 4–6 | 5 / 5 ✅ |
+| **Total** | | **~75** | **78 / 78 ✅** |
 
 ### 2.2 Severity-Stufen
 
