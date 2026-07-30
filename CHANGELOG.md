@@ -6,6 +6,25 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v1.2.0] — 2026-07-30 — Vertrag mit der Quelle, und was davon gemessen ist
+
+Der Katalog wächst von **78 auf 85 Checks** in **elf statt zehn Kategorien**. Severity-Verteilung neu **16 critical · 39 high · 29 medium · 1 low** (v1.1.1: 16 · 34 · 27 · 1).
+
+Beide Zuwächse stammen aus dem Betrieb, nicht aus einer Quelle — dasselbe Muster wie bei `FID` und `IDENT`:
+
+| Zuwachs | Anlass |
+|---|---|
+| `DRIFT` (5 Checks) + `IDENT-006` | `meteoswiss-mcp`: drei von sechs Tools lieferten nichts, Unit-Tests grün, ein 68-Punkte-Audit bestanden. Gemeldet hat es ein aussenstehender Nutzer. |
+| `OPS-004` | Nachlauf zu `termdat-mcp#11`: Eine als Vermutung gekennzeichnete Erklärung stand zwei Tage als Quasi-Ergebnis im Raum — und war falsch. |
+
+Zusammen schliessen sie zwei benachbarte Lücken. `DRIFT` fragt, ob der Vertrag mit der Datenquelle noch gilt und ob überhaupt etwas es bemerken würde. `OPS-004` fragt dasselbe für den Audit-Report selbst: Was davon ist gemessen, was geschlossen, was offen.
+
+Bemerkenswert an beiden Fällen ist nicht der Fehler, sondern wer ihn gefunden hat: in beiden ein Aussenstehender, an einer grünen Testsuite und einem bestandenen Audit vorbei.
+
+### Zur Versionsnummer
+
+Minor, und diesmal ohne Vorbehalt: eine neue Kategorie, sieben neue Checks, keine entfernte oder geänderte Schnittstelle. Wer gegen v1.1.1 auditiert hat, bekommt zusätzliche Befunde, aber keine anderen.
+
 ### Hinzugefügt — Neue Kategorie `DRIFT` (Upstream-Vertrag und Testgüte), 5 Checks, plus `IDENT-006`
 
 Der Katalog wächst von 79 auf **85 Checks** in **elf Kategorien**. `DRIFT` entsteht auf demselben Weg wie seinerzeit `FID` und `IDENT`: aus einem einzelnen Vorfall im Betrieb, nicht aus einer Quelle.
@@ -37,6 +56,7 @@ Hinweis zur Nummerierung: `DRIFT-003` hiess im ersten Entwurf `OPS-004`. Zwische
 **Zur Platzierung.** Die fünf `DRIFT`-Checks lagen im ersten Entwurf in `ARCH` und `OPS`, weil sie thematisch dorthin passen. `tests/test_readme_counts.py` hat das zurückgewiesen: Eine Kategorie mit `Custom`-Provenance braucht eine eigene Zeile in der Provenance-Tabelle, und eine gemischte Kategorie kann keine haben, ohne die PDF-Herkunft der übrigen Checks falsch darzustellen. Der Test hat damit eine Design-Entscheidung erzwungen, die richtig ist und die der Entwurf umgangen hätte — genau das, wofür er da ist.
 
 `tests/test_applicability.py`: Obergrenze der Anwendbarkeits-Schranke 45 → 51 (anwendbar gegen das srgssr-Profil: 48 von 85). Alle sechs neuen Checks greifen bei einem Server mit externer Datenquelle; das ist Katalogwachstum, nicht die Grammatik-Drift, gegen die die Schranke schützt.
+
 ### Hinzugefügt — `OPS-004`: Gemessenes von Geschlossenem trennen
 
 Der Katalog wächst auf **79 Checks**. `OPS-004` überträgt die Regel aus `FID-003` vom Server auf den Auditor: Ein Audit-Report darf einen unerklärten Rest so wenig für den Leser deuten, wie ein Tool eine Leermenge für das Modell deuten darf.
