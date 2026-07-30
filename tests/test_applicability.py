@@ -300,8 +300,8 @@ class TestRealCatalog:
         # Lock the count seen during the first canonical run. If catalog
         # content changes, this number must be updated together with a
         # CHANGELOG entry.
-        # Note: total count of checks (78 → 79 mit OPS-004)
-        assert len(results) == 79
+        # Note: total count of checks (79 → 85 mit DRIFT und IDENT-006)
+        assert len(results) == 85
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
         # test fails loudly only on grammar drift.
@@ -309,7 +309,10 @@ class TestRealCatalog:
         # sämtlich anwendbar (always / tools_make_external_requests /
         # sdk_language == "Python"). Das ist Katalogwachstum, nicht die
         # Grammatik-Drift, gegen die diese Schranke schützt.
-        assert 25 <= len(applicable) <= 45, (
+        # 45 → 51: dieselbe Bewegung für die fünf DRIFT-Checks und IDENT-006.
+        # Alle sechs greifen bei einem Server mit externer Datenquelle, und
+        # srgssr ist einer — `tools_make_external_requests` ist dort true.
+        assert 25 <= len(applicable) <= 51, (
             f"Applicable count drifted: got {len(applicable)} "
             f"({applicable})"
         )
