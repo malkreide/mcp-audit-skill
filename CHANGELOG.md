@@ -6,6 +6,29 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v1.1.1] — 2026-07-30 — Jede Zusage im Repo hat jetzt einen Test
+
+Der Katalog bleibt unverändert bei **78 Checks in zehn Kategorien**. Dieses Release ändert nichts an dem, was der Skill prüft — es schliesst die letzten beiden Stellen, an denen das Repo eigene Angaben nur auf Disziplin stützte.
+
+Damit ist keine Zahl und keine Versionsangabe im Repo mehr ungesichert:
+
+| Ort | Quelle der Wahrheit | Test |
+|---|---|---|
+| `checks/MANIFEST.txt`, Katalog-Grösse, Kategorien, Severities | Katalog | `test_parse_catalog.py`, `test_applicability.py` |
+| `README.md` | Katalog | `test_readme_counts.py` |
+| `SKILL.md` | Katalog | `test_skill_counts.py` |
+| `docs/roadmap.md` (`Stand:`-Zeile) | Katalog | `test_roadmap_counts.py` |
+| `.claude/commands/audit-mcp.md` (Kategorienliste) | Katalog | `test_command_counts.py` |
+| `--skill-version` (drei Fundorte) | CHANGELOG | `test_skill_version_literals.py` |
+
+Bewusst ausgenommen bleiben `CHANGELOG.md` und die historischen Stände in `docs/roadmap.md`: Dort ist eine veraltete Zahl die richtige Zahl.
+
+### Zur Versionsnummer
+
+Ein Patch, kein Minor: keine Katalogänderung, keine Verhaltensänderung, nur Absicherung bestehender Zusagen plus ein korrigiertes Doku-Literal. Für Anwender des Skills ändert sich nichts — die Tests wirken im Repo, nicht im Audit.
+
+Die neuen Test-Module sind sichtbare Arbeit, aber keine neue Fähigkeit des Skills. Wer `1.1.0` gegen `1.1.1` vergleicht, soll genau das erwarten dürfen.
+
 ### Hinzugefügt — `--skill-version`-Literale an die Release-Version gebunden
 
 Die letzte ungesicherte Versionsangabe, und die einzige, die nicht am Katalog hängt: Quelle ist die oberste Release-Überschrift im CHANGELOG.
