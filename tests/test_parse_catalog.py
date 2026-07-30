@@ -28,8 +28,14 @@ CHECKS_DIR = REPO_ROOT / "checks"
 
 class TestRealCatalog:
     def test_count_matches_manifest(self):
+        # Gegen das Manifest ableiten statt eine Zahl festzunageln: der Test
+        # prüft, was sein Name sagt, und muss bei jedem neuen Check nicht
+        # nachgezogen werden. Die absolute Grösse ist in
+        # test_category_distribution festgehalten, wo sie die SKILL.md-Tabelle
+        # spiegelt und eine Änderung bewusst auffallen soll.
         catalog = parse_catalog(CHECKS_DIR)
-        assert len(catalog) == 78
+        report = manifest_check(CHECKS_DIR)
+        assert len(catalog) == report["manifest_count"]
 
     def test_all_required_fields_present(self):
         catalog = parse_catalog(CHECKS_DIR)
@@ -42,8 +48,7 @@ class TestRealCatalog:
         assert report["consistent"] is True
         assert report["in_manifest_only"] == []
         assert report["in_catalog_only"] == []
-        assert report["manifest_count"] == 78
-        assert report["catalog_count"] == 78
+        assert report["manifest_count"] == report["catalog_count"]
 
     def test_category_distribution(self):
         catalog = parse_catalog(CHECKS_DIR)
@@ -67,7 +72,8 @@ class TestRealCatalog:
         counts = severity_counts(catalog)
         # Severities must be a subset of the canonical 4.
         assert set(counts).issubset({"critical", "high", "medium", "low"})
-        assert sum(counts.values()) == 78
+        # Jeder Check trägt genau eine Severity — abgeleitet statt festgenagelt.
+        assert sum(counts.values()) == len(catalog)
 
 
 # ---------------------------------------------------------------------------

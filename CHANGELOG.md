@@ -17,24 +17,35 @@ Der Test hat beim ersten Lauf zwei Bestandsfehler aufgedeckt, beide älter als `
 - **Severity-Profile in der Kategorien-Tabelle** stimmten bei fünf von zehn Kategorien nicht mit dem Katalog überein — `ARCH` (war `1 critical · 7 high · 4 medium`, ist `2 critical · 3 high · 7 medium`), `SEC` (war `14 critical · 8 high · 1 medium`, ist `8 critical · 12 high · 3 medium`), `OBS`, `HITL` und `CH`. Die Spaltensummen ergaben entsprechend nie die ausgewiesene Total-Zeile. Nur die Anzahl-Spalte war durchgehend korrekt.
 - **Provenance-Tabelle** hatte keine Zeile für den Identitäts-Layer, obwohl der Fliesstext darüber bereits von «drei eigenen Layern» spricht. Ergänzt; der Test verlangt jetzt für jede Custom-Kategorie eine Zeile.
 
+Dieselbe Auslassung betraf die reinen Zählungen: Badge, Header, Provenance-Fliesstext, Workflow-Schritt und Feature-Liste in `README.md` sowie die Stand-Zeile in `docs/roadmap.md` standen weiter auf 73 Checks in 9 Kategorien. Nachgezogen — und ab jetzt von `test_readme_counts.py` gehalten.
+
 ### Hinzugefügt — Neue Kategorie `IDENT` (Identität und Versionstreue), 5 Checks
 
-Der Katalog wächst von 73 auf **78 Checks** in **zehn Kategorien**. `IDENT` beantwortet die Frage, **als welche Version sich ein Server nach aussen ausgibt** — bisher deckte kein Check sie ab. `ARCH-012` erwähnt zwar `importlib.metadata`, betrifft aber die MCP-Protokollversion des SDK, nicht die Version des Servers selbst.
+Der Katalog wächst von 73 auf **78 Checks** in **zehn Kategorien**. `IDENT` schliesst eine Lücke, die dieselbe Form hat wie seinerzeit `FID`: Alle bisherigen Kategorien prüfen, ob ein Server korrekt gebaut ist und liefert, was die Quelle hat. Keine prüfte, **als welche Version er sich nach aussen ausgibt**. `ARCH-012` erwähnt `importlib.metadata`, betrifft aber die MCP-Protokollversion des SDK, nicht die Version des Servers selbst.
 
-Anlass war ein Sweep über alle 30 Server des Portfolios am 2026-07-29: 12 Server meldeten im User-Agent eine falsche Version (4 davon eine falsche Major-Version), 20 hatten ein abgedriftetes `__version__`, einer meldete `"0.0.0"` — von einem echten Release nicht unterscheidbar.
+Anlass war ein Sweep über alle 30 Server des Portfolios am 2026-07-29. Ausgangspunkt: `swiss-environment-mcp` hatte von v0.2.0 bis v0.5.0 gegenüber jedem Upstream `swiss-environment-mcp/0.2.0` gemeldet — über drei Releases hinweg, ohne dass etwas brach.
 
-| ID | Titel | Severity |
-|---|---|---|
-| `IDENT-001` | User-Agent aus den Paket-Metadaten | high |
-| `IDENT-002` | `__version__` aus der installierten Distribution | medium |
-| `IDENT-003` | Pipeline-überschriebene Werte prüfen | medium |
-| `IDENT-004` | Dokumentierte Version erzwingen | low |
-| `IDENT-005` | Fallback darf nicht wie ein Release aussehen | medium |
+| ID | Titel | Severity | Befund im Sweep |
+|---|---|---|---|
+| `IDENT-001` | User-Agent aus den Paket-Metadaten, nie als Literal | high | 12 / 30 Server, davon 4 mit falscher Major-Version |
+| `IDENT-002` | `__version__` aus der installierten Distribution | medium | 20 / 30 Server |
+| `IDENT-003` | Werte, die die Pipeline überschreibt, brauchen einen eigenen Check | medium | 4 / 30 Server |
+| `IDENT-004` | Dokumentierte Versionen erzwingen | low | 17 / 30 Server, grösster Abstand 16 Minor-Versionen |
+| `IDENT-005` | Fallback-Version darf nicht wie ein Release aussehen | medium | 1 / 30 Server |
 
-Der nicht-offensichtliche Befund des Sweeps, festgehalten in `IDENT-004`: Die **häufigste** Abweichung sass an der **unwichtigsten** Stelle — nicht die Wichtigkeit eines Werts bestimmt die Drift, sondern ob irgendetwas sie erzwingt.
+Die Checks tragen zusätzlich die **Methodik-Lehren** aus dem Sweep, weil dort die eigentlichen Fehler passierten: eine zeilenweise Suche nach dem Schlüsselwort verfehlt mehrzeilige Konstanten (`swiss-electricity-mcp` sendete nach einem bereits gemergten Fix weiter `0.2.0`); ein Check, der beim ersten Befund abbricht, verdeckt den schwereren; die Fallback-Erkennung gehört an das lokale `+`-Segment statt an einen festen Marker-String.
 
-- **Katalog-Metadaten:** `checks/MANIFEST.txt` auf 78 IDs, Kategorien-Tabellen in `SKILL.md` (2.1) und `README.md` um `IDENT` ergänzt, Severity-Verteilung neu **16 critical · 34 high · 27 medium · 1 low** (`IDENT-004` ist der erste `low`-Check im Katalog)
-- **Tests:** hartcodierte Katalog-Zählungen in `tests/test_parse_catalog.py` und `tests/test_applicability.py` auf 78 gehoben, `IDENT: 5` in die Kategorien-Verteilung aufgenommen. Die Applicability-Bandbreite in `test_srgssr_profile_count` steigt von `25–40` auf `25–45`: alle fünf `IDENT`-Checks greifen bei diesem Profil, der Zuwachs von 36 auf 41 ist Katalogwachstum, kein Grammatik-Drift (297 Tests grün)
+### Geändert — Katalog-Grösse in Tests abgeleitet statt festgenagelt
+
+Fünf Tests scheiterten am Katalogwachstum, weil sie die Anzahl Checks als Literal führten. Wo die Zahl reine Wartungslast war, wird sie jetzt abgeleitet:
+
+- `test_count_matches_manifest` vergleicht gegen `manifest_count` — der Test prüft damit, was sein Name sagt.
+- `test_manifest_consistent_with_catalog` vergleicht `manifest_count` gegen `catalog_count`.
+- `test_severity_distribution_known_set` summiert gegen `len(catalog)`.
+
+Bewusst fixiert bleiben `test_category_distribution` (spiegelt die Tabelle in `SKILL.md`, eine Änderung soll auffallen) und `test_srgssr_profile_count` (dokumentiert die Pinning-Absicht ausdrücklich). Deren Zahlen sind nachgezogen: 73 → 78.
+
+Die Obergrenze der anwendbaren Checks im srgssr-Profil steigt von 40 auf 45. Alle fünf `IDENT`-Checks sind für dieses Profil anwendbar (36 → 41); das ist Katalogwachstum, nicht die Grammatik-Drift, gegen die die Schranke schützt.
 
 ### Hinzugefügt — Neue Kategorie `FID` (Datentreue), 5 Checks
 

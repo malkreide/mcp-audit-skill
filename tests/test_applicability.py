@@ -300,14 +300,15 @@ class TestRealCatalog:
         # Lock the count seen during the first canonical run. If catalog
         # content changes, this number must be updated together with a
         # CHANGELOG entry.
-        # Note: total count of checks
+        # Note: total count of checks (73 → 78 mit der Kategorie IDENT)
         assert len(results) == 78
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
-        # test fails loudly only on grammar drift. Upper bound raised from
-        # 40 to 45 with the IDENT category: all five IDENT checks apply to
-        # this profile (Python, external requests), so catalog growth — not
-        # grammar drift — pushed the count from 36 to 41.
+        # test fails loudly only on grammar drift.
+        # Obergrenze 40 → 45: die fünf IDENT-Checks sind für dieses Profil
+        # sämtlich anwendbar (always / tools_make_external_requests /
+        # sdk_language == "Python"). Das ist Katalogwachstum, nicht die
+        # Grammatik-Drift, gegen die diese Schranke schützt.
         assert 25 <= len(applicable) <= 45, (
             f"Applicable count drifted: got {len(applicable)} "
             f"({applicable})"
