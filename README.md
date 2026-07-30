@@ -80,6 +80,7 @@ Die 78 Checks stammen aus zwei kuratierten Best-Practice-Dokumenten plus drei ei
 | **Architektur-Anhang** «Architektur und Sicherheit von MCP-Servern» | Sektion A (Architektur, A1–A9), Sektion B (Sicherheit, B1–B12), Sektion C (Operative Praxis, C1–C4); schliesst u.a. Lethal-Trifecta-, Idempotency- und Egress-Control-Lücken | 14 Checks (v0.5) |
 | **Schweiz-Compliance-Layer** | revDSG, EDÖB-Meldepflicht, ISDS Stadt Zürich, OGD-Lizenz-Compliance, Volksschule-spezifische Datenschutz-Anforderungen | 8 Checks (`CH-*`) |
 | **Datentreue-Layer** | Scope-Defaults, Recall gegen Ground Truth, Leermenge ≠ Abwesenheit, Query-Syntax. Abgeleitet aus einem realen Portfolio-Vorfall ([termdat-mcp#11](https://github.com/malkreide/termdat-mcp/issues/11)) | 5 Checks (`FID-*`) |
+| **Identitäts-Layer** | User-Agent, `__version__`, Manifest-Version, dokumentierte Version — als was sich ein Server nach aussen ausgibt. Abgeleitet aus einem Portfolio-Sweep über 30 Server | 5 Checks (`IDENT-*`) |
 
 ## Schnellstart
 
@@ -194,13 +195,13 @@ Dann in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`. Der Workflow l
 
 | Code | Bereich | Quelle | Anzahl | Severity-Profil |
 |---|---|---|---:|---|
-| `ARCH` | Tool-Design, Annotations, Idempotency, Repo-Struktur, Spec-Versionierung | Hauptkatalog Sec 2 + Anhang A | 12 | 1 critical · 7 high · 4 medium |
+| `ARCH` | Tool-Design, Annotations, Idempotency, Repo-Struktur, Spec-Versionierung | Hauptkatalog Sec 2 + Anhang A | 12 | 2 critical · 3 high · 7 medium |
 | `SDK` | FastMCP, TypeScript, Zod, Lifecycle | Hauptkatalog Sec 3 | 5 | — · 3 high · 2 medium |
-| `SEC` | Security (grösste Kategorie) | Hauptkatalog Sec 4 + Anhang B | 23 | 14 critical · 8 high · 1 medium |
+| `SEC` | Security (grösste Kategorie) | Hauptkatalog Sec 4 + Anhang B | 23 | 8 critical · 12 high · 3 medium |
 | `SCALE` | Transport, Load Balancing, Container, Gateway | Hauptkatalog Sec 5 | 6 | — · 3 high · 3 medium |
-| `OBS` | Logging, Errors, SIEM, OpenTelemetry | Hauptkatalog Sec 6 + Anhang B10 | 6 | 1 critical · 1 high · 4 medium |
-| `HITL` | Sampling, Human-in-the-Loop | Hauptkatalog Sec 7 | 5 | 1 critical · 4 high · — |
-| `CH` | DSG/EDÖB, ISDS Stadt Zürich, Volksschule | Custom | 8 | 3 critical · 4 high · 1 medium |
+| `OBS` | Logging, Errors, SIEM, OpenTelemetry | Hauptkatalog Sec 6 + Anhang B10 | 6 | 1 critical · 2 high · 3 medium |
+| `HITL` | Sampling, Human-in-the-Loop | Hauptkatalog Sec 7 | 5 | 2 critical · 2 high · 1 medium |
+| `CH` | DSG/EDÖB, ISDS Stadt Zürich, Volksschule | Custom | 8 | 2 critical · 4 high · 2 medium |
 | `OPS` | Test-Strategie, Doku-Standard, Phasenarchitektur | Anhang C | 3 | — · 2 high · 1 medium |
 | `FID` | Datentreue: Scope-Defaults, Recall, Leermengen, Query-Syntax | Custom | 5 | 1 critical · 2 high · 2 medium |
 | `IDENT` | Identität: User-Agent, `__version__`, Manifest, Doku-Version | Custom | 5 | — · 1 high · 3 medium · 1 low |

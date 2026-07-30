@@ -6,6 +6,17 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben — README-Zahlen gegen den Katalog gesichert
+
+Die Katalog-Zählungen leben an drei Orten: `checks/MANIFEST.txt`, den Lock-Tests und der Prosa in `README.md`. Die ersten beiden prüft CI seit je, die dritte war ungesichert — und genau dort blieb beim Hinzufügen von `IDENT` die Aktualisierung aus. Ein Wert, den nichts erzwingt, driftet (derselbe Mechanismus, den `IDENT-003` für Server beschreibt).
+
+**`tests/test_readme_counts.py`** liest die Zahlen aus `README.md` und vergleicht sie gegen den geparsten Katalog: Badge und Alt-Text, Prosa-Erwähnungen (`NN Checks`, `NN Kategorien`) ausserhalb von Tabellen, die Kategorien-Tabelle mit Anzahl **und** Severity-Profil je Kategorie, die Total-Zeile sowie die Layer-Zeilen der Provenance-Tabelle. Ausgenommen sind die beiden PDF-Zeilen der Provenance-Tabelle: Sie beschreiben historische Herkunft, überlappen mit den Layer-Zeilen und summieren sich bewusst nicht zum Total.
+
+Der Test hat beim ersten Lauf zwei Bestandsfehler aufgedeckt, beide älter als `IDENT`:
+
+- **Severity-Profile in der Kategorien-Tabelle** stimmten bei fünf von zehn Kategorien nicht mit dem Katalog überein — `ARCH` (war `1 critical · 7 high · 4 medium`, ist `2 critical · 3 high · 7 medium`), `SEC` (war `14 critical · 8 high · 1 medium`, ist `8 critical · 12 high · 3 medium`), `OBS`, `HITL` und `CH`. Die Spaltensummen ergaben entsprechend nie die ausgewiesene Total-Zeile. Nur die Anzahl-Spalte war durchgehend korrekt.
+- **Provenance-Tabelle** hatte keine Zeile für den Identitäts-Layer, obwohl der Fliesstext darüber bereits von «drei eigenen Layern» spricht. Ergänzt; der Test verlangt jetzt für jede Custom-Kategorie eine Zeile.
+
 ### Hinzugefügt — Neue Kategorie `IDENT` (Identität und Versionstreue), 5 Checks
 
 Der Katalog wächst von 73 auf **78 Checks** in **zehn Kategorien**. `IDENT` beantwortet die Frage, **als welche Version sich ein Server nach aussen ausgibt** — bisher deckte kein Check sie ab. `ARCH-012` erwähnt zwar `importlib.metadata`, betrifft aber die MCP-Protokollversion des SDK, nicht die Version des Servers selbst.
