@@ -6,6 +6,20 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `--skill-version`-Literale an die Release-Version gebunden
+
+Die letzte ungesicherte Versionsangabe, und die einzige, die nicht am Katalog hängt: Quelle ist die oberste Release-Überschrift im CHANGELOG.
+
+Unbewacht ist dieser Wert besonders anfällig, weil er nirgends im Code vorkommt — `audit_init.py` kennt keinen Default ausser `"unspecified"`, die Doku-Beispiele sind die einzige Quelle. Wer den Befehl kopiert, schreibt den dort stehenden String in seine `audit-meta.json`, und daran hängt später, mit welcher Skill-Version ein Befund entstanden ist. Ein falscher Wert fällt nie auf und lässt sich im Nachhinein nicht rekonstruieren.
+
+**`tests/test_skill_version_literals.py`** durchsucht alle `.md`- und `.py`-Dateien nach `--skill-version <version>` und verlangt für jeden Fundort die aktuelle Release-Version. Ausgenommen sind `CHANGELOG.md` (dort ist jede Zahl historisch) und `tests/` (Fixtures brauchen freie Versionen). Zusätzlich geprüft werden die Existenz mindestens eines Fundorts und das Format der Release-Überschrift — ohne beides hinge der Test an einer leeren Quelle und liefe still grün.
+
+### Behoben — dritter `--skill-version`-Fundort war beim v1.1.0-Release übersehen worden
+
+Der Release-Eintrag zu v1.1.0 nennt `SKILL.md` und `.claude/commands/audit-mcp.md` als «die einzige Quelle». Das war unvollständig: Die Usage-Zeile in **`tools/audit_init.py`** trug dieselbe Angabe und stand weiter auf `1.0.0` — ausgerechnet in der Datei, die den Wert entgegennimmt.
+
+Gefunden hat ihn der Test oben beim ersten Lauf. Aufzählungen von Hand sind genau die Fehlerquelle, die er ersetzt; er zählt deshalb alle Fundorte, statt eine gepflegte Dateiliste abzuarbeiten.
+
 ### Hinzugefügt — Kategorienliste im Slash-Command gesichert
 
 Die vierte und letzte ungesicherte Katalog-Angabe, und die einzige, deren Fehler das **Verhalten** ändert statt nur eine Anzeige: `.claude/commands/audit-mcp.md` nennt die Kategorien in der Einleitung namentlich. Diese Zeile ist Instruktion, keine Dokumentation — sie sagt Claude, woraus der Katalog besteht, bevor ein einziger Check gelesen wird.
