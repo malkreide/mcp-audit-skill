@@ -46,6 +46,20 @@ Fünf Tests scheiterten am Katalogwachstum, weil sie die Anzahl Checks als Liter
 Bewusst fixiert bleiben `test_category_distribution` (spiegelt die Tabelle in `SKILL.md`, eine Änderung soll auffallen) und `test_srgssr_profile_count` (dokumentiert die Pinning-Absicht ausdrücklich). Deren Zahlen sind nachgezogen: 73 → 78.
 
 Die Obergrenze der anwendbaren Checks im srgssr-Profil steigt von 40 auf 45. Alle fünf `IDENT`-Checks sind für dieses Profil anwendbar (36 → 41); das ist Katalogwachstum, nicht die Grammatik-Drift, gegen die die Schranke schützt.
+### Behoben — Validation-Gate akzeptierte leere Finding-Dokumente
+
+`aggregate_results.py validate` prüfte, ob pro erwarteter Check-ID eine Datei in `findings/` **existiert** — nicht, ob sie etwas enthält. Ein Verzeichnis voller Null-Byte-Dateien meldete `consistent: true`.
+
+Aufgefallen ist das an einem realen Doppelfall: ein Carry-forward-Schritt schrieb über zwei Audit-Läufe hinweg **16 Findings als leere Platzhalter** (11 in `amtsblatt-mcp`, 5 in `swiss-procurement-mcp`). Die älteren Läufe benennen Findings `<ID>-<slug>.md`, das Skript suchte ein blankes `<ID>.md`, fand nichts und legte einen Stub an, den es nie füllte. Beide Läufe passierten das Gate, und beide `SECURITY.md` verwiesen auf diese Verzeichnisse als Beleg für die offene Findings-Menge.
+
+Ein leeres Finding-Dokument ist schlimmer als ein fehlendes: ein fehlendes fällt durchs Gate, ein leeres kommt durch und sagt einem Leser nichts über eine Findung, die offen ist.
+
+- `validate_findings_persistence()` zählt jetzt Nicht-Whitespace-Zeichen pro Check-ID und meldet zu dünne Dokumente in einem neuen Report-Feld `empty`; `consistent` wird dadurch `false` und der CLI-Exit 1.
+- Neuer Parameter `--min-substance` (Default 1) — fängt per Default nur den eindeutigen Fall. Bewusst nicht höher vorbelegt: ein knappes Finding ist legitim, und ein Guard, der Fehlalarm schlägt, wird umgangen.
+- Existieren mehrere Dateien zu einer ID (`<ID>.md` neben `<ID>-<slug>.md`), zählt die grösste. Sonst würde ausgerechnet das Layout durchfallen, das der Carry-forward-Bug erzeugt hat, während er behoben wird.
+- Vier Tests, drei davon mutationsgeprüft: die Substanz-Prüfung zu entfernen lässt sie fallen, der Negativkontroll-Test (echtes Dokument neben verirrtem Stub) bleibt korrekt grün.
+
+Rückwärtskompatibel: die Signatur bekommt nur einen Parameter mit Default, alle 18 bestehenden Audit-Läufe in den beiden Portfolio-Repos validieren unverändert.
 
 ### Hinzugefügt — Neue Kategorie `FID` (Datentreue), 5 Checks
 
