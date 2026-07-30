@@ -73,7 +73,7 @@ Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig du
 | Catalog vs. Manifest validieren | `python tools/parse_catalog.py --format manifest-check` |
 | `applies_when` evaluieren | `python tools/eval_applicability.py catalog profile.yaml` |
 | Verification-Results aggregieren | `python tools/aggregate_results.py aggregate results.json --out summary.json` |
-| Findings-Set vs. Disk validieren | `python tools/aggregate_results.py validate <audit_dir>` |
+| Findings-Set vs. Disk validieren (inkl. Leer-Prüfung) | `python tools/aggregate_results.py validate <audit_dir>` |
 | Audit-Report generieren | `python tools/build_report.py <audit_dir>` |
 | Task-Agent-Output verifizieren | `python tools/verify_raw_outputs.py raw/ --expected-ids ID1,ID2` |
 | Task-Agent-Run loggen | `python tools/agent_run_log.py log --meta-path audit-meta.json ...` |
@@ -392,6 +392,14 @@ Ein Finding-Document wird **genau dann** erzeugt, wenn der Check-Status in der *
 
 Die Policy MUSS in jedem Audit-Run explizit gesetzt und in `summary.json` persistiert werden. **Vor Abschluss des Audits ist `tools/aggregate_results.py validate <audit_dir>` Pflicht** — sonst können die Findings-Counts in Step 5 und Step 6 auseinanderdriften (Real-World-Bug aus dem ersten Audit).
 
+Das Gate prüft drei Dinge, nicht eines: dass pro erwarteter ID eine Datei existiert, dass keine unerwartete ID eine hat, **und dass jede Datei etwas sagt**.
+
+Die dritte Prüfung gibt es, weil ihr Fehlen einen echten False-Pass verursacht hat. Ein Carry-forward-Schritt schrieb in zwei Läufen 16 Findings als Null-Byte-Platzhalter: die älteren Läufe benennen Dateien `<ID>-<slug>.md`, das Skript suchte ein blankes `<ID>.md`, fand nichts und legte einen leeren Stub an, den es nie füllte. Beide Verzeichnisse meldeten `consistent: true`, weil Existenz das Einzige war, wonach gefragt wurde.
+
+**Ein leeres Finding-Dokument ist schlimmer als ein fehlendes.** Ein fehlendes fällt durchs Gate; ein leeres kam durch und sagte einem Leser nichts über eine Findung, die offen ist — und die `SECURITY.md` der auditierten Repos verweisen auf genau diese Verzeichnisse als Beleg für die offene Menge.
+
+`--min-substance` zählt Nicht-Whitespace-Zeichen und steht auf 1, fängt per Default also nur den eindeutigen Fall. Höher setzen, wenn ein Lauf auch Stubs ablehnen soll — bewusst nicht höher vorbelegt, weil ein knappes Finding legitim ist und ein Guard, der Fehlalarm schlägt, umgangen wird.
+
 ```bash
 # 1. Verification-Results aus Step 4 in JSON serialisieren
 #    (Schema: siehe tools/aggregate_results.py docstring)
@@ -405,8 +413,11 @@ python tools/aggregate_results.py aggregate \
 python tools/aggregate_results.py expected-findings \
     audits/<run>/verification-results.json --policy fail-or-partial
 
-# 4. Nach dem Schreiben: Validation-Gate (hard fail bei Mismatch)
+# 4. Nach dem Schreiben: Validation-Gate (hard fail bei Mismatch ODER leeren Dateien)
 python tools/aggregate_results.py validate audits/<run>/
+
+# Strenger, wenn auch Stubs unerwünscht sind:
+python tools/aggregate_results.py validate audits/<run>/ --min-substance 400
 ```
 
 ### 5.1 Finding-Template

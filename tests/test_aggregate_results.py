@@ -293,6 +293,65 @@ class TestValidationAgainstDisk:
         with pytest.raises(ValidationError):
             validate_findings_persistence(s, tmp_path / "does-not-exist")
 
+    # --- a finding document has to say something ---------------------------
+
+    def test_zero_byte_finding_is_not_a_finding(self, tmp_path, minimal_results):
+        """The regression this check exists for, reproduced exactly.
+
+        A carry-forward step once wrote 16 findings across two audit runs as
+        zero-byte placeholders — the older runs name files `<ID>-<slug>.md`,
+        the script looked for a bare `<ID>.md`, found nothing, and created a
+        stub it never filled. Both directories validated `consistent: true`,
+        because existence was the only thing being asked.
+        """
+        s = aggregate(minimal_results)
+        for cid in s["findings"]["expected_ids"]:
+            self._write_finding(tmp_path, cid)
+        (tmp_path / "OBS-001-test.md").write_text("", encoding="utf-8")
+        with pytest.raises(ValidationError, match=r"empty=\['OBS-001'\]"):
+            validate_findings_persistence(s, tmp_path)
+
+    def test_whitespace_only_finding_counts_as_empty(self, tmp_path, minimal_results):
+        """A file holding a newline is exactly as informative as one holding nothing."""
+        s = aggregate(minimal_results)
+        for cid in s["findings"]["expected_ids"]:
+            self._write_finding(tmp_path, cid)
+        (tmp_path / "SEC-001-test.md").write_text("\n\n   \t\n", encoding="utf-8")
+        with pytest.raises(ValidationError, match="empty="):
+            validate_findings_persistence(s, tmp_path)
+
+    def test_a_real_document_beside_a_stray_stub_still_validates(
+        self, tmp_path, minimal_results
+    ):
+        """The negative control, and the reason substance is taken per id.
+
+        Both naming conventions coexist in real audit trees. A populated
+        `<ID>-<slug>.md` next to an empty `<ID>.md` means the finding *is*
+        documented, so failing there would punish the very layout the
+        carry-forward bug produced while fixing it.
+        """
+        s = aggregate(minimal_results)
+        for cid in s["findings"]["expected_ids"]:
+            self._write_finding(tmp_path, cid)
+        (tmp_path / "OBS-001.md").write_text("", encoding="utf-8")
+        report = validate_findings_persistence(s, tmp_path)
+        assert report["consistent"] is True
+        assert report["empty"] == []
+
+    def test_min_substance_can_reject_stubs(self, tmp_path, minimal_results):
+        """Opt-in strictness. The default deliberately only catches empties.
+
+        A terse finding is legitimate, and a guard that cries wolf gets
+        bypassed — so the threshold is available rather than assumed.
+        """
+        s = aggregate(minimal_results)
+        for cid in s["findings"]["expected_ids"]:
+            self._write_finding(tmp_path, cid)
+        report = validate_findings_persistence(s, tmp_path)
+        assert report["consistent"] is True
+        with pytest.raises(ValidationError, match="empty="):
+            validate_findings_persistence(s, tmp_path, min_substance=5000)
+
     def test_srgssr_default_policy_validation(self, tmp_path, srgssr_results):
         s = aggregate(srgssr_results)
         # Persist all 15 expected findings — should validate clean.
