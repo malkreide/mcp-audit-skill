@@ -6,7 +6,7 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-## [v1.2.0] — 2026-07-30 — Jede Zusage im Repo hat jetzt einen Test
+## [v1.1.1] — 2026-07-30 — Jede Zusage im Repo hat jetzt einen Test
 
 Der Katalog bleibt unverändert bei **78 Checks in zehn Kategorien**. Dieses Release ändert nichts an dem, was der Skill prüft — es schliesst die letzten beiden Stellen, an denen das Repo eigene Angaben nur auf Disziplin stützte.
 
@@ -25,7 +25,9 @@ Bewusst ausgenommen bleiben `CHANGELOG.md` und die historischen Stände in `docs
 
 ### Zur Versionsnummer
 
-Streng nach Semver wäre das ein Patch: keine Katalogänderung, keine Verhaltensänderung, nur Absicherung bestehender Zusagen plus ein korrigiertes Doku-Literal. Als `1.2.0` veröffentlicht, weil zwei neue Test-Module eine sichtbare Erweiterung der Repo-Garantien sind — wer `1.1.0` gegen `1.2.0` vergleicht, soll den Unterschied erwarten dürfen. Für Anwender des Skills ändert sich nichts.
+Ein Patch, kein Minor: keine Katalogänderung, keine Verhaltensänderung, nur Absicherung bestehender Zusagen plus ein korrigiertes Doku-Literal. Für Anwender des Skills ändert sich nichts — die Tests wirken im Repo, nicht im Audit.
+
+Die neuen Test-Module sind sichtbare Arbeit, aber keine neue Fähigkeit des Skills. Wer `1.1.0` gegen `1.1.1` vergleicht, soll genau das erwarten dürfen.
 
 ### Hinzugefügt — `--skill-version`-Literale an die Release-Version gebunden
 
