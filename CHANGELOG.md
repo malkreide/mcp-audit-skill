@@ -6,6 +6,26 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v1.1.0] — 2026-07-30 — Datentreue, Identität und gesicherte Doku-Zahlen
+
+Der Katalog wächst von **68 auf 78 Checks** in **zehn statt acht Kategorien**. Beide neuen Kategorien kamen nicht aus einer Quelle, sondern aus dem Betrieb: `FID` aus einem einzelnen Vorfall an `termdat-mcp`, `IDENT` aus einem Sweep über alle 30 Server des Portfolios. Severity-Verteilung neu **16 critical · 34 high · 27 medium · 1 low** (v1.0.0: 15 · 31 · 22).
+
+Dazu die operative Seite: Release-Vorschläge für auditierte Server, austauschbare Tracker-Backends — und eine Reihe von Stellen, an denen der Skill bisher auf Disziplin statt auf Tests baute.
+
+### Hinweis zum Upgrade
+
+Das Validation-Gate weist jetzt **leere Finding-Dokumente** ab. Ein Audit-Verzeichnis, das unter v1.0.0 `consistent: true` meldete, kann unter v1.1.0 `false` und Exit 1 liefern — nachweislich bei `amtsblatt-mcp` und `swiss-procurement-mcp` mit zusammen 16 leeren Platzhaltern. Das ist die Korrektur eines Gates, das die falsche Frage stellte (existiert die Datei? statt: steht etwas drin?), kann aber bestehende Pipelines rot machen. Wer eine solche Pipeline betreibt, prüft die betroffenen Verzeichnisse vor dem Upgrade mit `python tools/aggregate_results.py validate <audit_dir>`.
+
+### Behoben — veraltete Versions- und Katalogangaben in der Doku
+
+Beim Zusammenstellen des Releases aufgefallen, alle vom selben Typ, den `IDENT-004` beschreibt: eine dokumentierte Version, die nichts erzwingt.
+
+- **`--skill-version "1.0.0"`** stand als Literal in `SKILL.md` und `.claude/commands/audit-mcp.md`. `audit_init.py` kennt keinen Default ausser `"unspecified"` — diese zwei Doku-Stellen sind die einzige Quelle. Wer den Befehl kopierte, schrieb nach diesem Release eine falsche `skill_version` in seine `audit-meta.json`. Auf `1.1.0` gezogen.
+- **Der Slash-Command nannte «`mcp-audit-skill v0.5.0`-Katalog (7 Kategorien: ARCH, SDK, SEC, SCALE, OBS, HITL, CH)»** — zwei Majors alt und inhaltlich falsch: `OPS` fehlte bereits in v1.0.0, `FID` und `IDENT` kamen dazu. Der Command instruierte Claude also mit einer Kategorienliste, die drei Kategorien unterschlug. Korrigiert auf zehn; die Versionsangabe entfällt, weil `checks/MANIFEST.txt` die Quelle ist.
+- **Die Spaltenüberschrift «Status v0.5.0»** in `SKILL.md` (2.1) trug eine Version, deren Inhalt längst aktuell war. Auf «Status» gekürzt.
+
+Diese drei Stellen sind noch nicht durch Tests gesichert — die Kategorienliste im Slash-Command wäre der nächste Kandidat.
+
 ### Hinzugefügt — Stand-Zeile in `docs/roadmap.md` gesichert
 
 Die dritte und letzte Stelle mit einer Katalog-Zahl. Anders als `README.md` und `SKILL.md` darf diese Datei **nicht** als Ganzes geprüft werden: Sie zitiert an mehreren Stellen historische Stände («Der v0.5.0-Katalog mit 68 Checks in 8 Kategorien», «+14 Checks aus Anhang-PDF»), die richtig sind und richtig bleiben sollen. Ein Test über alle Zahlen würde die Historie anmahnen — und wer ihn danach «grün macht», beschädigt sie.
