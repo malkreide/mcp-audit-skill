@@ -1,9 +1,9 @@
 # mcp-audit-skill
 
-> Claude-Skill für systematische Audits von MCP-Servern gegen einen kuratierten Best-Practice-Standards-Korpus. **73 Checks**, 9 Kategorien, mit Schweiz-Compliance-Layer für die öffentliche Verwaltung und Datentreue-Layer für Datenquellen-Server.
+> Claude-Skill für systematische Audits von MCP-Servern gegen einen kuratierten Best-Practice-Standards-Korpus. **78 Checks**, 10 Kategorien, mit Schweiz-Compliance-Layer für die öffentliche Verwaltung und Datentreue-Layer für Datenquellen-Server.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Checks: 73](https://img.shields.io/badge/Checks-73-blue.svg)](./checks/)
+[![Checks: 78](https://img.shields.io/badge/Checks-78-blue.svg)](./checks/)
 [![Coverage: A1–A9, B1–B12, C1–C4](https://img.shields.io/badge/Best--Practice%20Coverage-A1%E2%80%93A9%2C%20B1%E2%80%93B12%2C%20C1%E2%80%93C4-success)](./CHANGELOG.md)
 [![MCP Spec: 2025-06-18](https://img.shields.io/badge/MCP%20Spec-2025--06--18-orange)](https://modelcontextprotocol.io/specification/)
 
@@ -68,11 +68,11 @@ Mit installiertem Slash-Command:
 > /audit-mcp .
 ```
 
-Output: Profil-getriebene Auswahl der ~30 anwendbaren Checks aus 73, automatisierte Verifikation aller `automated`/`config_check`/`documentation_check`-Modi, Findings-Stubs für `code_review`/`runtime_test`-Modi, vollständiger Audit-Report nach Template — alles in `<repo>/audits/YYYY-MM-DD-<server-name>/`.
+Output: Profil-getriebene Auswahl der ~30 anwendbaren Checks aus 78, automatisierte Verifikation aller `automated`/`config_check`/`documentation_check`-Modi, Findings-Stubs für `code_review`/`runtime_test`-Modi, vollständiger Audit-Report nach Template — alles in `<repo>/audits/YYYY-MM-DD-<server-name>/`.
 
 ## Standards-Provenance
 
-Die 73 Checks stammen aus zwei kuratierten Best-Practice-Dokumenten plus zwei eigenen Layern (Schweiz-Compliance, Datentreue) in auditierbarer Form. Jeder Check trägt im Frontmatter eine `pdf_ref`-Referenz auf seine Quelle.
+Die 78 Checks stammen aus zwei kuratierten Best-Practice-Dokumenten plus drei eigenen Layern (Schweiz-Compliance, Datentreue, Identität) in auditierbarer Form. Jeder Check trägt im Frontmatter eine `pdf_ref`-Referenz auf seine Quelle.
 
 | Quelle | Inhalt | Abgeleitete Checks |
 |---|---|---|
@@ -80,6 +80,7 @@ Die 73 Checks stammen aus zwei kuratierten Best-Practice-Dokumenten plus zwei ei
 | **Architektur-Anhang** «Architektur und Sicherheit von MCP-Servern» | Sektion A (Architektur, A1–A9), Sektion B (Sicherheit, B1–B12), Sektion C (Operative Praxis, C1–C4); schliesst u.a. Lethal-Trifecta-, Idempotency- und Egress-Control-Lücken | 14 Checks (v0.5) |
 | **Schweiz-Compliance-Layer** | revDSG, EDÖB-Meldepflicht, ISDS Stadt Zürich, OGD-Lizenz-Compliance, Volksschule-spezifische Datenschutz-Anforderungen | 8 Checks (`CH-*`) |
 | **Datentreue-Layer** | Scope-Defaults, Recall gegen Ground Truth, Leermenge ≠ Abwesenheit, Query-Syntax. Abgeleitet aus einem realen Portfolio-Vorfall ([termdat-mcp#11](https://github.com/malkreide/termdat-mcp/issues/11)) | 5 Checks (`FID-*`) |
+| **Identitäts-Layer** | User-Agent, `__version__`, Manifest-Version, dokumentierte Version — als was sich ein Server nach aussen ausgibt. Abgeleitet aus einem Portfolio-Sweep über 30 Server | 5 Checks (`IDENT-*`) |
 
 ## Schnellstart
 
@@ -194,16 +195,17 @@ Dann in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`. Der Workflow l
 
 | Code | Bereich | Quelle | Anzahl | Severity-Profil |
 |---|---|---|---:|---|
-| `ARCH` | Tool-Design, Annotations, Idempotency, Repo-Struktur, Spec-Versionierung | Hauptkatalog Sec 2 + Anhang A | 12 | 1 critical · 7 high · 4 medium |
+| `ARCH` | Tool-Design, Annotations, Idempotency, Repo-Struktur, Spec-Versionierung | Hauptkatalog Sec 2 + Anhang A | 12 | 2 critical · 3 high · 7 medium |
 | `SDK` | FastMCP, TypeScript, Zod, Lifecycle | Hauptkatalog Sec 3 | 5 | — · 3 high · 2 medium |
-| `SEC` | Security (grösste Kategorie) | Hauptkatalog Sec 4 + Anhang B | 23 | 14 critical · 8 high · 1 medium |
+| `SEC` | Security (grösste Kategorie) | Hauptkatalog Sec 4 + Anhang B | 23 | 8 critical · 12 high · 3 medium |
 | `SCALE` | Transport, Load Balancing, Container, Gateway | Hauptkatalog Sec 5 | 6 | — · 3 high · 3 medium |
-| `OBS` | Logging, Errors, SIEM, OpenTelemetry | Hauptkatalog Sec 6 + Anhang B10 | 6 | 1 critical · 1 high · 4 medium |
-| `HITL` | Sampling, Human-in-the-Loop | Hauptkatalog Sec 7 | 5 | 1 critical · 4 high · — |
-| `CH` | DSG/EDÖB, ISDS Stadt Zürich, Volksschule | Custom | 8 | 3 critical · 4 high · 1 medium |
+| `OBS` | Logging, Errors, SIEM, OpenTelemetry | Hauptkatalog Sec 6 + Anhang B10 | 6 | 1 critical · 2 high · 3 medium |
+| `HITL` | Sampling, Human-in-the-Loop | Hauptkatalog Sec 7 | 5 | 2 critical · 2 high · 1 medium |
+| `CH` | DSG/EDÖB, ISDS Stadt Zürich, Volksschule | Custom | 8 | 2 critical · 4 high · 2 medium |
 | `OPS` | Test-Strategie, Doku-Standard, Phasenarchitektur | Anhang C | 3 | — · 2 high · 1 medium |
 | `FID` | Datentreue: Scope-Defaults, Recall, Leermengen, Query-Syntax | Custom | 5 | 1 critical · 2 high · 2 medium |
-| **Total** | | | **73** | **16 critical · 33 high · 24 medium** |
+| `IDENT` | Identität: User-Agent, `__version__`, Manifest, Doku-Version | Custom | 5 | — · 1 high · 3 medium · 1 low |
+| **Total** | | | **78** | **16 critical · 34 high · 27 medium · 1 low** |
 
 ## Severity-Stufen
 
@@ -217,7 +219,7 @@ Dann in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`. Der Workflow l
 ## Audit-Workflow (Kurzform)
 
 1. **Profil laden** — Server-Eigenschaften aus Notion-Audit-Tracker oder via Inferenz aus dem Repo
-2. **Katalog laden** — alle 73 Checks parsen
+2. **Katalog laden** — alle 78 Checks parsen
 3. **Applicability-Filter** — nur passende Checks selektieren (z.B. stdio-only-Server überspringt OAuth-Checks)
 4. **Check-Ausführung** — automatisiert (grep, AST, Config-Scan) oder als Code-Review-TODO pro Check
 5. **Findings dokumentieren** — `templates/finding.md`
@@ -249,7 +251,7 @@ Komplementär nutzbar — keiner der Genannten ersetzt die anderen.
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`) und Templates (Finding, Audit-Report)
 - ✅ Reference-Summary
-- ✅ Check-Katalog: **73 Checks, alle 9 Kategorien vollständig**
+- ✅ Check-Katalog: **78 Checks, alle 10 Kategorien vollständig**
 - ✅ Slash-Command für Claude Code (`/audit-mcp <repo>`)
 - ✅ Portfolio-Batch-Audit (`audit-portfolio.sh` für Multi-Server-Runs)
 - ✅ Notion-Sync (`audit-notion-sync.py` für bidirektionale Tracker-Integration)
