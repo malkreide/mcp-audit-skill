@@ -6,10 +6,9 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-<<<<<<< HEAD
 ### Hinzugefügt — Neue Kategorie `DRIFT` (Upstream-Vertrag und Testgüte), 5 Checks, plus `IDENT-006`
 
-Der Katalog wächst von 78 auf **84 Checks** in **elf Kategorien**. `DRIFT` entsteht auf demselben Weg wie seinerzeit `FID` und `IDENT`: aus einem einzelnen Vorfall im Betrieb, nicht aus einer Quelle.
+Der Katalog wächst von 79 auf **85 Checks** in **elf Kategorien**. `DRIFT` entsteht auf demselben Weg wie seinerzeit `FID` und `IDENT`: aus einem einzelnen Vorfall im Betrieb, nicht aus einer Quelle.
 
 **Der Vorfall** (`meteoswiss-mcp`, 30.07.2026): Drei von sechs Tools lieferten nichts — `meteo_current` einen 404 für jede Station, `meteo_forecast` und `meteo_school_check` gar keine Daten. Die Unit-Tests waren grün, ein 68-Punkte-Audit war bestanden, und gemeldet hat es ein aussenstehender Nutzer. Drei unabhängige Ursachen, zwei davon Änderungen bei den Datenquellen:
 
@@ -31,12 +30,13 @@ Dazu in `IDENT`:
 
 - **`IDENT-006`** (high) — Kein Release-Gap zwischen `main` und dem Artefakt. `IDENT-001`–`005` prüfen, ob die gemeldete Version *korrekt* ist; dieser prüft, ob sie *aktuell* ist. Im Vorfall lag der Fix seit drei Tagen auf `main`, während PyPI unverändert das kaputte `0.4.0` auslieferte — CI testet den Branch, nie das Artefakt. Deterministisch prüfbar mit `release_gap.py` aus dem [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor).
 
-Severity-Verteilung neu **16 critical · 38 high · 29 medium · 1 low** (v1.1.0: 16 · 34 · 27 · 1).
+Severity-Verteilung neu **16 critical · 39 high · 29 medium · 1 low** (Stand vor diesem Eintrag: 16 · 35 · 27 · 1).
+
+Hinweis zur Nummerierung: `DRIFT-003` hiess im ersten Entwurf `OPS-004`. Zwischenzeitlich ist auf `main` ein anderer `OPS-004` gelandet («Gemessenes von Geschlossenem trennen»); durch die Verschiebung nach `DRIFT` gibt es keine Kollision.
 
 **Zur Platzierung.** Die fünf `DRIFT`-Checks lagen im ersten Entwurf in `ARCH` und `OPS`, weil sie thematisch dorthin passen. `tests/test_readme_counts.py` hat das zurückgewiesen: Eine Kategorie mit `Custom`-Provenance braucht eine eigene Zeile in der Provenance-Tabelle, und eine gemischte Kategorie kann keine haben, ohne die PDF-Herkunft der übrigen Checks falsch darzustellen. Der Test hat damit eine Design-Entscheidung erzwungen, die richtig ist und die der Entwurf umgangen hätte — genau das, wofür er da ist.
 
-`tests/test_applicability.py`: Obergrenze der Anwendbarkeits-Schranke 45 → 51. Alle sechs neuen Checks greifen bei einem Server mit externer Datenquelle; das ist Katalogwachstum, nicht die Grammatik-Drift, gegen die die Schranke schützt.
-=======
+`tests/test_applicability.py`: Obergrenze der Anwendbarkeits-Schranke 45 → 51 (anwendbar gegen das srgssr-Profil: 48 von 85). Alle sechs neuen Checks greifen bei einem Server mit externer Datenquelle; das ist Katalogwachstum, nicht die Grammatik-Drift, gegen die die Schranke schützt.
 ### Hinzugefügt — `OPS-004`: Gemessenes von Geschlossenem trennen
 
 Der Katalog wächst auf **79 Checks**. `OPS-004` überträgt die Regel aus `FID-003` vom Server auf den Auditor: Ein Audit-Report darf einen unerklärten Rest so wenig für den Leser deuten, wie ein Tool eine Leermenge für das Modell deuten darf.
@@ -86,7 +86,6 @@ Unbewacht ist dieser Wert besonders anfällig, weil er nirgends im Code vorkommt
 Der Release-Eintrag zu v1.1.0 nennt `SKILL.md` und `.claude/commands/audit-mcp.md` als «die einzige Quelle». Das war unvollständig: Die Usage-Zeile in **`tools/audit_init.py`** trug dieselbe Angabe und stand weiter auf `1.0.0` — ausgerechnet in der Datei, die den Wert entgegennimmt.
 
 Gefunden hat ihn der Test oben beim ersten Lauf. Aufzählungen von Hand sind genau die Fehlerquelle, die er ersetzt; er zählt deshalb alle Fundorte, statt eine gepflegte Dateiliste abzuarbeiten.
->>>>>>> origin/main
 
 ### Hinzugefügt — Kategorienliste im Slash-Command gesichert
 
