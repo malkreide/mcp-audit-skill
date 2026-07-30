@@ -215,41 +215,85 @@ def extract_check_id_from_finding_filename(path: Path) -> str | None:
     return None
 
 
+def finding_substance(path: Path) -> int:
+    """Non-whitespace character count of a finding document.
+
+    Whitespace is stripped before counting because a file holding a newline is
+    exactly as informative as one holding nothing, and the failure this guards
+    against produces both.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return 0
+    return len("".join(text.split()))
+
+
 def validate_findings_persistence(
     summary: dict[str, Any],
     findings_dir: Path,
+    min_substance: int = 1,
 ) -> dict[str, Any]:
     """Compare summary.findings.expected_ids against findings/*.md on disk.
 
-    Returns a structured report. Raises ValidationError if mismatched —
+    Checks three things, not one: that a file exists per expected id, that no
+    unexpected id has a file, and that each file **says something**.
+
+    That third check exists because its absence caused a real false pass. A
+    carry-forward step wrote zero-byte placeholders for 16 findings across two
+    audit runs — the earlier runs name files `<ID>-<slug>.md` while the script
+    looked for a bare `<ID>.md`, found nothing, and created an empty stub it
+    never filled. Every one of those directories validated `consistent: true`,
+    because existence was the only thing being asked.
+
+    An empty finding document is worse than a missing one. A missing file fails
+    this gate; an empty file passed it while telling a reader nothing about a
+    finding that is genuinely open — and `SECURITY.md` in the audited repos
+    points at these directories as the record of the current open set.
+
+    `min_substance` counts non-whitespace characters and defaults to 1, so the
+    default catches only the unambiguous case. Raise it to require more
+    (`--min-substance`) when a run should not accept stub findings either;
+    deliberately not defaulted higher, because a terse finding is legitimate and
+    a guard that cries wolf gets bypassed.
+
+    Returns a structured report. Raises ValidationError if inconsistent —
     callers can catch and decide whether to surface as warning or hard fail.
     """
     expected = set(summary["findings"]["expected_ids"])
     files = list_finding_files(findings_dir)
     found: set[str] = set()
     unrecognised: list[str] = []
+    substance: dict[str, int] = {}
     for f in files:
         cid = extract_check_id_from_finding_filename(f)
         if cid is None:
             unrecognised.append(f.name)
         else:
             found.add(cid)
+            # Keep the largest when several files map to one id (slugged plus
+            # bare), so a stray stub next to a real document does not fail it.
+            substance[cid] = max(substance.get(cid, 0), finding_substance(f))
 
     missing = sorted(expected - found)
     unexpected = sorted(found - expected)
+    empty = sorted(cid for cid in expected & found if substance.get(cid, 0) < min_substance)
 
     report = {
         "expected_count": len(expected),
         "found_count": len(found),
         "missing": missing,
         "unexpected": unexpected,
+        "empty": empty,
+        "min_substance": min_substance,
         "unrecognised_filenames": unrecognised,
-        "consistent": not (missing or unexpected),
+        "consistent": not (missing or unexpected or empty),
     }
     if not report["consistent"]:
         raise ValidationError(
             "Findings on disk don't match summary.expected_ids: "
-            f"missing={missing}, unexpected={unexpected}"
+            f"missing={missing}, unexpected={unexpected}, "
+            f"empty={empty} (below {min_substance} non-whitespace chars)"
         )
     return report
 
@@ -300,6 +344,16 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Override findings dir (default: <audit_dir>/findings)",
     )
+    p_val.add_argument(
+        "--min-substance",
+        type=int,
+        default=1,
+        help=(
+            "Minimum non-whitespace characters a finding document must contain "
+            "(default: 1, i.e. reject only empty files). Raise it to reject "
+            "stubs as well."
+        ),
+    )
 
     p_exp = sub.add_parser(
         "expected-findings",
@@ -340,7 +394,9 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
         try:
-            report = validate_findings_persistence(summary, findings_dir)
+            report = validate_findings_persistence(
+                summary, findings_dir, min_substance=args.min_substance
+            )
         except ValidationError as e:
             print(json.dumps({"consistent": False, "error": str(e)}, indent=2))
             return 1
