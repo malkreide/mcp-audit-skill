@@ -6,6 +6,20 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — SKILL.md-Zahlen gegen den Katalog gesichert
+
+Nach `README.md` jetzt auch `SKILL.md`, die zweite Stelle mit einer Kategorien-Übersicht. Das Format dort ist ein anderes: eine Spalte mit dem erwarteten Bereich («Typische Anzahl Checks», etwa `4–6`), eine mit dem Ist-Stand (`5 / 5 ✅`).
+
+**`tests/test_skill_counts.py`** prüft die Einleitung («78 Checks in zehn Kategorien» — inklusive des ausgeschriebenen Zahlworts), die Kategorien-Tabelle auf Vollständigkeit gegenüber dem Katalog, den Ist-Stand je Kategorie sowie die Total-Zeile.
+
+Dazu eine Prüfung, die über blosses Nachzählen hinausgeht: Der **dokumentierte Bereich muss den Ist-Stand einschliessen**. Wächst eine Kategorie darüber hinaus, ist nicht der Katalog falsch, sondern die Erwartung veraltet — und genau das soll auffallen, statt still zu bleiben.
+
+Ausgenommen sind die Schätzwerte in der Prosa («~50 Checks», «~15–20 Checks» in Schritt 3): Sie beziffern, was nach dem Applicability-Filter typischerweise übrig bleibt, hängen also am Profil und nicht am Katalog. Eine Bindung an `len(catalog)` wäre dort schlicht falsch. Ebenso die Gesamt-Schätzung `~75` in der Total-Zeile, die die Bereichs-Spalte summiert und nicht den Bestand — von ihr wird nur verlangt, dass sie innerhalb der Summe aller Bereiche liegt.
+
+`SKILL.md` war beim ersten Lauf korrekt; der Test wurde gegen vier künstliche Abweichungen geprüft (Einleitung, Ist-Stand einer Kategorie, Bereich, Total-Zeile) und schlägt bei jeder an.
+
+`docs/roadmap.md` bleibt bewusst ungesichert: Die Datei zitiert an mehreren Stellen historische Stände («68 Checks in 8 Kategorien»), die richtig sind und richtig bleiben sollen. Nur ihre `Stand:`-Zeile ist aktuell zu halten.
+
 ### Behoben — README-Zahlen gegen den Katalog gesichert
 
 Die Katalog-Zählungen leben an drei Orten: `checks/MANIFEST.txt`, den Lock-Tests und der Prosa in `README.md`. Die ersten beiden prüft CI seit je, die dritte war ungesichert — und genau dort blieb beim Hinzufügen von `IDENT` die Aktualisierung aus. Ein Wert, den nichts erzwingt, driftet (derselbe Mechanismus, den `IDENT-003` für Server beschreibt).
