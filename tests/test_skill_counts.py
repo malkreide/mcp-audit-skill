@@ -49,7 +49,7 @@ TOTAL_ROW = re.compile(
     r"\s*\*\*~?(?P<estimate>\d+)\*\*\s*\|"
     r"\s*\*\*(?P<ist>\d+)\s*/\s*(?P<soll>\d+)\s*✅?\s*\*\*\s*\|\s*$"
 )
-# «78 Checks in zehn Kategorien» — ohne führende Tilde, die eine
+# «79 Checks in zehn Kategorien» — ohne führende Tilde, die eine
 # Schätzung markiert.
 INTRO_SIZE = re.compile(r"(?<!~)\b(?P<count>\d+) Checks in (?P<word>\w+) Kategorien")
 
