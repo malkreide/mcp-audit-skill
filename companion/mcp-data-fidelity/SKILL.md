@@ -1,0 +1,169 @@
+---
+name: mcp-data-fidelity
+description: Datentreue-Regeln für MCP-Server-Tools, die eine externe Datenquelle abfragen — damit ein Server nicht still unvollständig liefert. Verwende diesen Skill ergänzend zu mcp-builder immer wenn (1) ein Such-, Query- oder Filter-Tool für einen MCP-Server entworfen oder implementiert wird, (2) eine Tool-Description für ein datenabfragendes Tool geschrieben oder überarbeitet wird, (3) jemand meldet, ein Server finde nichts, zu wenig oder weniger als die offizielle Oberfläche («findet nichts», «leeres Ergebnis», «Web-UI zeigt mehr», «zu wenig Treffer», «Recall», «Scope»), (4) ein Modell auf ein leeres Tool-Result hin eine Antwort erfunden hat, (5) optionale API-Parameter (Filter, Facetten, Feld-Flags, Limits) in Requests übersetzt werden, oder (6) Tests für ein datenabfragendes Tool geschrieben werden. Nicht nötig für Server ohne externe Datenquelle.
+---
+
+# MCP Data Fidelity — liefert der Server, was die Quelle hat?
+
+Companion zu `mcp-builder`. Dessen Best Practices decken ab, ob ein Server **korrekt gebaut** ist — Naming, Annotations, Pagination, Transport, Fehlerbehandlung. Dieser Skill deckt die Frage daneben ab: **liefert er, was die Quelle tatsächlich hat?**
+
+Das ist eine eigene Fehlerklasse, weil sie still ist. HTTP 200, wohlgeformtes JSON, grüne Tests — und inhaltlich falsch. Ein Server, der zwei Prozent des Bestands durchsucht und das nicht meldet, produziert Antworten, die niemand als falsch erkennt.
+
+**Die Leitfrage bei jedem datenabfragenden Tool:** *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der fünf Regeln unten.
+
+---
+
+## Regel 1 — Scope-Parameter explizit senden, nie erben
+
+Ein optionaler Filter-Parameter bedeutet beim Weglassen oft **nicht** «unbeschränkt», sondern einen willkürlichen Teilausschnitt. Diese Tatsache steht ausschliesslich in der **Parameterbeschreibung** der Spec — nicht im Response-Schema, nicht im Doku-Beispiel, und an einem funktionierenden Call ist sie nicht erkennbar.
+
+Verbreitete Vertreter:
+
+| Quelle | Parameter | Default bei Weglassen |
+|---|---|---|
+| CKAN `package_search` | `rows` | 10 Treffer |
+| WFS `GetFeature` | `count` / `maxFeatures` | serverseitiges Limit |
+| SPARQL | `FROM` / Named Graphs | nur Default-Graph |
+| Elasticsearch / Solr | `size`, `fq`, `df` | 10 Hits, eingeschränktes Default-Feld |
+| GraphQL (Relay) | `first` | schema-abhängig, oft klein |
+| TERMDAT `/v2/Search` | `ClassificationIds` | 1 von 23 Sachgebieten |
+
+```python
+# ✗ Der Parameter geht nur raus, wenn der Aufrufer ihn kennt.
+if classification_ids:
+    params["ClassificationIds"] = classification_ids
+
+# ✓ Kein Filter vom Aufrufer → voller Scope, explizit gesendet.
+if classification_ids is None:
+    classification_ids = await self._all_classification_ids()
+if classification_ids:
+    params["ClassificationIds"] = classification_ids
+```
+
+Muss der volle Scope zur Laufzeit ermittelt werden (Vokabular-Endpoint), dann **best-effort**: Fällt die Ermittlung aus, läuft die Suche unerweitert weiter. Eine Erweiterung darf nie brechen, was sie erweitert.
+
+**Nachweis:** Zwei Calls, exakt eine Variable geändert — Parameter weggelassen vs. explizit maximal. Delta ≠ 0 heisst, der Server muss ihn senden.
+
+## Regel 2 — Parameter-Gruppen vollständig senden
+
+Sendet man von einer zusammengehörigen Gruppe (`Field.*`, `include_*`, Facetten-Schalter) nur einige Mitglieder, behalten die übrigen ihren **serverseitigen Default**. Das Argument kann dann nur erweitern, nie einschränken — ein No-op, der wie Steuerung aussieht.
+
+```python
+# ✗ Nicht gesendete Flags bleiben upstream auf true → `fields` wirkt nicht.
+for field in fields:
+    params[f"Field.{field}"] = "true"
+
+# ✓ Jedes Mitglied explizit — erst dadurch kann `fields` verengen.
+requested = set(fields)
+for field in SEARCH_FIELDS:
+    params[f"Field.{field}"] = "true" if field in requested else "false"
+```
+
+**Nachweis:** Ein Call mit explizitem `false` für ein Default-true-Flag muss weniger liefern. Tut er das nicht, geht die Gruppe unvollständig raus.
+
+## Regel 3 — Leermenge trägt einen nächsten Schritt
+
+Ein leeres Result ist mehrdeutig: Begriff existiert nicht / Query zu eng / Scope eingeschränkt / Syntax passte nicht. Das Modell muss raten.
+
+```python
+_EMPTY_HINT = (
+    "No entry matched. `search_term` is Lucene syntax: try a prefix wildcard "
+    "(e.g. 'Quellensteuer*') to catch compounds, or the fuzzy operator ('~'). "
+    "Widen `fields`. Only then conclude the term is absent — and never "
+    "substitute a guess for the official designation."
+)
+
+class SearchResult(BaseModel):
+    returned: int
+    hint: str | None = None    # gesetzt, wenn returned == 0
+    entries: list[TermEntry]
+```
+
+Der Hinweis muss **konkret** sein. «Versuchen Sie eine andere Suche» ist kein nächster Schritt. Und er gehört ins Tool-Result, nicht ins README — das wird nicht an das Modell weitergereicht.
+
+## Regel 4 — Die Tool-Description ist eine Halluzinations-Oberfläche
+
+Die schwerste der fünf Regeln, weil sie kontraintuitiv ist: **Eine Formulierung, die eine Leermenge erklärt, erzeugt Konfabulation zuverlässiger als gar keine Formulierung.**
+
+Realer Fall (`termdat-mcp`, 2026-07). Die Description enthielt:
+
+> *«Scope caveat: an empty result usually means the term is out of scope, not that it is wrong.»*
+
+Als Ehrlichkeit gemeint. Faktisch eine vorformulierte Ausrede für das eigene Schweigen. Das Modell hat sie genommen und eine plausible, vollständig erfundene Erklärung geliefert — für einen Begriff, der die ganze Zeit in der Datenbank stand. Es hat nicht halluziniert, weil es schlecht war, sondern weil das Werkzeug ihm eine Erklärung mitgab und keinen nächsten Schritt.
+
+```python
+# ✗ lizenziert eine Schlussfolgerung
+"""An empty result usually means the term is out of scope, not that it is wrong."""
+
+# ✓ fordert zum Nachfassen auf und schliesst das Raten aus
+"""Scope caveat: the source holds administrative nomenclature, so a term may
+genuinely be absent. Establish that with a wildcard retry, not from a single
+empty result, and never fill the gap with a guessed designation."""
+```
+
+Faustregel: Jeder Satz in einer Tool-Description, der mit «usually means», «likely», «wahrscheinlich» oder «bedeutet meist» anfängt und ein leeres Resultat deutet, gehört gestrichen oder in eine Handlungsanweisung umgeschrieben.
+
+Ein `not_found`-Verdikt (QA-/Check-Tools) heisst «nicht in dieser Quelle», nie «falsch». Der Server masst sich sonst eine Aussage an, die die Datenlage nicht trägt.
+
+## Regel 5 — Query-Syntax in die Description, Recall in die Tests
+
+**Syntax.** Spricht ein Such-Argument eine eigene Abfragesprache (Lucene, CQL, SQL-Fragmente, Regex, Glob), gehört sie in die Tool-Description. Zwingend dazu die **Matching-Granularität**: Die meisten Volltextindizes matchen auf ganzen Wörtern, womit deutsche Komposita von ihren Bestandteilen nicht gefunden werden.
+
+```python
+"""Search the terminology database for official designations.
+
+`search_term` is **Lucene query syntax**: `*` and `?` wildcards and the `~` fuzzy
+operator work. Matching is on whole words, so a compound is not found by its
+parts — «Quellensteuer» does not match «Quellensteuerverordnung», but
+«Quellensteuer*» does. Reach for a wildcard before concluding a term is absent.
+"""
+```
+
+Wildcards serverseitig automatisch anhängen ist **kein** Ersatz — es macht Phrasensuche unmöglich und verschiebt das Problem.
+
+**Recall.** Mocks bilden die eigene Annahme ab. Ist die Annahme falsch, ist der Mock falsch, und der Test bestätigt den Fehler, statt ihn zu finden. Scope- und Recall-Bugs sind für Mocks strukturell unsichtbar.
+
+```python
+@pytest.mark.live
+async def test_recall_floor():
+    """Recall-Canary: fängt Scope-Regressionen und Upstream-Default-Änderungen."""
+    for term, floor in [("Pensionskasse", 10), ("Quellensteuer", 1)]:
+        entries, _ = await client.search(term, max_results=100)
+        assert len(entries) >= floor, f"{term}: {len(entries)} < {floor} — Scope geschrumpft?"
+```
+
+Untergrenzen, keine exakten Zahlen — grosszügig unter dem Ist-Wert, Faustregel Hälfte. Der Test soll einen Kollaps von 21 auf 1 fangen, nicht bei jeder Bestandspflege rot werden. Ein Test, der ständig falsch anschlägt, wird abgeschaltet und fängt dann gar nichts mehr.
+
+---
+
+## Checkliste vor dem Release eines datenabfragenden Tools
+
+- [ ] Jeder optionale Filter-/Scope-Parameter geprüft: Was bedeutet Weglassen? Beleg aus der Parameterbeschreibung
+- [ ] Recall-Delta gemessen (weggelassen vs. explizit maximal), Delta ≠ 0 behoben
+- [ ] Boolesche Parameter-Gruppen vollständig gesendet, Verengung nachgewiesen
+- [ ] Leeres Result trägt ein `hint`-Feld mit konkretem nächstem Schritt
+- [ ] Keine Tool-Description erklärt oder entschuldigt eine Leermenge
+- [ ] Query-Syntax samt Matching-Granularität in der Description
+- [ ] Recall-Canary als Live-Test mit Untergrenzen
+- [ ] Gegen die offizielle Oberfläche der Quelle verglichen, jedes Delta erklärt
+
+## Woher diese Regeln stammen
+
+Aus einem einzelnen realen Vorfall: [`termdat-mcp#11`](https://github.com/malkreide/termdat-mcp/issues/11). Der Server sendete `ClassificationIds` nur bei explizitem Aufruf; die API schränkt eine ID-lose Suche auf `VARIA` ein — eine von 23 Klassifikationen. «Quellensteuer» lieferte null Treffer bei mehreren vorhandenen Einträgen, «Pensionskasse» einen statt 21.
+
+Vier Dinge daran sind übertragbar:
+
+1. **33 grüne Offline-Tests haben nichts gefangen** — Mocks können eine falsche Grundannahme prinzipiell nicht widerlegen.
+2. **Ein 68-Punkte-Audit war bestanden** — alle Kategorien prüften die Bauweise, keine die Datentreue.
+3. **Die eigene Doku hat das Modell zum Konfabulieren gebracht** — siehe Regel 4.
+4. **Gefunden hat es ein User mit dem Web-UI daneben** — Ground Truth kommt von aussen, nicht aus der Testsuite.
+
+## Verwandte Skills
+
+| Skill | Rolle |
+|---|---|
+| `mcp-builder` | Generische Bauanleitung — dieser Skill ergänzt sie, ersetzt sie nicht |
+| `mcp-data-source-probe` | Vorgehen *vor* dem Bau: Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6) |
+| `mcp-audit` | Prüfung *nach* dem Bau: dieselben Regeln als Checks `FID-001` bis `FID-005` |
+
+Wer nach diesem Skill baut, besteht die FID-Checks. Wer sie beim Audit reisst, findet hier die Behebung.
