@@ -6,6 +6,7 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+<<<<<<< HEAD
 ### Hinzugefügt — Neue Kategorie `DRIFT` (Upstream-Vertrag und Testgüte), 5 Checks, plus `IDENT-006`
 
 Der Katalog wächst von 78 auf **84 Checks** in **elf Kategorien**. `DRIFT` entsteht auf demselben Weg wie seinerzeit `FID` und `IDENT`: aus einem einzelnen Vorfall im Betrieb, nicht aus einer Quelle.
@@ -35,6 +36,57 @@ Severity-Verteilung neu **16 critical · 38 high · 29 medium · 1 low** (v1.1.0
 **Zur Platzierung.** Die fünf `DRIFT`-Checks lagen im ersten Entwurf in `ARCH` und `OPS`, weil sie thematisch dorthin passen. `tests/test_readme_counts.py` hat das zurückgewiesen: Eine Kategorie mit `Custom`-Provenance braucht eine eigene Zeile in der Provenance-Tabelle, und eine gemischte Kategorie kann keine haben, ohne die PDF-Herkunft der übrigen Checks falsch darzustellen. Der Test hat damit eine Design-Entscheidung erzwungen, die richtig ist und die der Entwurf umgangen hätte — genau das, wofür er da ist.
 
 `tests/test_applicability.py`: Obergrenze der Anwendbarkeits-Schranke 45 → 51. Alle sechs neuen Checks greifen bei einem Server mit externer Datenquelle; das ist Katalogwachstum, nicht die Grammatik-Drift, gegen die die Schranke schützt.
+=======
+### Hinzugefügt — `OPS-004`: Gemessenes von Geschlossenem trennen
+
+Der Katalog wächst auf **79 Checks**. `OPS-004` überträgt die Regel aus `FID-003` vom Server auf den Auditor: Ein Audit-Report darf einen unerklärten Rest so wenig für den Leser deuten, wie ein Tool eine Leermenge für das Modell deuten darf.
+
+Anlass ist der Nachlauf zu [`termdat-mcp#11`](https://github.com/malkreide/termdat-mcp/issues/11), und es ist ein Eigenbefund. Nach der Behebung des eigentlichen Bugs blieb eine Differenz — Weboberfläche 12 Einträge, API 7 bei maximalem Recall. Dazu wurde eine plausible Erklärung veröffentlicht: das Web-UI zähle Benennungen statt Einträge, also eine Zähldifferenz. Die Formulierung war als Vermutung gekennzeichnet und trotzdem falsch. Der Melder schickte die zwölf Entry-IDs, alle verschieden; tatsächlich liefert die API zehn davon überhaupt nicht aus, auch nicht beim gezielten Abruf per ID. Die Vermutung stand zwei Tage als Quasi-Ergebnis im Raum. Hätte niemand nachgefragt, wäre sie zur Dokumentation geworden.
+
+- **`checks/OPS-004.md`** — drei Ausprägungen des Musters (Vermutung als Ergebnis, Rest weggerundet, Abwesenheit von Belegen als Beleg), Verifikation über Report-Struktur und Status-Vergabe.
+- **`templates/finding.md` und `templates/audit-report.md`** — neuer Pflichtabschnitt **Gemessen / Geschlossen / Offen**. Ohne ihn wäre der Check nicht erfüllbar; die Templates sind der Ort, an dem er praktisch wirkt.
+- **Zwei Regeln mit Zähnen.** Bleibt «Offen» leer, steht dort ausdrücklich *keine offenen Punkte* — ein weggelassener Abschnitt ist von einem unbearbeiteten nicht unterscheidbar. Und ein `pass` braucht einen positiven Beleg: Ein leerer `grep` ist nur dann ein `pass`, wenn das Suchmuster nachweislich greifen *würde*, sonst `not_verified`.
+- **Eine Technik, die im Ausgangsfall funktioniert hat**, ist als Anforderung kodiert: Jeder offene Punkt trägt **eine** Frage, deren Antwort zwischen den Hypothesen entscheidet. «Entsprechen die 12 Treffer 12 verschiedenen Entry-IDs?» hat den Fall in einer Runde erledigt.
+- **Severity `high`, nicht `medium`.** Ein einzelner falscher Befund ist ärgerlich; ein Report, der Vermutungen und Messungen vermischt, macht alle seine Befunde unzuverlässig, weil dem Leser das Unterscheidungsmerkmal fehlt.
+- Katalog-Metadaten: `MANIFEST.txt`, Kategorien-Tabellen in `SKILL.md` und `README.md`, Severity-Verteilung neu **16 critical · 35 high · 27 medium · 1 low**.
+
+## [v1.1.1] — 2026-07-30 — Jede Zusage im Repo hat jetzt einen Test
+
+Der Katalog bleibt unverändert bei **78 Checks in zehn Kategorien**. Dieses Release ändert nichts an dem, was der Skill prüft — es schliesst die letzten beiden Stellen, an denen das Repo eigene Angaben nur auf Disziplin stützte.
+
+Damit ist keine Zahl und keine Versionsangabe im Repo mehr ungesichert:
+
+| Ort | Quelle der Wahrheit | Test |
+|---|---|---|
+| `checks/MANIFEST.txt`, Katalog-Grösse, Kategorien, Severities | Katalog | `test_parse_catalog.py`, `test_applicability.py` |
+| `README.md` | Katalog | `test_readme_counts.py` |
+| `SKILL.md` | Katalog | `test_skill_counts.py` |
+| `docs/roadmap.md` (`Stand:`-Zeile) | Katalog | `test_roadmap_counts.py` |
+| `.claude/commands/audit-mcp.md` (Kategorienliste) | Katalog | `test_command_counts.py` |
+| `--skill-version` (drei Fundorte) | CHANGELOG | `test_skill_version_literals.py` |
+
+Bewusst ausgenommen bleiben `CHANGELOG.md` und die historischen Stände in `docs/roadmap.md`: Dort ist eine veraltete Zahl die richtige Zahl.
+
+### Zur Versionsnummer
+
+Ein Patch, kein Minor: keine Katalogänderung, keine Verhaltensänderung, nur Absicherung bestehender Zusagen plus ein korrigiertes Doku-Literal. Für Anwender des Skills ändert sich nichts — die Tests wirken im Repo, nicht im Audit.
+
+Die neuen Test-Module sind sichtbare Arbeit, aber keine neue Fähigkeit des Skills. Wer `1.1.0` gegen `1.1.1` vergleicht, soll genau das erwarten dürfen.
+
+### Hinzugefügt — `--skill-version`-Literale an die Release-Version gebunden
+
+Die letzte ungesicherte Versionsangabe, und die einzige, die nicht am Katalog hängt: Quelle ist die oberste Release-Überschrift im CHANGELOG.
+
+Unbewacht ist dieser Wert besonders anfällig, weil er nirgends im Code vorkommt — `audit_init.py` kennt keinen Default ausser `"unspecified"`, die Doku-Beispiele sind die einzige Quelle. Wer den Befehl kopiert, schreibt den dort stehenden String in seine `audit-meta.json`, und daran hängt später, mit welcher Skill-Version ein Befund entstanden ist. Ein falscher Wert fällt nie auf und lässt sich im Nachhinein nicht rekonstruieren.
+
+**`tests/test_skill_version_literals.py`** durchsucht alle `.md`- und `.py`-Dateien nach `--skill-version <version>` und verlangt für jeden Fundort die aktuelle Release-Version. Ausgenommen sind `CHANGELOG.md` (dort ist jede Zahl historisch) und `tests/` (Fixtures brauchen freie Versionen). Zusätzlich geprüft werden die Existenz mindestens eines Fundorts und das Format der Release-Überschrift — ohne beides hinge der Test an einer leeren Quelle und liefe still grün.
+
+### Behoben — dritter `--skill-version`-Fundort war beim v1.1.0-Release übersehen worden
+
+Der Release-Eintrag zu v1.1.0 nennt `SKILL.md` und `.claude/commands/audit-mcp.md` als «die einzige Quelle». Das war unvollständig: Die Usage-Zeile in **`tools/audit_init.py`** trug dieselbe Angabe und stand weiter auf `1.0.0` — ausgerechnet in der Datei, die den Wert entgegennimmt.
+
+Gefunden hat ihn der Test oben beim ersten Lauf. Aufzählungen von Hand sind genau die Fehlerquelle, die er ersetzt; er zählt deshalb alle Fundorte, statt eine gepflegte Dateiliste abzuarbeiten.
+>>>>>>> origin/main
 
 ### Hinzugefügt — Kategorienliste im Slash-Command gesichert
 
