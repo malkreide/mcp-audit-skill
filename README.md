@@ -39,6 +39,12 @@ cp -r mcp-data-source-probe-skill ~/.claude/skills/mcp-data-source-probe
 
 The directory name must be `mcp-data-source-probe` — skill discovery uses it.
 
+To install the companion skill as well (see below):
+
+```bash
+cp -r mcp-data-source-probe-skill/companion/mcp-data-fidelity ~/.claude/skills/
+```
+
 ## Usage / Quickstart
 
 The skill triggers on its own when you plan, build, or debug an MCP server against a data source. To invoke it explicitly:
@@ -59,12 +65,37 @@ BASE="https://api.example.ch/v2" OUTDIR=/tmp/probe bash reference/probe_template
 ```
 .
 ├── SKILL.md                              # the procedure itself
-└── reference/
-    ├── probe_template.sh                 # runnable probe harness incl. scope_probe()
-    ├── befund_tabelle_template.md        # findings table: default matrix, recall ground truth
-    ├── response_envelope.py              # pydantic v2 envelope with source + provenance
-    └── retry_backoff.py                  # exponential backoff reference implementation
+├── reference/
+│   ├── probe_template.sh                 # runnable probe harness incl. scope_probe()
+│   ├── befund_tabelle_template.md        # findings table: default matrix, recall ground truth
+│   ├── response_envelope.py              # pydantic v2 envelope with source + provenance
+│   └── retry_backoff.py                  # exponential backoff reference implementation
+└── companion/
+    └── mcp-data-fidelity/                # separately installable companion skill
+        ├── SKILL.md                      # five data-fidelity rules for query tools
+        └── reference/patterns.py         # FastMCP / httpx / pydantic patterns
 ```
+
+## Companion skill: `mcp-data-fidelity`
+
+This repository ships a second, separately installable skill under `companion/`.
+
+The two divide the work by phase. `mcp-data-source-probe` covers what happens
+*before and around* the build: probing the source, choosing an architecture,
+measuring recall against ground truth. `mcp-data-fidelity` covers the code
+itself — it complements Anthropic's `mcp-builder` with five rules for tools that
+query an external source:
+
+1. Send scope parameters explicitly, never inherit them
+2. Send parameter groups in full — a partial set silently inherits server defaults
+3. An empty result carries a concrete next step
+4. The tool description is a hallucination surface
+5. Query syntax belongs in the description, recall belongs in the tests
+
+It exists as a companion rather than a patch because `mcp-builder` is a vendored
+Anthropic skill: editing it in place would be overwritten on the next sync, and
+forking it would cut off upstream improvements. Installing both means the generic
+build guidance and these rules apply together.
 
 ## The four disciplines
 

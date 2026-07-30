@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Companion skill `mcp-data-fidelity`** under `companion/`, separately
+  installable. Five rules for MCP tools that query an external data source:
+  scope parameters sent explicitly, parameter groups sent in full, empty results
+  that carry a next step, the tool description as a hallucination surface, and
+  query syntax in the description with recall in the tests. Ships with
+  copy-paste FastMCP / httpx / pydantic patterns in `reference/patterns.py`.
+
+  It is a companion rather than a patch to Anthropic's `mcp-builder` because
+  that skill is vendored: an in-place edit would be overwritten on the next
+  sync, and a fork would cut off upstream improvements.
+
+- CI validates the companion skill alongside the main one — Python syntax,
+  frontmatter, and file presence.
+
 ## [1.0.0] - 2026-07-29
 
 Initial public release. The skill had been in internal use across the Swiss

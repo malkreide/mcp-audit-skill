@@ -39,6 +39,12 @@ cp -r mcp-data-source-probe-skill ~/.claude/skills/mcp-data-source-probe
 
 Der Verzeichnisname muss `mcp-data-source-probe` lauten — die Skill-Erkennung nutzt ihn.
 
+Den Companion-Skill (siehe unten) zusätzlich installieren:
+
+```bash
+cp -r mcp-data-source-probe-skill/companion/mcp-data-fidelity ~/.claude/skills/
+```
+
 ## Verwendung
 
 Der Skill greift selbstständig, sobald ein MCP-Server gegen eine Datenquelle geplant, gebaut oder debuggt wird. Explizit ansprechen:
@@ -59,12 +65,36 @@ BASE="https://api.example.ch/v2" OUTDIR=/tmp/probe bash reference/probe_template
 ```
 .
 ├── SKILL.md                              # das Vorgehen selbst
-└── reference/
-    ├── probe_template.sh                 # lauffähiges Probe-Gerüst inkl. scope_probe()
-    ├── befund_tabelle_template.md        # Befund-Tabelle: Default-Matrix, Recall-Ground-Truth
-    ├── response_envelope.py              # Pydantic-v2-Envelope mit source + provenance
-    └── retry_backoff.py                  # Referenz-Implementation für exponentielles Backoff
+├── reference/
+│   ├── probe_template.sh                 # lauffähiges Probe-Gerüst inkl. scope_probe()
+│   ├── befund_tabelle_template.md        # Befund-Tabelle: Default-Matrix, Recall-Ground-Truth
+│   ├── response_envelope.py              # Pydantic-v2-Envelope mit source + provenance
+│   └── retry_backoff.py                  # Referenz-Implementation für exponentielles Backoff
+└── companion/
+    └── mcp-data-fidelity/                # separat installierbarer Companion-Skill
+        ├── SKILL.md                      # fünf Datentreue-Regeln für Query-Tools
+        └── reference/patterns.py         # FastMCP-/httpx-/Pydantic-Patterns
 ```
+
+## Companion-Skill: `mcp-data-fidelity`
+
+Dieses Repo enthält unter `companion/` einen zweiten, separat installierbaren Skill.
+
+Die beiden teilen sich die Arbeit nach Phase. `mcp-data-source-probe` deckt ab, was
+*vor und um* den Bau herum passiert: Quelle proben, Architektur wählen, Recall gegen
+Ground Truth messen. `mcp-data-fidelity` deckt den Code selbst ab — er ergänzt
+Anthropics `mcp-builder` um fünf Regeln für Tools, die eine externe Quelle abfragen:
+
+1. Scope-Parameter explizit senden, nie erben
+2. Parameter-Gruppen vollständig senden — eine Teilmenge erbt still die Server-Defaults
+3. Eine Leermenge trägt einen konkreten nächsten Schritt
+4. Die Tool-Description ist eine Halluzinations-Oberfläche
+5. Query-Syntax gehört in die Description, Recall in die Tests
+
+Er existiert als Companion und nicht als Patch, weil `mcp-builder` ein von Anthropic
+mitgeliefertes Skill ist: Eine Änderung darin würde beim nächsten Sync überschrieben,
+ein Fork würde künftige Verbesserungen abschneiden. Wer beide installiert, bekommt die
+generische Bauanleitung und diese Regeln zusammen.
 
 ## Die vier Disziplinen
 
