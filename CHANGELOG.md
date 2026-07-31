@@ -59,12 +59,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `is_read_only()` plus `test_wire_format_is_unchanged()`, which makes rule
     1(c)'s Nachweis runnable: if the pydantic alias still emits `readOnlyHint`,
     the change is read-side only and no client contract is at stake.
-  - The four test shapes from rule 5, each carrying the mistake it corrects:
-    the regression test that must run *without* `MCP_ALLOWED_HOSTS`, the
-    right-host-wrong-port case, the valid token that must not save a foreign
-    host, and the branch assertion that makes a wrong branch fail instead of
-    hang. With the mutation table as a comment block and a closing note on
-    `TestClient` versus a bare `httpx.ASGITransport`.
+  - The test shapes for rules 5–7, each carrying the mistake it corrects:
+    - **Rule 7(a) — the `client` fixture.** Defined rather than assumed, because
+      how it is built is itself one of the rules: `TestClient` as a context
+      manager, with the bare `httpx.ASGITransport` shown as the rejected
+      alternative and the reason (no lifespan, so every request returns 500 and
+      a broken allow-list looks exactly like a working one).
+    - **Rule 5 — the pair.** `test_right_host_right_port_is_accepted` and
+      `test_right_host_wrong_port_is_rejected`, plus the `evil.example.com` test
+      written out as a comment showing why it is *not* used: it is green in three
+      different states. The valid-token test now names the second possible cause
+      it rules out.
+    - **Rule 6 — `test_real_hostname_is_accepted`**, which must run without
+      `MCP_ALLOWED_HOSTS` or it passes with the mutation applied.
+    - **Rule 7(b) — `_patch_run()`**, patching the instance, with the
+      instance-versus-class `monkeypatch` trap and its symptom in the docstring:
+      passes alone, hangs the suite.
+    - **Rule 7(c) — both branch tests**, each asserting which branch ran, plus
+      `test_the_sse_path_is_wired`, which checks the wiring precisely where an
+      end-to-end test would hang instead of failing.
+    With rule 6's mutation table as a comment block and a closing note on running
+    the suite under a timeout and each branch test alone *and* in the full suite.
 
 ## [1.0.0] - 2026-07-31
 

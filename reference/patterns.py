@@ -5,9 +5,13 @@ names; keep the shape. The comments are deliberately verbose — they are the pa
 that survives into the target codebase and explains *why* to the next reader.
 
 `get_settings()`, `mcp` and the concrete settings fields stand in for whatever the
-target project already calls them. What must not be adapted away is the shape: the
-bind travels as an argument, one policy object reaches every path that builds an
-app, and every control is removable in a test.
+target project already calls them. Likewise the `settings` and `tool` fixtures in
+the test section: supply them from the project's own `conftest.py`. The `client`
+fixture *is* defined here, because how it is built is itself one of the rules.
+
+What must not be adapted away is the shape: the bind travels as an argument, one
+policy object reaches every path that builds an app, and every control is
+removable in a test.
 """
 
 from __future__ import annotations
@@ -16,7 +20,9 @@ import logging
 from collections.abc import Sequence
 from typing import Any
 
+import pytest
 import uvicorn
+from starlette.testclient import TestClient
 
 # Rule 1(a) — the mechanical half of the major bump. Under 1.x this read
 #   from mcp.server.fastmcp import FastMCP
@@ -281,6 +287,86 @@ def serve_http(settings: Any) -> None:
 #   | port not passed on to the app builder            |             1 |
 # ---------------------------------------------------------------------------
 
+# --- Rule 7(a): the harness, because everything below depends on it ---------
+
+@pytest.fixture
+def client(settings: Any) -> Any:
+    """Drive the app through its lifespan.
+
+    Deliberately NOT this:
+
+        transport = httpx.ASGITransport(app=build_http_app(settings))
+        client = httpx.AsyncClient(transport=transport, base_url="http://test")
+
+    Streamable HTTP starts its session manager in the app LIFESPAN, and
+    `ASGITransport` never runs a lifespan. Every request then comes back 500 —
+    including the ones that should be 421, which makes a broken allow-list and a
+    working one look identical. Reading that 500 as a finding costs an afternoon
+    in the wrong file.
+
+    `TestClient` used as a context manager runs startup and shutdown.
+    """
+    app = build_http_app(settings, transport_security=_policy_for(settings))
+    with TestClient(app) as test_client:
+        yield test_client
+
+
+# --- Rule 5: a negative test needs its positive twin ------------------------
+#
+# Not written here, on purpose:
+#
+#     def test_foreign_host_is_rejected(client):
+#         assert client.get("/mcp", headers={"Host": "evil.example.com:8000"}) \
+#             .status_code == 421
+#
+# That one is green in three different states — correct list, loopback fallback,
+# and a list that matches the hostname while ignoring the port. A test that
+# cannot tell those apart reports on the environment, not on the code.
+
+def test_right_host_right_port_is_accepted(client: Any) -> None:
+    """The positive twin. Without it, "rejected" cannot be told from "everything
+    is rejected".
+
+    This is also the test that catches the loopback fallback: under it the
+    server answers 421 to its own documented hostname, and this goes red while
+    every negative test stays green.
+    """
+    resp = client.get("/mcp", headers={"Host": "mcp.example.ch:8000"})
+    assert resp.status_code != 421
+
+
+def test_right_host_wrong_port_is_rejected(client: Any) -> None:
+    """Rule 5: a negative test must fail for YOUR reason, not a default's.
+
+    `evil.example.com` is refused in every state — by the correct list, by a
+    policy that has fallen back to loopback, and by a list that matches on
+    hostname while ignoring the port. Three states, one green test, no
+    information.
+
+    Right hostname with the wrong port separates them: a port-exact list
+    refuses, a hostname-only list lets it through. Together with the positive
+    twin above, the pair pins the state down.
+    """
+    resp = client.get("/mcp", headers={"Host": "mcp.example.ch:9999"})
+    assert resp.status_code == 421
+
+
+def test_valid_token_does_not_save_a_foreign_host(client: Any) -> None:
+    """Rule 4, stated as a test: the two controls answer different questions.
+
+    The second reason this request could fail is a missing or wrong token — so
+    the token is supplied and valid. What is left as the only possible cause of
+    the 421 is the Host check, which is the point of the test (rule 5).
+    """
+    resp = client.get(
+        "/mcp",
+        headers={"Host": "evil.example.com:8000", "Authorization": "Bearer s3cr3t"},
+    )
+    assert resp.status_code == 421
+
+
+# --- Rule 6: the test that voids itself -------------------------------------
+
 def test_real_hostname_is_accepted(client: Any, monkeypatch: Any) -> None:
     """Rule 6: the load-bearing test, and the one that is easiest to void.
 
@@ -297,66 +383,91 @@ def test_real_hostname_is_accepted(client: Any, monkeypatch: Any) -> None:
     assert resp.status_code != 421
 
 
-def test_right_host_wrong_port_is_rejected(client: Any) -> None:
-    """Rule 5: a negative test must fail for YOUR reason, not a default's.
+# --- Rule 7(b): keep the patch level consistent -----------------------------
 
-    `evil.example.com` is refused in every state — by the correct list, by a
-    policy that has fallen back to loopback, and by a list that matches on
-    hostname while ignoring the port. Three states, one green test, no
-    information.
+def _patch_run(monkeypatch: Any) -> list[dict]:
+    """Record the kwargs `mcp.run` was called with, patching the INSTANCE.
 
-    Right hostname with the wrong port separates them: a port-exact list
-    refuses, a hostname-only list lets it through. Keep the positive twin below
-    alongside it — that is what rules out the loopback fallback, under which the
-    positive test fails.
-    """
-    resp = client.get("/mcp", headers={"Host": "mcp.example.ch:9999"})
-    assert resp.status_code == 421
+    The level matters, and mixing levels is what hangs a suite. `monkeypatch`
+    remembers the value it read — and when it reads a CLASS attribute through an
+    INSTANCE, the rollback writes that value back ONTO THE INSTANCE. `mcp.run`
+    then stays shadowed for the rest of the session: a later class-level patch
+    has no effect, and real uvicorn starts in the middle of an unrelated test.
 
+    Symptom to recognise: the test passes on its own and hangs the suite.
 
-def test_valid_token_does_not_save_a_foreign_host(client: Any) -> None:
-    """Rule 4, stated as a test: the two controls answer different questions."""
-    resp = client.get(
-        "/mcp",
-        headers={"Host": "evil.example.com:8000", "Authorization": "Bearer s3cr3t"},
-    )
-    assert resp.status_code == 421
-
-
-def test_the_sdk_served_path_gets_the_allowlist_too(settings: Any, monkeypatch: Any) -> None:
-    """Rule 7: assert WHICH branch ran, so a wrong branch fails instead of hanging.
-
-    Two ways this test hangs rather than fails, both observed:
-
-      * `monkeypatch` writes back a class attribute it read from an INSTANCE. If
-        an existing test patches `mcp.run` on the instance, the rollback leaves
-        `mcp.run` permanently shadowed there — a later class-level patch has no
-        effect and real uvicorn starts in the middle of the suite.
-      * Without an allow-list, an SSE GET under a foreign host is ALLOWED and
-        opens an endless event stream that the test client waits on at exit.
-        Absent control, the forbidden request is permitted, and for a stream
-        "permitted" means "waits forever".
-
-    So: patch the instance the way the existing tests do, and have every branch
-    test claim its branch. A test that takes the wrong path then goes red.
+    So pick the level the repository already uses — the instance, here — and use
+    it everywhere.
     """
     calls: list[dict] = []
     monkeypatch.setattr(mcp, "run", lambda **kw: calls.append(kw))
+    return calls
 
+
+# --- Rule 7(c): every branch test claims its branch --------------------------
+
+def test_the_sdk_served_path_gets_the_allowlist_too(settings: Any, monkeypatch: Any) -> None:
+    """Assert WHICH branch ran, so taking the wrong one fails instead of hanging."""
+    calls = _patch_run(monkeypatch)
+    settings.transport = "streamable-http"
     settings.auth_token = None
     settings.cors_origins = []
+
     serve_http(settings)
 
     assert len(calls) == 1, "the custom-builder branch ran — this test asserts the run() branch"
     assert calls[0]["transport_security"] is not None
 
 
-# NOTE ON THE TEST HARNESS (rule 7): drive the app with `TestClient`, not with a
-# bare `httpx.ASGITransport`. Streamable HTTP starts its session manager in the
-# app lifespan, which the bare transport never runs, so every request comes back
-# 500. Mistaking that 500 for a finding sends you debugging the wrong code.
+def test_the_custom_builder_path_gets_the_allowlist_too(settings: Any, monkeypatch: Any) -> None:
+    """The twin of the test above. Both branches, both claiming their branch.
+
+    Without the pair, a change that routes everything through one branch leaves
+    the other silently untested — and the mutation that drops the policy from it
+    stays green.
+    """
+    calls = _patch_run(monkeypatch)
+    served: list[Any] = []
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: served.append(app))
+    settings.transport = "streamable-http"
+    settings.auth_token = "t"          # forces the custom-builder branch
+
+    serve_http(settings)
+
+    assert not calls, "the run() branch ran — this test asserts the custom-builder branch"
+    assert len(served) == 1
+
+
+def test_the_sse_path_is_wired(settings: Any, monkeypatch: Any) -> None:
+    """Check the wiring exactly where an end-to-end test would hang.
+
+    The rejection semantics are deliberately NOT asserted here. Without the
+    allow-list an SSE GET under a foreign host is *allowed* and opens an endless
+    event stream, so the end-to-end negative test does not go red — it hangs, and
+    a hang gets written off as a flake.
+
+    So: this asserts that the SSE app is built WITH the policy, and the rejection
+    behaviour itself is proven end-to-end over Streamable HTTP. Both transports
+    pass through the same transport-security layer, so one end-to-end proof plus
+    one wiring assertion covers both without a test that can hang.
+    """
+    built: list[dict] = []
+    monkeypatch.setattr(mcp, "create_sse_app", lambda **kw: built.append(kw) or object())
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **kw: None)
+    settings.transport = "sse"
+
+    serve_http(settings)
+
+    assert len(built) == 1
+    assert built[0]["transport_security"] is not None
+    assert built[0]["port"] == settings.port      # rule 3: the port travels too
+
+
+# NOTE ON RUNNING THE SUITE (rule 7): run it under a timeout
+# (`pytest --timeout=30`). That turns every hang into a failure with a stack
+# trace, which is the difference between a named finding and "the suite is
+# flaky again".
 #
-# And run the suite under a timeout (`pytest --timeout=30`): it turns every hang
-# into a failure with a stack trace, which is the difference between a named
-# finding and "the suite is flaky again". Run each branch test alone AND in the
-# full suite — the instance-patch trap in (b) only shows up in the second.
+# And run each branch test alone AND in the full suite. The instance-patch trap
+# in `_patch_run` only ever shows up in the second — passing alone is precisely
+# the symptom.
