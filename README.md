@@ -68,7 +68,7 @@ Mit installiertem Slash-Command:
 > /audit-mcp .
 ```
 
-Output: Profil-getriebene Auswahl der ~30 anwendbaren Checks aus 86, automatisierte Verifikation aller `automated`/`config_check`/`documentation_check`-Modi, Findings-Stubs für `code_review`/`runtime_test`-Modi, vollständiger Audit-Report nach Template — alles in `<repo>/audits/YYYY-MM-DD-<server-name>/`.
+Output: Profil-getriebene Auswahl der ~30 anwendbaren Checks aus 90, automatisierte Verifikation aller `automated`/`config_check`/`documentation_check`-Modi, Findings-Stubs für `code_review`/`runtime_test`-Modi, vollständiger Audit-Report nach Template — alles in `<repo>/audits/YYYY-MM-DD-<server-name>/`.
 
 ## Standards-Provenance
 

@@ -44,6 +44,14 @@ Zwei Werte brauchten mehr als das Hochzählen:
 
 Severity-Verteilung neu **16 critical · 43 high · 30 medium · 1 low**. 385 Tests.
 
+#### Behoben — ein Zählwert, den der Guard vier Releases lang nicht sah
+
+Beim Nachziehen der Zahlen fiel `README.md:71` auf: «Auswahl der ~30 anwendbaren Checks **aus 86**». Der Wert stand auf 86, während der Katalog über 87, 88 und 90 gewachsen ist.
+
+`test_readme_counts.py` hat ihn nicht gemeldet, weil `PROSE_CHECKS` die Zahl **vor** dem Wort erwartet (`(\d+)\s+Checks`). Hier steht sie dahinter. Nach `SKILL.md` §2.5 ist das kein fehlender Test, sondern ein zu kurz greifender: Reichweite korrigieren, nicht Regel ergänzen. Neu `PROSE_CHECKS_TRAILING` (`Checks\s+aus\s+(\d+)`), geprüft in derselben Schleife.
+
+Gegengeprobt: Zahl auf 86 zurückgesetzt — der Test meldet `README.md:71 nennt 86 Checks, Katalog hat 90`; zurückgenommen — still.
+
 ### Geändert — `SEC-024` auf die Portfolio-Belege umgeschrieben, `SEC-005` disambiguiert
 
 Der Katalog bleibt bei **88 Checks**. `SEC-024` wurde im letzten Release aus der SDK-Mechanik heraus geschrieben; jetzt liegt der Befund aus drei realen Nachrüstungen vor, und der Check ist danach neu gefasst.

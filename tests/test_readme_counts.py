@@ -88,6 +88,11 @@ TOTAL_ROW = re.compile(
 LAYER_ROW = re.compile(r"(?P<count>\d+)\s+Checks\s+\(`(?P<prefix>[A-Z]+)-\*`\)")
 
 PROSE_CHECKS = re.compile(r"(\d+)\s+Checks")
+# Dieselbe Behauptung mit der Zahl **hinter** dem Wort: «anwendbaren Checks
+# aus 90». `PROSE_CHECKS` verlangt die Zahl davor und hat diese Form vier
+# Releases lang übersehen — README.md:71 stand auf 86, während der Katalog
+# auf 90 gewachsen war. Kein fehlender Test, ein zu kurz greifender.
+PROSE_CHECKS_TRAILING = re.compile(r"Checks\s+aus\s+(\d+)")
 PROSE_CATEGORIES = re.compile(r"(\d+)\s+Kategorien")
 BADGE_URL = re.compile(r"img\.shields\.io/badge/Checks-(\d+)-")
 BADGE_ALT = re.compile(r"!\[Checks:\s*(\d+)\]")
@@ -116,6 +121,10 @@ class TestReadmeMatchesCatalog:
             if line.lstrip().startswith("|"):
                 continue
             for n in PROSE_CHECKS.findall(line):
+                assert int(n) == total, (
+                    f"README.md:{lineno} nennt {n} Checks, Katalog hat {total}: {line.strip()!r}"
+                )
+            for n in PROSE_CHECKS_TRAILING.findall(line):
                 assert int(n) == total, (
                     f"README.md:{lineno} nennt {n} Checks, Katalog hat {total}: {line.strip()!r}"
                 )
