@@ -1,6 +1,6 @@
 ---
 name: mcp-transport-hardening
-description: Transport- und Bind-Härtung für MCP-Server mit Netz-Transport — damit ein Server unter dem konfigurierten Transport überhaupt hochkommt und abweist, wen er abweisen muss. Verwende diesen Skill ergänzend zu mcp-builder immer wenn (1) ein Server auf eine neue SDK-Major-Version migriert wird (mcp 1.x → 2.x, FastMCP → MCPServer), (2) ein Server von stdio auf streamable-http, SSE oder einen anderen Netz-Transport umgestellt wird, (3) Host, Port oder Bind-Adresse konfiguriert, durchgereicht oder in einer ASGI-Factory gelesen werden, (4) jemand meldet, ein Server antworte mit HTTP 421, starte im Deployment nicht oder sei «nur lokal erreichbar», (5) eine eingehende Host- oder Origin-Allow-List entworfen wird oder DNS-Rebinding, CORS und Auth-Token gegeneinander abgewogen werden, (6) ein Server hinter uvicorn mit `--factory` betrieben wird, oder (7) Tests für den Transport-Pfad geschrieben werden. Nicht nötig für Server, die ausschliesslich über stdio laufen.
+description: Transport- und Bind-Härtung für MCP-Server mit Netz-Transport — damit ein Server unter dem konfigurierten Transport überhaupt hochkommt und abweist, wen er abweisen muss. Verwende diesen Skill ergänzend zu mcp-builder immer wenn (1) ein Server auf eine neue SDK-Major-Version migriert wird (mcp 1.x → 2.x, FastMCP → MCPServer), (2) ein Server von stdio auf streamable-http oder SSE umgestellt wird, (3) Host, Port oder Bind-Adresse konfiguriert, durchgereicht oder in einer ASGI-Factory gelesen werden, (4) jemand meldet, ein Server antworte mit HTTP 421, starte im Deployment nicht oder sei «nur lokal erreichbar», (5) eine eingehende Host- oder Origin-Allow-List entworfen wird oder DNS-Rebinding, CORS und Auth-Token gegeneinander abgewogen werden, (6) ein Server hinter uvicorn mit `--factory` betrieben wird, oder (7) Tests für den Transport-Pfad geschrieben, per Mutationstest abgenommen werden oder eine Suite hängt statt zu scheitern. Nicht nötig für Server, die ausschliesslich über stdio laufen.
 ---
 
 # MCP Transport Hardening — kommt der Server hoch, und weist er ab, wen er abweisen muss?
@@ -9,7 +9,9 @@ Companion zu `mcp-builder`. Dessen Best Practices decken ab, ob ein Server **kor
 
 Das ist eine eigene Fehlerklasse, weil sie ebenfalls still ist — nur anders still als bei `mcp-data-fidelity`. Dort liefert der Server eine plausible Antwort, die inhaltlich falsch ist. Hier liefert er gar keine: grüne Unit-Tests, sauberer Linter, und in Produktion startet der Prozess nicht oder beantwortet jede Anfrage unter einem echten Hostnamen mit HTTP 421. Der Transport-Pfad ist genau der Teil, den eine Testsuite über stdio nie berührt.
 
-**Die Leitfrage bei jedem Server mit Netz-Transport:** *Wenn ich den Bind ändere — folgt die eingehende Allow-List mit, auf jedem Pfad, der eine App baut, und wird ein Test rot, wenn sie es nicht tut?* Ist die Antwort nein, greift eine der fünf Regeln unten.
+**Die Leitfrage bei jedem Server mit Netz-Transport:** *Wenn ich den Bind ändere — folgt die eingehende Allow-List mit, auf jedem Pfad, der eine App baut, und wird ein Test rot, wenn sie es nicht tut?* Ist die Antwort nein, greift eine der sieben Regeln unten.
+
+Die Regeln 1–4 betreffen den Server, die Regeln 5–7 den Beweis. Der zweite Teil ist der teurere: Transportregeln kann man nachschlagen, die Beweisführung nicht.
 
 ---
 
@@ -126,47 +128,108 @@ Ohne Konfiguration auf einem Nicht-Loopback-Bind bleibt der Schutz **aus — fai
 
 ---
 
-## Regel 5 — Eine Kontrolle ist unbewiesen, bis ihre Entfernung rot wird
+## Regel 5 — Ein Negativtest muss aus deinem Grund scheitern, nicht aus dem eines Defaults
 
-Die Regeln 1–4 sagen, was verdrahtet sein muss. Diese sagt, woran man erkennt, dass es verdrahtet **ist**. Ein grüner Test beweist, dass der Code läuft — nicht, dass er die Kontrolle prüft, die er zu prüfen vorgibt. Der Unterschied fällt nur auf, wenn man die Kontrolle **entfernt** und schaut, was rot wird.
+Die Regeln 1–4 sagen, was verdrahtet sein muss. Die Regeln 5–7 sagen, woran man erkennt, dass es verdrahtet **ist** — und sie sind der teurere Teil, weil man sie nicht nachschlagen kann.
 
-In den drei Migrationen unten hat dieser Handgriff zweimal die **Tests** korrigiert und nicht den Code. Der teuerste Fall:
+Ein Negativtest behauptet: «Diese Anfrage wird abgewiesen.» Grün heisst aber nur, dass sie abgewiesen *wurde* — nicht, dass **deine** Kontrolle sie abgewiesen hat. Überall dort, wo ein Default, ein Fallback oder eine vorgelagerte Schicht dieselbe Anfrage ebenfalls ablehnt, ist der Test mit der Kontrolle und ohne sie grün. Er misst dann die Umgebung, nicht den Code.
+
+Die Prüffrage lautet deshalb nicht «wird abgewiesen?», sondern: **Gibt es einen zweiten Grund, aus dem genau diese Anfrage scheitern könnte?** Gibt es einen, ist der Test noch nicht scharf. Man braucht den Fall, den **nur** die eigene Kontrolle richtig entscheidet.
+
+Kanonisches Beispiel, die eingehende Allow-List:
 
 ```python
-# ✗ besteht auch mit entferntem host-Kwarg — die explizite Liste deckt die Lücke zu
-def test_real_hostname_is_accepted(monkeypatch):
+# ✗ ein fremder Hostname — beweist nichts
+def test_foreign_host_is_rejected(client):
+    assert client.get("/mcp", headers={"Host": "evil.example.com:8000"}).status_code == 421
+
+# ✓ richtiger Hostname, FALSCHER Port — das entscheidet nur eine portgenaue Liste
+def test_right_host_wrong_port_is_rejected(client):
+    assert client.get("/mcp", headers={"Host": "mcp.example.ch:9999"}).status_code == 421
+```
+
+`evil.example.com` wird in **jedem** Zustand abgewiesen: von der korrekten Liste, von einer auf Loopback zurückgefallenen Default-Policy, und auch von einer Liste, die nur auf den Hostnamen und nicht auf den Port schaut. Drei verschiedene Zustände, ein grüner Test — der Informationsgehalt ist null.
+
+`mcp.example.ch:9999` trennt sie: Eine portgenaue Liste weist ab, eine hostnamen-only Liste **lässt durch**. Und weil dieser Test seinen positiven Zwilling braucht — richtiger Name, richtiger Port wird angenommen —, fällt der Loopback-Rückfall ebenfalls auf: unter ihm scheitert der positive Test. Erst das Paar pinnt den Zustand fest.
+
+**Nachweis:** Zu jedem Negativtest die zweite Ursache benennen, die dieselbe Ablehnung erzeugen würde — und wenn es eine gibt, einen Fall wählen, den sie nicht abdeckt. Ein Negativtest ohne seinen positiven Zwilling unterscheidet «abgewiesen» nicht von «alles wird abgewiesen».
+
+## Regel 6 — Der Mutationstest ist das Abnahmekriterium für jede Sicherheitskontrolle
+
+Nicht «Tests schreiben». Sondern: **Mutation benennen, anwenden, protokollieren, welche Tests fallen.** Eine Kontrolle, deren Entfernung nichts rot macht, ist unbewiesen — unabhängig davon, wie viele grüne Tests daneben stehen.
+
+In den drei PRs unten hat dieser Handgriff dreimal etwas gefunden, das sonst durchgegangen wäre. Der teuerste Fall zuerst:
+
+```python
+# ✗ stellt selbst die Bedingung her, unter der der Fehler nicht auftreten kann
+def test_real_hostname_is_accepted(client, monkeypatch):
     monkeypatch.setenv("MCP_ALLOWED_HOSTS", "mcp.example.ch:8000")
     assert client.get("/mcp", headers={"Host": "mcp.example.ch:8000"}).status_code != 421
 
-# ✓ ohne Allow-List muss das SDK aus dem Bind raten — erst dann trägt der Kwarg
-def test_real_hostname_is_accepted(monkeypatch):
+# ✓ ohne explizite Liste muss das SDK aus dem Bind ableiten — erst dann trägt der Kwarg
+def test_real_hostname_is_accepted(client, monkeypatch):
     monkeypatch.delenv("MCP_ALLOWED_HOSTS", raising=False)
     assert client.get("/mcp", headers={"Host": "mcp.example.ch:8000"}).status_code != 421
 ```
 
-Die erste Fassung bestand **mit angewandter Mutation**: Bei expliziter Allow-List ist der `host`-Kwarg irrelevant. Der Test prüfte die Umgebungsvariable, nicht die Verdrahtung. Derselbe Mechanismus in der zweiten Variante: Ein Port-Test, der nur den App-Builder abdeckt, sagt nichts über die Naht davor — der Builder wird mit explizitem Port gerufen, also überlebt er jede Mutation an der Stelle, an der der Port tatsächlich verloren geht. **Ein Test deckt die Naht ab, an der der Wert reist, nicht die Funktion, die ihn schon hat.**
+Die drei Funde, jeder mit seinem Merksatz:
 
-**Scheitern, nicht hängen.** Fehlt die Kontrolle, ist der wahrscheinlichste Ausgang kein rotes Kreuz, sondern eine Suite, die steht. Zwei belegte Wege:
+1. **Der Test bestand mit angewandter Mutation.** Er setzte die Allow-List-Variable selbst, und bei expliziter Liste ist der `host`-Kwarg irrelevant — tragend wird er erst, wenn das SDK raten muss. *Ein Test, der die Bedingung herstellt, unter der der Fehler nicht auftreten kann, prüft nichts.*
+2. **Den Port zwischen zwei Funktionen fallenzulassen liess gar keinen Test scheitern.** Die Naht war ungetestet, weil der vorhandene Test die Zielfunktion mit explizitem Port aufrief. *Getestet wird die Naht, an der der Wert reist — nicht die Funktion, die ihn schon hat.*
+3. **Die Kontrolle zu entfernen liess die Suite hängen statt scheitern.** Das ist kein Betriebsunfall, sondern der Regelfall: Ohne Kontrolle wird die verbotene Anfrage *zugelassen*, und zugelassen heisst bei einem Stream *warten*. Siehe Regel 7.
 
-- Ohne Allow-List wird ein SSE-GET unter fremdem Host **zugelassen** und öffnet einen endlosen Event-Stream, auf den der `TestClient` beim Verlassen wartet.
-- `monkeypatch` schreibt ein Klassen-Attribut, das es von einer *Instanz* gelesen hat, beim Zurückrollen auf diese Instanz zurück. `mcp.run` bleibt dauerhaft verdeckt, ein späterer Klassen-Patch wirkt nicht — und der echte uvicorn startet mitten in der Suite.
-
-Beide Zweig-Tests behaupten seither **ausdrücklich, welcher Zweig lief**. Ein Test, der die falsche Verzweigung nimmt, scheitert dadurch, statt zu warten.
-
-**Der Testaufbau selbst ist eine Fehlerquelle.** Ein blanker `httpx.ASGITransport` liefert auf jede Anfrage 500: Streamable HTTP startet seinen Session-Manager im App-Lifespan, den dieser Transport nie ausführt. Wer den 500er für ein Finding hält, debuggt den falschen Code — es braucht `TestClient`.
-
-**Nachweis:** Jede Kontrolle **einzeln** entfernen und die Zahl der scheiternden Tests notieren. Eine Mutation mit null roten Tests ist eine unbewiesene Kontrolle, keine bestandene Prüfung. Die Tabelle gehört in den PR:
+**Nachweis:** Die Tabelle selbst — sie entsteht nur, wenn jede Mutation tatsächlich angewandt und die Suite tatsächlich gelaufen ist. Eine Zeile mit null roten Tests ist ein Befund, kein Nebenergebnis: Entweder fehlt der Test, oder die Kontrolle tut nichts. Die Tabelle gehört in den PR.
 
 | Mutation | scheiternde Tests |
 |---|---|
 | `transport_security` aus dem eigenen App-Builder | 4 |
 | `transport_security` aus dem SDK-`run()`-Pfad | 2 |
+| `transport_security` aus dem SSE-Pfad | 1 |
 | Allow-List nicht portgenau | 3 |
 | Port reist nicht bis zum Builder | 1 |
 
+## Regel 7 — Die Test-Harness ist bei HTTP-Transporten selbst eine Fehlerquelle
+
+Drei Fallen, die alle dasselbe Symptom haben: Der Befund sieht aus wie ein Infrastrukturproblem und wird als Rauschen abgetan.
+
+**(a) Ein blanker `httpx.ASGITransport` liefert 500 auf jede Anfrage.** Streamable HTTP startet seinen Session-Manager im **App-Lifespan**, und dieser Transport führt den Lifespan nie aus. Wer den 500er für einen Befund hält, debuggt den falschen Code.
+
+```python
+# ✗ kein Lifespan → kein Session-Manager → 500 auf alles
+transport = httpx.ASGITransport(app=build_http_app(settings))
+client = httpx.AsyncClient(transport=transport, base_url="http://test")
+
+# ✓ TestClient führt den Lifespan aus
+with TestClient(build_http_app(settings)) as client:
+    ...
+```
+
+**(b) Die Patch-Ebene muss konsistent bleiben.** Ein Test patchte `mcp.run` auf der **Instanz**. `monkeypatch` schreibt einen von der Instanz gelesenen Klassen-Wert beim Zurückrollen *auf die Instanz* — `mcp.run` bleibt dauerhaft verdeckt, ein späterer Klassen-Patch wird wirkungslos, und echtes uvicorn startet mitten in der Suite. Symptom: **Der Test besteht allein und hängt die Suite.** Wer im Repo bereits auf der Instanz patcht, patcht überall auf der Instanz.
+
+**(c) Jeder Zweig-Test behauptet ausdrücklich, welcher Zweig lief.** Sonst scheitert ein falscher Zweig nicht, er hängt.
+
+```python
+# ✗ prüft das Ergebnis, nicht den Weg — nimmt der Test den anderen Zweig, startet uvicorn
+serve_http(settings)
+assert policy_was_applied
+
+# ✓ der Zweig ist Teil der Behauptung
+calls: list[dict] = []
+monkeypatch.setattr(mcp, "run", lambda **kw: calls.append(kw))
+serve_http(settings)
+assert len(calls) == 1, "der Builder-Zweig lief — dieser Test behauptet den run()-Zweig"
+assert calls[0]["transport_security"] is not None
+```
+
+Warum der SSE-Fall hängt, verbindet (a) und (c): Ohne Allow-List wird ein SSE-GET unter fremdem Host **zugelassen** und öffnet einen endlosen Event-Stream, auf den der `TestClient` beim Verlassen wartet. Die fehlende Kontrolle äussert sich also nicht als roter Test, sondern als stehende Suite — und ein Hänger wird routinemässig als Flake abgetan.
+
+**Nachweis:** Ein Timeout auf die Suite (`pytest --timeout=30`) macht aus jedem Hänger einen Fehlschlag mit Stacktrace, und die Stelle ist damit benannt statt gemutmasst. Dazu jeden Zweig-Test **einzeln und in der vollen Suite** laufen lassen: Die Instanz-Patch-Falle aus (b) zeigt sich ausschliesslich im zweiten Fall.
+
 ---
 
-## Checkliste vor dem Deployment eines Servers mit Netz-Transport
+## Checkliste vor dem Release eines netzgebundenen Servers
+
+**Der Server (Regeln 1–4)**
 
 - [ ] Kein `mcp.settings.<feld> = ...` mehr im Code; der Bind geht als Kwargs an `run()`
 - [ ] Annotations werden snake_case gelesen; Drahtformat gegen beide Schreibweisen verglichen
@@ -178,13 +241,19 @@ Beide Zweig-Tests behaupten seither **ausdrücklich, welcher Zweig lief**. Ein T
 - [ ] Jeder App-bauende Pfad (eigener Builder, SDK-`run()`, SSE) bekommt dieselbe Transport-Security
 - [ ] Allow-List portgenau, Loopback drin, CORS-Origins aufgenommen, kein `*`
 - [ ] Fail-open auf Nicht-Loopback ist sichtbar — Startwarnung im Log
-- [ ] Tragender Test: richtiger Hostname, **falscher Port** — ein fremder Hostname allein beweist nichts
-- [ ] Mutationstest: jede Kontrolle einzeln entfernt, jede Entfernung bringt einen Test zum Scheitern (Regel 5)
-- [ ] Mutationstabelle im PR, jede Zeile mit mindestens einem roten Test (Regel 5)
-- [ ] Regressionstest läuft **ohne** gesetzte `MCP_ALLOWED_HOSTS` — sonst besteht er trotz Mutation (Regel 5)
-- [ ] Getestet wird die Naht, an der der Wert reist, nicht die Funktion, die ihn schon hat (Regel 5)
-- [ ] Kein Test **hängt**, wenn die Kontrolle fehlt — er scheitert, und behauptet, welcher Zweig lief (Regel 5)
-- [ ] Gegen den echten ASGI-Stack geprüft (`TestClient`), nicht gegen blankes `ASGITransport` (Regel 5)
+
+**Der Beweis (Regeln 5–7)**
+
+- [ ] Zu jedem Negativtest die zweite mögliche Ursache benannt und ausgeschlossen (Regel 5)
+- [ ] Tragender Fall: richtiger Hostname, **falscher Port** — ein fremder Hostname allein beweist nichts (Regel 5)
+- [ ] Jeder Negativtest hat seinen positiven Zwilling (Regel 5)
+- [ ] Kein Test stellt selbst die Bedingung her, unter der der Fehler nicht auftreten kann (Regel 6)
+- [ ] Getestet wird die Naht, an der der Wert reist, nicht die Funktion, die ihn schon hat (Regel 6)
+- [ ] Mutationstabelle im PR: jede Kontrolle einzeln entfernt, jede Zeile mit mindestens einem roten Test (Regel 6)
+- [ ] Gegen den echten ASGI-Stack geprüft (`TestClient`), nicht gegen blankes `ASGITransport` (Regel 7)
+- [ ] Patch-Ebene im ganzen Repo einheitlich — Instanz oder Klasse, nicht gemischt (Regel 7)
+- [ ] Jeder Zweig-Test behauptet, welcher Zweig lief (Regel 7)
+- [ ] Suite läuft unter Timeout; jeder Zweig-Test zusätzlich einzeln **und** in der vollen Suite (Regel 7)
 
 ## Woher diese Regeln stammen
 
@@ -192,17 +261,18 @@ Aus drei Pull Requests desselben Zyklus (2026-07):
 
 | PR | Ausgangslage |
 |---|---|
-| [`parlament-mcp#29`](https://github.com/malkreide/parlament-mcp/pull/29) | Migration 1.x → 2.x. Echter Startfehler plus 421 im HTTP-Pfad, vor dem Fix gegen den echten ASGI-Stack reproduziert |
+| [`parlament-mcp#29`](https://github.com/malkreide/parlament-mcp/pull/29) | Migration 1.x → 2.x, als **letzter Server im Portfolio** auf der alten Major. Echter Startfehler plus 421 im HTTP-Pfad, vor dem Fix gegen den echten ASGI-Stack reproduziert |
 | [`bag-health-mcp#51`](https://github.com/malkreide/bag-health-mcp/pull/51) | Kein 421-Bug — der Bind kam korrekt an. Es fehlte die Möglichkeit, überhaupt zu sagen, unter welchen Namen der Server erreichbar sein darf |
 | [`swiss-transport-mcp#25`](https://github.com/malkreide/swiss-transport-mcp/pull/25) | Kein 421-Bug. Egress-Allow-List vorhanden, eingehend nichts — und der Port fiel auf dem Weg zum App-Builder heraus |
 
-Fünf Dinge daran sind übertragbar:
+Sechs Dinge daran sind übertragbar:
 
 1. **Nur einer der drei war ein Bug.** Die anderen zwei waren eine fehlende Kontrolle — für das gedachte Deployment vertretbar begründet, aber wer den Server anders betreibt, hatte keinen Weg, sich einzuklinken. Fehlende Konfigurierbarkeit fällt in keinem Test auf, weil nichts falsch ist.
 2. **Grüne Tests und sauberer Linter, und der Prozess startet nicht.** Tool-Tests laufen über stdio und berühren den Transport-Pfad nie. Der Fehler wartet auf das erste HTTP-Deployment.
-3. **Der Mutationstest hat in zwei von drei Repos die Tests korrigiert, nicht den Code** — daraus Regel 5. Einmal bestand der Regressionstest trotz Mutation, weil er `MCP_ALLOWED_HOSTS` setzte; einmal liess das Fallenlassen des Ports gar keinen Test scheitern. Eine Kontrolle, deren Entfernung nichts rot macht, ist unbewiesen.
-4. **Ein Test, der hängt statt zu scheitern, ist schlimmer als keiner** — dass er *hängt* und nicht *scheitert*, ist der Regelfall, nicht die Ausnahme. Ohne Kontrolle wird die verbotene Anfrage zugelassen, und zugelassen heisst bei einem Stream: warten.
-5. **Der Testaufbau selbst ist eine Fehlerquelle.** Ein blanker `httpx.ASGITransport` liefert auf jede Anfrage 500: Streamable HTTP startet seinen Session-Manager im App-Lifespan, den dieser Transport nie ausführt. Wer den 500er für einen Befund hält, debuggt den falschen Code.
+3. **Der letzte Server auf der alten Major war der, den keine Liste kannte.** `openparldata-mcp` liegt **verschachtelt** in einem anderen Repo und hat eine eigene `pyproject.toml`. Damit ist er durch jede Aufzählung gefallen, die Top-Level-Repos listet — und die Abhängigkeits-Constraint des Elternprojekts hat ihn nie erfasst. Ein Inventar, das Repos zählt statt Deployment-Einheiten, übersieht genau die Fälle, die am längsten unmigriert bleiben.
+4. **Der Mutationstest hat in zwei von drei Repos die Tests korrigiert, nicht den Code** — daraus Regel 6. Eine Kontrolle, deren Entfernung nichts rot macht, ist unbewiesen.
+5. **Ein Test, der hängt statt zu scheitern, ist schlimmer als keiner** — daraus Regel 7. Dass er *hängt* und nicht *scheitert*, ist der Regelfall: Ohne Kontrolle wird die verbotene Anfrage zugelassen, und zugelassen heisst bei einem Stream warten.
+6. **Der Testaufbau selbst ist eine Fehlerquelle.** Ein blanker `httpx.ASGITransport` liefert auf jede Anfrage 500, weil er den App-Lifespan nie ausführt. Wer den 500er für einen Befund hält, debuggt den falschen Code.
 
 **Zur Benennung:** Zwei der drei PRs führen im Titel `SEC-005`, implementieren aber die **eingehende** Kontrolle — im Audit-Katalog `SEC-024`. `SEC-005` ist die ausgehende Richtung (DNS-Pinning gegen TOCTOU). Zwei Angriffe, ein Name: Wer «DNS-Rebinding» ohne Richtungsangabe zitiert, meint mit einiger Wahrscheinlichkeit den anderen.
 

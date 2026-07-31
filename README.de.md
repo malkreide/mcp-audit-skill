@@ -16,13 +16,17 @@ Das ist eine eigene Fehlerklasse, weil sie still ist — nur anders still als be
 
 Die Leitfrage bei jedem Server mit Netz-Transport: *Wenn ich den Bind ändere — folgt die eingehende Allow-List mit, auf jedem Pfad, der eine App baut, und wird ein Test rot, wenn sie es nicht tut?*
 
-## Die fünf Regeln
+Die Regeln 1–4 betreffen den Server, die Regeln 5–7 den Beweis. Der zweite Teil ist der teurere: Transportregeln kann man nachschlagen, die Beweisführung nicht.
+
+## Die sieben Regeln
 
 1. **Der SDK-Major-Sprung bricht drei Dinge, nur eines davon mechanisch.** Modul- und Klassennamen sind Suchen-und-Ersetzen; das schreibgeschützte `mcp.settings` verhindert den Start überhaupt; snake_case-Annotations brechen nur den lesenden Zugriff in Python, weil das Drahtformat unverändert bleibt — weshalb camelCase in TypeScript-Servern korrekt bleibt.
 2. **`host` ist die Saat der Allow-List, kein kosmetischer Parameter.** Er defaultet auf `127.0.0.1`, und das SDK leitet daraus die eingehende Allow-List ab. Wird er nicht durchgereicht, gibt es HTTP 421 auf genau dem `0.0.0.0`-Deployment, für das der Server dokumentiert ist. uvicorn ruft eine `--factory` ohne Argumente auf, `--host` erreicht die App also nie.
 3. **Jeder Pfad, der eine ASGI-App baut, wird identisch verdrahtet.** Ein eigener Builder, der nur bei gesetztem Auth oder CORS greift, der SDK-servierte `run()`-Pfad, ein deprecateter SSE-Pfad — wer nur einen verdrahtet, macht das Scharfschalten einer Sicherheitskontrolle von unbeteiligter Konfiguration abhängig. Der Port reist mit dem Host mit.
 4. **Die eingehende Host-Allow-List ist eine eigene Kontrolle.** CORS hilft nicht (aus Browsersicht same-origin), ein Token hilft nicht (die angreifende Seite hält eines), die Egress-Allow-List ist die Gegenrichtung. Portgenau, Loopback immer drin, CORS-Origins aufgenommen, kein `*` — und Fail-open auf Nicht-Loopback wird mit einer Startwarnung sichtbar gemacht.
-5. **Eine Kontrolle ist unbewiesen, bis ihre Entfernung rot wird.** Jede Kontrolle einzeln entfernen und die scheiternden Tests zählen. Eine Mutation mit null roten Tests ist eine unbewiesene Kontrolle, keine bestandene Prüfung — und ein Test, der *hängt* statt zu scheitern, ist schlimmer als keiner.
+5. **Ein Negativtest muss aus *deinem* Grund scheitern, nicht aus dem eines Defaults.** Grün heisst nur, dass die Anfrage abgewiesen wurde — nicht, dass deine Kontrolle sie abgewiesen hat. `evil.example.com` wird in jedem Zustand abgewiesen, auch von einer zurückgefallenen Loopback-Policy; richtiger Hostname mit *falschem Port* ist der Fall, den nur eine portgenaue Liste richtig entscheidet. Jeder Negativtest braucht seinen positiven Zwilling.
+6. **Der Mutationstest ist das Abnahmekriterium für jede Sicherheitskontrolle.** Nicht «Tests schreiben», sondern: Mutation benennen, anwenden, protokollieren, welche Tests fallen — und die Tabelle in den PR. Eine Zeile mit null roten Tests ist ein Befund: Entweder fehlt der Test, oder die Kontrolle tut nichts.
+7. **Die Test-Harness ist bei HTTP-Transporten selbst eine Fehlerquelle.** Ein blanker `httpx.ASGITransport` liefert auf alles 500, weil er den App-Lifespan nie ausführt; ein Instanz-`monkeypatch` kann `mcp.run` dauerhaft verdecken und echtes uvicorn mitten in der Suite starten; und ein Zweig-Test, der seinen Zweig nicht behauptet, hängt statt zu scheitern.
 
 ## Voraussetzungen
 
@@ -51,7 +55,7 @@ Der Skill greift selbstständig, sobald ein Server auf eine neue SDK-Major migri
 
 ```
 .
-├── SKILL.md                  # die fünf Regeln, mit Deployment-Checkliste
+├── SKILL.md                  # die sieben Regeln, mit Release-Checkliste
 └── reference/
     └── patterns.py           # Copy-Paste-Patterns für MCP-SDK 2.x / ASGI / uvicorn
 ```
@@ -62,7 +66,7 @@ Aus drei Pull Requests desselben Zyklus (2026-07):
 
 | PR | Ausgangslage |
 |---|---|
-| [`parlament-mcp#29`](https://github.com/malkreide/parlament-mcp/pull/29) | Migration 1.x → 2.x. Echter Startfehler plus 421 im HTTP-Pfad, vor dem Fix gegen den echten ASGI-Stack reproduziert |
+| [`parlament-mcp#29`](https://github.com/malkreide/parlament-mcp/pull/29) | Migration 1.x → 2.x, als **letzter Server im Portfolio** auf der alten Major. Echter Startfehler plus 421 im HTTP-Pfad, vor dem Fix gegen den echten ASGI-Stack reproduziert |
 | [`bag-health-mcp#51`](https://github.com/malkreide/bag-health-mcp/pull/51) | Kein 421-Bug — der Bind kam korrekt an. Es fehlte die Möglichkeit, überhaupt zu sagen, unter welchen Namen der Server erreichbar sein darf |
 | [`swiss-transport-mcp#25`](https://github.com/malkreide/swiss-transport-mcp/pull/25) | Kein 421-Bug. Egress-Allow-List vorhanden, eingehend nichts — und der Port fiel auf dem Weg zum App-Builder heraus |
 
@@ -70,8 +74,9 @@ Was daran übertragbar ist:
 
 1. **Nur einer der drei war ein Bug.** Die anderen zwei waren eine fehlende Kontrolle — für das gedachte Deployment vertretbar begründet, aber wer den Server anders betreibt, hatte keinen Weg, sich einzuklinken. Fehlende Konfigurierbarkeit fällt in keinem Test auf, weil nichts falsch ist.
 2. **Grüne Tests und sauberer Linter, und der Prozess startet nicht.** Tool-Tests laufen über stdio und berühren den Transport-Pfad nie. Der Fehler wartet auf das erste HTTP-Deployment.
-3. **Der Mutationstest hat in zwei von drei Repos die Tests korrigiert, nicht den Code** — daraus Regel 5.
-4. **Ein Test, der hängt statt zu scheitern, ist schlimmer als keiner.** Ohne die Kontrolle wird die verbotene Anfrage *zugelassen*, und zugelassen heisst bei einem Stream: warten.
+3. **Der letzte Server auf der alten Major war der, den keine Liste kannte.** `openparldata-mcp` liegt *verschachtelt* in einem anderen Repo und hat eine eigene `pyproject.toml` — damit ist er durch jede Aufzählung gefallen, die Top-Level-Repos listet, und die Abhängigkeits-Constraint des Elternprojekts hat ihn nie erfasst. Ein Inventar, das Repos zählt statt Deployment-Einheiten, übersieht genau die Fälle, die am längsten unmigriert bleiben.
+4. **Der Mutationstest hat in zwei von drei Repos die Tests korrigiert, nicht den Code** — daraus Regel 6.
+5. **Ein Test, der hängt statt zu scheitern, ist schlimmer als keiner** — daraus Regel 7. Ohne die Kontrolle wird die verbotene Anfrage *zugelassen*, und zugelassen heisst bei einem Stream: warten.
 
 **Zur Benennung:** Zwei der drei PRs führen `SEC-005` im Titel, implementieren aber die *eingehende* Kontrolle — im Audit-Katalog `SEC-024`. `SEC-005` ist die ausgehende Richtung (DNS-Pinning gegen TOCTOU). Zwei Angriffe, ein Name.
 

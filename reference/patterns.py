@@ -1,4 +1,4 @@
-"""Copy-paste patterns for the five transport-hardening rules (MCP SDK 2.x / ASGI / uvicorn).
+"""Copy-paste patterns for the seven transport-hardening rules (MCP SDK 2.x / ASGI / uvicorn).
 
 Each block is self-contained and annotated with the rule it implements. Adapt the
 names; keep the shape. The comments are deliberately verbose — they are the part
@@ -266,10 +266,11 @@ def serve_http(settings: Any) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Rule 5 — the tests, and the two ways they lie
+# Rules 5-7 — the tests, and the ways they lie
 #
-# Mutation table for the PR. A row with zero red tests is an unproven control,
-# not a passing check:
+# Rule 6's mutation table, as it belongs in the PR. A row with zero red tests is
+# a finding, not a footnote: either the test is missing or the control does
+# nothing.
 #
 #   | mutation                                        | failing tests |
 #   |-------------------------------------------------|---------------|
@@ -281,12 +282,15 @@ def serve_http(settings: Any) -> None:
 # ---------------------------------------------------------------------------
 
 def test_real_hostname_is_accepted(client: Any, monkeypatch: Any) -> None:
-    """The load-bearing regression test — and the one that is easiest to void.
+    """Rule 6: the load-bearing test, and the one that is easiest to void.
 
     The first version of this test set MCP_ALLOWED_HOSTS itself and therefore
     PASSED with the `host` kwarg mutated away: given an explicit allow-list the
     kwarg is irrelevant. It only becomes load-bearing when the SDK has to derive
     the list from the bind, so the environment variable must be absent here.
+
+    A test that establishes the condition under which the fault cannot occur
+    checks nothing.
     """
     monkeypatch.delenv("MCP_ALLOWED_HOSTS", raising=False)
     resp = client.get("/mcp", headers={"Host": "mcp.example.ch:8000"})
@@ -294,11 +298,17 @@ def test_real_hostname_is_accepted(client: Any, monkeypatch: Any) -> None:
 
 
 def test_right_host_wrong_port_is_rejected(client: Any) -> None:
-    """A foreign hostname alone proves almost nothing.
+    """Rule 5: a negative test must fail for YOUR reason, not a default's.
 
-    A policy that has fallen back to loopback rejects `evil.example.com` too, so
-    that assertion passes whether or not the control works. Right hostname,
-    wrong port is the case only a port-exact list gets right.
+    `evil.example.com` is refused in every state — by the correct list, by a
+    policy that has fallen back to loopback, and by a list that matches on
+    hostname while ignoring the port. Three states, one green test, no
+    information.
+
+    Right hostname with the wrong port separates them: a port-exact list
+    refuses, a hostname-only list lets it through. Keep the positive twin below
+    alongside it — that is what rules out the loopback fallback, under which the
+    positive test fails.
     """
     resp = client.get("/mcp", headers={"Host": "mcp.example.ch:9999"})
     assert resp.status_code == 421
@@ -314,7 +324,7 @@ def test_valid_token_does_not_save_a_foreign_host(client: Any) -> None:
 
 
 def test_the_sdk_served_path_gets_the_allowlist_too(settings: Any, monkeypatch: Any) -> None:
-    """Assert WHICH branch ran, so a wrong branch fails instead of hanging.
+    """Rule 7: assert WHICH branch ran, so a wrong branch fails instead of hanging.
 
     Two ways this test hangs rather than fails, both observed:
 
@@ -341,7 +351,12 @@ def test_the_sdk_served_path_gets_the_allowlist_too(settings: Any, monkeypatch: 
     assert calls[0]["transport_security"] is not None
 
 
-# NOTE ON THE TEST HARNESS (rule 5): drive the app with `TestClient`, not with a
+# NOTE ON THE TEST HARNESS (rule 7): drive the app with `TestClient`, not with a
 # bare `httpx.ASGITransport`. Streamable HTTP starts its session manager in the
 # app lifespan, which the bare transport never runs, so every request comes back
 # 500. Mistaking that 500 for a finding sends you debugging the wrong code.
+#
+# And run the suite under a timeout (`pytest --timeout=30`): it turns every hang
+# into a failure with a stack trace, which is the difference between a named
+# finding and "the suite is flaky again". Run each branch test alone AND in the
+# full suite — the instance-patch trap in (b) only shows up in the second.

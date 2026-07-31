@@ -7,9 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Rules 5–7 replace the former single rule 5.** The old rule bundled three
+  distinct failure modes under one heading ("a control is unproven until
+  removing it turns something red"). Each is now its own rule with its own
+  counter-example pair and its own Nachweis, because each fails differently:
+  - **Rule 5 — a negative test must fail for *your* reason, not a default's.**
+    The generalisation the old text lacked: green only says the request was
+    rejected, not that your control rejected it. `evil.example.com` is refused
+    by the correct list, by a loopback fallback, and by a hostname-only list
+    alike — three states, one green test, no information. Right hostname with
+    the wrong port is the case only a port-exact list decides correctly, and it
+    needs its positive twin to rule out the fallback state.
+  - **Rule 6 — the mutation test is the acceptance criterion.** Named, applied,
+    logged, with the table in the PR. Carries all three finds from the source
+    PRs: the test that set the allow-list variable itself and so passed *with*
+    the mutation applied; the dropped port that failed no test at all because
+    the seam was untested; and the removal that made the suite hang.
+  - **Rule 7 — the test harness is itself a source of error.** The bare
+    `httpx.ASGITransport` and its 500s, the instance-versus-class `monkeypatch`
+    trap that shadows `mcp.run` and starts real uvicorn mid-suite, and the
+    branch test that must assert its branch or hang. With the SSE explanation
+    for *why* a missing control hangs rather than fails.
+- Checklist renamed to "Checkliste vor dem Release eines netzgebundenen Servers"
+  and split into "Der Server (Regeln 1–4)" and "Der Beweis (Regeln 5–7)";
+  13 → 20 items.
+- "Woher diese Regeln stammen" now records that the last server on the old SDK
+  major was the one **nested inside another repository** with its own
+  `pyproject.toml` — it fell through every enumeration that lists top-level
+  repos, and the parent project's dependency constraint never covered it. An
+  inventory that counts repositories rather than deployable units misses exactly
+  the cases that stay unmigrated longest.
+- Both READMEs and `reference/patterns.py` follow the new numbering; the CI
+  rule-count check now expects seven.
+
 ### Added
 
-- **`reference/patterns.py`** — copy-paste patterns for all five rules, targeting
+- **`reference/patterns.py`** — copy-paste patterns for all seven rules, targeting
   MCP SDK 2.x behind ASGI/uvicorn:
   - `build_transport_security()` with the four properties spelled out at the call
     site — port-exact, loopback always present, configured CORS origins folded in,

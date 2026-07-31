@@ -16,13 +16,17 @@ That is a class of bug in its own right, because it is silent — differently si
 
 The guiding question for every server on a network transport: *if I change the bind, does the inbound allow-list follow — on every path that builds an app — and does a test go red when it doesn't?*
 
-## The five rules
+Rules 1–4 concern the server, rules 5–7 the proof. The second half is the more expensive one: transport rules can be looked up, the way you prove them cannot.
+
+## The seven rules
 
 1. **The SDK major bump breaks three things, only one of them mechanically.** Module and class rename is search-and-replace; `mcp.settings` turning read-only stops the process from starting at all; annotations moving to snake_case breaks only Python-side reads, because the wire format is unchanged — which is why camelCase stays correct in TypeScript servers.
 2. **`host` is the seed of the allow-list, not a cosmetic parameter.** It defaults to `127.0.0.1`, and the SDK derives the inbound allow-list from it. Not passing it through means HTTP 421 on exactly the `0.0.0.0` deployment the server is documented for. uvicorn calls a `--factory` with no arguments, so `--host` never reaches the app.
 3. **Every path that builds an ASGI app is wired identically.** A custom builder used only when auth or CORS happens to be set, the SDK-served `run()` path, a deprecated SSE path — wire one and arming a security control silently depends on unrelated configuration. The port travels with the host.
 4. **The inbound host allow-list is its own control.** CORS does not help (same-origin from the browser's view), a token does not help (the attacking page holds one), the egress allow-list is the opposite direction. Port-exact, loopback always in, CORS origins included, no `*`, and fail-open on non-loopback made visible with a startup warning.
-5. **A control is unproven until removing it turns something red.** Remove each control individually and count the failing tests. A mutation with zero red tests is an unproven control, not a passing check — and a test that *hangs* instead of failing is worse than none.
+5. **A negative test must fail for *your* reason, not a default's.** Green only means the request was rejected — not that your control rejected it. `evil.example.com` is refused in every state, including a fallback loopback policy; right hostname with the *wrong port* is the case only a port-exact list decides correctly. Every negative test needs its positive twin.
+6. **The mutation test is the acceptance criterion for a security control.** Not "write tests" — name the mutation, apply it, record which tests fall, and put the table in the PR. A row with zero red tests is a finding: either the test is missing or the control does nothing.
+7. **The test harness is itself a source of error on HTTP transports.** A bare `httpx.ASGITransport` returns 500 on everything because it never runs the app lifespan; an instance-level `monkeypatch` can shadow `mcp.run` permanently and start real uvicorn mid-suite; and a branch test that does not assert its branch hangs instead of failing.
 
 ## Prerequisites
 
@@ -51,7 +55,7 @@ The skill triggers on its own when a server is migrated to a new SDK major, swit
 
 ```
 .
-├── SKILL.md                  # the five rules, with the deployment checklist
+├── SKILL.md                  # the seven rules, with the release checklist
 └── reference/
     └── patterns.py           # copy-paste MCP SDK 2.x / ASGI / uvicorn patterns
 ```
@@ -62,7 +66,7 @@ Three pull requests from the same cycle (2026-07):
 
 | PR | Starting point |
 |---|---|
-| [`parlament-mcp#29`](https://github.com/malkreide/parlament-mcp/pull/29) | Migration 1.x → 2.x. A real startup failure plus a 421 in the HTTP path, reproduced against the real ASGI stack before the fix |
+| [`parlament-mcp#29`](https://github.com/malkreide/parlament-mcp/pull/29) | Migration 1.x → 2.x, as the **last server in the portfolio** still on the old major. A real startup failure plus a 421 in the HTTP path, reproduced against the real ASGI stack before the fix |
 | [`bag-health-mcp#51`](https://github.com/malkreide/bag-health-mcp/pull/51) | No 421 bug — the bind arrived correctly. What was missing was any way to say under which names the server may be addressed |
 | [`swiss-transport-mcp#25`](https://github.com/malkreide/swiss-transport-mcp/pull/25) | No 421 bug. An egress allow-list existed, nothing inbound — and the port fell out on the way to the app builder |
 
@@ -70,8 +74,9 @@ What generalises:
 
 1. **Only one of the three was a bug.** The other two were a missing control — defensible for the intended deployment, but anyone running the server differently had no way in. Missing configurability fails no test, because nothing is wrong.
 2. **Green tests and a clean linter, and the process does not start.** Tool tests run over stdio and never touch the transport path. The fault waits for the first HTTP deployment.
-3. **The mutation test corrected the tests in two of three repos, not the code** — which is where rule 5 comes from.
-4. **A test that hangs instead of failing is worse than none.** Without the control the forbidden request is *allowed*, and for a stream, allowed means waiting.
+3. **The last server on the old major was the one no list knew about.** `openparldata-mcp` sits *nested* inside another repository with its own `pyproject.toml`, so it fell through every enumeration that lists top-level repos — and the parent project's dependency constraint never covered it either. An inventory that counts repositories rather than deployable units misses exactly the cases that stay unmigrated longest.
+4. **The mutation test corrected the tests in two of three repos, not the code** — which is where rule 6 comes from.
+5. **A test that hangs instead of failing is worse than none** — which is where rule 7 comes from. Without the control the forbidden request is *allowed*, and for a stream, allowed means waiting.
 
 **On naming:** two of the three PRs carry `SEC-005` in the title but implement the *inbound* control, which is `SEC-024` in the audit catalogue. `SEC-005` is the outbound direction (DNS pinning against TOCTOU). Two attacks, one name.
 
