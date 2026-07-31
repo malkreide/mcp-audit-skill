@@ -1,0 +1,91 @@
+name: repo-description
+
+# Die Katalog-Zahlen stehen an sechs Orten. Fünf sichert `tests/`; der sechste
+# ist die GitHub-Repo-Description und liegt ausserhalb des Repos — deshalb ist
+# ausgerechnet sie von 68 auf 85 Checks auseinandergelaufen, ohne dass etwas
+# anschlug.
+#
+# Bewusst NICHT bei `pull_request`: Ein PR, der den Katalog wachsen lässt,
+# macht die Description im selben Moment veraltet, und korrigieren kann sie nur
+# ein Mensch in den Repo-Settings — nach dem Merge. Ein PR-Gate würde das
+# falsche Ereignis bestrafen und wäre nach zwei Wochen abgeschaltet.
+#
+# Stattdessen: nach dem Merge auf `main`, wöchentlich als Netz für alles, was
+# ausserhalb dieses Repos an der Description dreht, und von Hand auslösbar.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "checks/**"
+      - "tools/check_repo_description.py"
+      - ".github/workflows/repo-description.yml"
+  schedule:
+    # Montags 06:23 UTC. Ungerade Minute gegen den Scheduler-Stampede.
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Description gegen den Katalog prüfen
+        id: check
+        env:
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+          # Für das Lesen öffentlicher Repo-Metadaten nicht nötig, aber es hebt
+          # das Rate-Limit von 60/h auf 1000/h.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python tools/check_repo_description.py \
+            --repo "${{ github.repository }}" \
+            --format json > result.json || echo "failed=true" >> "$GITHUB_OUTPUT"
+          cat result.json
+
+      - name: Befund in die Job-Summary schreiben
+        if: always()
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+          p = pathlib.Path("result.json")
+          if not p.exists() or not p.read_text().strip():
+              print("## Repo-Description\n\nKein Ergebnis — siehe Log des vorigen Schritts.")
+              raise SystemExit(0)
+          r = json.loads(p.read_text(encoding="utf-8"))
+          if r.get("ok"):
+              print(f"## Repo-Description OK\n\n{r['catalog_checks']} Checks, "
+                    f"{r['catalog_categories']} Kategorien — Description stimmt.")
+          elif r.get("description") is None:
+              print("## Repo-Description — nicht geprüft\n")
+              print(f"`{r.get('status')}`\n")
+              print("Der Vergleich hat nicht stattgefunden. Das ist kein Bestehen.")
+          else:
+              print("## Repo-Description veraltet\n")
+              for problem in r["problems"]:
+                  print(f"- {problem}")
+              print("\n**Korrigierter Text** (Formulierung unverändert, nur die Zahlen):\n")
+              print("```")
+              print(r["suggestion"])
+              print("```")
+              print(f"\nEintragen unter [Settings]"
+                    f"(https://github.com/{r['repo']}/settings) — der Guard schreibt "
+                    "bewusst nicht: Repo-Metadaten zu ändern gehört einem Menschen.")
+          PY
+
+      - name: Rot, wenn die Description nicht stimmt
+        if: steps.check.outputs.failed == 'true'
+        run: |
+          echo "Description weicht vom Katalog ab oder konnte nicht geholt werden."
+          echo "Der fertige Text steht in der Job-Summary."
+          exit 1

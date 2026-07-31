@@ -6,6 +6,35 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — der sechste Ort: die GitHub-Repo-Description
+
+v1.1.1 schloss mit dem Satz, keine Katalog-Angabe im Repo sei mehr ungesichert. Das stimmte — und liess offen, dass eine davon **ausserhalb** des Repos liegt: die Repository-Description auf GitHub.
+
+Sie war prompt gedriftet. Während der Katalog von 68 über 78 auf 85 Checks in elf Kategorien wuchs, stand dort unverändert «68 Checks · 8 Kategorien». Kein Fehler mit Folgen für ein Audit, aber die erste Zeile, die jemand liest, der das Repo findet. Ein Wert, den nichts erzwingt, driftet — dieselbe Regel, aus der `IDENT-004` entstand, nur eine Ebene ausserhalb der Arbeitskopie.
+
+- **`tools/check_repo_description.py`** holt die Description über die GitHub-API und hält ihre Zahlen gegen den geparsten Katalog. Geprüft werden ausschliesslich die Zahlen, nicht die Formulierung — die gehört der Autorin. Bei Abweichung gibt der Guard den **fertigen korrigierten Text** aus.
+- **`.github/workflows/repo-description.yml`** führt ihn aus: nach dem Merge auf `main` (wenn `checks/**` betroffen ist), wöchentlich, und von Hand. Der Befund samt Ersatztext landet in der Job-Summary, nicht nur im Log.
+- **`tests/test_repo_description.py`** — 16 Tests.
+
+Der Guard **schreibt nicht**. Repo-Metadaten zu ändern ist ein Eingriff, der einer Person gehört; das Skript benennt die Abweichung und legt den Text daneben.
+
+Drei Entscheidungen:
+
+1. **Kein `pull_request`-Trigger.** Ein PR, der den Katalog wachsen lässt, macht die Description im selben Moment veraltet — und korrigieren kann sie nur ein Mensch in den Settings, nach dem Merge. Ein PR-Gate würde das falsche Ereignis bestrafen und wäre nach zwei Wochen abgeschaltet.
+2. **Eine nicht erreichbare API ist kein Bestehen.** Ohne Antwort hat der Vergleich nicht stattgefunden; der Guard meldet `UNKNOWN` und endet mit 1, statt aus dem lokalen Katalog allein «stimmt» zu drucken. Das ist `DRIFT-003` auf den Guard selbst angewandt — und beim Bauen sofort eingetreten: In der Sandbox blockiert der TLS-Proxy `api.github.com`, und der Guard hat korrekt `UNKNOWN` gemeldet statt grün.
+3. **Der Vergleich ist eine reine Funktion.** `compare()` nimmt den Description-String entgegen und ist ohne Netz testbar; `fetch()` ist absichtlich die dünnste Funktion der Datei und wird **nicht** gemockt. Ein Mock bildete nur die eigene Annahme über die GitHub-Antwort ab und könnte sie nie widerlegen — die Grenze, an der `DRIFT-004` ansetzt.
+
+Damit hängen sechs Orte am Katalog:
+
+| Ort | Gesichert durch |
+|---|---|
+| `checks/MANIFEST.txt`, Katalog-Grösse, Kategorien, Severities | `test_parse_catalog.py`, `test_applicability.py` |
+| `README.md` | `test_readme_counts.py` |
+| `SKILL.md` | `test_skill_counts.py` |
+| `docs/roadmap.md` (`Stand:`-Zeile) | `test_roadmap_counts.py` |
+| `.claude/commands/audit-mcp.md` (Kategorienliste) | `test_command_counts.py` |
+| **GitHub-Repo-Description** | **`repo-description.yml` (ausserhalb des Repos, deshalb Workflow statt Test)** |
+
 ## [v1.2.0] — 2026-07-30 — Vertrag mit der Quelle, und was davon gemessen ist
 
 Der Katalog wächst von **78 auf 85 Checks** in **elf statt zehn Kategorien**. Severity-Verteilung neu **16 critical · 39 high · 29 medium · 1 low** (v1.1.1: 16 · 34 · 27 · 1).
