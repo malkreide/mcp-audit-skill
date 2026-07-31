@@ -123,6 +123,24 @@ Build by this skill and you pass the `FID` checks; fail them in an audit and the
 
 See [CHANGELOG.md](CHANGELOG.md)
 
+## Contributing
+
+Corrections are welcome: a probe command that no longer works, a source whose
+behaviour has changed, a step that reads more clearly another way.
+
+New steps and anti-patterns have a higher bar. This procedure is deliberately
+empirical — documentation is a photograph, a live probe is the current state —
+and the same standard applies to the procedure itself. A proposed step should
+come from a source that actually behaved that way, and say which one, so the next
+person can re-probe it. That is what the findings culture is for: a discovery
+nobody wrote down gets rediscovered at full price.
+
+The most useful contribution is usually the smallest one — a single line in the
+default matrix for a source not yet listed, with the parameter description that
+proves it.
+
+Open an issue before a large pull request, so the shape can be settled first.
+
 ## Security
 
 This repository ships documentation and reference code — no running server, no

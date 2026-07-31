@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Contributing section in both READMEs. The same standard the procedure applies
+  to data sources applies to the procedure itself: a proposed step should come
+  from a source that actually behaved that way, and name it, so the next person
+  can re-probe. The smallest useful contribution is one line in the default
+  matrix, with the parameter description that proves it.
 - `.gitattributes` pinning `*.sh`, `*.py`, `*.yml`, `*.yaml`, `*.md` and `*.txt`
   to LF, matching the other repositories in the portfolio. This one had been the
   exception, and it is the repository where it matters most: it ships a shell

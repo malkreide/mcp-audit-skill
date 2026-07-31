@@ -122,6 +122,27 @@ Wer nach diesem Skill baut, besteht die `FID`-Checks; wer sie beim Audit reisst,
 
 Siehe [CHANGELOG.md](CHANGELOG.md)
 
+## Mitwirken
+
+Korrekturen sind willkommen: ein Probe-Befehl, der nicht mehr funktioniert, eine
+Quelle, deren Verhalten sich geändert hat, ein Schritt, der anders formuliert
+klarer wird.
+
+Für neue Schritte und Anti-Patterns liegt die Latte höher. Dieses Vorgehen ist
+bewusst empirisch — Dokumentation ist ein Foto, die Live-Probe ist der aktuelle
+Zustand —, und derselbe Massstab gilt für das Vorgehen selbst. Ein
+vorgeschlagener Schritt sollte aus einer Quelle stammen, die sich tatsächlich so
+verhalten hat, und benennen, welche das war, damit die nächste Person nachproben
+kann. Genau dafür ist die Fundstück-Kultur da: Ein Fund, den niemand aufschreibt,
+wird zum vollen Preis neu entdeckt.
+
+Der nützlichste Beitrag ist meist der kleinste — eine einzelne Zeile in der
+Default-Matrix für eine noch nicht gelistete Quelle, mit der Parameterbeschreibung,
+die sie belegt.
+
+Vor einem grösseren Pull Request bitte ein Issue eröffnen, damit die Form vorher
+geklärt ist.
+
 ## Sicherheit
 
 Dieses Repo liefert Dokumentation und Referenzcode — keinen laufenden Server und
