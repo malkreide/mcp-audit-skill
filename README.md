@@ -219,6 +219,26 @@ Dann in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`. Der Workflow l
 | `medium` | Best-Practice-Verletzung | Im nächsten Sprint planen |
 | `low` | Polish, Optimierung | Backlog |
 
+## Adoptionsstufen
+
+Severity sagt, **wie schlimm** ein Verstoss ist. Die Adoptionsstufe sagt, **ob der Katalog das Portfolio schon darauf festnageln darf**. Ohne die zweite Achse trifft jeder neue Check am Tag des Merges 30+ Server als rote Pipeline — so werden Checks zurückgenommen statt übernommen.
+
+| Stufe | Bedeutung | Konsequenz |
+|---|---|---|
+| `enforced` | Der Katalog hält das Portfolio daran fest | Ein `fail` auf `critical`/`high` blockiert Production-Readiness |
+| `advisory` | Der Check meldet, urteilt aber noch nicht | Finding wird erzeugt, gezählt und mit voller Severity geführt — blockiert aber nicht |
+
+Das Feld ist optional; fehlt es, gilt `enforced`. Alle 85 Checks sind derzeit `enforced` — die Einführung des Mechanismus hat kein einziges Verdikt geändert.
+
+**Advisory versteckt nichts.** Nur das Veto entfällt. Ein Advisory-Finding auf blockierender Severity wird auch bei grünem Verdikt namentlich genannt, damit eine spätere Promotion eine Entscheidung ist und keine Überraschung.
+
+Der Katalog ist autoritativ, nicht die Ergebnisdatei — deshalb `--checks-dir`:
+
+```bash
+python tools/aggregate_results.py aggregate verification-results.json \
+    --checks-dir checks/ --out summary.json
+```
+
 ## Audit-Workflow (Kurzform)
 
 1. **Profil laden** — Server-Eigenschaften aus Notion-Audit-Tracker oder via Inferenz aus dem Repo

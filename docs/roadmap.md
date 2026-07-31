@@ -41,6 +41,7 @@ Der v0.5.0-Katalog mit 68 Checks in 8 Kategorien deckt alle Sektionen der urspr�
 | **v0.5.0** | **2026-04-26** | **+14 Checks aus Anhang-PDF (5 ARCH + 5 SEC + 1 OBS + 3 OPS)** |
 | _unreleased_ | 2026-07-27 | +5 `FID`-Checks (Datentreue) aus Portfolio-Fundstück `termdat-mcp#11` |
 | _unreleased_ | 2026-07-30 | +`OPS-004` (Audit-Redlichkeit) aus dem Nachlauf zu `termdat-mcp#11` |
+| _unreleased_ | 2026-07-30 | Adoptionsstufe `advisory`/`enforced` — neue Checks können melden, bevor sie blockieren |
 
 ---
 

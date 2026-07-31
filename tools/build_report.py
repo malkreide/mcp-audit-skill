@@ -98,8 +98,18 @@ def render_executive_summary(summary: dict[str, Any]) -> str:
         f"{by_sev.get('medium', 0)} medium, "
         f"{by_sev.get('low', 0)} low)."
     )
+    advisory = summary.get("advisory_findings") or []
     if summary.get("production_ready"):
         sentence_3 = "Production-Readiness: erreicht."
+        if advisory:
+            # A green verdict must not swallow this. These checks failed at a
+            # blocking severity and were held back only by their adoption
+            # stage; naming them is what makes a later promotion a decision
+            # rather than a surprise.
+            sentence_3 += (
+                f" {len(advisory)} advisory-Finding(s) hätten bei `enforced` "
+                f"blockiert: {', '.join(advisory)}."
+            )
     else:
         if blocking:
             ids = ", ".join(blocking)
@@ -109,6 +119,11 @@ def render_executive_summary(summary: dict[str, Any]) -> str:
         else:
             sentence_3 = (
                 "Production-Readiness: NICHT erreicht — siehe Findings-Tabelle."
+            )
+        if advisory:
+            sentence_3 += (
+                f" Zusätzlich {len(advisory)} advisory-Finding(s) auf "
+                f"blockierender Severity: {', '.join(advisory)}."
             )
 
     return (

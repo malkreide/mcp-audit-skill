@@ -40,6 +40,11 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from tools.parse_catalog import (  # noqa: E402
+    DEFAULT_ADOPTION,
+    VALID_ADOPTIONS,
+    parse_catalog,
+)
 from tools.path_utils import force_utf8_stdio  # noqa: E402
 
 
@@ -74,6 +79,7 @@ class CheckResult:
     status: str
     category: str
     severity: str
+    adoption: str = DEFAULT_ADOPTION
     evidence: list[str] = field(default_factory=list)
     gaps: list[str] = field(default_factory=list)
 
@@ -87,6 +93,11 @@ class CheckResult:
             raise AggregationError(
                 f"{self.check_id}: invalid severity {self.severity!r}, "
                 f"expected one of {VALID_SEVERITIES}"
+            )
+        if self.adoption not in VALID_ADOPTIONS:
+            raise AggregationError(
+                f"{self.check_id}: invalid adoption {self.adoption!r}, "
+                f"expected one of {VALID_ADOPTIONS}"
             )
 
 
@@ -110,6 +121,7 @@ class VerificationResults:
                 status=raw.get("status", ""),
                 category=raw.get("category", ""),
                 severity=raw.get("severity", ""),
+                adoption=raw.get("adoption") or DEFAULT_ADOPTION,
                 evidence=list(raw.get("evidence") or []),
                 gaps=list(raw.get("gaps") or []),
             )
@@ -127,6 +139,28 @@ class VerificationResults:
 # ---------------------------------------------------------------------------
 # Aggregation
 # ---------------------------------------------------------------------------
+
+def apply_catalog_adoption(vr: "VerificationResults", checks_dir: Path) -> list[str]:
+    """Overwrite each result's adoption stage from the catalogue.
+
+    The catalogue is authoritative. Leaving the stage to whoever wrote
+    verification-results.json means a check is enforced or advisory depending
+    on whether that step remembered the field — and the failure would be
+    silent in the direction that matters, a blocking check quietly demoted.
+
+    Returns the IDs present in the results but absent from the catalogue, so
+    the caller can report them rather than let them keep the default.
+    """
+    catalog = parse_catalog(checks_dir)
+    unknown: list[str] = []
+    for cid, result in vr.results.items():
+        fm = catalog.get(cid)
+        if fm is None:
+            unknown.append(cid)
+            continue
+        result.adoption = fm.get("adoption", DEFAULT_ADOPTION)
+    return sorted(unknown)
+
 
 def aggregate(
     vr: VerificationResults,
@@ -150,11 +184,16 @@ def aggregate(
     finding_statuses = POLICIES[policy]
     expected_findings: list[dict[str, Any]] = []
     blocking: list[str] = []
+    advisory: list[str] = []
+    by_adoption: dict[str, int] = {a: 0 for a in VALID_ADOPTIONS}
 
     for cid, r in sorted(vr.results.items()):
         by_status[r.status] = by_status.get(r.status, 0) + 1
         cat = by_category.setdefault(r.category, {s: 0 for s in VALID_STATUSES})
         cat[r.status] = cat.get(r.status, 0) + 1
+
+        if r.status != "n/a":
+            by_adoption[r.adoption] = by_adoption.get(r.adoption, 0) + 1
 
         if r.status in finding_statuses:
             by_severity[r.severity] = by_severity.get(r.severity, 0) + 1
@@ -163,9 +202,18 @@ def aggregate(
                 "category": r.category,
                 "severity": r.severity,
                 "status": r.status,
+                "adoption": r.adoption,
             })
+            # An advisory check still produces a finding — it is reported,
+            # counted and carries the same severity. It just does not veto the
+            # release. That is the whole distinction: severity describes the
+            # violation, adoption describes whether the catalogue is yet
+            # entitled to hold this portfolio to it.
             if r.status == "fail" and r.severity in BLOCKING_SEVERITIES:
-                blocking.append(cid)
+                if r.adoption == "enforced":
+                    blocking.append(cid)
+                else:
+                    advisory.append(cid)
 
     applicable = sum(
         v for k, v in by_status.items() if k != "n/a"
@@ -179,6 +227,7 @@ def aggregate(
             "by_status": by_status,
             "by_severity_among_findings": by_severity,
             "by_category": by_category,
+            "by_adoption": by_adoption,
         },
         "findings": {
             "policy": policy,
@@ -189,6 +238,11 @@ def aggregate(
         },
         "production_ready": len(blocking) == 0,
         "blocking_findings": blocking,
+        # Would have blocked if the check were enforced. Reported separately so
+        # a green verdict never hides the fact that an advisory check failed —
+        # a promotion candidate is visible before it is promoted, not after it
+        # turns the whole portfolio red.
+        "advisory_findings": advisory,
     }
     return summary
 
@@ -325,6 +379,16 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Write summary.json to this path; otherwise print to stdout",
     )
+    p_agg.add_argument(
+        "--checks-dir",
+        default=None,
+        help=(
+            "Take each check's adoption stage from this catalogue rather than "
+            "from the results file. Recommended: the catalogue is authoritative, "
+            "and a results file that omits the field silently gets the enforced "
+            "default"
+        ),
+    )
 
     p_val = sub.add_parser(
         "validate",
@@ -375,6 +439,17 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "aggregate":
         vr = VerificationResults.from_path(Path(args.results))
+        if args.checks_dir:
+            unknown = apply_catalog_adoption(vr, Path(args.checks_dir))
+            if unknown:
+                # Loud, not fatal: an unknown id keeps the enforced default, so
+                # the verdict stays on the safe side — but a result the
+                # catalogue does not know about is worth saying out loud.
+                print(
+                    f"Warning: {len(unknown)} result id(s) not in the catalogue, "
+                    f"keeping the {DEFAULT_ADOPTION} default: {', '.join(unknown)}",
+                    file=sys.stderr,
+                )
         summary = aggregate(vr, policy=args.policy)
         text = json.dumps(summary, indent=2, ensure_ascii=False)
         if args.out:
