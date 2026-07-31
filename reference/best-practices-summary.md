@@ -105,6 +105,8 @@ Cloud-Metadata-Endpunkte (`169.254.169.254`) und private IPs als Risiko.
 - IP-Blocklisting via Egress-Proxy (z.B. Smokescreen) — nie String-Parser
 - DNS-Resolution-Pinning (Schutz vor TOCTOU)
 
+**Zwei Richtungen, ein Name.** Das Obige ist die *ausgehende* Richtung: Der Server löst einen Angreifer-Hostnamen auf und wird zum Werkzeug (`SEC-004`, `SEC-005`). Die *eingehende* Richtung ist ein anderer Angriff: Eine fremde Seite löst ihren eigenen Hostnamen auf die Adresse des Servers auf und spricht ihn aus dem Browser an. Dagegen hilft weder CORS (same-origin aus Browsersicht) noch ein Auth-Token (die Seite läuft in einem Kontext, der eines hält), sondern nur eine eingehende Host-Allow-List (`SEC-024`).
+
 ### Lokale Server (Sec 4.5)
 
 Lokale MCP-Server haben User-Rechte → RCE-Risiko bei kompromittierten Binaries.

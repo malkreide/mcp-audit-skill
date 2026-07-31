@@ -6,6 +6,27 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `SEC-024` auf die Portfolio-Belege umgeschrieben, `SEC-005` disambiguiert
+
+Der Katalog bleibt bei **88 Checks**. `SEC-024` wurde im letzten Release aus der SDK-Mechanik heraus geschrieben; jetzt liegt der Befund aus drei realen Nachrüstungen vor, und der Check ist danach neu gefasst.
+
+**Die drei PRs zitieren im Titel alle `SEC-005`** — [parlament-mcp#29](https://github.com/malkreide/parlament-mcp/pull/29), [bag-health-mcp#51](https://github.com/malkreide/bag-health-mcp/pull/51), [swiss-transport-mcp#25](https://github.com/malkreide/swiss-transport-mcp/pull/25) — also eine ID, die etwas anderes prüft. Das ist kein Flüchtigkeitsfehler dreimal, sondern die Folge davon, dass der Katalog zwei verschiedene Angriffe unter einem Namen führte.
+
+**`SEC-005` heisst jetzt «DNS-Rebinding *egress*».** Dazu ein Absatz am Anfang, der die Richtung benennt und auf `SEC-024` als eingehendes Gegenstück verweist. Der Titel kam ausserhalb der Check-Datei nirgends wörtlich vor (geprüft in `README.md`, `docs/roadmap.md`, `reference/best-practices-summary.md`) — nachzuziehen war nichts. In `reference/best-practices-summary.md` stand unter der Überschrift «SSRF / DNS Rebinding» aber nur die ausgehende Hälfte; dort steht jetzt ein Absatz zur eingehenden.
+
+**Was `SEC-024` inhaltlich dazugewonnen hat:**
+
+- **Warum die drei naheliegenden Kontrollen nicht greifen**, als Tabelle. *CORS* nicht, weil die Anfrage aus Browsersicht same-origin ist. Ein *Auth-Token* nicht, weil die angreifende Seite in einem Kontext läuft, der eines hält — belegt in `bag-health-mcp#51` durch einen Test, der festhält, dass ein gültiges `Bearer` einen fremden Host nicht rettet. Die *Egress-Allow-List* (`SEC-021`) nicht, weil sie die Gegenrichtung ist.
+- **Vier Eigenschaften des Pass-Patterns**, alle aus den PRs: portgenau (ein Eintrag trägt seinen Port), Loopback bleibt immer drin für Container-Health-Checks, konfigurierte CORS-Origins wandern in die Origin-Liste des Transports — sonst weist der Transport genau die Browser-Clients ab, für die CORS geöffnet wurde —, und `*` wird nicht übernommen, weil Origins literal verglichen werden.
+- **Der Fail-open-Zustand ist jetzt als akzeptiert beschrieben, nicht als Fehler.** Die vorige Fassung verlangte einen harten Startabbruch. Das war falsch: Ohne gesetzte Variable bleibt der Schutz auf einem Nicht-Loopback-Bind aus — sichtbar, mit Startwarnung. Eine geratene Liste wäre schlechter als keine, weil auf `0.0.0.0` der erreichbare Name im Prozess unbekannt ist und der Tipp genau das Deployment abweist, das er schützen soll.
+- **Evidence 2 ist präzisiert**: nicht «fremder Host wird abgewiesen», sondern **richtiger Hostname, falscher Port**. Der Grund steht im Check: Ein Test gegen `evil.example.com` beweist nichts, weil eine zurückgefallene Loopback-Policy ihn ebenfalls abweist — der Test bestünde, ohne dass die Kontrolle da ist. Nur eine tatsächlich übergebene, portgenaue Liste weist `mcp.example.com:9999` ab. Der Test muss aus seinem eigenen Grund scheitern, nicht aus dem eines Defaults.
+- Dazu die Gegenrichtung aus `parlament-mcp#29`: Ein Positiv-Test, der `MCP_ALLOWED_HOSTS` selbst setzt, kann die `host`-Verdrahtung nicht prüfen — bei expliziter Allow-List ist der Kwarg irrelevant. Dort bestand die erste Testfassung deshalb auch mit angewandter Mutation.
+- **Warnung zu den Netzpfaden** im Remediation-Teil. In den drei PRs sah das jedes Mal anders aus: ein App-Builder, der nur bei konfiguriertem Auth oder CORS überhaupt genommen wurde (sonst servierte das SDK über `run()`); eine uvicorn-`--factory`, die ohne Argumente aufgerufen wird, sodass `--host` nur den Listener konfiguriert; und ein deprecateter SSE-Pfad neben Streamable HTTP. Wer nur den Pfad verdrahtet, den er vor Augen hat, macht den Schutz davon abhängig, welcher Zweig zufällig greift.
+
+`severity: high` bestätigt, nicht still geändert: `SEC-016` trägt `critical` für die Netzwerk-Exposition und macht für Container eine Ausnahme; `SEC-024` ist die kompensierende Kontrolle für genau diese Ausnahme — eine Verteidigungsschicht, keine Exposition. Dass sie per Default fail-open ist, spricht für ihre Wichtigkeit, macht sie aber nicht zur Exposition selbst.
+
+Keine Zählwert-Änderung: `SEC-024` war bereits im Katalog, `SEC-005` behält seine ID. 385 Tests unverändert.
+
 ### Hinzugefügt — `SEC-024`: Die gefährliche Konfiguration ist die unauffällige
 
 Der Katalog wächst auf **88 Checks**, `SEC` auf 24. `SEC-024` prüft die eingehende Host-Allow-List — die Frage, die `SEC-016` offen lässt, sobald es `0.0.0.0` für Container erlaubt.
