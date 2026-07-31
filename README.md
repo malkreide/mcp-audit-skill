@@ -283,6 +283,16 @@ Komplementär nutzbar — keiner der Genannten ersetzt die anderen.
 
 Künftige Erweiterungen kommen aus Real-World-Findings beim Portfolio-Audit, MCP-Spec-Updates oder neuen Compliance-Anforderungen (EU AI Act, Schweizer KI-Gesetz). Versions-Roadmap siehe [`docs/roadmap.md`](./docs/roadmap.md).
 
+## Mitwirken
+
+Korrekturen sind willkommen: ein Check, dessen Pass-Kriterium in der Praxis nicht trennscharf ist, eine Quelle, die sich weiterbewegt hat, ein Remediation-Pfad, der ins Leere führt.
+
+Für neue Checks gilt die Anatomie der bestehenden: eine benannte Quelle, ein Pass-Kriterium, das zwei Auditoren gleich beantworten, ein Remediation-Pfad und ein Aufwands-Indikator. Ein Check ohne Quelle ist eine Meinung — und ein Pass-Kriterium, das Auslegung zulässt, macht den Katalog unreproduzierbar, also genau das, was er verhindern soll.
+
+Besonders willkommen sind ergänzende Compliance-Layer anderer Jurisdiktionen (DSGVO-Spezifika, kantonale Datenschutzgesetze, sektorspezifische Vorgaben) sowie Real-World-Findings aus Portfolio-Audits, die einen bestehenden Check nachschärfen.
+
+Vor einem grösseren Pull Request bitte ein Issue eröffnen, damit die Form vorher geklärt ist.
+
 ## Lizenz
 
 MIT — siehe [`LICENSE`](./LICENSE).
@@ -290,8 +300,6 @@ MIT — siehe [`LICENSE`](./LICENSE).
 ## Kontext
 
 Entwickelt im Rahmen des Swiss Public Data MCP Portfolio. Frei verwendbar von anderen Verwaltungen, Forschungsinstituten oder Privatpersonen, die MCP-Server systematisch auditieren wollen.
-
-Pull Requests willkommen — insbesondere für ergänzende Compliance-Layer anderer Jurisdiktionen (DSGVO-Spezifika, kantonale Datenschutzgesetze, sektorspezifische Vorgaben).
 
 ---
 

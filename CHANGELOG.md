@@ -6,6 +6,14 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Ergänzt — `## Mitwirken` als eigene Sektion
+
+Die Aussage stand bisher als ein Satz unter `## Kontext` («Pull Requests willkommen — insbesondere für ergänzende Compliance-Layer»). Sie hat jetzt eine eigene Überschrift und benennt die Anatomie, die ein neuer Check mitbringen muss: benannte Quelle, ein Pass-Kriterium, das zwei Auditoren gleich beantworten, ein Remediation-Pfad, ein Aufwands-Indikator. Ein Check ohne Quelle ist eine Meinung, und ein auslegbares Pass-Kriterium macht den Katalog unreproduzierbar — also genau das, was er verhindern soll.
+
+Der Satz in `## Kontext` entfällt, damit die Aussage nur an einer Stelle steht.
+
+**Nebenbefund, nicht in dieser Änderung behoben:** Der Repo-Validator prüft `README.md` grundsätzlich als englische Datei. Weil dieses README durchgehend deutsch ist, erkennt er weder `## Mitwirken` noch `## Lizenz` und meldet sie als fehlend. Die WARN zu `contributing` bleibt deshalb bestehen, obwohl die Sektion existiert. Sie verschwindet erst, wenn dieses Repo dem Muster der übrigen folgt — englisches `README.md` plus deutsches `README.de.md`.
+
 ### Dokumentiert — warum `SEC-005` `enforced` bleibt
 
 Die Reichweiten-Erweiterung aus v1.3.0 hat die Frage aufgeworfen, ob der Check den in `SKILL.md` 2.3 dokumentierten Weg über `adoption: advisory` gehen sollte. Er tut es nicht — und der Grund steht jetzt im Check, nicht nur in einem PR-Kommentar.
