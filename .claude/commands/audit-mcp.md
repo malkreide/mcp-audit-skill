@@ -72,7 +72,7 @@ Daraus baust du das Profil mit folgenden Variablen (Defaults bei Unsicherheit):
 
 | Variable | Mögliche Werte | Default bei Unsicherheit |
 |---|---|---|
-| `transport` | `stdio-only`, `dual`, `HTTP`, `SSE` | `dual` |
+| `transport` | `stdio-only`, `dual`, `HTTP/SSE` | `dual` |
 | `auth_model` | `none`, `API-Key`, `OAuth-Proxy`, `OIDC` | `none` |
 | `data_class` | `Public Open Data`, `Verwaltungsdaten`, `PII` | `Public Open Data` |
 | `write_capable` | `true`, `false` | `false` |
@@ -96,7 +96,7 @@ python "$SKILL_BASE/tools/validate_profile.py" "$OUTPUT_DIR/profile.yaml"
 # exit 0 = clean, exit 1 = Placeholder/Schema-Fehler im JSON-Output
 ```
 
-Bei Exit 1: Step 2 NICHT starten. Zeige dem User die `placeholder`/`missing`/`type_mismatch`-Liste aus dem JSON und bitte um Korrektur.
+Bei Exit 1: Step 2 NICHT starten. Zeige dem User die `placeholder`/`missing`/`type_mismatch`/`enum_mismatch`-Liste aus dem JSON und bitte um Korrektur. Bei `enum_mismatch` nenne die erlaubten Werte aus dem `allowed`-Feld — der Wert ist nicht ungültig, sondern anders geschrieben, und ohne Korrektur fallen Checks still weg statt zu scheitern.
 
 **Headless-Modus (Batch-Audit via `audit-portfolio.sh`):** Falls die Konversation **vor** dem `/audit-mcp`-Aufruf bereits einen vollständigen Profil-YAML-Block enthält, der explizit als «autoritativ» oder «Headless-Modus» markiert ist, übernimm das Profil unverändert und überspringe die User-Bestätigung. Auch im Headless-Modus läuft das `validate_profile.py`-Gate vorher; bei Exit 1 wird der Audit abgebrochen mit klarer Fehlermeldung.
 

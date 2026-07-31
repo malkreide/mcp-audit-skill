@@ -12,11 +12,26 @@ What it catches:
 - Required fields whose value is a placeholder (`...`, `<...>`, `TODO`,
   empty string, None)
 - Type mismatches (string where bool was expected, etc.)
+- Closed-vocabulary fields carrying a value the catalog never compares
+  against (see ALLOWED_VALUES)
 
-It does NOT validate semantics like "is `transport` a valid enum value".
-That's intentionally out of scope; the canonical evaluator surfaces
-those mismatches loudly via UnknownFieldError / TypeMismatchError once
-applies_when runs.
+The last category used to be out of scope, with this justification in
+place of an implementation: "the canonical evaluator surfaces those
+mismatches loudly via UnknownFieldError / TypeMismatchError once
+applies_when runs". That was wrong, and the error was self-concealing.
+`UnknownFieldError` fires for an unknown *field*; `TypeMismatchError`
+for a mismatched *type*. An unknown *value* is a perfectly ordinary
+string, so `transport == "HTTP/SSE"` against a profile saying
+`transport: "HTTP"` simply evaluates to False — no exception, no
+warning, nothing in the report.
+
+The cost was measured, not assumed: a profile written `transport: HTTP`
+(a spelling this repo's own docs recommended) lost SCALE-002, SCALE-003,
+SCALE-007 and SDK-004 — two of them `high` — while every
+`transport != "stdio-only"` check still fired. Half the profile was
+recognised, and the audit reported a clean run over a smaller catalog
+than it claimed. `OPS-005` names exactly this failure: a check that did
+not run looks identical to one that passed.
 
 Exit codes:
     0 — profile is clean
@@ -60,6 +75,30 @@ REQUIRED_FIELDS: dict[str, type | tuple[type, ...]] = {
     "data_source": dict,
 }
 
+# Fields with a closed vocabulary — every value the catalog's `applies_when`
+# clauses can meaningfully compare against.
+#
+# Only fields that are genuinely closed belong here. `auth_model` and
+# `data_class` are not: they carry documented values no check singles out
+# (`OIDC`, `Verwaltungsdaten`), and those are handled correctly by the
+# `!=` clauses. A value nobody compares against is a gap in the catalog,
+# not an error in the profile — pinning them here would reject valid
+# profiles for describing a server accurately.
+#
+# `transport` is different, and it is the reason this constant exists.
+# `HTTP` and `SSE` were never additional transports; they were a second
+# spelling of `HTTP/SSE`, recommended by portfolio.example.yaml and the
+# slash command while the catalog only ever compared against the joined
+# form. Same concept, two spellings, and the mismatch cost four checks
+# in silence.
+#
+# Adding a value here is a catalog-wide decision: it must be a value some
+# `applies_when` clause actually tests, or the vocabulary grows a member
+# that can never change an audit outcome.
+ALLOWED_VALUES: dict[str, tuple[str, ...]] = {
+    "transport": ("stdio-only", "dual", "HTTP/SSE"),
+}
+
 # A field whose value matches one of these patterns is a placeholder.
 _PLACEHOLDER_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^\s*$"),                  # empty / whitespace
@@ -84,15 +123,17 @@ def _is_placeholder_value(value: Any) -> bool:
 def validate_profile(
     profile: dict[str, Any],
     required: dict[str, type | tuple[type, ...]] = REQUIRED_FIELDS,
+    allowed: dict[str, tuple[str, ...]] = ALLOWED_VALUES,
 ) -> dict[str, Any]:
-    """Check `profile` for missing/placeholder/wrong-type fields.
+    """Check `profile` for missing/placeholder/wrong-type/unknown-value fields.
 
     Returns:
         {
           "consistent": bool,
           "missing": [field, ...],
           "placeholder": [field, ...],
-          "type_mismatch": [{"field": ..., "expected": ..., "got": ...}, ...]
+          "type_mismatch": [{"field": ..., "expected": ..., "got": ...}, ...],
+          "enum_mismatch": [{"field": ..., "allowed": [...], "got": ...}, ...]
         }
     """
     if not isinstance(profile, dict):
@@ -101,6 +142,7 @@ def validate_profile(
             "missing": list(required),
             "placeholder": [],
             "type_mismatch": [],
+            "enum_mismatch": [],
             "error": (
                 f"profile is {type(profile).__name__}, not an object"
             ),
@@ -109,6 +151,7 @@ def validate_profile(
     missing: list[str] = []
     placeholder: list[str] = []
     type_mismatch: list[dict[str, str]] = []
+    enum_mismatch: list[dict[str, Any]] = []
 
     for field, expected_type in required.items():
         if field not in profile:
@@ -139,6 +182,23 @@ def validate_profile(
                     "got": type(value).__name__,
                 })
 
+    # Closed vocabularies. Deliberately checked only for fields that got
+    # this far clean: a missing or placeholder `transport` is already
+    # reported once, and naming it a second time as "unknown value" would
+    # describe the same defect twice in different words.
+    for field, choices in allowed.items():
+        if field in missing or field in placeholder:
+            continue
+        if any(m["field"] == field for m in type_mismatch):
+            continue
+        value = profile.get(field)
+        if value not in choices:
+            enum_mismatch.append({
+                "field": field,
+                "allowed": list(choices),
+                "got": value,
+            })
+
     # data_source has a known nested field
     ds = profile.get("data_source")
     if isinstance(ds, dict):
@@ -153,12 +213,13 @@ def validate_profile(
                 "got": type(ds["is_swiss_open_data"]).__name__,
             })
 
-    consistent = not (missing or placeholder or type_mismatch)
+    consistent = not (missing or placeholder or type_mismatch or enum_mismatch)
     return {
         "consistent": consistent,
         "missing": missing,
         "placeholder": placeholder,
         "type_mismatch": type_mismatch,
+        "enum_mismatch": enum_mismatch,
     }
 
 
