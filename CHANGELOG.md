@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`companion/mcp-data-fidelity/` is now a pointer, not a copy.** The skill has
+  its own repository —
+  [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill),
+  released as `v1.0.0` — and that is its canonical home. What sat here was
+  byte-identical to that release, so the move loses nothing; keeping it would
+  have meant maintaining two copies that drift. The directory now holds a single
+  `README.md` naming the new location, so anyone browsing the old path lands on
+  a signpost rather than a 404.
+- Both READMEs point at the standalone repository for installation, and the
+  companion section now lists **six** rules rather than five — rule 6 was added
+  after the copy was made, so this repository has been describing the companion
+  by one rule short of what it shipped.
+- CI drops the companion from the syntax check, the frontmatter check and the
+  file list, and gains a guard that fails if a `SKILL.md` ever reappears under
+  `companion/` — that reappearance is exactly the drift the split ended.
+
+### Removed
+
+- `companion/mcp-data-fidelity/reference/__pycache__/patterns.cpython-311.pyc`,
+  a compiled artefact that had been committed by accident.
+
 ### Added
 
 - **Section 1.2c — structural assertion before an empty probe counts as a

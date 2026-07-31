@@ -39,10 +39,12 @@ cp -r mcp-data-source-probe-skill ~/.claude/skills/mcp-data-source-probe
 
 The directory name must be `mcp-data-source-probe` — skill discovery uses it.
 
-To install the companion skill as well (see below):
+To install the companion skill `mcp-data-fidelity` as well (see below), clone it
+from its own repository:
 
 ```bash
-cp -r mcp-data-source-probe-skill/companion/mcp-data-fidelity ~/.claude/skills/
+git clone https://github.com/malkreide/mcp-data-fidelity-skill.git
+cp -r mcp-data-fidelity-skill ~/.claude/skills/mcp-data-fidelity
 ```
 
 ## Usage / Quickstart
@@ -71,19 +73,20 @@ BASE="https://api.example.ch/v2" OUTDIR=/tmp/probe bash reference/probe_template
 │   ├── response_envelope.py              # pydantic v2 envelope with source + provenance
 │   └── retry_backoff.py                  # exponential backoff reference implementation
 └── companion/
-    └── mcp-data-fidelity/                # separately installable companion skill
-        ├── SKILL.md                      # five data-fidelity rules for query tools
-        └── reference/patterns.py         # FastMCP / httpx / pydantic patterns
+    └── mcp-data-fidelity/
+        └── README.md                     # pointer — the skill moved to its own repo
 ```
 
 ## Companion skill: `mcp-data-fidelity`
 
-This repository ships a second, separately installable skill under `companion/`.
+`mcp-data-fidelity` used to ship in this repository under `companion/`. It now
+lives in its own repository, which is its canonical home:
+**[`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill)**.
 
 The two divide the work by phase. `mcp-data-source-probe` covers what happens
 *before and around* the build: probing the source, choosing an architecture,
 measuring recall against ground truth. `mcp-data-fidelity` covers the code
-itself — it complements Anthropic's `mcp-builder` with five rules for tools that
+itself — it complements Anthropic's `mcp-builder` with six rules for tools that
 query an external source:
 
 1. Send scope parameters explicitly, never inherit them
@@ -91,6 +94,8 @@ query an external source:
 3. An empty result carries a concrete next step
 4. The tool description is a hallucination surface
 5. Query syntax belongs in the description, recall belongs in the tests
+6. Confirm the response shape before counting it — a misread nesting returns the
+   same empty list as a genuine zero-hit answer
 
 It exists as a companion rather than a patch because `mcp-builder` is a vendored
 Anthropic skill: editing it in place would be overwritten on the next sync, and

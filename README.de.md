@@ -39,10 +39,12 @@ cp -r mcp-data-source-probe-skill ~/.claude/skills/mcp-data-source-probe
 
 Der Verzeichnisname muss `mcp-data-source-probe` lauten — die Skill-Erkennung nutzt ihn.
 
-Den Companion-Skill (siehe unten) zusätzlich installieren:
+Den Companion-Skill `mcp-data-fidelity` (siehe unten) zusätzlich installieren —
+er liegt in einem eigenen Repo:
 
 ```bash
-cp -r mcp-data-source-probe-skill/companion/mcp-data-fidelity ~/.claude/skills/
+git clone https://github.com/malkreide/mcp-data-fidelity-skill.git
+cp -r mcp-data-fidelity-skill ~/.claude/skills/mcp-data-fidelity
 ```
 
 ## Verwendung
@@ -71,25 +73,28 @@ BASE="https://api.example.ch/v2" OUTDIR=/tmp/probe bash reference/probe_template
 │   ├── response_envelope.py              # Pydantic-v2-Envelope mit source + provenance
 │   └── retry_backoff.py                  # Referenz-Implementation für exponentielles Backoff
 └── companion/
-    └── mcp-data-fidelity/                # separat installierbarer Companion-Skill
-        ├── SKILL.md                      # fünf Datentreue-Regeln für Query-Tools
-        └── reference/patterns.py         # FastMCP-/httpx-/Pydantic-Patterns
+    └── mcp-data-fidelity/
+        └── README.md                     # Pointer — der Skill hat ein eigenes Repo
 ```
 
 ## Companion-Skill: `mcp-data-fidelity`
 
-Dieses Repo enthält unter `companion/` einen zweiten, separat installierbaren Skill.
+`mcp-data-fidelity` wurde bisher in diesem Repo unter `companion/` ausgeliefert.
+Er hat jetzt ein eigenes Repo, das sein kanonisches Zuhause ist:
+**[`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill)**.
 
 Die beiden teilen sich die Arbeit nach Phase. `mcp-data-source-probe` deckt ab, was
 *vor und um* den Bau herum passiert: Quelle proben, Architektur wählen, Recall gegen
 Ground Truth messen. `mcp-data-fidelity` deckt den Code selbst ab — er ergänzt
-Anthropics `mcp-builder` um fünf Regeln für Tools, die eine externe Quelle abfragen:
+Anthropics `mcp-builder` um sechs Regeln für Tools, die eine externe Quelle abfragen:
 
 1. Scope-Parameter explizit senden, nie erben
 2. Parameter-Gruppen vollständig senden — eine Teilmenge erbt still die Server-Defaults
 3. Eine Leermenge trägt einen konkreten nächsten Schritt
 4. Die Tool-Description ist eine Halluzinations-Oberfläche
 5. Query-Syntax gehört in die Description, Recall in die Tests
+6. Die Antwort auf Struktur prüfen, bevor gezählt wird — eine falsch angenommene
+   Verschachtelung liefert dieselbe leere Liste wie ein echter Nullbefund
 
 Er existiert als Companion und nicht als Patch, weil `mcp-builder` ein von Anthropic
 mitgeliefertes Skill ist: Eine Änderung darin würde beim nächsten Sync überschrieben,

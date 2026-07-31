@@ -20,7 +20,7 @@ jobs:
         run: bash -n reference/probe_template.sh
 
       - name: Python references are syntactically valid
-        run: python -m compileall -q reference/ companion/
+        run: python -m compileall -q reference/
 
       - name: Every SKILL.md carries a well-formed frontmatter
         env:
@@ -30,7 +30,6 @@ jobs:
           import pathlib, re, sys
           expected = {
               "SKILL.md": "mcp-data-source-probe",
-              "companion/mcp-data-fidelity/SKILL.md": "mcp-data-fidelity",
           }
           for path, want in expected.items():
               p = pathlib.Path(path)
@@ -69,8 +68,20 @@ jobs:
                    reference/befund_tabelle_template.md \
                    reference/response_envelope.py \
                    reference/retry_backoff.py \
-                   companion/mcp-data-fidelity/SKILL.md \
-                   companion/mcp-data-fidelity/reference/patterns.py; do
+                   companion/mcp-data-fidelity/README.md; do
             test -f "$f" || { echo "missing: $f"; exit 1; }
           done
           echo "ok — all reference files present"
+
+      - name: The companion pointer still points somewhere
+        run: |
+          # The skill moved to its own repository. If this directory ever holds a
+          # SKILL.md again, the two copies will drift — that is the situation the
+          # move was meant to end.
+          if [ -e companion/mcp-data-fidelity/SKILL.md ]; then
+            echo "companion/ carries a SKILL.md again — it moved to its own repo"
+            exit 1
+          fi
+          grep -q 'malkreide/mcp-data-fidelity-skill' companion/mcp-data-fidelity/README.md \
+            || { echo "pointer does not name the canonical repository"; exit 1; }
+          echo "ok — companion pointer intact"
