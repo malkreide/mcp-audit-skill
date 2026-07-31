@@ -1,0 +1,114 @@
+name: validate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python references are syntactically valid
+        run: |
+          if [ -d reference ]; then
+            python -m compileall -q reference/
+            echo "ok — reference/ compiles"
+          else
+            echo "skipped — no reference/ directory yet"
+          fi
+
+      - name: SKILL.md carries a well-formed frontmatter
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          python - <<'PY'
+          import pathlib, re, sys
+          p = pathlib.Path("SKILL.md")
+          m = re.match(r"^---\nname: (.+?)\ndescription: (.+?)\n---\n",
+                       p.read_text(encoding="utf-8"), re.S)
+          if not m:
+              sys.exit("SKILL.md: frontmatter missing or malformed")
+          name, desc = m.group(1).strip(), m.group(2).strip()
+          if name != "mcp-transport-hardening":
+              sys.exit(f"SKILL.md: expected name 'mcp-transport-hardening', got {name!r}")
+          if len(desc) > 1024:
+              sys.exit(f"SKILL.md: description too long ({len(desc)} > 1024)")
+          print(f"ok — name={name}, description={len(desc)} chars")
+          PY
+
+      - name: Every rule carries a counter-example pair and a Nachweis
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          python - <<'PY'
+          import pathlib, re, sys
+
+          skill = pathlib.Path("SKILL.md").read_text(encoding="utf-8")
+          sections = re.split(r"^## (?=Regel )", skill, flags=re.M)[1:]
+          if not sections:
+              sys.exit("SKILL.md: no '## Regel N' sections found")
+
+          numbers = [int(re.match(r"Regel (\d+)", s).group(1)) for s in sections]
+          if numbers != list(range(1, len(numbers) + 1)):
+              sys.exit(f"SKILL.md: rule numbers not sequential: {numbers}")
+
+          for section in sections:
+              title = section.splitlines()[0]
+              body = section.split("\n## ")[0]
+              if "# ✗" not in body or "# ✓" not in body:
+                  sys.exit(f"{title}: missing the counter-example / example code pair")
+              if "**Nachweis:**" not in body:
+                  sys.exit(f"{title}: missing the Nachweis sentence")
+              print(f"ok — {title[:60]}")
+          print(f"ok — {len(sections)} rules, each with a code pair and a Nachweis")
+          PY
+
+      - name: Rule count is consistent across SKILL.md and both READMEs
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          python - <<'PY'
+          import pathlib, re, sys
+
+          skill = pathlib.Path("SKILL.md").read_text(encoding="utf-8")
+          expected = len(re.findall(r"^## Regel \d+", skill, re.M))
+
+          def listed(path, heading):
+              text = pathlib.Path(path).read_text(encoding="utf-8")
+              m = re.search(rf"^## {heading}\n(.*?)(?=^## )", text, re.M | re.S)
+              if not m:
+                  sys.exit(f"{path}: section '## {heading}' not found")
+              return len(re.findall(r"^\d+\. ", m.group(1), re.M))
+
+          for path, heading in [("README.md", "The five rules"),
+                                ("README.de.md", "Die fünf Regeln")]:
+              got = listed(path, heading)
+              if got != expected:
+                  sys.exit(f"{path}: lists {got} rules, SKILL.md defines {expected}")
+              print(f"ok — {path}: {got} rules")
+
+          print(f"ok — {expected} rules, consistent everywhere")
+          PY
+
+      - name: Referenced files exist
+        run: |
+          for f in SKILL.md README.md README.de.md LICENSE CHANGELOG.md; do
+            test -f "$f" || { echo "missing: $f"; exit 1; }
+          done
+          echo "ok — all referenced files present"
+
+      - name: No compiled Python is tracked
+        run: |
+          if git ls-files | grep -E '(__pycache__/|\.py[cod]$)'; then
+            echo "compiled Python is tracked — see .gitignore"
+            exit 1
+          fi
+          echo "ok — no compiled Python tracked"
