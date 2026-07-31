@@ -6,6 +6,44 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `ARCH-013` und `SDK-006`: zwei Fehlerklassen, die beim Import nicht brechen
+
+Der Katalog wächst auf **90 Checks**. `ARCH` auf 13, `SDK` auf 6.
+
+#### `ARCH-013` — Alle Netz-Transportpfade identisch verdrahtet
+
+Die Verallgemeinerung des Hinweises, den `SEC-024` im Remediation-Teil offen gelassen hat. Ein netzerreichbarer Server konstruiert seine ASGI-App fast nie an genau einer Stelle: eigener App-Builder, SDK-servierter `run()`-Pfad, deprecateter SSE-Pfad, `uvicorn --factory`. Die Kontrolle sitzt dann auf einem davon.
+
+Zwei Ausprägungen, in zwei Repos unabhängig aufgetreten:
+
+- **Die Kontrolle hängt an einer fremden Bedingung.** Ein App-Builder wurde nur genommen, wenn Auth **oder** CORS konfiguriert war; sonst servierte das SDK über `run()`. Damit hinge das Scharfschalten einer Sicherheitskontrolle davon ab, ob zufällig ein Auth-Token gesetzt ist — zwei Deployments desselben Images, eines geschützt, eines nicht, und der Unterschied steht in einer Variablen, die von etwas anderem handelt.
+- **Der Parametersatz reist unvollständig.** Ein Builder bekam nur `host`, nicht `port`, und defaultete ihn intern. Die Loopback-Einträge der Host-Allow-List nannten dadurch einen Port, den niemand bedient: verdrahtet, aktiv, und trotzdem falsch. Kein Test hat das gesehen, weil der vorhandene Port-Test den Builder mit explizitem Port rief — die Naht davor war ungeprüft.
+
+Eigener Check statt Fussnote in `SEC-024`, weil die Klasse nicht an eine Kontrolle gebunden ist: Dieselbe Lücke entsteht mit Auth-Middleware, Rate-Limiting, Request-Logging oder Tracing. Geprüft wird die **Vollständigkeit der Aufzählung** — eine Struktureigenschaft des Servers.
+
+Eigener Verification-Modus für `uvicorn --factory`, weil der Fehler dort von aussen kommt und im Code unsichtbar ist: uvicorn ruft eine Factory **ohne Argumente** auf. `--host` konfiguriert nur den Listener und erreicht die App nie; die Factory muss den Bind selbst aus derselben Quelle lesen wie `main()`.
+
+#### `SDK-006` — SDK-Major-Migration vollständig abgeschlossen
+
+Der mechanische Teil eines Major-Sprungs ist in einer Stunde erledigt und sieht danach fertig aus. Liegen bleiben die Stellen, die nicht am Import hängen — und die brechen nicht dort, wo getestet wird: Ein Server mit halber Migration importiert sauber, startet auf stdio, besteht die Suite und stirbt beim ersten HTTP-Deployment.
+
+Fünf greppbare Kriterien: Bound am **neuen** Major verankert (`>=2.0.0,<3`) statt als Deckel auf dem alten (`<2` kauft Zeit und ist kein Zielzustand) · keine Importe aus `mcp.server.fastmcp` · keine Zuweisungen an `mcp.settings.<x>` · Annotations in snake_case **gelesen** · jede verschachtelte `pyproject.toml` erfasst, nicht nur die im Root.
+
+**Das vierte Kriterium ist mit einer ausdrücklichen Gegenwarnung versehen.** `readOnlyHint` überlebt unter 2.x als pydantic-**Alias**, das Drahtformat ist unverändert, und nur der *lesende* Zugriff im Python-Code bricht — deshalb findet das ein Test und kein Client. Umgekehrt heisst das: **In TypeScript-Servern ist camelCase der Spec-Feldname und bleibt richtig.** Der Check gilt für `sdk_language == "Python"` und sagt über Node-Server nichts aus; wer danach einen TypeScript-Server auf snake_case «korrigiert», macht ihn kaputt. Das steht so im Check, in den Common Failures und in der Remediation.
+
+`applies_when: 'sdk_language == "Python"'` — dieselbe Form wie `SDK-001` bis `SDK-004`; `SDK-005` drückt seine TypeScript-Bindung spiegelbildlich aus. Kein neues Profilfeld nötig.
+
+#### Nachgezogen
+
+`checks/MANIFEST.txt`, `SKILL.md` §2.1, `README.md`, `docs/roadmap.md` und die Lock-Tests.
+
+Zwei Werte brauchten mehr als das Hochzählen:
+
+- **Die SKILL-Bereichsspalte für `ARCH` von `10–12` auf `10–13`.** 13 lag ausserhalb, `test_category_ranges_contain_actual` wäre rot geworden. Die Spalte dokumentiert eine Erwartung, nicht den Bestand — bei Überschreitung ist die Erwartung veraltet, genau wie der Test sagt.
+- **Die Applicable-Schranke in `test_applicability.py` von 51 auf 55.** `SDK-006` hat die alte Grenze exakt ausgereizt (51 von 51). Eine Schranke ohne Luft kippt beim nächsten gewöhnlichen Katalogwachstum und meldet «drift», wo keine ist — damit prüfte sie die Katalog-Grösse statt der Grammatik, also das Gegenteil ihres im Kommentar festgehaltenen Zwecks. Die absolute Grösse ist eine Zeile höher ohnehin festgenagelt.
+
+Severity-Verteilung neu **16 critical · 43 high · 30 medium · 1 low**. 385 Tests.
+
 ### Geändert — `SEC-024` auf die Portfolio-Belege umgeschrieben, `SEC-005` disambiguiert
 
 Der Katalog bleibt bei **88 Checks**. `SEC-024` wurde im letzten Release aus der SDK-Mechanik heraus geschrieben; jetzt liegt der Befund aus drei realen Nachrüstungen vor, und der Check ist danach neu gefasst.

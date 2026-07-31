@@ -302,7 +302,7 @@ class TestRealCatalog:
         # CHANGELOG entry.
         # Note: total count of checks (79 → 85 mit DRIFT und IDENT-006,
         # 86 mit OPS-005, 87 mit SCALE-007)
-        assert len(results) == 88
+        assert len(results) == 90
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
         # test fails loudly only on grammar drift.
@@ -313,7 +313,13 @@ class TestRealCatalog:
         # 45 → 51: dieselbe Bewegung für die fünf DRIFT-Checks und IDENT-006.
         # Alle sechs greifen bei einem Server mit externer Datenquelle, und
         # srgssr ist einer — `tools_make_external_requests` ist dort true.
-        assert 25 <= len(applicable) <= 51, (
+        # 51 → 55: `SDK-006` (`sdk_language == "Python"`) hat die alte Grenze
+        # exakt ausgereizt — 51 von 51. Eine Schranke ohne Luft kippt beim
+        # nächsten gewöhnlichen Katalogwachstum und meldet dann «drift», wo
+        # keine ist; damit prüfte sie die Katalog-Grösse statt der Grammatik,
+        # also das Gegenteil ihres Zwecks (siehe Kommentar oben). Die absolute
+        # Grösse ist ohnehin eine Zeile höher festgenagelt.
+        assert 25 <= len(applicable) <= 55, (
             f"Applicable count drifted: got {len(applicable)} "
             f"({applicable})"
         )

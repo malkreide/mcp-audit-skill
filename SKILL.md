@@ -5,7 +5,7 @@ description: Reproduzierbares Audit von MCP-Servern gegen einen versionierten Be
 
 # MCP Audit — Standardisiertes Audit-Vorgehen
 
-Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer, 88 Checks in elf Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
+Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer, 90 Checks in elf Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
 
 **Das Mantra in drei Zeilen:**
 
@@ -179,8 +179,8 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 
 | Kategorie | Quelle | Typische Anzahl Checks | Status |
 |---|---|---|---|
-| `ARCH` | PDF Sec 2 + Anhang A — Tool-Design, Annotations, Idempotency, Repo-Struktur, Spec-Versionierung | 10–12 | 12 / 12 ✅ |
-| `SDK` | PDF Sec 3 — FastMCP, TypeScript, Zod, Lifecycle | 5–7 | 5 / 5 ✅ |
+| `ARCH` | PDF Sec 2 + Anhang A — Tool-Design, Annotations, Idempotency, Repo-Struktur, Spec-Versionierung | 10–13 | 13 / 13 ✅ |
+| `SDK` | PDF Sec 3 — FastMCP, TypeScript, Zod, Lifecycle | 5–7 | 6 / 6 ✅ |
 | `SEC` | PDF Sec 4 + Anhang B — Security (grösste Kategorie) | 20–25 | 24 / 24 ✅ |
 | `SCALE` | PDF Sec 5 — Transport, LB, Container, Gateway | 5–7 | 7 / 7 ✅ |
 | `OBS` | PDF Sec 6 + Anhang B10 — Logging, Errors, SIEM, Tracing | 5–7 | 6 / 6 ✅ |
@@ -190,7 +190,7 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 | `FID` | Custom — Datentreue: Scope, Recall, Leermengen | 4–6 | 5 / 5 ✅ |
 | `IDENT` | Custom — Identität: User-Agent, `__version__`, Manifest, Doku-Version, Release-Gap | 5–7 | 6 / 6 ✅ |
 | `DRIFT` | Custom — Upstream-Vertrag: Endpoint-Drift, Fallback-Semantik, Testgüte | 4–6 | 5 / 5 ✅ |
-| **Total** | | **~83** | **88 / 88 ✅** |
+| **Total** | | **~83** | **90 / 90 ✅** |
 
 ### 2.2 Severity-Stufen
 
