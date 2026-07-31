@@ -761,9 +761,16 @@ Wenn das PDF aktualisiert wird oder neue Best Practices auftauchen:
 2. `evidence_required` und `applies_when` mit Care befüllen
 3. CHANGELOG-Eintrag im Repo-Root
 4. Bestehende Server, die schon ein Audit hatten, **nicht automatisch reauditiert** — sondern bei nächstem Refactoring oder geplantem Re-Audit
-5. Severity-Änderungen an bestehenden Checks: **immer** Re-Audit bei `critical` oder `high`
+5. **Re-Audit-Auslöser bei `critical` oder `high`** — drei Fälle, in denen ein bestehendes Audit-Ergebnis nicht mehr gilt:
+   - **a) Severity angehoben.** Der Verstoss wiegt jetzt schwerer, als das Audit ihn geführt hat.
+   - **b) `applies_when` nach oben erweitert.** Der Check gilt jetzt für Server, die beim letzten Audit **nicht** dagegen gemessen wurden. Formal keine Severity-Änderung — für die betroffenen Server aber ununterscheidbar davon, denn ein blockierender Check greift, wo vorher keiner war. Die Gegenrichtung (Reichweite verengt) löst kein Re-Audit aus, kann aber alte Findings gegenstandslos machen; das gehört in den CHANGELOG, nicht in die Warteschlange.
+   - **c) Prüfkriterium korrigiert.** Der Check hat die falsche Sache als bestanden ausgewiesen — ein fehlerhaftes Pass-Pattern, ein Kriterium, das am Ziel vorbeiging. Ein „bestanden" aus der Zeit davor belegt nichts.
+
+**Warum b) und c) dazugehören.** Punkt 5 nannte bis v1.3.0 nur die Severity. Dieses Release hatte **keine** einzige Severity-Änderung und trotzdem beide anderen Fälle: `SEC-005` wurde auf stdio-only-Server ausgeweitet, die den `high`-Check nie gesehen hatten, und `SEC-016` lehrte im Pass-Pattern eine SDK-API, die auf der aktuellen Major-Version einen `ValueError` wirft — wer ihn „bestanden" hatte und dem Muster gefolgt war, hatte einen Server, der auf HTTP-Transport nicht startet. Nach der alten Fassung wäre die Re-Audit-Liste leer gewesen. Eine Regel, die genau dann nichts meldet, wenn der Katalog sich geirrt hat, ist die falsche Regel.
 
 **Eselsbrücke:** *«Ein neuer Check ist ein neuer Vertrag. Bestehende Audits sind nicht rückwirkend ungültig, aber bei nächstem Audit gilt der neue Katalog.»*
+
+**Zweite Eselsbrücke, für Punkt 5:** *«Re-Audit, wenn sich geändert hat, wie hart geprüft wird (a), wer geprüft wird (b) oder worauf geprüft wird (c).»*
 
 ---
 
