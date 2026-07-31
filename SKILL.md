@@ -252,6 +252,29 @@ evidence_required: 3
 
 Details siehe `templates/finding.md` und beliebige Datei in `checks/`.
 
+### 2.5 Reichweite vor neuer Regel
+
+Ein Fund, den kein Check gemeldet hat, löst einen Reflex aus: einen neuen Check schreiben. Das ist die teure Richtung, und meistens die falsche. Häufiger als eine fehlende Regel ist eine vorhandene Regel, die zu eng angewandt wurde.
+
+**Vor jedem neuen Check drei Fragen, in dieser Reihenfolge:**
+
+1. **Gibt es den Check schon, aber `applies_when` schliesst den Fall aus?** Dann ist die Klausel das Problem, nicht der Katalog. Reichweite korrigieren.
+2. **Gibt es den Check schon, aber seine Verification nennt nur *einen* Endpoint, *ein* Artefakt, *eine* Stelle?** Dann prüft er die richtige Sache am falschen Umfang. Verification erweitern.
+3. **Fragt wirklich kein Check danach — ist es eine eigene Prüfdimension?** Erst dann ein neuer Check.
+
+Nur die dritte Frage rechtfertigt eine neue Datei in `checks/`.
+
+**Beide Ausgänge sind schon vorgekommen:**
+
+- *Reichweite, nicht Regel:* Die Guard-Tests in `tests/test_skill_counts.py` pinnten Katalogzahlen gegen die Doku — und liessen trotzdem eine Überschrift «Zehn Kategorien» über einer Tabelle mit elf Zeilen durch. Es fehlte kein Test. Der vorhandene reichte nur bis zur Intro-Zeile. Die Korrektur war eine erweiterte Verification, kein neuer Check.
+- *Wirklich neu:* Die Kategorie `FID` entstand aus `termdat-mcp#11` an einem Server, der 68 Checks bestanden hatte. Keine der acht damaligen Kategorien stellte die Frage, ob der Server liefert, was die Quelle hat. Das war keine zu enge Klausel, sondern eine fehlende Dimension.
+
+**Warum die Reihenfolge zählt:** Zwei Checks, die einander teilweise überlappen, sind schlimmer als einer mit korrekter Reichweite. Sie doppeln das Finding, und wenn der Server die Ursache behebt, bleibt der zweite rot — der Fix sieht aus, als hätte er nicht gewirkt. Ein Katalog, der per Reflex wächst, wird ausserdem irgendwann nicht mehr vollständig gelesen.
+
+**Der Gegenfehler:** Einen Check so weit dehnen, bis er ein Sammelbehälter wird. Das Signal ist konkret — wenn die Erweiterung ein `oder` in die Pass-Criteria zwingt, das mit dem ursprünglichen Kriterium nichts zu tun hat, ist es ein neuer Check. Ein Check muss in **einem** Schritt behebbar bleiben.
+
+**Eselsbrücke:** *«Zuerst fragen, ob die Regel zu kurz gegriffen hat — nicht, ob sie fehlt.»*
+
 ---
 
 ## Schritt 3: Applicability-Filter
@@ -331,6 +354,49 @@ Jeder Check definiert in seiner `verification:`-Sektion einen oder mehrere Modi:
 | `code_review` | Logische Prüfung erforderlich | OAuth-State-Single-Use bei SEC-010 |
 | `config_check` | Repo-Settings, CI, Branch-Protection | `cat .github/workflows/*.yml` für OBS-Checks |
 | `runtime_test` | Live-API-Verhalten testen | `curl -H "X-Forwarded-For: 169.254.169.254"` für SEC-004 |
+
+#### Whitespace normalisieren, bevor auf Text geprüft wird
+
+Viele Checks prüfen, ob eine Aussage in einem Text steht: ein Hinweis in einer Tool-Description, ein Abschnitt in einer README, ein Satz in einem Docstring. Der naive Weg schlägt fehl:
+
+```python
+assert "not in TERMDAT" in tool.__doc__      # FALSCH
+```
+
+Der Docstring enthält den Satz. Er enthält ihn nur mit einem Zeilenumbruch zwischen `in` und `TERMDAT`, weil das Quellformat auf 88 Zeichen umbricht. Der Test meldet «fehlt», die Doku ist da. Das ist genau in diesem Portfolio passiert, beim Verifizieren eines Coverage-Hinweises, der korrekt geschrieben war.
+
+**Falsch-negativ ist hier der teure Fehler.** Ein Fund «Doku fehlt» führt zu einem Finding, einer Remediation-Empfehlung und einer Änderung an etwas, das bereits stimmte — im schlimmsten Fall zu einem Duplikat des vorhandenen Satzes. Ein Prüfergebnis, das an einem Umbruch hängt, prüft die Formatierung, nicht den Inhalt.
+
+**Regel: Zuerst normalisieren, dann vergleichen.**
+
+```python
+import re
+
+def flat(text: str) -> str:
+    """Zeilenumbrüche und Mehrfach-Leerzeichen zu je einem Leerzeichen."""
+    return re.sub(r"\s+", " ", text or "").strip()
+
+assert "not in TERMDAT" in flat(tool.__doc__)        # RICHTIG
+```
+
+Auf der Kommandozeile dasselbe — `grep` ist zeilenweise und findet mehrzeilige Phrasen nie:
+
+```bash
+# FALSCH: findet nichts, sobald die Phrase über zwei Zeilen läuft
+grep -q "not in TERMDAT" src/server.py
+
+# RICHTIG: erst glätten, dann suchen
+tr '\n' ' ' < src/server.py | tr -s ' ' | grep -q "not in TERMDAT"
+
+# Oder ripgrep im Multiline-Modus, mit \s+ statt Leerzeichen
+rg -U 'not\s+in\s+TERMDAT' src/server.py
+```
+
+**Was normalisiert werden muss** — überall dort, wo der Text für Menschen umbricht und die Umbruchstelle keine Bedeutung trägt: Docstrings und Tool-Descriptions, Markdown-Fliesstext, YAML-Folded-Blöcke (`>`), gerenderte Reports, JSON-Felder mit eingebettetem `\n`.
+
+**Was nicht normalisiert werden darf:** Code-Blöcke, Einrückung als Syntax (Python, YAML-Struktur), Diff-Ausgaben, alles wo eine Zeile die Einheit ist — dort ist der Umbruch der Inhalt.
+
+**Gegenprobe, wie bei jedem Gate:** Die Assertion einmal gegen einen Text laufen lassen, in dem die Phrase wirklich fehlt. Eine Prüfung, die nach der Normalisierung *immer* zutrifft, hat nur gelernt, alles zu bestehen.
 
 ### 4.2 Audit-Reihenfolge: Severity descending
 
@@ -632,8 +698,10 @@ python "$SKILL_BASE/tools/tracker_sync.py" --backend notion update "$SERVER_NAME
 2. **«Der Server ist Open Data, also kein Audit nötig»** — falsch. Auch Public-Data-Server haben Tool-Design-, SDK- und Resilienz-Risiken.
 3. **«Findings als Issues in GitHub anlegen reicht»** — nein, ohne strukturierte Severity und Effort werden sie ignoriert. Notion-Karte ist Single Source of Truth.
 4. **«Ich überspringe `low`-Findings»** — okay, aber dokumentieren als «not-audited», nicht stillschweigend ignorieren.
-5. **«Der Check passt nicht ganz, ich mache es einfach so wie ich denke»** — wenn ein Check nicht passt, ist das ein Indikator dass der Katalog erweitert werden muss. Im Skill-Repo ein Issue eröffnen.
+5. **«Der Check passt nicht ganz, ich mache es einfach so wie ich denke»** — wenn ein Check nicht passt, ist das ein Befund über den Katalog. Im Skill-Repo ein Issue eröffnen — und dort zuerst [§2.5](#25-reichweite-vor-neuer-regel) beantworten: zu enge Reichweite oder wirklich fehlende Dimension?
 6. **«Audit-Report ohne Remediation-Plan»** — wertlos. Findings ohne Fix-Vorschlag werden nicht angegangen.
+7. **«Kein Check hat das gemeldet, also fehlt ein Check»** — meistens fehlt keiner. Meistens hat einer zu kurz gegriffen. Siehe [§2.5](#25-reichweite-vor-neuer-regel).
+8. **«`grep` findet den Satz nicht, also fehlt die Doku»** — `grep` ist zeilenweise. Ein Satz, der umbricht, wird nie gefunden. Vor dem Vergleich normalisieren, siehe [§4.1](#whitespace-normalisieren-bevor-auf-text-geprüft-wird).
 
 ---
 
@@ -643,6 +711,8 @@ python "$SKILL_BASE/tools/tracker_sync.py" --backend notion update "$SERVER_NAME
 - **Applicability-Filter:** *«Bei stdio-only ohne Auth ist Confused Deputy genauso relevant wie Erdbebensicherung in Reykjavík — gar nicht.»*
 - **Severity-Disziplin:** *«`critical` heisst critical. Wer die Stufe inflationiert, hat irgendwann nur noch `critical`.»*
 - **Evidenz-Pflicht:** *«Ein Finding ohne `path/to/file.py:42` ist eine Meinung, kein Befund.»*
+- **Katalog-Erweiterung:** *«Zuerst fragen, ob die Regel zu kurz gegriffen hat — nicht, ob sie fehlt.»*
+- **Textprüfung:** *«Wer auf Zeilenumbrüche prüft, prüft den Zeilenumbruch — nicht den Satz.»*
 
 ---
 
@@ -667,6 +737,7 @@ python "$SKILL_BASE/tools/tracker_sync.py" --backend notion update "$SERVER_NAME
 - [ ] Pro fehlgeschlagenem Check ein Finding nach Template
 - [ ] Effort-Schätzung S/M/L/XL gesetzt
 - [ ] Tracker-Findings-Anzahl aktualisiert
+- [ ] Jeder vorgeschlagene neue Check gegen §2.5 geprüft (Reichweite vor neuer Regel)
 - [ ] Audit-Status auf `Findings dokumentiert` gesetzt
 
 **Schritt 6 — Report**
@@ -681,6 +752,7 @@ python "$SKILL_BASE/tools/tracker_sync.py" --backend notion update "$SERVER_NAME
 
 Wenn das PDF aktualisiert wird oder neue Best Practices auftauchen:
 
+0. **Zuerst [§2.5 Reichweite vor neuer Regel](#25-reichweite-vor-neuer-regel)** — prüfen, ob ein bestehender Check nur zu eng angewandt wurde. Die Schritte unten gelten erst, wenn das verneint ist.
 1. Im Skill-Repo unter `checks/` neue `.md`-Datei mit nächster ID anlegen
 2. `evidence_required` und `applies_when` mit Care befüllen
 3. CHANGELOG-Eintrag im Repo-Root

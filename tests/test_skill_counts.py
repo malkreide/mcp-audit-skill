@@ -50,8 +50,12 @@ TOTAL_ROW = re.compile(
     r"\s*\*\*(?P<ist>\d+)\s*/\s*(?P<soll>\d+)\s*✅?\s*\*\*\s*\|\s*$"
 )
 # «79 Checks in zehn Kategorien» — ohne führende Tilde, die eine
-# Schätzung markiert.
-INTRO_SIZE = re.compile(r"(?<!~)\b(?P<count>\d+) Checks in (?P<word>\w+) Kategorien")
+# Schätzung markiert. Die Trenner sind `\s+`, nicht ein Leerzeichen: Prosa
+# bricht um, und ein Muster mit hartem Leerzeichen prüft die Formatierung
+# statt den Satz (SKILL.md §4.1).
+INTRO_SIZE = re.compile(
+    r"(?<!~)\b(?P<count>\d+)\s+Checks\s+in\s+(?P<word>\w+)\s+Kategorien"
+)
 
 # «### 2.1 Elf Kategorien» — die Abschnitts-Überschrift schreibt die Anzahl
 # ebenfalls aus. Sie wurde bisher nicht geprüft und stand nach der Ergänzung
@@ -77,6 +81,16 @@ def _category_rows(lines):
     return [m for m in (CATEGORY_ROW.match(line) for line in lines) if m]
 
 
+def _prose_lines(lines):
+    """Fliesstext ohne Tabellenzeilen — dieselbe Auswahl wie der Zeilen-Scan."""
+    return [line for line in lines if not line.lstrip().startswith("|")]
+
+
+def _flat(lines) -> str:
+    """Fliesstext zu einer Zeile: jede Whitespace-Folge wird ein Leerzeichen."""
+    return re.sub(r"\s+", " ", " ".join(_prose_lines(lines))).strip()
+
+
 class TestSkillMatchesCatalog:
     def test_intro_states_catalog_size(self, skill_lines, catalog):
         total = len(catalog)
@@ -96,6 +110,34 @@ class TestSkillMatchesCatalog:
                 f"SKILL.md:{lineno} nennt «{m.group('word')} Kategorien», "
                 f"Katalog hat {len(category_counts(catalog))} ({expected_word})"
             )
+
+    def test_no_count_claim_hides_in_a_line_break(self, skill_lines):
+        """Der Zeilen-Scan darf keine Behauptung übersehen, die umbricht.
+
+        `test_intro_states_catalog_size` liest zeilenweise, weil es die
+        Zeilennummer melden will. Genau das ist der blinde Fleck aus
+        SKILL.md §4.1: Bricht «86 Checks in elf Kategorien» zwischen zwei
+        Wörtern um, findet der Scan sie nicht — und eine veraltete Zahl
+        stünde ungeprüft im Dokument, ohne dass irgendein Test rot wird.
+
+        Deshalb dieselbe Suche ein zweites Mal auf dem geglätteten Text.
+        Weniger Treffer im Zeilen-Scan heisst: mindestens eine Angabe
+        versteckt sich in einem Umbruch.
+        """
+        per_line = sum(
+            1 for line in _prose_lines(skill_lines) for _ in INTRO_SIZE.finditer(line)
+        )
+        flattened = len(INTRO_SIZE.findall(_flat(skill_lines)))
+
+        assert flattened >= 1, (
+            "Keine Angabe «NN Checks in <wort> Kategorien» im geglätteten "
+            "Text — dieser Test prüft sonst stillschweigend nichts mehr."
+        )
+        assert per_line == flattened, (
+            f"{flattened - per_line} Angabe(n) «NN Checks in <wort> Kategorien» "
+            f"laufen in SKILL.md über einen Zeilenumbruch und werden vom "
+            f"Zeilen-Scan nicht geprüft. Satz auf eine Zeile ziehen."
+        )
 
     def test_section_heading_states_category_count(self, skill_lines, catalog):
         """Die Abschnitts-Überschrift muss dieselbe Anzahl nennen wie das Intro.

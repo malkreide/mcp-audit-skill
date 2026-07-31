@@ -6,6 +6,26 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — Zwei Regeln zur Audit-Methode (kein neuer Check)
+
+Der Katalog bleibt bei **86 Checks**. Beide Ergänzungen betreffen, *wie* geprüft wird, nicht *was* — sie gehören deshalb in `SKILL.md`, nicht in `checks/`. Die erste ist zugleich ihr eigenes erstes Anwendungsbeispiel.
+
+**§2.5 «Reichweite vor neuer Regel».** Ein Fund, den kein Check gemeldet hat, löst den Reflex aus, einen neuen Check zu schreiben. Häufiger als eine fehlende Regel ist eine vorhandene, die zu eng angewandt wurde. Drei Fragen in fester Reihenfolge: Schliesst `applies_when` den Fall aus? Nennt die Verification nur *einen* Endpoint, *ein* Artefakt? Erst danach: Ist es wirklich eine eigene Prüfdimension?
+
+Beide Ausgänge sind belegt. *Reichweite:* Die Guard-Tests pinnten Katalogzahlen und liessen trotzdem «Zehn Kategorien» über einer Tabelle mit elf Zeilen durch — es fehlte kein Test, der vorhandene reichte nur bis zur Intro-Zeile. *Wirklich neu:* Die Kategorie `FID` entstand an einem Server, der 68 Checks bestanden hatte und den keine der acht damaligen Kategorien nach Datentreue fragte.
+
+Zwei Checks mit teilweiser Überlappung sind schlimmer als einer mit korrekter Reichweite: Sie doppeln das Finding, und wenn der Server die Ursache behebt, bleibt der zweite rot — der Fix sieht aus, als hätte er nicht gewirkt. Gegen den Gegenfehler, den Sammelbehälter-Check, steht ein konkretes Signal: Wenn die Erweiterung ein `oder` in die Pass-Criteria zwingt, das mit dem ursprünglichen Kriterium nichts zu tun hat, ist es ein neuer Check.
+
+**§4.1 Whitespace normalisieren, bevor auf Text geprüft wird.** `assert "not in TERMDAT" in tool.__doc__` schlug fehl, weil das Quellformat zwischen `in` und `TERMDAT` umbricht. Der Docstring enthielt den Satz. Die Prüfung meldete «fehlt».
+
+Falsch-negativ ist hier der teure Fehler: Er führt zu einem Finding, einer Remediation-Empfehlung und einer Änderung an etwas, das bereits stimmte — im schlimmsten Fall zu einem Duplikat des vorhandenen Satzes. Ein Prüfergebnis, das an einem Umbruch hängt, prüft die Formatierung, nicht den Inhalt. Neu mit `re.sub(r"\s+", " ", …)` für Python, `tr` bzw. `rg -U` für die Kommandozeile, einer Liste, was normalisiert werden muss (Docstrings, Fliesstext, YAML-`>`-Blöcke) und was nicht (Code, Einrückung als Syntax, Diffs), und der Gegenprobe: Eine Prüfung, die nach der Normalisierung *immer* zutrifft, hat nur gelernt, alles zu bestehen.
+
+`FID-005` bekommt einen Verweis darauf — dessen `grep`-Begriffe sind bewusst einzelne Wörter, und der Grund dafür stand bisher nirgends.
+
+**Die Guard-Tests waren selbst betroffen.** `INTRO_SIZE` verlangte je ein hartes Leerzeichen zwischen «86», «Checks», «in», «elf», «Kategorien» — die Prosa hätte nur umbrechen müssen, und der Zeilen-Scan hätte die Angabe nicht mehr gefunden. Eine veraltete Zahl stünde dann ungeprüft im Dokument, ohne dass ein Test rot wird. Trenner jetzt `\s+`, dazu `test_no_count_claim_hides_in_a_line_break`: dieselbe Suche ein zweites Mal auf dem geglätteten Text, und weniger Treffer im Zeilen-Scan sind ein Fehlschlag. Gegengeprobt — bei eingebautem Umbruch schlägt der Test an, ohne Umbruch schweigt er. Das ist §2.5 an sich selbst angewandt: kein neuer Check, ein zu kurz greifender bestehender.
+
+Dazu Anti-Patterns 7 und 8, zwei Eselsbrücken und ein Checklisten-Punkt. 357 Tests.
+
 ### Hinzugefügt — `OPS-005`: Übersprungen ist nicht bestanden
 
 Der Katalog wächst auf **86 Checks**. `OPS-005` zieht die Linie aus `OPS-004` eine Ebene tiefer: Dort geht es um einen Report, der Gemessenes von Geschlossenem trennt; hier um eine Pipeline, die «bestanden» von «nicht gelaufen» unterscheidet.
