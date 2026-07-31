@@ -6,6 +6,41 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben — `transport`: eine Schreibweise, zwei Vokabulare, vier still verlorene Checks
+
+Der Katalog beschrieb dieselbe geschlossene Werteliste an fünf Orten und kam auf zwei Antworten. `SKILL.md`, `templates/audit-report.md` und jede `applies_when`-Klausel sagten `stdio-only / dual / HTTP/SSE`. `portfolio.example.yaml` und der Slash-Command empfahlen `stdio-only, dual, HTTP, SSE`.
+
+**`HTTP` und `SSE` waren nie eigene Transporte** — sie sind eine zweite Schreibweise für `HTTP/SSE`. Wer der Empfehlung folgte, schrieb einen Wert ins Profil, gegen den keine Klausel je vergleicht.
+
+Der Schaden war messbar, nicht hypothetisch. Ein Profil mit `transport: HTTP`, sonst identisch:
+
+| | anwendbare Checks |
+|---|---|
+| `transport: HTTP/SSE` | 61 |
+| `transport: HTTP` | 57 |
+
+Verloren: `SCALE-002`, `SCALE-003` (beide `high`), `SCALE-007`, `SDK-004`. Gleichzeitig griff jede `transport != "stdio-only"`-Klausel weiter — die `SEC`-Checks liefen also, die `SCALE`-Checks nicht. Halb erkanntes Profil, sauberer Report, kleinerer Katalog als behauptet. Genau der Fall aus `OPS-005`: Was nicht gelaufen ist, sieht aus wie bestanden.
+
+**Warum nichts es gemeldet hat.** `tools/validate_profile.py` trug die Begründung im Docstring: *«It does NOT validate semantics like "is `transport` a valid enum value". That's intentionally out of scope; the canonical evaluator surfaces those mismatches loudly via UnknownFieldError / TypeMismatchError once applies_when runs.»*
+
+Das stimmte nicht, und der Irrtum verdeckte sich selbst. `UnknownFieldError` feuert bei einem unbekannten **Feld**, `TypeMismatchError` bei einem unpassenden **Typ**. Ein unbekannter **Wert** ist ein gewöhnlicher String: `transport == "HTTP/SSE"` gegen `transport: "HTTP"` ergibt schlicht `False`. Keine Exception, keine Warnung, keine Zeile im Report. Die Ausrede, warum nicht geprüft wird, war zugleich der Grund, warum niemand nachsah.
+
+**Behoben:**
+
+- **Kanonisch sind drei Werte** — `stdio-only`, `dual`, `HTTP/SSE`. Der Katalog unterscheidet HTTP und SSE nirgends; eine Aufspaltung hätte jede Netzwerk-Klausel zu einer Vierfach-Disjunktion gemacht, ohne ein einziges Audit-Ergebnis zu ändern. `portfolio.example.yaml` und `.claude/commands/audit-mcp.md` nachgezogen.
+- **`ALLOWED_VALUES` in `tools/validate_profile.py`** als einzige Quelle, plus neue Report-Kategorie `enum_mismatch`. Ein unbekannter Wert ist jetzt Exit 1 vor Step 2, mit den erlaubten Werten im `allowed`-Feld — statt eines stillen Filters.
+- **Bewusst nicht gepinnt:** `auth_model` und `data_class`. Sie tragen dokumentierte Werte, die kein Check einzeln abfragt (`OIDC`, `Verwaltungsdaten`), abgedeckt von den `!=`-Klauseln. Ein Wert, den niemand vergleicht, ist dort eine Lücke im Katalog, kein Fehler im Profil. `transport` war anders: gleicher Begriff, zwei Schreibweisen.
+- **Keine stille Normalisierung.** `HTTP` wird nicht auf `HTTP/SSE` umgeschrieben. Ein Wert, der klammheimlich etwas anderes bedeutet, ist dieselbe Fehlerklasse in neuer Verpackung — die Korrektur ist eine Zeile im Profil bzw. im Notion-Select.
+
+**Neu `tests/test_transport_vocabulary.py`** (7 Tests): Katalog-Literale ⊆ `ALLOWED_VALUES`, jeder erlaubte Wert wird von mindestens einer Klausel tatsächlich abgefragt (ein totes Vokabular-Mitglied lädt genau zu dem Fehler ein, aus dem `HTTP` kam), und alle vier Doku-Orte nennen dieselbe Liste. Jede Prüfung scheitert auch, wenn ihr Muster **gar nichts** findet.
+
+Zwei Details, die beim Schreiben auffielen und im Test stehen:
+
+- Die Klausel-Literale werden **nur aus dem Frontmatter** gelesen, nie aus dem Body. `ARCH-004`, `SEC-006` und `SEC-016` enthalten Python-Beispiele wie `settings.transport == "stdio"` — das ist die Config des *geprüften Servers*, nicht das Audit-Profil. Ein Scan über die ganze Datei hält sie fälschlich für Vokabular-Drift.
+- Der Trenner in den Aufzählungen ist ein **umschlossener** Slash: `a / b` trennt, `HTTP/SSE` ist ein Wert. Wer den engen Slash als Trenner liest, schreibt `HTTP` ins Profil — die Verwechslung, die den Fehler überhaupt erzeugt hat.
+
+Gegengeprobt: Drift in Doku, Katalog und Beispielprofil einzeln eingebaut, jedes Mal schlägt der zuständige Test an und schweigt nach der Rücknahme. 357 → 376 Tests.
+
 ### Hinzugefügt — `SCALE-007`: Der Reconnect findet die Session und verliert die Antwort
 
 Der Katalog wächst auf **87 Checks**. `SCALE-007` prüft, ob ein Server einen abgerissenen Streamable-HTTP-Stream wiederaufnimmt: `id:` an den SSE-Events, `Last-Event-ID` beim Reconnect, Replay der verpassten Events aus einem Event-Store.

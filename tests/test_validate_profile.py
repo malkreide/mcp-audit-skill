@@ -172,3 +172,96 @@ class TestCli:
         assert out_path.exists()
         report = json.loads(out_path.read_text(encoding="utf-8"))
         assert report["consistent"] is True
+
+
+# ---------------------------------------------------------------------------
+# Closed vocabularies (enum_mismatch)
+# ---------------------------------------------------------------------------
+
+class TestClosedVocabularies:
+    """Ein unbekannter *Wert* muss laut scheitern, nicht still filtern.
+
+    Der Validator liess Enum-Werte bewusst durch, mit der Begründung, der
+    Evaluator melde sie ohnehin «loudly». Das stimmte nicht: `transport:
+    HTTP` ist ein gewöhnlicher String, `transport == "HTTP/SSE"` ergibt
+    schlicht `False`, und vier Checks fielen weg, ohne dass irgendwo eine
+    Zeile darüber stand.
+
+    `test_unknown_transport_silently_drops_checks` hält genau diese
+    Eigenschaft des Evaluators fest — nicht um sie zu beklagen, sondern
+    weil sie die Existenzberechtigung des Gates ist. Verschwindet sie
+    einmal (etwa weil der Evaluator Werte prüft), fällt der Test auf,
+    und dann gehört dieses Gate neu begründet oder entfernt.
+    """
+
+    def test_canonical_transports_pass(self):
+        for value in ("stdio-only", "dual", "HTTP/SSE"):
+            profile = _good_profile()
+            profile["transport"] = value
+            report = validate_profile(profile)
+            assert report["consistent"] is True, f"{value!r} sollte gültig sein"
+            assert report["enum_mismatch"] == []
+
+    @pytest.mark.parametrize("value", ["HTTP", "SSE", "http/sse", "streamable-http", "stdio"])
+    def test_unknown_transport_is_reported(self, value):
+        profile = _good_profile()
+        profile["transport"] = value
+        report = validate_profile(profile)
+        assert report["consistent"] is False, f"{value!r} sollte abgelehnt werden"
+        assert report["enum_mismatch"] == [{
+            "field": "transport",
+            "allowed": ["stdio-only", "dual", "HTTP/SSE"],
+            "got": value,
+        }]
+
+    def test_unknown_transport_returns_exit_one(self, tmp_path):
+        bad = _good_profile()
+        bad["transport"] = "HTTP"
+        path = tmp_path / "profile.json"
+        path.write_text(json.dumps(bad), encoding="utf-8")
+        assert main([str(path)]) == 1
+
+    def test_missing_transport_is_not_also_an_enum_error(self):
+        """Ein Defekt, zweimal benannt, liest sich wie zwei Defekte."""
+        profile = _good_profile()
+        del profile["transport"]
+        report = validate_profile(profile)
+        assert "transport" in report["missing"]
+        assert report["enum_mismatch"] == []
+
+    def test_placeholder_transport_is_not_also_an_enum_error(self):
+        profile = _good_profile()
+        profile["transport"] = "..."
+        report = validate_profile(profile)
+        assert "transport" in report["placeholder"]
+        assert report["enum_mismatch"] == []
+
+    def test_wrong_type_transport_is_not_also_an_enum_error(self):
+        profile = _good_profile()
+        profile["transport"] = ["dual"]
+        report = validate_profile(profile)
+        assert [m["field"] for m in report["type_mismatch"]] == ["transport"]
+        assert report["enum_mismatch"] == []
+
+    def test_open_vocabularies_stay_open(self):
+        """`auth_model` / `data_class` sind bewusst nicht gepinnt.
+
+        Sie tragen dokumentierte Werte, die kein Check einzeln abfragt
+        (`OIDC`, `Verwaltungsdaten`) — abgedeckt von den `!=`-Klauseln.
+        Ein Wert, den niemand vergleicht, ist dort eine Lücke im Katalog,
+        kein Fehler im Profil.
+        """
+        profile = _good_profile()
+        profile["auth_model"] = "OIDC"
+        profile["data_class"] = "Verwaltungsdaten"
+        assert validate_profile(profile)["consistent"] is True
+
+    def test_unknown_transport_silently_drops_checks(self):
+        """Die Eigenschaft, gegen die dieses Gate schützt — festgenagelt."""
+        from tools.eval_applicability import evaluate
+
+        profile = _good_profile()
+        profile["transport"] = "HTTP"
+        # Kein Fehler, kein Hinweis — nur ein stilles False.
+        assert evaluate('transport == "HTTP/SSE"', profile) is False
+        assert evaluate('transport != "stdio-only"', profile) is True

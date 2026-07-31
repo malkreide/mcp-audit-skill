@@ -17,7 +17,7 @@ servers:
   - name: zurich-opendata-mcp
     repo: https://github.com/malkreide/zurich-opendata-mcp
     profile:
-      transport: dual                              # stdio-only | dual | HTTP | SSE
+      transport: dual                              # stdio-only | dual | HTTP/SSE
       auth_model: none                             # none | API-Key | OAuth-Proxy | OIDC
       data_class: Public Open Data                 # Public Open Data | Verwaltungsdaten | PII
       write_capable: false

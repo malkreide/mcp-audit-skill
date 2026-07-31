@@ -163,8 +163,11 @@ Der Validator catcht:
 - **Placeholder-Werte:** `...`, `<placeholder>`, `<TODO>`, `TODO`, leere Strings, `null`/`None`, leere Listen, Listen mit Placeholder-Members
 - **Fehlende Pflichtfelder:** alle 15 Profil-Top-Level-Felder plus `data_source.is_swiss_open_data`
 - **Type-Mismatches:** `bool`-Feld mit String-Wert, `list`-Feld mit String-Wert, etc.
+- **Unbekannte Werte in geschlossenen Vokabularen:** `transport` ausserhalb von `stdio-only` / `dual` / `HTTP/SSE`. Ein Wert, gegen den keine `applies_when`-Klausel je vergleicht, lässt Checks **still** wegfallen — der Evaluator wirft dafür keinen Fehler, weil ein unbekannter *Wert* ein ganz normaler String ist (anders als ein unbekanntes *Feld*, das `UnknownFieldError` auslöst).
 
-Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Felder betroffen sind (`missing` / `placeholder` / `type_mismatch`). Nutze das, um den User zur Korrektur aufzufordern.
+Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Felder betroffen sind (`missing` / `placeholder` / `type_mismatch` / `enum_mismatch`). Nutze das, um den User zur Korrektur aufzufordern.
+
+**Warum `enum_mismatch` ein eigenes Gate braucht:** Ein Profil mit `transport: HTTP` — eine Schreibweise, die dieses Repo selbst empfohlen hat — verlor `SCALE-002`, `SCALE-003`, `SCALE-007` und `SDK-004`, zwei davon `high`, während jede `transport != "stdio-only"`-Klausel weiterhin griff. Das Profil war halb erkannt, und der Report meldete einen sauberen Lauf über einen kleineren Katalog als behauptet. Genau der Fall aus `OPS-005`: Was nicht gelaufen ist, sieht aus wie bestanden.
 
 ---
 
