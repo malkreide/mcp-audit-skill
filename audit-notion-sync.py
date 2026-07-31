@@ -154,6 +154,12 @@ def prop_rich_text(prop: dict[str, Any]) -> str:
 
 def build_profile(props: dict[str, Any]) -> dict[str, Any]:
     transport = prop_select(props.get("Transport", {})) or "dual"
+    # Pflichtfeld seit v1.3.1. Fehlte es, kam das Profil durch das
+    # Validierungs-Gate und sieben Checks (SDK-001…006, IDENT-005) fielen
+    # erst im Evaluator mit UnknownFieldError aus. Default Python, weil das
+    # Portfolio Python-dominant ist — dieselbe Konvention wie oben bei
+    # transport/auth_model. Wer TypeScript fährt, setzt die Notion-Property.
+    sdk_language = prop_select(props.get("SDK-Sprache", {})) or "Python"
     auth_model = prop_select(props.get("Auth-Modell", {})) or "none"
     data_class = prop_select(props.get("Datenklasse", {})) or "Public Open Data"
     write_access = prop_select(props.get("Schreibzugriff", {})) or "read-only"
@@ -163,6 +169,7 @@ def build_profile(props: dict[str, Any]) -> dict[str, Any]:
 
     profile: dict[str, Any] = {
         "transport": transport,
+        "sdk_language": sdk_language,
         "auth_model": auth_model,
         "data_class": data_class,
         "write_capable": write_access == "write-capable",

@@ -31,6 +31,7 @@ def _good_profile() -> dict:
         "schulamt_context": False,
         "volksschule_context": False,
         "enterprise_context": False,
+        "sdk_language": "Python",
         "data_source": {"is_swiss_open_data": True},
     }
 

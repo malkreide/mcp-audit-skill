@@ -72,6 +72,11 @@ REQUIRED_FIELDS: dict[str, type | tuple[type, ...]] = {
     "schulamt_context": bool,
     "volksschule_context": bool,
     "enterprise_context": bool,
+    # Sieben Checks fragen dieses Feld ab (SDK-001…006, IDENT-005). Fehlte es,
+    # kam das Profil hier sauber durch und erst der Evaluator warf sieben
+    # UnknownFieldError — nach dem Gate, das genau solche Löcher fangen soll.
+    # `audit-notion-sync.py` hat es bis v1.3.0 nie gesetzt.
+    "sdk_language": str,
     "data_source": dict,
 }
 

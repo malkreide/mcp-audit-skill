@@ -138,3 +138,88 @@ class TestDocumentationDeclaresSameVocabulary:
                 f"portfolio.example.yaml setzt transport: {v}, "
                 f"kanonisch ist {sorted(CANONICAL)}"
             )
+
+
+# ---------------------------------------------------------------------------
+# `sdk_language` — dieselbe Klasse, andere Behandlung
+# ---------------------------------------------------------------------------
+
+SDK_LANGUAGE_DOC_FILES = (
+    "portfolio.example.yaml",
+    ".claude/commands/audit-mcp.md",
+    "SKILL.md",
+    "docs/applies-when-dsl.md",
+)
+
+SDK_CLAUSE_LITERAL = re.compile(r'\bsdk_language\s*[!=]=\s*"([^"]*)"')
+
+
+def _sdk_language_literals() -> set[str]:
+    out: set[str] = set()
+    for path in list_check_files(CHECKS_DIR):
+        fm = parse_check_frontmatter(path)
+        out |= set(SDK_CLAUSE_LITERAL.findall(str(fm.get("applies_when", ""))))
+    return out
+
+
+class TestSdkLanguageIsDocumented:
+    """`sdk_language` war bis v1.3.1 nirgends dokumentiert.
+
+    Sieben Checks fragen es ab (`SDK-001`…`006`, `IDENT-005`), aber es stand
+    weder in `REQUIRED_FIELDS` noch im Beispielprofil noch im DSL-Doc — und
+    `audit-notion-sync.py` hat es nie gesetzt. Ein aus Notion gezogenes
+    Profil kam damit sauber durch das Validierungs-Gate und liess erst im
+    Evaluator sieben Checks mit `UnknownFieldError` auflaufen. Also genau
+    die Reihenfolge, die das Gate verhindern soll.
+
+    Anders als `transport` ist das Feld **nicht** in `ALLOWED_VALUES`
+    gepinnt: Ein Server in Go oder Rust trägt eine Sprache, die kein Check
+    abfragt — das ist eine Lücke im Katalog, kein Fehler im Profil. Ein
+    harter Reject würde ein korrekt beschriebenes Profil abweisen.
+    """
+
+    def test_it_is_a_required_field(self):
+        from tools.validate_profile import REQUIRED_FIELDS
+        assert REQUIRED_FIELDS.get("sdk_language") is str, (
+            "sdk_language muss Pflichtfeld sein — sonst passiert ein Profil "
+            "ohne das Feld das Gate und sieben Checks fallen erst im "
+            "Evaluator aus."
+        )
+
+    def test_the_catalog_actually_uses_it(self):
+        """Gegenprobe: Verschwinden die Klauseln, prüft dieser Test nichts mehr."""
+        assert _sdk_language_literals(), (
+            "Keine `sdk_language`-Klausel im Katalog gefunden — greift das "
+            "Muster noch, oder wurde das Feld aufgegeben?"
+        )
+
+    @pytest.mark.parametrize("relpath", SDK_LANGUAGE_DOC_FILES)
+    def test_every_catalog_value_appears_in_the_docs(self, relpath):
+        """Jede Sprache, gegen die der Katalog vergleicht, muss dokumentiert sein.
+
+        Bewusst nur diese Richtung: Die Doku darf mehr nennen als der
+        Katalog abfragt (eine Sprache ohne eigene Checks ist zulässig), aber
+        keinen Wert weglassen, den eine Klausel testet — sonst schreibt
+        niemand ihn ins Profil und die Checks laufen still ins Leere.
+        """
+        text = (REPO_ROOT / relpath).read_text(encoding="utf-8")
+        missing = sorted(v for v in _sdk_language_literals() if v not in text)
+        assert not missing, f"{relpath} nennt {missing} nicht"
+
+    def test_it_is_not_pinned_as_a_closed_vocabulary(self):
+        """Die Entscheidung gegen den harten Reject, festgehalten.
+
+        Fällt dieser Test, hat jemand `sdk_language` in `ALLOWED_VALUES`
+        aufgenommen — dann gehört die Begründung oben neu geführt, denn ab
+        da wird ein Go-Server abgewiesen.
+        """
+        from tools.validate_profile import ALLOWED_VALUES
+        assert "sdk_language" not in ALLOWED_VALUES
+
+    def test_notion_sync_sets_the_field(self):
+        """Sonst ist jedes gezogene Profil wieder kaputt."""
+        text = (REPO_ROOT / "audit-notion-sync.py").read_text(encoding="utf-8")
+        assert '"sdk_language": sdk_language' in text, (
+            "audit-notion-sync.py setzt sdk_language nicht mehr — jedes "
+            "gepullte Profil lässt dann sieben Checks auflaufen."
+        )

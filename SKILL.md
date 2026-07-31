@@ -121,6 +121,7 @@ Bevor ein Audit beginnt, müssen diese Felder in der Audit-Tracker-Karte gesetzt
 | Feld | Werte | Verwendung im Audit |
 |---|---|---|
 | `Transport` | `stdio-only` / `dual` / `HTTP/SSE` | filtert Netzwerk-Checks |
+| `SDK-Sprache` | `Python` / `TypeScript` | filtert die SDK-Checks und `IDENT-005` |
 | `Auth-Modell` | `none` / `API-Key` / `OAuth-Proxy` | filtert OAuth-Checks |
 | `Datenklasse` | `Public Open Data` / `Verwaltungsdaten` / `PII` | filtert PII-Checks und CH-Compliance |
 | `Schreibzugriff` | `read-only` / `write-capable` | filtert HITL-Checks |
@@ -138,6 +139,7 @@ profile:
   name: zurich-opendata-mcp
   repo: https://github.com/malkreide/zurich-opendata-mcp
   transport: dual
+  sdk_language: Python             # filtert SDK-001…006 und IDENT-005
   auth_model: none
   data_class: Public Open Data
   write_capable: false              # bool — kanonisches Feld (siehe Migration unten)
@@ -162,7 +164,7 @@ python "$SKILL_BASE/tools/validate_profile.py" path/to/profile.yaml
 
 Der Validator catcht:
 - **Placeholder-Werte:** `...`, `<placeholder>`, `<TODO>`, `TODO`, leere Strings, `null`/`None`, leere Listen, Listen mit Placeholder-Members
-- **Fehlende Pflichtfelder:** alle 15 Profil-Top-Level-Felder plus `data_source.is_swiss_open_data`
+- **Fehlende Pflichtfelder:** alle 16 Profil-Top-Level-Felder plus `data_source.is_swiss_open_data`
 - **Type-Mismatches:** `bool`-Feld mit String-Wert, `list`-Feld mit String-Wert, etc.
 - **Unbekannte Werte in geschlossenen Vokabularen:** `transport` ausserhalb von `stdio-only` / `dual` / `HTTP/SSE`. Ein Wert, gegen den keine `applies_when`-Klausel je vergleicht, lässt Checks **still** wegfallen — der Evaluator wirft dafür keinen Fehler, weil ein unbekannter *Wert* ein ganz normaler String ist (anders als ein unbekanntes *Feld*, das `UnknownFieldError` auslöst).
 
