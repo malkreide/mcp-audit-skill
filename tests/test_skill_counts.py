@@ -53,6 +53,15 @@ TOTAL_ROW = re.compile(
 # Schätzung markiert.
 INTRO_SIZE = re.compile(r"(?<!~)\b(?P<count>\d+) Checks in (?P<word>\w+) Kategorien")
 
+# «### 2.1 Elf Kategorien» — die Abschnitts-Überschrift schreibt die Anzahl
+# ebenfalls aus. Sie wurde bisher nicht geprüft und stand nach der Ergänzung
+# der Kategorie DRIFT auf «Zehn», während die Tabelle darunter elf Zeilen
+# hatte und das Intro «elf» sagte. Eine Überschrift ist die Zeile, die beim
+# Überfliegen gelesen wird — sie darf nicht als Einzige veralten.
+HEADING_SIZE = re.compile(
+    r"^#{2,4}\s+[\d.]+\s+(?P<word>[A-Za-zÄÖÜäöü]+)\s+Kategorien\s*$"
+)
+
 
 @pytest.fixture(scope="module")
 def skill_lines() -> list[str]:
@@ -83,6 +92,30 @@ class TestSkillMatchesCatalog:
             assert int(m.group("count")) == total, (
                 f"SKILL.md:{lineno} nennt {m.group('count')} Checks, Katalog hat {total}"
             )
+            assert m.group("word").lower() == expected_word, (
+                f"SKILL.md:{lineno} nennt «{m.group('word')} Kategorien», "
+                f"Katalog hat {len(category_counts(catalog))} ({expected_word})"
+            )
+
+    def test_section_heading_states_category_count(self, skill_lines, catalog):
+        """Die Abschnitts-Überschrift muss dieselbe Anzahl nennen wie das Intro.
+
+        Regressionsschutz: Nach der Ergänzung von `DRIFT` blieb «### 2.1 Zehn
+        Kategorien» stehen, obwohl die Tabelle elf Zeilen hatte. Die
+        Intro-Zeile war korrekt und wurde geprüft — die Überschrift nicht.
+        """
+        expected_word = NUMBER_WORDS[len(category_counts(catalog))]
+        found = [
+            (lineno, m)
+            for lineno, line in enumerate(skill_lines, start=1)
+            if (m := HEADING_SIZE.match(line))
+        ]
+        assert found, (
+            "Keine Überschrift «<Wort> Kategorien» in SKILL.md gefunden — "
+            "wurde sie umbenannt? Dann gehört das Muster nachgezogen, sonst "
+            "prüft dieser Test stillschweigend nichts mehr."
+        )
+        for lineno, m in found:
             assert m.group("word").lower() == expected_word, (
                 f"SKILL.md:{lineno} nennt «{m.group('word')} Kategorien», "
                 f"Katalog hat {len(category_counts(catalog))} ({expected_word})"
