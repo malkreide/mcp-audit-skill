@@ -1,6 +1,6 @@
 # mcp-data-source-probe-skill
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
@@ -122,6 +122,25 @@ Build by this skill and you pass the `FID` checks; fail them in an audit and the
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md)
+
+## Security
+
+This repository ships documentation and reference code — no running server, no
+package to install. The Python files under `reference/` are material to adapt,
+not a library to import.
+
+`reference/probe_template.sh` is the exception worth reading before you run it:
+it makes **live HTTP requests** against whatever `BASE` you point it at, several
+per endpoint, and the scope probe deliberately asks for the maximum a source
+will give. Point it only at sources you are authorised to query, and mind their
+rate limits — an empirical probe is still traffic on somebody else's server.
+
+It also writes **raw API responses** to `$OUTDIR` (default `/tmp/mcp-probe`).
+Those files are the evidence a probe is meant to produce, and they can contain
+whatever the source returned. Keep them out of commits, and treat them as data
+subject to the source's terms rather than as scratch output.
+
+Found an error in the procedure, or a case it gets wrong? Please open an issue.
 
 ## License
 

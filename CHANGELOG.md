@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-01
+
+Adds a structural-assertion discipline to the probe, splits the companion skill
+out into its own repository, and documents what running the probe template
+actually does.
+
 ### Changed
 
 - **`companion/mcp-data-fidelity/` is now a pointer, not a copy.** The skill has
@@ -24,6 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI drops the companion from the syntax check, the frontmatter check and the
   file list, and gains a guard that fails if a `SKILL.md` ever reappears under
   `companion/` — that reappearance is exactly the drift the split ended.
+
+- Both READMEs gain a **Security** section. The one thing in this repository that
+  actually does something is `reference/probe_template.sh`, and it deserved
+  saying out loud: it makes live HTTP requests against whatever `BASE` it is
+  given — several per endpoint, with the scope probe deliberately asking for the
+  maximum a source will return — and it writes raw API responses to `$OUTDIR`.
+  Point it only at sources you may query, mind their rate limits, and keep the
+  output out of commits.
 
 ### Removed
 

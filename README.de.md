@@ -1,6 +1,6 @@
 # mcp-data-source-probe-skill
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
@@ -121,6 +121,28 @@ Wer nach diesem Skill baut, besteht die `FID`-Checks; wer sie beim Audit reisst,
 ## Changelog
 
 Siehe [CHANGELOG.md](CHANGELOG.md)
+
+## Sicherheit
+
+Dieses Repo liefert Dokumentation und Referenzcode — keinen laufenden Server und
+kein installierbares Paket. Die Python-Dateien unter `reference/` sind Material
+zum Anpassen, keine Bibliothek zum Importieren.
+
+`reference/probe_template.sh` ist die Ausnahme, die man vor dem Ausführen lesen
+sollte: Das Skript setzt **echte HTTP-Requests** gegen das ab, worauf `BASE`
+zeigt — mehrere pro Endpoint —, und die Scope-Probe fragt bewusst das Maximum
+ab, das eine Quelle hergibt. Nur auf Quellen richten, für die eine Berechtigung
+besteht, und deren Rate Limits beachten: Eine empirische Probe ist trotzdem
+Last auf fremden Servern.
+
+Ausserdem schreibt es **rohe API-Antworten** nach `$OUTDIR` (Default
+`/tmp/mcp-probe`). Diese Dateien sind der Beleg, den eine Probe erzeugen soll,
+und sie enthalten, was die Quelle geliefert hat. Nicht mitcommitten und als
+Daten behandeln, für die die Nutzungsbedingungen der Quelle gelten — nicht als
+beliebige Zwischenausgabe.
+
+Fehler im Vorgehen gefunden, oder einen Fall, den es falsch behandelt? Bitte ein
+Issue eröffnen.
 
 ## Lizenz
 
