@@ -51,7 +51,9 @@ Der Skill greift selbstständig, sobald ein Server auf eine neue SDK-Major migri
 
 ```
 .
-└── SKILL.md                  # die fünf Regeln, mit Deployment-Checkliste
+├── SKILL.md                  # die fünf Regeln, mit Deployment-Checkliste
+└── reference/
+    └── patterns.py           # Copy-Paste-Patterns für MCP-SDK 2.x / ASGI / uvicorn
 ```
 
 ## Woher diese Regeln stammen

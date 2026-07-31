@@ -51,7 +51,9 @@ The skill triggers on its own when a server is migrated to a new SDK major, swit
 
 ```
 .
-└── SKILL.md                  # the five rules, with the deployment checklist
+├── SKILL.md                  # the five rules, with the deployment checklist
+└── reference/
+    └── patterns.py           # copy-paste MCP SDK 2.x / ASGI / uvicorn patterns
 ```
 
 ## Where these rules come from

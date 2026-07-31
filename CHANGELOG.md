@@ -7,9 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- `reference/patterns.py` — copy-paste patterns for the transport-security
-  policy builder, the ASGI factory that reads its own bind, and the test shapes
-  including the two ways a suite hangs instead of failing.
+### Added
+
+- **`reference/patterns.py`** — copy-paste patterns for all five rules, targeting
+  MCP SDK 2.x behind ASGI/uvicorn:
+  - `build_transport_security()` with the four properties spelled out at the call
+    site — port-exact, loopback always present, configured CORS origins folded in,
+    `*` dropped — and the fail-open branch that warns instead of guessing.
+  - `create_http_app()` as a uvicorn `--factory` that reads its own bind, with
+    the reason in the docstring: a factory is called with no arguments, so
+    `--host` never reaches the app.
+  - `serve_http()` wiring one policy object into all three branches that can
+    serve HTTP — SDK-served `run()`, the custom builder, and the deprecated SSE
+    path — and `build_http_app()` which receives the policy rather than building
+    its own.
+  - `is_read_only()` plus `test_wire_format_is_unchanged()`, which makes rule
+    1(c)'s Nachweis runnable: if the pydantic alias still emits `readOnlyHint`,
+    the change is read-side only and no client contract is at stake.
+  - The four test shapes from rule 5, each carrying the mistake it corrects:
+    the regression test that must run *without* `MCP_ALLOWED_HOSTS`, the
+    right-host-wrong-port case, the valid token that must not save a foreign
+    host, and the branch assertion that makes a wrong branch fail instead of
+    hang. With the mutation table as a comment block and a closing note on
+    `TestClient` versus a bare `httpx.ASGITransport`.
 
 ## [1.0.0] - 2026-07-31
 

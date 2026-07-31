@@ -100,7 +100,8 @@ jobs:
 
       - name: Referenced files exist
         run: |
-          for f in SKILL.md README.md README.de.md LICENSE CHANGELOG.md; do
+          for f in SKILL.md reference/patterns.py README.md README.de.md \
+                   LICENSE CHANGELOG.md; do
             test -f "$f" || { echo "missing: $f"; exit 1; }
           done
           echo "ok — all referenced files present"
