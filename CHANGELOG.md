@@ -6,6 +6,62 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v1.3.0] — 2026-07-31 — Zwei Richtungen, alle Pfade, und ein Inventar das nachfragt
+
+**Fünf neue Checks** (`OPS-005`, `SCALE-007`, `SEC-024`, `ARCH-013`, `SDK-006`) — der Katalog wächst von 85 auf **90** —, **vier inhaltlich korrigierte** (`SEC-004`, `SEC-005`, `SEC-016`, `SEC-021`), ein vereinheitlichtes `transport`-Vokabular mit Validator-Gate und ein Inventar-Gate für das Portfolio. Die Einzelheiten stehen in den Abschnitten unten; hier nur, was beim Upgrade zu tun ist.
+
+### ⚠️ Zuerst lesen: `SEC-016` lehrte Code, der auf dem aktuellen SDK nicht startet
+
+Das Pass-Pattern von `SEC-016` (0.0.0.0-Binding-Prevention) zeigte bis zu diesem Release die **mcp-1.x-API**:
+
+```python
+mcp.settings.host = host      # unter 2.x: ValueError: "Settings" object has no field "host"
+mcp.settings.port = port
+mcp.run(transport="sse")
+```
+
+Unter `mcp` 2.x trägt `Settings` weder `host` noch `port`. Ein Server, der nach dem dokumentierten Muster gebaut wurde, **startet auf HTTP-Transport gar nicht** — auf stdio fällt es nicht auf, weil dort kein Bind vorkommt.
+
+**Wer `SEC-016` in einem Audit als bestanden geführt hat und das Pass-Pattern übernommen hat, hat ein Problem.** Der Check ist auf `run(transport=…, host=…, port=…)` korrigiert, die alte Form steht jetzt als Fail-Pattern daneben, und die Remediation — die denselben kaputten Code als Fix empfahl — ist mitgezogen. Prüfen lässt es sich in einer Zeile:
+
+```bash
+grep -rnE "mcp\.settings\.[a-z_]+\s*=" src/
+```
+
+Der neue `SDK-006` deckt diese Klasse vollständig ab; siehe dort.
+
+### Was neu ist
+
+| Check | Severity | Kurz |
+|---|---|---|
+| `OPS-005` | high (`advisory`) | Pipeline unterscheidet «bestanden» von «nicht gelaufen» |
+| `SCALE-007` | medium | Wiederaufnahme abgerissener Streams via `Last-Event-ID` |
+| `SEC-024` | high | Inbound Host/Origin-Allow-List — DNS-Rebinding auf den eigenen Endpoint |
+| `ARCH-013` | high | Alle Netz-Transportpfade identisch verdrahtet |
+| `SDK-006` | high | SDK-Major-Migration vollständig abgeschlossen |
+
+### Was korrigiert wurde
+
+| Check | Art der Änderung | Severity |
+|---|---|---|
+| `SEC-004` | `applies_when` — Transport-Disjunkt entfernt (Überanwendung zurückgenommen) | unverändert `critical` |
+| `SEC-005` | Titel auf «DNS-Rebinding **egress**», `applies_when` erweitert (stdio-only nicht mehr ausgenommen) | unverändert `high` |
+| `SEC-016` | Pass-Pattern und Remediation auf die 2.x-API, Notiz zur Host-Allow-List | unverändert `critical` |
+| `SEC-021` | FAIL-Pattern-Klarstellung: die Regel gilt für Egress, nicht für Ingress | unverändert `high` |
+
+**Keine Severity eines bestehenden Checks wurde geändert.** Nach [§Versionierung](SKILL.md#versionierung-des-check-katalogs) Punkt 5 löst dieses Release damit kein pflichtmässiges Re-Audit aus; Punkt 4 hält fest, dass neue Checks nicht rückwirkend gelten. Die Einschränkungen dazu stehen im PR zu diesem Release.
+
+### Zitate, die nach diesem Release falsch sind
+
+Drei bereits gemergte Portfolio-PRs zitieren im Titel `SEC-005` für eine Kontrolle, die seit diesem Release `SEC-024` heisst — die eingehende Host-Allow-List:
+
+- [`parlament-mcp#29`](https://github.com/malkreide/parlament-mcp/pull/29)
+- [`bag-health-mcp#51`](https://github.com/malkreide/bag-health-mcp/pull/51)
+- [`swiss-transport-mcp#25`](https://github.com/malkreide/swiss-transport-mcp/pull/25)
+
+Zum Zeitpunkt dieser PRs gab es keine passende ID — genau diese Verwechslung war der Anlass für `SEC-024` und die Umbenennung von `SEC-005`. Die Zitate sind gemergte Historie und niemand muss sie umschreiben; wer die Repos ohnehin anfasst, kann sie bei Gelegenheit nachziehen.
+
+
 ### Hinzugefügt — Inventar-Gate: die Portfolio-Liste behauptet nicht mehr, was es gibt
 
 `portfolio.yaml` ist handgepflegt, und `audit-portfolio.sh` arbeitet genau diese Liste ab. Was nicht darin steht, wird nie auditiert — **und es gibt keine Rückmeldung darüber.** Ein nicht auditierter Server erzeugt keine Zeile, keinen Fehler, keine Lücke im Report. Er ist schlicht nicht da.
