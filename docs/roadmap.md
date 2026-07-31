@@ -1,6 +1,6 @@
 # Roadmap — mcp-audit-skill
 
-Stand: **88 Checks in 11 Kategorien.** v0.5.0 ist vollständig gegen beide PDFs; die Kategorien `FID` und `IDENT` kamen danach aus Portfolio-Fundstücken hinzu (siehe CHANGELOG `[Unreleased]`).
+Stand: **90 Checks in 11 Kategorien.** v0.5.0 ist vollständig gegen beide PDFs; die Kategorien `FID` und `IDENT` kamen danach aus Portfolio-Fundstücken hinzu (siehe CHANGELOG `[Unreleased]`).
 
 Der v0.5.0-Katalog mit 68 Checks in 8 Kategorien deckt alle Sektionen der ursprünglichen Best-Practice-PDF sowie der Anhang-PDF (`mcp-server-architecture-best-practice.pdf`) ab. Die Tabelle unten hält diesen Stand als Momentaufnahme fest.
 

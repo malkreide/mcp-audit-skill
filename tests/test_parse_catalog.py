@@ -55,7 +55,7 @@ class TestRealCatalog:
         counts = category_counts(catalog)
         # Expected per SKILL.md table.
         assert counts == {
-            "ARCH": 12,
+            "ARCH": 13,
             "DRIFT": 5,
             "CH": 8,
             "FID": 5,
@@ -64,7 +64,7 @@ class TestRealCatalog:
             "OBS": 6,
             "OPS": 5,
             "SCALE": 7,
-            "SDK": 5,
+            "SDK": 6,
             "SEC": 24,
         }
 
