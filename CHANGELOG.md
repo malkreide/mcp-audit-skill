@@ -6,6 +6,37 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `SEC-024`: Die gefährliche Konfiguration ist die unauffällige
+
+Der Katalog wächst auf **88 Checks**, `SEC` auf 24. `SEC-024` prüft die eingehende Host-Allow-List — die Frage, die `SEC-016` offen lässt, sobald es `0.0.0.0` für Container erlaubt.
+
+`SEC-016` endete bei «in Container-Kontexten ist `0.0.0.0` korrekt». Damit ist die Frage «wer darf mich erreichen» aber nicht beantwortet, sondern verschoben: Wer an alle Interfaces bindet, kann sie nicht mehr über das Interface stellen. Sie muss an der eingehenden Anfrage gestellt werden — unter welchem Hostnamen der Server angesprochen werden darf. Ohne das ist er offen für **eingehendes** DNS-Rebinding: Eine beliebige Webseite lässt `attacker.com` auf `127.0.0.1` auflösen und spricht den Server aus dem Browser des Opfers an. Die Same-Origin-Policy hilft nicht — für den Browser ist es dieselbe Herkunft.
+
+**Der eigentliche Befund steckt in der Asymmetrie der beiden Fehlermodi.** Am Quelltext von `mcp` 2.0.0 nachgesehen:
+
+| `host` an den App-Builder | `transport_security` | Ergebnis |
+|---|---|---|
+| nicht durchgereicht → Default `127.0.0.1` | `None` | Schutz **an** mit Localhost-Allow-List → `HTTP 421` für jeden echten Namen |
+| `0.0.0.0` durchgereicht | `None` | Schutz **aus** — jeder `Host`-Header wird angenommen |
+
+Der Auto-Zweig greift ausschliesslich, wenn `host` in `("127.0.0.1", "localhost", "::1")` liegt. Für jeden anderen Wert bleibt `transport_security` bei `None`, und `TransportSecurityMiddleware.__init__` belegt dann ausdrücklich «for backwards compatibility» mit `enable_dns_rebinding_protection=False` vor.
+
+Wer `0.0.0.0` also **korrekt** durchreicht, bekommt einen Server, der startet, antwortet, Health-Checks besteht — und jeden Host-Header akzeptiert. Wer es **vergisst**, bekommt `HTTP 421` und merkt es in der ersten Minute. Der laute Fall ist der sichere, der stille ist der Befund. Dieselbe Asymmetrie, die `OPS-005` für Pipelines beschreibt.
+
+Das prägt die Verification: Modus 2 verlangt beide Richtungen — erlaubter Host `200`, fremder Host `421`. Ein Test, der nur den erlaubten Namen prüft, bestätigt, dass der Server läuft, und kann einen abgeschalteten Schutz nicht von einem funktionierenden unterscheiden.
+
+`high`, nicht `critical`: `SEC-016` trägt bereits `critical` für die Netzwerk-Exposition selbst; dieser Check ist die Verteidigung für den Fall, dass `0.0.0.0` zu Recht gesetzt ist. Zweimal `critical` auf derselben Deployment-Form würde die Stufe entwerten.
+
+`applies_when: 'transport != "stdio-only"'` — dieselbe Klausel wie `SEC-016`, und hier ist die Transport-Bedingung **richtig**: Der Angriff braucht einen HTTP-Listener. Das ist der Gegenfall zu `SEC-004`/`SEC-005`, wo dieselbe Bedingung falsch war, weil dort die ausgehende Seite geprüft wird.
+
+`pdf_ref: "Sec 4.4"` — die eingehende Hälfte von DNS Rebinding; `SEC-004`/`SEC-005` decken unter derselben Referenz die ausgehende ab. Bewusst kein `Custom`: Das hätte `SEC` in die Provenance-Prüfung der eigenen Layer gezogen und eine README-Zeile erzwungen, die 23 von 24 Checks der Kategorie falsch einordnet.
+
+**Platzhalter aufgelöst.** Der Satz «*(Verweis folgt — siehe Aufgabe 2.)*» aus dem letzten Release steht nicht mehr im Katalog; `SEC-016` verweist jetzt namentlich auf `SEC-024`.
+
+**Abgrenzung zu `SEC-021` im Check verankert.** Dort ist «Allow-List aus Env-Var» ein Fail-Pattern — das gilt für Egress. Hier ist die Umgebungs-Konfiguration die geforderte Form, weil der von aussen erreichbare Name im Prozess prinzipiell unbekannt ist. Beide Variablen heissen in der Praxis `ALLOWED_HOSTS`; der Check sagt, wie man sie auseinanderhält.
+
+Nachgezogen: `checks/MANIFEST.txt`, `SKILL.md` §2.1 (Intro 87 → 88, `SEC` 23/23 → 24/24, Total), `README.md` (Badge, vier Prosa-Stellen, `SEC`-Zeile inkl. Severity-Profil `8 critical · 13 high · 3 medium`, Total-Severity `41 high`), `docs/roadmap.md`, plus die Lock-Tests `test_parse_catalog.py` (`SEC: 23 → 24`) und `test_applicability.py` (`len(results) 87 → 88`). Die SKILL-Bereichsspalte `20–25` trägt 24 ohne Anpassung. Das srgssr-Baseline-Profil ist `stdio-only` — die Applicable-Schranke bleibt unberührt. 385 Tests.
+
 ### Geändert — `SEC-005`: Geltungsbereich erweitert, stdio-only nicht mehr ausgenommen
 
 Nachzug zu `SEC-004`. Die Klausel lautete `transport != "stdio-only" and tools_make_external_requests == true`; neu gilt `tools_make_external_requests == true`.
