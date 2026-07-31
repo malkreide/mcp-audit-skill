@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `.gitattributes` pinning `*.sh`, `*.py`, `*.yml`, `*.yaml`, `*.md` and `*.txt`
+  to LF, matching the other repositories in the portfolio. This one had been the
+  exception, and it is the repository where it matters most: it ships a shell
+  script, and CRLF chokes bash. The CI's frontmatter check is the second reason —
+  its regex expects `\n`-only fences. The index was already LF-clean, so this
+  changes no content; it prevents a Windows checkout from introducing CRLF later.
+
 ## [1.1.0] - 2026-08-01
 
 Adds a structural-assertion discipline to the probe, splits the companion skill

@@ -1,0 +1,9 @@
+# Force LF line endings on every checkout so Windows hosts with
+# autocrlf=true don't break shell scripts (CRLF chokes bash) or
+# regex-based markdown parsing (frontmatter fences expect \n-only).
+*.sh   text eol=lf
+*.py   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
