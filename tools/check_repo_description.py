@@ -217,8 +217,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {result['suggestion']}")
             print()
             print(
-                f"Eintragen unter https://github.com/{args.repo}/settings — "
-                "dieses Skript schreibt bewusst nicht."
+                f"Eintragen auf https://github.com/{args.repo} — rechte Spalte "
+                "«About», Zahnrad. NICHT in den Settings: die Description "
+                "steht dort nicht. Dieses Skript schreibt bewusst nicht."
             )
 
     return 0 if result["ok"] else 1

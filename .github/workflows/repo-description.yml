@@ -78,9 +78,11 @@ jobs:
               print("```")
               print(r["suggestion"])
               print("```")
-              print(f"\nEintragen unter [Settings]"
-                    f"(https://github.com/{r['repo']}/settings) — der Guard schreibt "
-                    "bewusst nicht: Repo-Metadaten zu ändern gehört einem Menschen.")
+              print(f"\nEintragen auf der [Repo-Startseite]"
+                    f"(https://github.com/{r['repo']}) — rechte Spalte **About**, "
+                    "Zahnrad-Symbol. *Nicht* in den Settings: die Description steht "
+                    "dort nicht.\n\nDer Guard schreibt bewusst nicht — Repo-Metadaten "
+                    "zu ändern gehört einem Menschen.")
           PY
 
       - name: Rot, wenn die Description nicht stimmt
