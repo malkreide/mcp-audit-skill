@@ -6,6 +6,35 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben — `SEC-004`: SSRF hängt am ausgehenden Request, nicht am eigenen Transport
+
+Die Klausel lautete `transport != "stdio-only" or tools_make_external_requests == true`. Der Transport-Disjunkt zog jeden Server mit Netzwerk-Transport hinein — auch einen ohne einen einzigen ausgehenden Request.
+
+| `transport` | ausgehende Requests | bisher | korrigiert |
+|---|---|---|---|
+| `stdio-only` | ja | gilt | gilt |
+| `stdio-only` | nein | gilt nicht | gilt nicht |
+| `dual` / `HTTP/SSE` | ja | gilt | gilt |
+| `dual` / `HTTP/SSE` | **nein** | **gilt** | **gilt nicht** |
+
+Nur die letzte Zeile ändert sich, und dort war die alte Antwort falsch. SSRF setzt voraus, dass der Server eine URL abruft, die aus Tool-Argumenten stammt. Wie er selbst angesprochen wird, ist dafür ohne Belang: Ein stdio-only-Server, der URLs fetcht, ist voll exponiert — und war schon vorher erfasst. Ein HTTP-Server ohne ausgehende Requests hat keine SSRF-Oberfläche; jedes der sechs Pass-Kriterien beschreibt dort einen Request, den es nicht gibt.
+
+Neu: `applies_when: 'tools_make_external_requests == true'` — dieselbe Form, die bereits zehn andere Checks tragen (`FID-*`, `DRIFT-*`, `IDENT-001`).
+
+**Ein Fehlalarm auf `critical` ist teuer.** Er kostet Prüfzeit an einem Befund, der keiner ist, und wenn er sich über ein Portfolio wiederholt, gewöhnt er die Leser daran, `critical` zu überblättern. Das ist die Währung, die ein Katalog nicht ausgeben darf. `SKILL.md` nennt den Applicability-Filter genau dafür: «Ohne diesen Filter überfluten irrelevante Findings den Report.»
+
+**Die Netzwerk-Ebene bleibt geprüft.** `SEC-021` (Egress-Allow-List) greift bei `tools_make_external_requests == true or is_cloud_deployed == true`. Die Zuständigkeit für ein Cloud-Deployment lag also nie beim Transport, sondern bei `is_cloud_deployed` — SEC-004 hat sie doppelt und mit dem falschen Feld mitgeführt.
+
+Drei Regressionstests in `tests/test_applicability.py`:
+
+- **Verhalten** — über alle drei Transportwerte × beide Request-Zustände. Der Transport darf das Ergebnis in keiner Richtung beeinflussen.
+- **Struktur** — die Klausel darf `transport` nicht mehr nennen. Ohne diesen Test käme eine Formulierung durch, die den Transport führt, ohne das Ergebnis zu ändern (`… and transport != "carrier-pigeon"`); gegengeprobt, dass genau sie nur hier auffällt.
+- **Verfeinerung ⊆ Grundfall** — `SEC-005` beschreibt sich im Text als Verfeinerung von `SEC-004`. Solange das dasteht, darf es kein Profil geben, für das die Verfeinerung greift und der Grundfall nicht. Sonst verlangt der Katalog die Härtung gegen DNS-Rebinding von einem Server, dem er die SSRF-Basisprüfung erlässt.
+
+Gegengeprobt: alte Klausel wieder eingesetzt — drei Tests rot; Tarnvariante eingesetzt — der strukturelle Test rot. 376 → 381 Tests.
+
+**Offen, bewusst nicht mitgeändert:** `SEC-005` trägt `transport != "stdio-only" and tools_make_external_requests == true`. Nach derselben Logik ist auch dort der Transport-Teil fragwürdig — ein stdio-only-Server, der URLs fetcht, ist gegen DNS-Rebinding genauso angreifbar. Das wäre aber eine *Ausweitung* auf `critical`-Nachbarschaft und damit eine eigene Entscheidung, keine Korrektur im selben Zug.
+
 ### Behoben — `transport`: eine Schreibweise, zwei Vokabulare, vier still verlorene Checks
 
 Der Katalog beschrieb dieselbe geschlossene Werteliste an fünf Orten und kam auf zwei Antworten. `SKILL.md`, `templates/audit-report.md` und jede `applies_when`-Klausel sagten `stdio-only / dual / HTTP/SSE`. `portfolio.example.yaml` und der Slash-Command empfahlen `stdio-only, dual, HTTP, SSE`.
