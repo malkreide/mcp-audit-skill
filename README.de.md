@@ -95,6 +95,25 @@ Wer nach diesem Skill baut, besteht `SEC-024`. Wer ihn beim Audit reisst, findet
 
 Siehe [CHANGELOG.md](CHANGELOG.md)
 
+## Sicherheit
+
+Dieses Repo liefert Dokumentation und Referenzcode — keinen laufenden Server und
+kein installierbares Paket. `reference/patterns.py` ist Material zum Anpassen und
+keine Bibliothek zum Importieren: Die Namen stehen für das, was das Zielprojekt
+ohnehin schon so nennt, und die referenzierten Fixtures kommen aus dessen eigener
+`conftest.py`.
+
+Zwei Punkte sind beim Anwenden von Regel 4 wesentlich. Die Allow-List ist auf
+einem Nicht-Loopback-Bind ohne Konfiguration **fail-open**. Das ist Absicht, weil
+eine geratene Liste genau das Deployment abweist, das sie schützen soll — es
+heisst aber, dass ein unkonfigurierter Server auf `0.0.0.0` keine eingehende
+Host-Prüfung hat. Die Startwarnung ist das Signal, dass dieser Zustand vorliegt.
+Und die eingehende Allow-List ersetzt weder Authentifizierung noch eine
+Egress-Allow-List — sie beantwortet eine andere Frage, wie die Regel ausführt.
+
+Fehler in den Regeln gefunden, oder einen Fall, den sie falsch behandeln? Bitte
+ein Issue eröffnen.
+
 ## Lizenz
 
 MIT License — siehe [LICENSE](LICENSE)

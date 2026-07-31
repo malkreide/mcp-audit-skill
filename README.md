@@ -95,6 +95,23 @@ Build by this skill and you pass `SEC-024`; fail it in an audit and the remediat
 
 See [CHANGELOG.md](CHANGELOG.md)
 
+## Security
+
+This repository ships documentation and reference code — no running server, no
+package to install. `reference/patterns.py` is material to adapt, not a library
+to import: the names stand in for whatever the target project calls them, and
+the fixtures it references come from the target project's own `conftest.py`.
+
+Two points matter when applying rule 4. The allow-list is **fail-open** on a
+non-loopback bind when nothing is configured; that is deliberate, because a
+guessed list rejects the deployment it is meant to protect, but it means an
+unconfigured server on `0.0.0.0` has no inbound Host check. The startup warning
+is the signal that this is the state you are in. And the inbound allow-list does
+not replace authentication or an egress allow-list — it answers a different
+question, as the rule sets out.
+
+Found an error in the rules, or a case they get wrong? Please open an issue.
+
 ## License
 
 MIT License — see [LICENSE](LICENSE)
