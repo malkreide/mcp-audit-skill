@@ -47,6 +47,7 @@ servers:
     repo: https://github.com/malkreide/zurich-opendata-mcp
     profile:
       transport: dual                              # stdio-only | dual | HTTP/SSE
+      sdk_language: Python                         # Python | TypeScript (siehe unten)
       auth_model: none                             # none | API-Key | OAuth-Proxy | OIDC
       data_class: Public Open Data                 # Public Open Data | Verwaltungsdaten | PII
       write_capable: false
@@ -67,6 +68,7 @@ servers:
     repo: https://github.com/malkreide/zh-education-mcp
     profile:
       transport: stdio-only
+      sdk_language: Python
       auth_model: API-Key
       data_class: Verwaltungsdaten
       write_capable: false

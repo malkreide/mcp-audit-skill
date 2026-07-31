@@ -73,6 +73,7 @@ Daraus baust du das Profil mit folgenden Variablen (Defaults bei Unsicherheit):
 | Variable | Mögliche Werte | Default bei Unsicherheit |
 |---|---|---|
 | `transport` | `stdio-only`, `dual`, `HTTP/SSE` | `dual` |
+| `sdk_language` | `Python`, `TypeScript` | aus dem Repo ablesen (`pyproject.toml` → Python, `package.json` → TypeScript) |
 | `auth_model` | `none`, `API-Key`, `OAuth-Proxy`, `OIDC` | `none` |
 | `data_class` | `Public Open Data`, `Verwaltungsdaten`, `PII` | `Public Open Data` |
 | `write_capable` | `true`, `false` | `false` |

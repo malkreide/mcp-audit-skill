@@ -6,6 +6,42 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben — `sdk_language` war Pflichtfeld für sieben Checks und stand nirgends
+
+Sieben Checks fragen `sdk_language` ab (`SDK-001`…`SDK-006`, `IDENT-005`). Das Feld stand weder in `validate_profile.REQUIRED_FIELDS` noch in `portfolio.example.yaml`, noch im Slash-Command, im DSL-Doc oder in der Profil-Tabelle von `SKILL.md` — und `audit-notion-sync.py` hat es nie gesetzt.
+
+**Die Reihenfolge war genau verkehrt.** Nachgemessen mit einem Profil, wie `build_profile()` es erzeugt:
+
+```
+validate_profile: consistent=True          ← das Gate lässt es durch
+evaluate_catalog: 7 Checks unknown-field   ← erst hier fällt es auf
+```
+
+Das Validierungs-Gate existiert, um solche Löcher **vor** Schritt 2 zu fangen. Es war blind, weil das Feld nicht in seiner Liste stand. Der laute Fehlschlag im Evaluator war korrekt — er kam nur zu spät und traf jedes aus Notion gezogene Profil.
+
+Nachgezogen an sechs Orten: `REQUIRED_FIELDS` (15 → 16 Felder), `portfolio.example.yaml`, `.claude/commands/audit-mcp.md`, `SKILL.md` (Profil-Tabelle, Beispielblock, Feldzahl), `docs/applies-when-dsl.md` und `audit-notion-sync.py`. Letzteres liest jetzt eine Notion-Property `SDK-Sprache` mit Default `Python` — dieselbe Konvention, die dort schon für `transport` und `auth_model` gilt.
+
+**Bewusst nicht als geschlossenes Vokabular gepinnt.** Anders als `transport` ist `sdk_language` offen: Ein Server in Go oder Rust trägt eine Sprache, die kein Check abfragt — das ist eine Lücke im Katalog, kein Fehler im Profil, und ein harter Reject würde ein korrekt beschriebenes Profil abweisen. Der Preis ist derselbe Rest-Risiko wie bei jedem offenen Feld: `python` statt `Python` lässt sechs Checks still wegfallen. Ein Test hält die Entscheidung samt Begründung fest, damit eine spätere Umkehr eine bewusste ist.
+
+Fünf Guard-Tests: Feld ist Pflichtfeld · der Katalog nutzt es überhaupt · jeder Wert, gegen den eine Klausel vergleicht, steht in allen vier Doku-Orten · es ist *nicht* in `ALLOWED_VALUES` · `audit-notion-sync.py` setzt es. 409 → 417 Tests.
+
+### Behoben — `SEC-004` und `SEC-005` prüften dasselbe Kriterium doppelt
+
+Seit `SEC-005` auf dieselbe Reichweite wie `SEC-004` erweitert wurde, trugen beide wortgleich dasselbe Pass-Kriterium:
+
+| | Kriterium |
+|---|---|
+| `SEC-004` | «DNS-Resolution erfolgt **einmal**, resolved IP wird für eigentlichen Request verwendet (kein TOCTOU)» |
+| `SEC-005` | «DNS-Resolution erfolgt **einmalig** vor dem HTTP-Request» + «Resolved IP wird für die TCP-Connection verwendet» |
+
+Ein Server, der DNS-Pinning vergisst, erzeugte damit **zwei Findings für eine Ursache** — eines auf `critical`, eines auf `high`. Und nach dem Fix wäre eines davon rot geblieben, weil niemand daran denkt, zwei Checks nachzuführen. Genau der Schaden, den `SKILL.md` §2.5 beschreibt: «Sie doppeln das Finding, und wenn der Server die Ursache behebt, bleibt der zweite rot — der Fix sieht aus, als hätte er nicht gewirkt.»
+
+**Aufgelöst durch Entflechtung, nicht durch Zusammenlegen.** `SEC-004` prüft, ob die aufgelöste IP *erlaubt* ist (HTTPS-Enforcement, Blocklisting); `SEC-005`, ob sie auch die *benutzte* ist (Pinning). Das doppelte Kriterium und die zugehörige Common-Failures-Zeile sind aus `SEC-004` entfernt, beide Checks benennen die Grenze ausdrücklich.
+
+Zusammengelegt wurden sie nicht, weil §2.5 auch die Gegenrichtung kennt: Ein Check muss **in einem Schritt behebbar** bleiben. Blocklisting und Pinning sind getrennt behebbar — ein Server kann die Blockliste korrekt führen und trotzdem zweimal auflösen. Das sind zwei Befunde mit zwei Remediationen.
+
+Das Pass-Pattern von `SEC-004` löst weiterhin einmal auf und verwendet die IP — echter Code macht beides in derselben Funktion. Nur das *Kriterium* liegt jetzt an einer Stelle. Der Unterschied steht im Check, damit ihn niemand für eine Lücke hält.
+
 ## [v1.3.0] — 2026-07-31 — Zwei Richtungen, alle Pfade, und ein Inventar das nachfragt
 
 **Fünf neue Checks** (`OPS-005`, `SCALE-007`, `SEC-024`, `ARCH-013`, `SDK-006`) — der Katalog wächst von 85 auf **90** —, **vier inhaltlich korrigierte** (`SEC-004`, `SEC-005`, `SEC-016`, `SEC-021`), ein vereinheitlichtes `transport`-Vokabular mit Validator-Gate und ein Inventar-Gate für das Portfolio. Die Einzelheiten stehen in den Abschnitten unten; hier nur, was beim Upgrade zu tun ist.

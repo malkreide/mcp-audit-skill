@@ -77,12 +77,27 @@ data_source.is_swiss_open_data    →    True
 
 If any segment is missing, evaluation raises `UnknownFieldError`. Silent fallback to `False` is forbidden — audit reproducibility depends on schema completeness.
 
+This is not hypothetical. Until v1.3.1 the profile field `sdk_language` was
+required by seven checks (`SDK-001`…`SDK-006`, `IDENT-005`) but appeared in no
+schema, no example profile and no documentation — and `audit-notion-sync.py`
+never set it. Every pulled profile passed the Step-1 validation gate and then
+lost all seven checks to `UnknownFieldError` in Step 3. The loud failure was
+correct; the gate that should have caught it first was blind because the field
+was not in `REQUIRED_FIELDS`. A field the catalog depends on belongs in the
+schema, not only in the clauses that read it.
+
+Note that `sdk_language` is deliberately **not** a closed vocabulary (unlike
+`transport`): a server written in Go or Rust carries a language no clause
+compares against, which is a gap in the catalog rather than an error in the
+profile. Rejecting it would turn an accurate profile into a validation failure.
+
 ## Examples
 
 | Expression | Meaning |
 |---|---|
 | `always` | Universal check |
 | `transport == "stdio-only"` | True when transport is exactly `"stdio-only"` |
+| `sdk_language == "Python"` | Language binding. Values the catalog compares against: `Python`, `TypeScript` — used by `SDK-001`…`SDK-006` and `IDENT-005` |
 | `auth_model != "none"` | True when any authentication is configured |
 | `deployment.includes("Railway")` | True when Railway is one of the deployment targets |
 | `data_source.is_swiss_open_data == true` | Dotted field access |
