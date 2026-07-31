@@ -95,6 +95,23 @@ Build by this skill and you pass `SEC-024`; fail it in an audit and the remediat
 
 See [CHANGELOG.md](CHANGELOG.md)
 
+## Contributing
+
+Corrections are welcome: a rule that is wrong, a case it decides badly, an SDK
+detail that has moved on.
+
+New rules have a higher bar. Every rule here comes from a specific failure that
+actually happened, and that is the only reason the set is worth reading — a
+plausible-sounding guideline without a scar behind it makes the skill longer and
+weaker. A proposal should name the incident, carry a ✗/✓ pair, and state its
+**Nachweis**: how someone would demonstrate the rule holds, and what they would
+break to see it fail. CI enforces that shape.
+
+Rules 5–7 apply to the proposal itself. If a rule cannot be violated in a way
+that something notices, it is not yet a rule.
+
+Open an issue before a large pull request, so the shape can be settled first.
+
 ## Security
 
 This repository ships documentation and reference code — no running server, no

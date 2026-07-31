@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Contributing section in both READMEs. It states the bar a new rule has to
+  clear: the incident it came from, a counter-example pair, and its Nachweis —
+  the same form CI enforces. A plausible-sounding guideline without a scar behind
+  it makes the skill longer and weaker.
+
 ## [1.0.0] - 2026-08-01
 
 Initial release. Seven rules for MCP servers on a network transport, covering the

@@ -95,6 +95,24 @@ Wer nach diesem Skill baut, besteht `SEC-024`. Wer ihn beim Audit reisst, findet
 
 Siehe [CHANGELOG.md](CHANGELOG.md)
 
+## Mitwirken
+
+Korrekturen sind willkommen: eine Regel, die falsch ist, ein Fall, den sie
+schlecht entscheidet, ein SDK-Detail, das sich weiterbewegt hat.
+
+Für neue Regeln liegt die Latte höher. Jede Regel hier stammt aus einem konkreten
+Schaden, der tatsächlich eingetreten ist — und nur deshalb lohnt sich die Sammlung
+überhaupt. Eine plausibel klingende Empfehlung ohne Narbe dahinter macht den Skill
+länger und schwächer. Ein Vorschlag sollte den Vorfall benennen, ein ✗/✓-Paar
+mitbringen und seinen **Nachweis** angeben: wie man zeigt, dass die Regel trägt,
+und was man kaputtmachen müsste, damit es auffällt. Die CI erzwingt diese Form.
+
+Die Regeln 5–7 gelten auch für den Vorschlag selbst. Wenn sich eine Regel nicht so
+verletzen lässt, dass es jemandem auffällt, ist es noch keine Regel.
+
+Vor einem grösseren Pull Request bitte ein Issue eröffnen, damit die Form vorher
+geklärt ist.
+
 ## Sicherheit
 
 Dieses Repo liefert Dokumentation und Referenzcode — keinen laufenden Server und
