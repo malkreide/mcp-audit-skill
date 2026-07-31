@@ -85,6 +85,26 @@ Wer nach diesem Skill baut, besteht die `FID`-Checks; wer sie beim Audit reisst,
 
 Siehe [CHANGELOG.md](CHANGELOG.md)
 
+## Mitwirken
+
+Korrekturen sind willkommen: eine Regel, die falsch ist, ein Fall, den sie
+schlecht entscheidet, eine Quelle, deren Defaults sich seit der Tabelle geändert
+haben.
+
+Für neue Regeln liegt die Latte höher. Jede Regel hier stammt aus einem konkreten
+Schaden, der tatsächlich eingetreten ist — und nur deshalb lohnt sich die Sammlung
+überhaupt. Eine plausibel klingende Empfehlung ohne Narbe dahinter macht den Skill
+länger und schwächer. Ein Vorschlag sollte den Vorfall benennen, ein ✗/✓-Paar
+mitbringen und seinen **Nachweis** angeben: die zwei Calls, das Delta, die
+Assertion, die eine funktionierende Kontrolle von einer kaputten trennt.
+
+Der Gegenstand des Skills gilt auch für den Vorschlag. Wenn sich eine Regel nicht
+so verletzen lässt, dass es jemandem auffällt, ist es noch keine Regel — und wenn
+der Beleg dafür nur aus einem Mock stammt, ist es noch kein Beleg.
+
+Vor einem grösseren Pull Request bitte ein Issue eröffnen, damit die Form vorher
+geklärt ist.
+
 ## Sicherheit
 
 Dieses Repo liefert Dokumentation und Referenzcode — keinen laufenden Server und

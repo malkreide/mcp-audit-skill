@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Contributing section in both READMEs. It states the bar a new rule has to
+  clear: the incident it came from, a counter-example pair, and its Nachweis.
+  The skill's own subject applies to the proposal — evidence that comes only from
+  a mock is not yet evidence.
+
 ## [1.0.0] - 2026-08-01
 
 First standalone release. The skill was previously distributed as

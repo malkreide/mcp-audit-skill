@@ -85,6 +85,24 @@ Build by this skill and you pass the `FID` checks; fail them in an audit and the
 
 See [CHANGELOG.md](CHANGELOG.md)
 
+## Contributing
+
+Corrections are welcome: a rule that is wrong, a case it decides badly, a source
+whose defaults have changed since the table was written.
+
+New rules have a higher bar. Every rule here comes from a specific failure that
+actually happened, and that is the only reason the set is worth reading — a
+plausible-sounding guideline without a scar behind it makes the skill longer and
+weaker. A proposal should name the incident, carry a ✗/✓ pair, and state its
+**Nachweis**: the two calls, the delta, the assertion that separates a working
+control from a broken one.
+
+The skill's own subject applies to the proposal. If a rule cannot be violated in
+a way that something notices, it is not yet a rule — and if the evidence for it
+comes only from a mock, it is not yet evidence.
+
+Open an issue before a large pull request, so the shape can be settled first.
+
 ## Security
 
 This repository ships documentation and reference code — no running server, no
