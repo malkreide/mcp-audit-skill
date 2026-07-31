@@ -6,6 +6,29 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — Adoptionsstufe `advisory` | `enforced`
+
+Der Katalog hatte bisher nur eine Achse: Severity. Die sagt, **wie schlimm** ein Verstoss ist — aber nicht, **ob der Katalog das Portfolio schon darauf festnageln darf**. Ohne die zweite Achse trifft jeder neue Check am Tag des Merges 30+ Server als rote Pipeline, und so werden Checks zurückgenommen statt übernommen.
+
+Der Anlass war konkret: Bei `FID-003` musste die positive Hälfte — eine Leermenge *soll* einen nächsten Schritt tragen — im promptfoo-Profil graded statt assertiert werden, weil `zurich-opendata-mcp` sie nicht erfüllt hätte. Das war eine Ad-hoc-Lösung für ein strukturelles Problem, dem das Vokabular fehlte.
+
+| Stufe | Konsequenz |
+|---|---|
+| `enforced` | Ein `fail` auf `critical`/`high` blockiert Production-Readiness |
+| `advisory` | Finding wird erzeugt, gezählt, mit voller Severity geführt — blockiert aber nicht |
+
+- **Rückwärtskompatibel per Konstruktion.** Das Feld ist optional und defaultet auf `enforced`. Alle 85 Checks bleiben `enforced`; die Einführung des Mechanismus hat kein einziges Verdikt geändert. Ein Test hält fest, dass derzeit nichts advisory ist — wird er rot, war das eine bewusste Entscheidung und gehört in diesen CHANGELOG.
+- **Advisory versteckt nichts.** Das Finding entsteht, trägt seine Severity, erscheint im Report. Nur das Veto entfällt. Eine Stufe, die den Befund unterdrückte statt nur sein Veto, wäre schlimmer als gar keine Stufe.
+- **Ein grünes Verdikt verschweigt keine Advisory-Reisser.** `summary.advisory_findings` listet die Checks, die bei `enforced` blockiert hätten; `build_report.py` nennt sie in der Executive Summary auch dann, wenn Production-Readiness erreicht ist. Wer später promoviert, weiss vorher, was rot würde.
+- **Der Katalog ist autoritativ, nicht die Ergebnisdatei.** Neu `aggregate --checks-dir`: die Stufe wird aus `checks/` nachgezogen. Ohne das Flag gilt, was in `verification-results.json` steht — und ein fehlendes Feld bekommt dort still den `enforced`-Default. Sichere Richtung, aber es heisst: Eine Advisory-Stufe wirkt nur, wenn der Katalog gelesen wird. Ergebnis-IDs, die der Katalog nicht kennt, werden laut gemeldet und behalten den blockierenden Default.
+- **Ein Tippfehler ist ein harter Fehler.** `adoption: advisroy` bricht das Katalog-Parsen ab. Eine stille Demotion wäre die leiseste Art, einen Check zu verlieren.
+- **Der Promotionsweg** steht in `SKILL.md` 2.3: als `advisory` mergen, einen Portfolio-Durchlauf auswerten, dann promovieren — die Promotion in den CHANGELOG, nicht in einen Diff, den niemand liest.
+- **21 neue Tests** (`tests/test_adoption_stage.py`), in beide Richtungen: dass `enforced` weiter blockiert, dass `advisory` nicht blockiert, dass das Finding trotzdem entsteht, dass der Katalog die Ergebnisdatei überstimmt. 338 Tests grün.
+
+### Behoben
+
+- `SKILL.md` 2.1 trug noch die Überschrift «Zehn Kategorien», während die Tabelle elf Zeilen hatte und das Intro «elf Kategorien» sagte — ein Rest der `DRIFT`-Ergänzung. Die Guard-Tests prüfen die Intro-Zeile, nicht die Abschnitts-Überschrift; diese Lücke besteht weiterhin.
+
 ### Hinzugefügt — der sechste Ort: die GitHub-Repo-Description
 
 v1.1.1 schloss mit dem Satz, keine Katalog-Angabe im Repo sei mehr ungesichert. Das stimmte — und liess offen, dass eine davon **ausserhalb** des Repos liegt: die Repository-Description auf GitHub.

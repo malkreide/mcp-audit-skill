@@ -72,7 +72,7 @@ Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig du
 | Catalog parsen (Frontmatter aller `*.md`) | `python tools/parse_catalog.py --format json` |
 | Catalog vs. Manifest validieren | `python tools/parse_catalog.py --format manifest-check` |
 | `applies_when` evaluieren | `python tools/eval_applicability.py catalog profile.yaml` |
-| Verification-Results aggregieren | `python tools/aggregate_results.py aggregate results.json --out summary.json` |
+| Verification-Results aggregieren | `python tools/aggregate_results.py aggregate results.json --checks-dir checks/ --out summary.json` |
 | Findings-Set vs. Disk validieren (inkl. Leer-Prüfung) | `python tools/aggregate_results.py validate <audit_dir>` |
 | Audit-Report generieren | `python tools/build_report.py <audit_dir>` |
 | Task-Agent-Output verifizieren | `python tools/verify_raw_outputs.py raw/ --expected-ids ID1,ID2` |
@@ -172,7 +172,7 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 
 **Ziel:** Den vollständigen Katalog (`checks/*.md`) parsen und nach `category` + `severity` indizieren.
 
-### 2.1 Zehn Kategorien
+### 2.1 Elf Kategorien
 
 | Kategorie | Quelle | Typische Anzahl Checks | Status |
 |---|---|---|---|
@@ -198,7 +198,41 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 | `medium` | Best-Practice-Verletzung, kein akutes Risiko | Im nächsten Sprint planen. |
 | `low` | Polish, Optimierung, Stilistik | Backlog. Bei Tippfehler-Audits: low + auto-fix. |
 
-### 2.3 Check-Schema
+### 2.3 Adoptionsstufen
+
+Severity sagt, **wie schlimm** ein Verstoss ist. Die Adoptionsstufe sagt, **ob der Katalog das Portfolio schon darauf festnageln darf**. Zwei verschiedene Fragen, und ohne die zweite trifft jeder neue Check am Tag des Merges 30+ Server als rote Pipeline — so werden Checks zurückgenommen statt übernommen.
+
+| Stufe | Bedeutung | Konsequenz |
+|---|---|---|
+| `enforced` | Der Katalog hält das Portfolio daran fest | Ein `fail` auf `critical`/`high` blockiert Production-Readiness |
+| `advisory` | Der Check meldet, urteilt aber noch nicht | Finding wird erzeugt, gezählt und mit voller Severity geführt — blockiert aber nicht |
+
+```yaml
+adoption: advisory   # optional; fehlt das Feld, gilt `enforced`
+```
+
+**Advisory versteckt nichts.** Das Finding entsteht, trägt seine Severity und erscheint im Report. Nur das Veto entfällt. Eine Stufe, die den Befund unterdrückte statt nur sein Veto, wäre schlimmer als gar keine Stufe.
+
+Ein Advisory-Finding auf blockierender Severity wird im Report unter `advisory_findings` **namentlich genannt** — auch bei grünem Verdikt. Wer später promoviert, weiss vorher, was rot würde.
+
+**Der Weg eines neuen Checks:**
+
+1. Als `advisory` mergen. Der Check läuft im nächsten Portfolio-Durchlauf mit und meldet, ohne zu blockieren.
+2. Die Advisory-Findings über das Portfolio auswerten: Ist der Check richtig geschnitten? Produziert er Fehlalarme?
+3. Wenn die betroffenen Server nachgezogen haben — oder der Rückstand bewusst akzeptiert ist —, auf `enforced` promovieren. Die Promotion gehört in den CHANGELOG, nicht in einen Diff, den niemand liest.
+
+Ein Tippfehler in `adoption` ist ein **harter Fehler** beim Katalog-Parsen. Eine stille Demotion wäre die leiseste Art, einen Check zu verlieren.
+
+**Der Katalog ist autoritativ**, nicht die Ergebnisdatei:
+
+```bash
+python tools/aggregate_results.py aggregate verification-results.json \
+    --checks-dir "$SKILL_BASE/checks/" --out summary.json
+```
+
+Ohne `--checks-dir` gilt, was in `verification-results.json` steht — und ein fehlendes Feld bekommt dort still den `enforced`-Default. Das ist die sichere Richtung, aber es heisst auch: Eine Advisory-Stufe wirkt nur, wenn der Katalog gelesen wird.
+
+### 2.4 Check-Schema
 
 Jeder Check ist eine eigenständige Markdown-Datei im Format:
 

@@ -66,6 +66,11 @@ Step 4 produces this file. It is the **only** ground truth.
 - `status` — one of the values above
 - `category` — `ARCH`, `SEC`, `CH`, `HITL`, `OBS`, `OPS`, `SCALE`, `SDK`
 - `severity` — one of the values above
+- `adoption` — `enforced` (default) or `advisory`. Optional; omitting it keeps
+  the check blocking, so a results file written before this field existed
+  behaves exactly as it did. Prefer `aggregate --checks-dir` over setting it
+  here: the catalogue is authoritative, and a stage that depends on whoever
+  wrote the results file is a stage that silently does not apply.
 - `evidence` (list of strings, may be empty)
 - `gaps` (list of strings, may be empty)
 

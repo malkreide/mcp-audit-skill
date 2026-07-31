@@ -33,6 +33,23 @@ from tools.path_utils import force_utf8_stdio  # noqa: E402
 
 REQUIRED_FIELDS = ("id", "title", "category", "severity", "applies_when")
 
+# Adoption stage — how hard a check bites while the portfolio catches up.
+#
+#   enforced  a failure at critical/high blocks production-readiness
+#   advisory  the finding is reported and counted, but never blocks
+#
+# Severity says how bad a violation is; adoption says whether the catalogue is
+# yet entitled to hold the portfolio to it. Without the distinction a new check
+# arrives as a red pipeline across 30+ servers on the day it is merged, which
+# is how checks get reverted rather than adopted.
+#
+# The field is OPTIONAL and defaults to `enforced`: every check that predates
+# it keeps blocking exactly as before, so adding the mechanism changes no
+# verdict. An unknown value is a hard error — a typo must not silently demote
+# a check to advisory, which would be the quietest possible way to lose one.
+VALID_ADOPTIONS = ("advisory", "enforced")
+DEFAULT_ADOPTION = "enforced"
+
 
 def _default_checks_dir() -> Path:
     return Path(__file__).resolve().parent.parent / "checks"
@@ -61,6 +78,13 @@ def parse_catalog(checks_dir: Path) -> dict[str, dict[str, Any]]:
             raise ValueError(
                 f"{path.name}: frontmatter missing required field(s) {missing}"
             )
+        adoption = str(fm.get("adoption") or DEFAULT_ADOPTION).strip()
+        if adoption not in VALID_ADOPTIONS:
+            raise ValueError(
+                f"{path.name}: invalid adoption {adoption!r}; "
+                f"expected one of {VALID_ADOPTIONS}"
+            )
+        fm["adoption"] = adoption
         if cid in catalog:
             raise ValueError(
                 f"Duplicate check id {cid!r} in {path.name} "
@@ -114,19 +138,45 @@ def severity_counts(catalog: dict[str, dict[str, Any]]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
+def adoption_counts(catalog: dict[str, dict[str, Any]]) -> dict[str, int]:
+    """How many checks are enforced vs advisory.
+
+    Both keys are always present, including when one is zero: a missing key
+    reads as "not measured" rather than "none", and the whole point of the
+    stage is that nobody should have to guess which checks are blocking.
+    """
+    counts: dict[str, int] = {a: 0 for a in VALID_ADOPTIONS}
+    for fm in catalog.values():
+        counts[fm.get("adoption", DEFAULT_ADOPTION)] += 1
+    return counts
+
+
+def advisory_ids(catalog: dict[str, dict[str, Any]]) -> list[str]:
+    """IDs of the checks that report but do not block, sorted."""
+    return sorted(
+        cid for cid, fm in catalog.items()
+        if fm.get("adoption", DEFAULT_ADOPTION) == "advisory"
+    )
+
+
 def _print_table(catalog: dict[str, dict[str, Any]]) -> None:
-    print(f"{'ID':<14} {'CAT':<6} {'SEV':<10} APPLIES_WHEN")
+    print(f"{'ID':<14} {'CAT':<6} {'SEV':<10} {'ADOPTION':<10} APPLIES_WHEN")
     for cid, fm in catalog.items():
         print(
             f"{cid:<14} "
             f"{fm.get('category', '?'):<6} "
             f"{fm.get('severity', '?'):<10} "
+            f"{fm.get('adoption', DEFAULT_ADOPTION):<10} "
             f"{fm.get('applies_when', '?')}"
         )
     print()
     print(f"Total: {len(catalog)} checks")
     print(f"By category: {category_counts(catalog)}")
     print(f"By severity: {severity_counts(catalog)}")
+    print(f"By adoption: {adoption_counts(catalog)}")
+    advisory = advisory_ids(catalog)
+    if advisory:
+        print(f"Advisory (reported, never blocking): {', '.join(advisory)}")
 
 
 def main(argv: list[str] | None = None) -> int:

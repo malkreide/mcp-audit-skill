@@ -28,6 +28,7 @@ Release behoben werden.
 ```
 
 **Production-Readiness:** ✅ ja / ❌ nein
+**Advisory-Findings:** *Anzahl — Checks, die bei `enforced` blockiert hätten. Auch bei grünem Verdikt namentlich nennen; sonst ist eine spätere Promotion eine Überraschung statt einer Entscheidung.*
 **Empfohlenes nächstes Release:** *blockiert / freigegeben mit Auflage / freigegeben*
 
 ### 1.1 Gemessen / Geschlossen / Offen
