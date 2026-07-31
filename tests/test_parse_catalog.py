@@ -63,7 +63,7 @@ class TestRealCatalog:
             "IDENT": 6,
             "OBS": 6,
             "OPS": 5,
-            "SCALE": 6,
+            "SCALE": 7,
             "SDK": 5,
             "SEC": 23,
         }
