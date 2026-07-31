@@ -1,6 +1,6 @@
 # Roadmap — mcp-audit-skill
 
-Stand: **85 Checks in 11 Kategorien.** v0.5.0 ist vollständig gegen beide PDFs; die Kategorien `FID` und `IDENT` kamen danach aus Portfolio-Fundstücken hinzu (siehe CHANGELOG `[Unreleased]`).
+Stand: **86 Checks in 11 Kategorien.** v0.5.0 ist vollständig gegen beide PDFs; die Kategorien `FID` und `IDENT` kamen danach aus Portfolio-Fundstücken hinzu (siehe CHANGELOG `[Unreleased]`).
 
 Der v0.5.0-Katalog mit 68 Checks in 8 Kategorien deckt alle Sektionen der ursprünglichen Best-Practice-PDF sowie der Anhang-PDF (`mcp-server-architecture-best-practice.pdf`) ab. Die Tabelle unten hält diesen Stand als Momentaufnahme fest.
 
@@ -42,6 +42,7 @@ Der v0.5.0-Katalog mit 68 Checks in 8 Kategorien deckt alle Sektionen der urspr�
 | _unreleased_ | 2026-07-27 | +5 `FID`-Checks (Datentreue) aus Portfolio-Fundstück `termdat-mcp#11` |
 | _unreleased_ | 2026-07-30 | +`OPS-004` (Audit-Redlichkeit) aus dem Nachlauf zu `termdat-mcp#11` |
 | _unreleased_ | 2026-07-30 | Adoptionsstufe `advisory`/`enforced` — neue Checks können melden, bevor sie blockieren |
+| _unreleased_ | 2026-07-31 | +`OPS-005` (Pipeline-Ehrlichkeit), erster Check mit `adoption: advisory` |
 
 ---
 

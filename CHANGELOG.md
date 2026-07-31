@@ -6,6 +6,29 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `OPS-005`: Übersprungen ist nicht bestanden
+
+Der Katalog wächst auf **86 Checks**. `OPS-005` zieht die Linie aus `OPS-004` eine Ebene tiefer: Dort geht es um einen Report, der Gemessenes von Geschlossenem trennt; hier um eine Pipeline, die «bestanden» von «nicht gelaufen» unterscheidet.
+
+Ein Check, der nicht gelaufen ist, sieht in jeder Zusammenfassung exakt aus wie einer, der bestanden hat. Das ist keine Nachlässigkeit im Einzelfall, sondern eine Eigenschaft der Werkzeuge: CI-Oberflächen zeigen Fehlschläge, nicht Abwesenheiten.
+
+Vier Ausprägungen, alle real im Portfolio beobachtet:
+
+1. **Die ganze Suite lief nie.** `mcp-continuous-auditor` hatte über 150 Tests und keinen Workflow, der sie ausführte — `ci.yml` lag als `.yml.template` für Zielrepos. 167 Läufe in der Repo-Historie, kein einziger ein Test.
+2. **Tests skippen wegen fehlender Abhängigkeit.** Drei Klassen desselben Repos meldeten `skipped 'fastmcp not installed'`. Die Suite war grün.
+3. **`continue-on-error` ohne sichtbare Folge.** Die Abdeckung schrumpft still von Woche zu Woche.
+4. **Der Exit-Code kommt vom falschen Befehl.** GitHub Actions führt `run:` unter Linux mit `bash -e` aus, **ohne** `pipefail`. In `python check.py | tail -4` bestimmt `tail` den Exit-Code. Genau das ist hier passiert — beim Verifizieren eines Gates, das korrekt angeschlagen hatte.
+
+- **Erster Check mit `adoption: advisory`.** `OPS-005` geht den in `SKILL.md` 2.3 dokumentierten Weg: Er meldet und blockiert nicht, bis ein Portfolio-Durchlauf zeigt, ob er richtig geschnitten ist. Damit hat der letzte Release eingeführte Mechanismus seinen ersten Kunden — und der Katalog wächst um einen Check, ohne 30+ Server am Tag des Merges rot zu färben.
+- **`test_nothing_is_advisory_yet` wird zu `test_advisory_set_is_pinned`.** Statt Leere wird die bekannte Menge festgenagelt: Jede Promotion oder Demotion fällt im Review auf. Dazu ein zweiter Test, der die Stufe davor schützt, zur Ausrede zu werden — höchstens ein Zehntel des Katalogs darf advisory sein.
+- **Gegenprobe im Check verankert:** Ein Gate, das nicht scheitern kann, ist Dekoration. `OPS-005` verlangt, es einmal ohne die Abhängigkeit laufen zu lassen.
+
+### Behoben — Guard-Test für Abschnitts-Überschriften
+
+`test_skill_counts.py` prüfte die Intro-Zeile («86 Checks in elf Kategorien»), nicht aber die Abschnitts-Überschrift («### 2.1 Elf Kategorien»). Nach der Ergänzung der Kategorie `DRIFT` stand dort «Zehn», während die Tabelle darunter elf Zeilen hatte — korrigiert wurde das im letzten Release, gesichert ist es erst jetzt.
+
+Neu `test_section_heading_states_category_count`. Der Test scheitert auch, wenn er **gar keine** passende Überschrift findet: Ein Muster, das nach einer Umbenennung ins Leere greift, prüft stillschweigend nichts mehr — dieselbe Fehlerklasse, die `OPS-005` beschreibt.
+
 ### Hinzugefügt — Adoptionsstufe `advisory` | `enforced`
 
 Der Katalog hatte bisher nur eine Achse: Severity. Die sagt, **wie schlimm** ein Verstoss ist — aber nicht, **ob der Katalog das Portfolio schon darauf festnageln darf**. Ohne die zweite Achse trifft jeder neue Check am Tag des Merges 30+ Server als rote Pipeline, und so werden Checks zurückgenommen statt übernommen.

@@ -77,12 +77,27 @@ class TestRealCatalogUnchanged:
         assert set(counts) == set(VALID_ADOPTIONS), "both keys always present"
         assert sum(counts.values()) == len(catalog)
 
-    def test_nothing_is_advisory_yet(self):
-        # Introducing the mechanism must not demote a single existing check.
-        # Promoting or demoting one is a separate, deliberate decision — if
-        # this test goes red, that decision was made and belongs in the
-        # CHANGELOG rather than in a diff nobody reads.
-        assert advisory_ids(parse_catalog(CHECKS_DIR)) == []
+    def test_advisory_set_is_pinned(self):
+        # Promoting or demoting a check is a deliberate decision. Pinning the
+        # set means it shows up in review rather than in a diff nobody reads —
+        # and the CHANGELOG entry is part of making the change, not an
+        # afterthought.
+        #
+        # OPS-005 is the first check to take the documented route: merged
+        # advisory, promoted to enforced once a portfolio run shows whether it
+        # is cut correctly.
+        assert advisory_ids(parse_catalog(CHECKS_DIR)) == ["OPS-005"]
+
+    def test_the_mechanism_is_not_a_blanket_demotion(self):
+        # An advisory stage is a bridge for a specific new check, not a way to
+        # soften the catalogue. If most of it stopped blocking, the stage has
+        # become an excuse.
+        catalog = parse_catalog(CHECKS_DIR)
+        counts = adoption_counts(catalog)
+        assert counts["advisory"] <= len(catalog) // 10, (
+            f"{counts['advisory']} of {len(catalog)} checks are advisory — "
+            "the stage is meant to carry a handful of new checks, not the catalogue"
+        )
 
 
 # ---------------------------------------------------------------------------
