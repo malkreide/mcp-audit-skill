@@ -584,22 +584,35 @@ class TestFrontmatterParser:
         assert fm["applies_when"] == "always"
 
 
+# Beide Checks der SSRF-Familie hängen an ausgehenden Requests. Der Test
+# läuft über beide, damit keiner von ihnen die Transport-Bedingung einzeln
+# zurückbekommt.
+SSRF_FAMILY = ("SEC-004", "SEC-005")
+
+
 class TestSsrfScope:
-    """`SEC-004` gilt an ausgehenden Requests, nicht am eigenen Transport.
+    """`SEC-004` und `SEC-005` gelten an ausgehenden Requests, nicht am Transport.
 
-    Die Klausel lautete `transport != "stdio-only" or
-    tools_make_external_requests == true`. Der Transport-Disjunkt zog jeden
-    Server mit Netzwerk-Transport hinein — auch einen ohne einen einzigen
+    Beide trugen eine Transport-Bedingung, und beide waren damit falsch
+    gefasst — in entgegengesetzte Richtungen:
+
+    `SEC-004` hatte `transport != "stdio-only" or …`. Der Disjunkt zog jeden
+    Server mit Netzwerk-Transport hinein, auch einen ohne einen einzigen
     ausgehenden Request. Dort hat SSRF keine Oberfläche: Jedes Pass-Kriterium
-    von `SEC-004` beschreibt einen Request, den es nicht gibt.
+    beschreibt einen Request, den es nicht gibt. Ein Fehlalarm auf `critical`
+    kostet Prüfzeit, und wiederholt er sich, gewöhnt er die Leser daran,
+    `critical` zu überblättern — die Währung, die ein Katalog nicht ausgeben
+    darf.
 
-    Ein Fehlalarm auf `critical` ist teuer. Er kostet Prüfzeit, und wenn er
-    sich wiederholt, gewöhnt er die Leser daran, `critical` zu überblättern —
-    genau die Währung, die ein Katalog nicht ausgeben darf.
+    `SEC-005` hatte `transport != "stdio-only" and …`. Die Konjunktion liess
+    jeden stdio-only-Server aus, der URLs fetcht — obwohl der beschriebene
+    Angriff vollständig auf der ausgehenden Seite läuft und den eigenen
+    Transport nirgends berührt. Das war die teurere Richtung: keine
+    Fehlalarme, sondern eine Lücke, die wie Abwesenheit von Befunden aussieht.
 
-    Die Gegenrichtung ist bewusst unverändert: Ein stdio-only-Server, der URLs
-    fetcht, war schon vorher erfasst und ist es weiterhin. Korrigiert wurde
-    eine Über-, keine Unteranwendung.
+    Nicht verwechseln mit **eingehendem** DNS-Rebinding. Der ist tatsächlich
+    transportabhängig und hat eigene Checks (`SEC-016`, `SDK-004`), die ihre
+    Transport-Bedingung zu Recht tragen.
     """
 
     @staticmethod
@@ -623,34 +636,40 @@ class TestSsrfScope:
             "data_source": {"is_swiss_open_data": True},
         }
 
-    def _clause(self) -> str:
+    @staticmethod
+    def _clause(check_id: str) -> str:
         from tools.parse_catalog import parse_catalog
-        return parse_catalog(CHECKS_DIR)["SEC-004"]["applies_when"]
+        return parse_catalog(CHECKS_DIR)[check_id]["applies_when"]
 
+    @pytest.mark.parametrize("check_id", SSRF_FAMILY)
     @pytest.mark.parametrize("transport", ["stdio-only", "dual", "HTTP/SSE"])
-    def test_applies_exactly_when_the_server_fetches(self, transport):
+    def test_applies_exactly_when_the_server_fetches(self, check_id, transport):
         """Der Transport darf das Ergebnis in keiner Richtung beeinflussen."""
-        clause = self._clause()
+        clause = self._clause(check_id)
         assert evaluate(clause, self._profile(transport, True)) is True, (
-            f"SEC-004 muss bei ausgehenden Requests greifen (transport={transport})"
+            f"{check_id} muss bei ausgehenden Requests greifen "
+            f"(transport={transport}) — der Angriff läuft auf der "
+            f"ausgehenden Seite und kennt den eigenen Transport nicht"
         )
         assert evaluate(clause, self._profile(transport, False)) is False, (
-            f"SEC-004 greift ohne ausgehende Requests (transport={transport}) — "
-            f"ein critical-Fehlalarm auf einen Server ohne SSRF-Oberfläche"
+            f"{check_id} greift ohne ausgehende Requests (transport={transport}) "
+            f"— ein Fehlalarm auf einen Server ohne die geprüfte Oberfläche"
         )
 
-    def test_clause_carries_no_transport_condition(self):
-        """Explizit gegen die Rückkehr des Disjunkts.
+    @pytest.mark.parametrize("check_id", SSRF_FAMILY)
+    def test_clause_carries_no_transport_condition(self, check_id):
+        """Explizit gegen die Rückkehr der Transport-Bedingung.
 
         Der Verhaltenstest oben würde eine Klausel durchlassen, die den
         Transport nennt, ohne das Ergebnis zu ändern — etwa
         `tools_make_external_requests == true and transport != "..."` mit
         einem Wert, den kein Profil trägt. Diese Prüfung schliesst das aus.
         """
-        assert "transport" not in self._clause(), (
-            "SEC-004 nennt wieder `transport`. SSRF hängt an ausgehenden "
-            "Requests; die Netzwerk-Ebene eines Deployments deckt SEC-021 "
-            "über `is_cloud_deployed` ab."
+        assert "transport" not in self._clause(check_id), (
+            f"{check_id} nennt wieder `transport`. Beide Checks der "
+            f"SSRF-Familie hängen an ausgehenden Requests; die Netzwerk-Ebene "
+            f"deckt SEC-021 über `is_cloud_deployed` ab, die eingehende "
+            f"Rebinding-Variante SEC-016 und SDK-004."
         )
 
     def test_dns_rebinding_stays_a_subset_of_ssrf(self):

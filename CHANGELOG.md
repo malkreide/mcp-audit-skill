@@ -6,6 +6,33 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `SEC-005`: Geltungsbereich erweitert, stdio-only nicht mehr ausgenommen
+
+Nachzug zu `SEC-004`. Die Klausel lautete `transport != "stdio-only" and tools_make_external_requests == true`; neu gilt `tools_make_external_requests == true`.
+
+**Das ist eine Ausweitung, keine Korrektur** — im Unterschied zu `SEC-004`, wo derselbe Handgriff eine Überanwendung zurücknahm. Hier bekommen Server einen `high`-Check, den sie bisher nicht bekamen:
+
+| `transport` | ausgehende Requests | bisher | neu |
+|---|---|---|---|
+| `stdio-only` | **ja** | **gilt nicht** | **gilt** |
+| `stdio-only` | nein | gilt nicht | gilt nicht |
+| `dual` / `HTTP/SSE` | ja | gilt | gilt |
+| `dual` / `HTTP/SSE` | nein | gilt nicht | gilt nicht |
+
+Sachlich war die Konjunktion nie haltbar. Der in `SEC-005` beschriebene Angriff läuft vollständig auf der **ausgehenden** Seite: zwei DNS-Antworten für einen Hostnamen, den der Server selbst abruft. Der eigene Transport kommt darin nicht vor. Alle fünf Pass-Kriterien betreffen den ausgehenden Request — DNS-Auflösung einmalig, gepinnte IP in der TCP-Verbindung, `Host`-Header und SNI für TLS, Cert-Validation, ein DNS-Call pro Request. Kein einziges fragt, wie der Server angesprochen wird.
+
+**Nicht zu verwechseln mit eingehendem DNS-Rebinding** — dem Angriff, bei dem eine Webseite den Browser des Opfers auf einen lokal lauschenden Server zeigen lässt. Der *ist* transportabhängig, und er hat eigene Checks: `SEC-016` (0.0.0.0-Binding) und `SDK-004` (CORS). Beide tragen ihre Transport-Bedingung zu Recht. `SEC-005` hatte sie nur geerbt, ohne dass sie zu seinem Angriffsmodell passte.
+
+**Was das für das Portfolio heisst.** Jeder stdio-only-Server mit ausgehenden Requests bekommt am Merge-Tag einen `high`-Check, gegen den er nie gemessen wurde — im Beispielportfolio `zh-education-mcp`, im Test-Baseline-Profil `srgssr` (49 → 50 anwendbare Checks). Bei einem Portfolio aus überwiegend lokal laufenden Servern trifft das die Mehrheit.
+
+`SKILL.md` 2.3 beschreibt für genau diese Lage den Weg über `adoption: advisory`. Er wird hier **bewusst nicht** gegangen: Die Stufe wirkt pro Check, nicht pro Profilsegment. `SEC-005` auf `advisory` zu setzen, würde die Blockierung auch dort aufheben, wo sie heute schon greift — eine Demotion für die Server mit Netzwerk-Transport, die niemand verlangt hat, als Preis für die Schonung der neu erfassten. Die ehrlichere Variante ist, die Ausweitung als solche zu benennen und einen Portfolio-Durchlauf vor dem Release einzuplanen.
+
+Die Umstellung auf `advisory` bleibt eine Zeile, falls ein Durchlauf zeigt, dass der Rückstand zu gross ist.
+
+**Tests:** `TestSsrfScope` läuft jetzt über beide Checks der Familie (`SEC-004`, `SEC-005`) statt nur über `SEC-004` — Verhalten über drei Transportwerte × beide Request-Zustände, plus die strukturelle Prüfung, dass die Klausel `transport` nicht mehr nennt. Der Subset-Test `SEC-005` ⊆ `SEC-004` bleibt; beide Klauseln sind jetzt identisch, und er hält fest, dass sie nicht wieder auseinanderlaufen. Gegengeprobt: alte Klausel eingesetzt → zwei Tests rot, beide auf `SEC-005` benannt. 381 → 385 Tests.
+
+**Beobachtung, nicht geändert:** `SEC-004` und `SEC-005` haben jetzt identische Reichweite, und ihre Pass-Kriterien überlappen an einer Stelle — `SEC-004` verlangt bereits «DNS-Resolution erfolgt einmal, resolved IP wird für den eigentlichen Request verwendet». `SEC-005` sagt dazu selbst, es prüfe das «spezifisch, weil viele SSRF-Implementations DNS-Pinning vergessen». Das ist eine bewusste Doppelung, aber sie erzeugt bei einem Server, der Pinning vergisst, zwei Findings für eine Ursache — die Sorte Überlappung, vor der `SKILL.md` 2.5 warnt. Ob die beiden zusammengelegt gehören, ist eine eigene Frage.
+
 ### Behoben — `SEC-004`: SSRF hängt am ausgehenden Request, nicht am eigenen Transport
 
 Die Klausel lautete `transport != "stdio-only" or tools_make_external_requests == true`. Der Transport-Disjunkt zog jeden Server mit Netzwerk-Transport hinein — auch einen ohne einen einzigen ausgehenden Request.
