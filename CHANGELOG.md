@@ -6,6 +6,18 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Dokumentiert — warum `SEC-005` `enforced` bleibt
+
+Die Reichweiten-Erweiterung aus v1.3.0 hat die Frage aufgeworfen, ob der Check den in `SKILL.md` 2.3 dokumentierten Weg über `adoption: advisory` gehen sollte. Er tut es nicht — und der Grund steht jetzt im Check, nicht nur in einem PR-Kommentar.
+
+Portfolio-Stand zum Zeitpunkt der Erweiterung: **3 Server bisher erfasst, 5 neu erfasst**, Reichweite also 3 → 8. Relativ fast eine Verdreifachung, absolut fünf Server. 2.3 begründet die Stufe mit «30+ Server als rote Pipeline am Tag des Merges» — bei fünf greift diese Begründung nicht.
+
+Ausschlaggebend war die Asymmetrie: Die Stufe wirkt **pro Check, nicht pro Profilsegment**. `advisory` hätte die Blockierung auch bei den drei Servern aufgehoben, wo sie heute schon greift — ein Preis, der gewiss und unsichtbar ist, gegen einen, der ungewiss und laut ist.
+
+Festgehalten sind auch die Umkehrbedingung (ein Durchlauf zeigt, dass alle fünf durchfallen und der Rückstand nicht in einem Sprint abbaubar ist) und die drei Orte, die eine Umstellung berührt. Ohne die Zahlen käme die Frage in drei Monaten wieder — und dann ohne die Zahlen.
+
+Keine Katalog-Änderung: Reichweite, Severity und Adoptionsstufe von `SEC-005` bleiben, wie sie sind. 417 Tests unverändert.
+
 ### Behoben — `sdk_language` war Pflichtfeld für sieben Checks und stand nirgends
 
 Sieben Checks fragen `sdk_language` ab (`SDK-001`…`SDK-006`, `IDENT-005`). Das Feld stand weder in `validate_profile.REQUIRED_FIELDS` noch in `portfolio.example.yaml`, noch im Slash-Command, im DSL-Doc oder in der Profil-Tabelle von `SKILL.md` — und `audit-notion-sync.py` hat es nie gesetzt.
