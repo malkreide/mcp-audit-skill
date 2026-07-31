@@ -582,3 +582,94 @@ class TestFrontmatterParser:
         fm = parse_check_frontmatter(p)
         assert fm["id"] == "TEST-001"
         assert fm["applies_when"] == "always"
+
+
+class TestSsrfScope:
+    """`SEC-004` gilt an ausgehenden Requests, nicht am eigenen Transport.
+
+    Die Klausel lautete `transport != "stdio-only" or
+    tools_make_external_requests == true`. Der Transport-Disjunkt zog jeden
+    Server mit Netzwerk-Transport hinein — auch einen ohne einen einzigen
+    ausgehenden Request. Dort hat SSRF keine Oberfläche: Jedes Pass-Kriterium
+    von `SEC-004` beschreibt einen Request, den es nicht gibt.
+
+    Ein Fehlalarm auf `critical` ist teuer. Er kostet Prüfzeit, und wenn er
+    sich wiederholt, gewöhnt er die Leser daran, `critical` zu überblättern —
+    genau die Währung, die ein Katalog nicht ausgeben darf.
+
+    Die Gegenrichtung ist bewusst unverändert: Ein stdio-only-Server, der URLs
+    fetcht, war schon vorher erfasst und ist es weiterhin. Korrigiert wurde
+    eine Über-, keine Unteranwendung.
+    """
+
+    @staticmethod
+    def _profile(transport: str, external: bool) -> dict:
+        return {
+            "transport": transport,
+            "auth_model": "none",
+            "data_class": "Public Open Data",
+            "write_capable": False,
+            "deployment": ["local-stdio"],
+            "is_cloud_deployed": False,
+            "uses_sampling": False,
+            "uses_sequential_thinking": False,
+            "tools_include_filesystem": False,
+            "tools_make_external_requests": external,
+            "stadt_zuerich_context": False,
+            "schulamt_context": False,
+            "volksschule_context": False,
+            "enterprise_context": False,
+            "sdk_language": "Python",
+            "data_source": {"is_swiss_open_data": True},
+        }
+
+    def _clause(self) -> str:
+        from tools.parse_catalog import parse_catalog
+        return parse_catalog(CHECKS_DIR)["SEC-004"]["applies_when"]
+
+    @pytest.mark.parametrize("transport", ["stdio-only", "dual", "HTTP/SSE"])
+    def test_applies_exactly_when_the_server_fetches(self, transport):
+        """Der Transport darf das Ergebnis in keiner Richtung beeinflussen."""
+        clause = self._clause()
+        assert evaluate(clause, self._profile(transport, True)) is True, (
+            f"SEC-004 muss bei ausgehenden Requests greifen (transport={transport})"
+        )
+        assert evaluate(clause, self._profile(transport, False)) is False, (
+            f"SEC-004 greift ohne ausgehende Requests (transport={transport}) — "
+            f"ein critical-Fehlalarm auf einen Server ohne SSRF-Oberfläche"
+        )
+
+    def test_clause_carries_no_transport_condition(self):
+        """Explizit gegen die Rückkehr des Disjunkts.
+
+        Der Verhaltenstest oben würde eine Klausel durchlassen, die den
+        Transport nennt, ohne das Ergebnis zu ändern — etwa
+        `tools_make_external_requests == true and transport != "..."` mit
+        einem Wert, den kein Profil trägt. Diese Prüfung schliesst das aus.
+        """
+        assert "transport" not in self._clause(), (
+            "SEC-004 nennt wieder `transport`. SSRF hängt an ausgehenden "
+            "Requests; die Netzwerk-Ebene eines Deployments deckt SEC-021 "
+            "über `is_cloud_deployed` ab."
+        )
+
+    def test_dns_rebinding_stays_a_subset_of_ssrf(self):
+        """`SEC-005` beschreibt sich als Verfeinerung von `SEC-004`.
+
+        Solange das im Text steht, muss es auch für die Reichweite gelten:
+        Es darf kein Profil geben, für das die Verfeinerung greift, der
+        Grundfall aber nicht — sonst verlangt der Katalog die Härtung gegen
+        DNS-Rebinding von einem Server, dem er die SSRF-Basisprüfung erlässt.
+        """
+        from tools.parse_catalog import parse_catalog
+        catalog = parse_catalog(CHECKS_DIR)
+        ssrf, rebinding = catalog["SEC-004"]["applies_when"], catalog["SEC-005"]["applies_when"]
+        for transport in ("stdio-only", "dual", "HTTP/SSE"):
+            for external in (True, False):
+                profile = self._profile(transport, external)
+                if evaluate(rebinding, profile):
+                    assert evaluate(ssrf, profile), (
+                        f"SEC-005 greift, SEC-004 nicht (transport={transport}, "
+                        f"external={external}) — die Verfeinerung ist weiter "
+                        f"gefasst als der Grundfall"
+                    )
