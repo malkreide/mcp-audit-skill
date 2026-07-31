@@ -6,6 +6,29 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — Inventar-Gate: die Portfolio-Liste behauptet nicht mehr, was es gibt
+
+`portfolio.yaml` ist handgepflegt, und `audit-portfolio.sh` arbeitet genau diese Liste ab. Was nicht darin steht, wird nie auditiert — **und es gibt keine Rückmeldung darüber.** Ein nicht auditierter Server erzeugt keine Zeile, keinen Fehler, keine Lücke im Report. Er ist schlicht nicht da.
+
+Der reale Fall: `openparldata-mcp` liegt verschachtelt im Repo `parlament-mcp`, mit eigener `pyproject.toml`. Jede Aufzählung, die Top-Level-Repos listet, hat ihn übersprungen. Dadurch war er der letzte Server im Portfolio auf dem alten SDK-Major, und unter dem neuen wäre er auf HTTP-Transport gar nicht mehr gestartet. Gefunden wurde er zufällig und spät.
+
+Neu `tools/verify_inventory.py` und `./audit-portfolio.sh --verify-inventory`. **Die Beweislast dreht sich um:** Nicht die Liste sagt, was es gibt — der Checkout wird befragt, und jedes gefundene Server-Manifest (`pyproject.toml`, `package.json`) muss sich einem Listeneintrag zuordnen lassen oder ausdrücklich als Nicht-Server deklariert sein. Alles andere ist ein harter Fehler mit Exit 1.
+
+**Zwei optionale Felder in `portfolio.yaml`:**
+
+- `path:` — wo das Manifest im Checkout liegt, Default `.`. Ein verschachtelter Server bekommt einen eigenen Eintrag mit derselben `repo`-URL und seinem Pfad. Die deklarierten Pfade werden **pro Repo-URL** gruppiert; ohne das meldete das Gate den Eltern-Checkout als Drift, obwohl der verschachtelte Server ordentlich gelistet ist.
+- `ignore:` — Glob-Muster für Verzeichnisse, die kein Server sind. Pro Server oder global.
+
+**Keine Heuristik darüber, was ein Server ist.** Ohne Deklaration übersprungen werden nur Vendor- und Cache-Verzeichnisse (`node_modules`, `.venv`, `__pycache__`, `.tox`, `*.egg-info`, …) — das ist keine Aussage über Server, sondern darüber, was Werkzeuge dort ablegen. Test-Fixtures, Beispiele und Tooling-Unterprojekte werden **nicht** geraten: Eine Regel, die `examples/` pauschal für harmlos hält, hätte `openparldata-mcp` genauso übersehen wie die Handliste. Wer weiss, dass es kein Server ist, schreibt es hin.
+
+**Übersprungenes steht im Report.** Ein still übergangenes Verzeichnis wäre dieselbe Fehlerklasse in neuer Verpackung — `OPS-005` beschreibt sie: Was nicht geprüft wurde, sieht aus wie bestanden. Aus demselben Grund ist ein **fehlender Checkout** kein Bestehen, sondern `unverified` mit Exit 1; `--skip-missing` stuft das für Teilläufe herunter, deckt aber echte Drift weiterhin auf.
+
+**Die Begründung steht im Fehlertext, nicht nur im Quelltext.** Wer das Gate rot sieht, liest den `openparldata`-Fall und die zwei Auswege mit. Ein Gate ohne sichtbaren Grund fliegt beim nächsten Aufräumen raus — deshalb steht der Hinweis auch als Abschnitt «BITTE NICHT WEGRÄUMEN» im Modul-Docstring, und ein Test hält fest, dass die Begründung im CLI-Output erscheint.
+
+**24 neue Tests** (`tests/test_verify_inventory.py`), darunter das Fixture, das genau den Anlassfall nachbaut, sowie die Form, die ein echter `audit-portfolio.sh`-Lauf erzeugt: zwei Checkouts desselben Repos, beide mit beiden Manifesten. 385 → 409 Tests.
+
+Hinweis zur Testumgebung: Diese Tests brauchen PyYAML — dieselbe Abhängigkeit, die CI seit je installiert (`pip install pytest pyyaml`). Sie sind bewusst **nicht** mit `importorskip` versehen: Ein Skip, den CI durch eine Installation verhindern könnte, ist nach `OPS-005` kein Skip, sondern eine Lücke.
+
 ### Hinzugefügt — `ARCH-013` und `SDK-006`: zwei Fehlerklassen, die beim Import nicht brechen
 
 Der Katalog wächst auf **90 Checks**. `ARCH` auf 13, `SDK` auf 6.

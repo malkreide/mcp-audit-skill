@@ -71,6 +71,7 @@ Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig du
 | Profil-Validierung (Placeholder/Schema-Gate) | `python tools/validate_profile.py path/to/profile.yaml` |
 | Catalog parsen (Frontmatter aller `*.md`) | `python tools/parse_catalog.py --format json` |
 | Catalog vs. Manifest validieren | `python tools/parse_catalog.py --format manifest-check` |
+| Portfolio-Inventar gegen die Checkouts prüfen | `python tools/verify_inventory.py --portfolio portfolio.yaml` |
 | `applies_when` evaluieren | `python tools/eval_applicability.py catalog profile.yaml` |
 | Verification-Results aggregieren | `python tools/aggregate_results.py aggregate results.json --checks-dir checks/ --out summary.json` |
 | Findings-Set vs. Disk validieren (inkl. Leer-Prüfung) | `python tools/aggregate_results.py validate <audit_dir>` |
