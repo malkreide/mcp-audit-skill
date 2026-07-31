@@ -1,0 +1,94 @@
+# mcp-data-fidelity-skill
+
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
+
+> Claude Skill for MCP server tools that query an external data source — so that a server does not quietly return less than the source holds.
+
+🇩🇪 [Deutsche Version](README.de.md)
+
+## Overview
+
+Companion to Anthropic's `mcp-builder`. That skill covers whether a server is *built* correctly — naming, annotations, pagination, transport, error handling. This one covers the question next to it: **does it return what the source actually holds?**
+
+That is a class of bug in its own right, because it is silent. HTTP 200, well-formed JSON, green tests — and wrong in substance. A server that searches two percent of a corpus without saying so produces answers nobody recognises as wrong.
+
+The guiding question for every data-querying tool: *if this tool finds nothing, can I tell whether there is nothing there or whether I asked the wrong way?* If the answer is no, one of the six rules applies.
+
+## The six rules
+
+1. **Send scope parameters explicitly, never inherit them.** An omitted optional filter often means an arbitrary slice rather than "unrestricted" — a fact stated only in the spec's parameter description, never visible from a working call.
+2. **Send parameter groups in full.** Send some members of a group and the rest keep their server-side default, so the argument can only widen, never narrow — a no-op that looks like control.
+3. **An empty result carries a next step.** Zero hits are ambiguous. The result needs a concrete `hint` field, in the tool result rather than the README.
+4. **The tool description is a hallucination surface.** A phrasing that *explains* an empty result causes confabulation more reliably than no phrasing at all. Ask for a retry, never license a conclusion.
+5. **Query syntax in the description, recall in the tests.** Document the query language and its matching granularity; guard recall with live floors, because a mock reproduces the assumption it was written with.
+6. **Confirm the response shape before counting it.** `payload.get("servers", [])` turns an upstream shape change into a valid-looking empty result. A schema mismatch belongs in the error channel, not in an empty list.
+
+## Prerequisites
+
+- Claude Code, Claude Desktop, or claude.ai with skill support
+- The patterns in `reference/patterns.py` target FastMCP, httpx and pydantic v2 — the rules themselves are stack-independent
+
+## Installation
+
+```bash
+git clone https://github.com/malkreide/mcp-data-fidelity-skill.git
+cp -r mcp-data-fidelity-skill ~/.claude/skills/mcp-data-fidelity
+```
+
+The directory name must be `mcp-data-fidelity` — skill discovery uses it.
+
+## Usage / Quickstart
+
+The skill triggers on its own when a search, query, or filter tool is designed, when a tool description is written, or when a server is reported to return too little. To invoke it explicitly:
+
+```
+> Schreib die Tool-Description für dieses Such-Tool
+> Warum findet mein Server nichts, obwohl das Web-UI 12 Treffer zeigt?
+```
+
+## Project Structure
+
+```
+.
+├── SKILL.md                  # the six rules, with the release checklist
+└── reference/
+    └── patterns.py           # copy-paste FastMCP / httpx / pydantic v2 patterns
+```
+
+## Where these rules come from
+
+Rules 1–5 come from a single real incident: [`termdat-mcp#11`](https://github.com/malkreide/termdat-mcp/issues/11). The server sent `ClassificationIds` only when the caller supplied them; the upstream API restricts an ID-less search to `VARIA` — one of 23 classifications. "Quellensteuer" returned zero hits despite several matching entries, "Pensionskasse" one instead of 21.
+
+Four things about it generalise:
+
+1. **33 green offline tests caught nothing** — a mock cannot in principle refute the assumption it was written with.
+2. **A 68-check audit had passed** — every category tested how the server was built, none tested data fidelity.
+3. **The server's own documentation pushed the model into confabulating** — see rule 4.
+4. **It was found by a user with the web UI open beside it** — ground truth comes from outside the test suite.
+
+Rule 6 was added after a second case: an MCP Registry query returned nothing for a while because the fields sit under `servers[].server.*` and the client looked one level up. Syntactically fine, semantically blind.
+
+## Related repositories
+
+| Repository | Role |
+|---|---|
+| [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | The procedure *before* the build: default matrix (1.2b), recall ground truth (1.4), empty results (3.6). Distributed this skill under `companion/` until this repository became its home. |
+| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Auditing *after* the build. Rules 1–5 appear there as checks `FID-001`–`FID-005`. |
+| [`mcp-builder`](https://github.com/anthropics/skills) | Anthropic's generic build guidance — this skill complements it rather than replacing it. |
+| [`termdat-mcp`](https://github.com/malkreide/termdat-mcp) | The server whose [issue #11](https://github.com/malkreide/termdat-mcp/issues/11) produced rules 1–5 |
+
+Build by this skill and you pass the `FID` checks; fail them in an audit and the remediation is here.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md)
+
+## License
+
+MIT License — see [LICENSE](LICENSE)
+
+## Author
+
+Hayal Oezkan · [malkreide](https://github.com/malkreide)
