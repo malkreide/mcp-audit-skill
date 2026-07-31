@@ -49,7 +49,18 @@ Der neue `SDK-006` deckt diese Klasse vollständig ab; siehe dort.
 | `SEC-016` | Pass-Pattern und Remediation auf die 2.x-API, Notiz zur Host-Allow-List | unverändert `critical` |
 | `SEC-021` | FAIL-Pattern-Klarstellung: die Regel gilt für Egress, nicht für Ingress | unverändert `high` |
 
-**Keine Severity eines bestehenden Checks wurde geändert.** Nach [§Versionierung](SKILL.md#versionierung-des-check-katalogs) Punkt 5 löst dieses Release damit kein pflichtmässiges Re-Audit aus; Punkt 4 hält fest, dass neue Checks nicht rückwirkend gelten. Die Einschränkungen dazu stehen im PR zu diesem Release.
+**Keine Severity eines bestehenden Checks wurde geändert** — `SEC-004` und `SEC-016` stehen unverändert auf `critical`, `SEC-005` und `SEC-021` auf `high`.
+
+**Trotzdem ist ein Re-Audit fällig, und die Regel dafür wurde in diesem Release nachgezogen.** [§Versionierung](SKILL.md#versionierung-des-check-katalogs) Punkt 5 kannte bisher nur die Severity als Auslöser. Dieses Release hatte keine einzige — und trotzdem zwei Fälle, die bestehende Audit-Ergebnisse entwerten:
+
+- **`SEC-005` gilt jetzt für Server, die nie dagegen gemessen wurden.** Die Klausel wurde auf stdio-only-Server mit ausgehenden Requests ausgeweitet. Für die betroffenen Server ist das von einer Severity-Anhebung nicht zu unterscheiden: Ein blockierender Check greift, wo vorher keiner war.
+- **`SEC-016` hat die falsche Sache als bestanden ausgewiesen.** Ein «bestanden» aus der Zeit vor der Pass-Pattern-Korrektur belegt nichts — im Gegenteil, wer dem Muster gefolgt ist, hat einen Server, der auf HTTP-Transport nicht startet.
+
+Punkt 5 nennt deshalb ab sofort **drei** Auslöser: Severity angehoben (a), `applies_when` nach oben erweitert (b), Prüfkriterium korrigiert (c). Eselsbrücke: *«Re-Audit, wenn sich geändert hat, wie hart geprüft wird, wer geprüft wird oder worauf geprüft wird.»*
+
+Betroffen sind damit: jeder stdio-only-Server mit `tools_make_external_requests: true` (wegen b), und jeder Python-Server mit Netz-Transport, dessen Audit `SEC-016` als bestanden führt (wegen c). Punkt 4 bleibt unberührt — neue Checks gelten weiterhin nicht rückwirkend.
+
+`SEC-004` ist der Gegenfall: Die Reichweite wurde **verengt**. Das löst kein Re-Audit aus, kann aber Findings aus alten Audits gegenstandslos machen — betroffen wären Server mit Netz-Transport ohne ausgehende Requests.
 
 ### Zitate, die nach diesem Release falsch sind
 
