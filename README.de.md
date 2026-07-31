@@ -85,6 +85,30 @@ Wer nach diesem Skill baut, besteht die `FID`-Checks; wer sie beim Audit reisst,
 
 Siehe [CHANGELOG.md](CHANGELOG.md)
 
+## Sicherheit
+
+Dieses Repo liefert Dokumentation und Referenzcode — keinen laufenden Server und
+kein installierbares Paket. `reference/patterns.py` ist Material zum Anpassen und
+keine Bibliothek zum Importieren: Die Namen stehen für das, was das Zielprojekt
+ohnehin schon so nennt.
+
+Die Fehlerklasse, um die es hier geht, ist ein Integritätsproblem und keine
+klassische Schwachstelle. Ein Server, der einen Bruchteil seines Bestands
+durchsucht und das nicht meldet, liefert Antworten, die richtig aussehen, als
+falsch nicht erkennbar sind — und auf deren Grundlage entschieden wird. Regel 4
+ist die schärfste Ausprägung: Eine Tool-Description, die eine Leermenge
+*erklärt*, erzeugt Konfabulation zuverlässig.
+
+Zwei Grenzen gehören dazugesagt. Die Scope-Erweiterung aus Regel 1 ist bewusst
+best-effort — fällt der Vokabular-Endpoint aus, läuft die Abfrage unerweitert
+weiter —, ein vorübergehender Upstream-Ausfall verengt also den Recall, ohne den
+Call scheitern zu lassen. Und der `rows_of()`-Guard aus Regel 6 prüft nur die
+Hülle und die tatsächlich gelesenen Felder, nicht das ganze Response-Schema; das
+ist eine bewusste Abwägung, kein Versehen.
+
+Fehler in den Regeln gefunden, oder einen Fall, den sie falsch behandeln? Bitte
+ein Issue eröffnen.
+
 ## Lizenz
 
 MIT License — siehe [LICENSE](LICENSE)

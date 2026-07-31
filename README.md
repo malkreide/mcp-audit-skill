@@ -85,6 +85,27 @@ Build by this skill and you pass the `FID` checks; fail them in an audit and the
 
 See [CHANGELOG.md](CHANGELOG.md)
 
+## Security
+
+This repository ships documentation and reference code — no running server, no
+package to install. `reference/patterns.py` is material to adapt, not a library
+to import: the names stand in for whatever the target project calls them.
+
+The failure class these rules address is an integrity problem rather than a
+classic vulnerability. A server that searches a fraction of its corpus without
+saying so returns answers that look correct, cannot be recognised as wrong, and
+are then used to make decisions. Rule 4 is the sharpest form of it: a tool
+description that *explains* an empty result reliably produces confabulation.
+
+Two limits worth stating. The scope widening in rule 1 is deliberately
+best-effort — if the vocabulary endpoint is unreachable the query still runs,
+just unwidened — so a transient upstream failure narrows recall without failing
+the call. And the `rows_of()` guard in rule 6 validates only the envelope and the
+fields actually read, not the full response schema; that is a deliberate trade,
+not an oversight.
+
+Found an error in the rules, or a case they get wrong? Please open an issue.
+
 ## License
 
 MIT License — see [LICENSE](LICENSE)

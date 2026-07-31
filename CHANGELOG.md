@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-07-31
+## [1.0.0] - 2026-08-01
 
 First standalone release. The skill was previously distributed as
 `companion/mcp-data-fidelity/` inside
@@ -49,6 +49,11 @@ that copy — packaging only.
   checks only the envelope and the fields the caller actually reads rather than
   validating a full schema.
 - **Release checklist** for a data-querying tool, in `SKILL.md`.
+- Bilingual README (EN/DE) with a Security section stating the two deliberate
+  limits: the best-effort scope widening in rule 1, which narrows recall rather
+  than failing the call when the vocabulary endpoint is unreachable, and the
+  `rows_of()` guard in rule 6, which validates the envelope and the fields
+  actually read rather than the full schema.
 
 ### Context
 
