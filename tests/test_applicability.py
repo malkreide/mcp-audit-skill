@@ -300,8 +300,9 @@ class TestRealCatalog:
         # Lock the count seen during the first canonical run. If catalog
         # content changes, this number must be updated together with a
         # CHANGELOG entry.
-        # Note: total count of checks (79 → 85 mit DRIFT und IDENT-006)
-        assert len(results) == 86
+        # Note: total count of checks (79 → 85 mit DRIFT und IDENT-006,
+        # 86 mit OPS-005, 87 mit SCALE-007)
+        assert len(results) == 87
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
         # test fails loudly only on grammar drift.

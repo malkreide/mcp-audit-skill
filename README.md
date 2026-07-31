@@ -1,9 +1,9 @@
 # mcp-audit-skill
 
-> Claude-Skill für systematische Audits von MCP-Servern gegen einen kuratierten Best-Practice-Standards-Korpus. **86 Checks**, 11 Kategorien, mit Schweiz-Compliance-Layer für die öffentliche Verwaltung und Datentreue-Layer für Datenquellen-Server.
+> Claude-Skill für systematische Audits von MCP-Servern gegen einen kuratierten Best-Practice-Standards-Korpus. **87 Checks**, 11 Kategorien, mit Schweiz-Compliance-Layer für die öffentliche Verwaltung und Datentreue-Layer für Datenquellen-Server.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Checks: 86](https://img.shields.io/badge/Checks-86-blue.svg)](./checks/)
+[![Checks: 87](https://img.shields.io/badge/Checks-87-blue.svg)](./checks/)
 [![Coverage: A1–A9, B1–B12, C1–C4](https://img.shields.io/badge/Best--Practice%20Coverage-A1%E2%80%93A9%2C%20B1%E2%80%93B12%2C%20C1%E2%80%93C4-success)](./CHANGELOG.md)
 [![MCP Spec: 2025-06-18](https://img.shields.io/badge/MCP%20Spec-2025--06--18-orange)](https://modelcontextprotocol.io/specification/)
 
@@ -72,7 +72,7 @@ Output: Profil-getriebene Auswahl der ~30 anwendbaren Checks aus 86, automatisie
 
 ## Standards-Provenance
 
-Die 86 Checks stammen aus zwei kuratierten Best-Practice-Dokumenten plus vier eigenen Layern (Schweiz-Compliance, Datentreue, Identität, Upstream-Drift) in auditierbarer Form. Jeder Check trägt im Frontmatter eine `pdf_ref`-Referenz auf seine Quelle.
+Die 87 Checks stammen aus zwei kuratierten Best-Practice-Dokumenten plus vier eigenen Layern (Schweiz-Compliance, Datentreue, Identität, Upstream-Drift) in auditierbarer Form. Jeder Check trägt im Frontmatter eine `pdf_ref`-Referenz auf seine Quelle.
 
 | Quelle | Inhalt | Abgeleitete Checks |
 |---|---|---|
@@ -200,7 +200,7 @@ Dann in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`. Der Workflow l
 | `ARCH` | Tool-Design, Annotations, Idempotency, Repo-Struktur, Spec-Versionierung | Hauptkatalog Sec 2 + Anhang A | 12 | 2 critical · 3 high · 7 medium |
 | `SDK` | FastMCP, TypeScript, Zod, Lifecycle | Hauptkatalog Sec 3 | 5 | — · 3 high · 2 medium |
 | `SEC` | Security (grösste Kategorie) | Hauptkatalog Sec 4 + Anhang B | 23 | 8 critical · 12 high · 3 medium |
-| `SCALE` | Transport, Load Balancing, Container, Gateway | Hauptkatalog Sec 5 | 6 | — · 3 high · 3 medium |
+| `SCALE` | Transport, Load Balancing, Container, Gateway | Hauptkatalog Sec 5 | 7 | — · 3 high · 4 medium |
 | `OBS` | Logging, Errors, SIEM, OpenTelemetry | Hauptkatalog Sec 6 + Anhang B10 | 6 | 1 critical · 2 high · 3 medium |
 | `HITL` | Sampling, Human-in-the-Loop | Hauptkatalog Sec 7 | 5 | 2 critical · 2 high · 1 medium |
 | `CH` | DSG/EDÖB, ISDS Stadt Zürich, Volksschule | Custom | 8 | 2 critical · 4 high · 2 medium |
@@ -208,7 +208,7 @@ Dann in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`. Der Workflow l
 | `FID` | Datentreue: Scope-Defaults, Recall, Leermengen, Query-Syntax | Custom | 5 | 1 critical · 2 high · 2 medium |
 | `IDENT` | Identität: User-Agent, `__version__`, Manifest, Doku-Version, Release-Gap | Custom | 6 | — · 2 high · 3 medium · 1 low |
 | `DRIFT` | Upstream-Vertrag: Endpoint-Drift, Fallback-Semantik, Testgüte | Custom | 5 | — · 3 high · 2 medium |
-| **Total** | | | **86** | **16 critical · 40 high · 29 medium · 1 low** |
+| **Total** | | | **87** | **16 critical · 40 high · 30 medium · 1 low** |
 
 ## Severity-Stufen
 
@@ -228,7 +228,7 @@ Severity sagt, **wie schlimm** ein Verstoss ist. Die Adoptionsstufe sagt, **ob d
 | `enforced` | Der Katalog hält das Portfolio daran fest | Ein `fail` auf `critical`/`high` blockiert Production-Readiness |
 | `advisory` | Der Check meldet, urteilt aber noch nicht | Finding wird erzeugt, gezählt und mit voller Severity geführt — blockiert aber nicht |
 
-Das Feld ist optional; fehlt es, gilt `enforced`. Von 86 Checks ist genau einer `advisory`: `OPS-005`, der erste, der den dokumentierten Promotionsweg geht.
+Das Feld ist optional; fehlt es, gilt `enforced`. Von 87 Checks ist genau einer `advisory`: `OPS-005`, der erste, der den dokumentierten Promotionsweg geht.
 
 **Advisory versteckt nichts.** Nur das Veto entfällt. Ein Advisory-Finding auf blockierender Severity wird auch bei grünem Verdikt namentlich genannt, damit eine spätere Promotion eine Entscheidung ist und keine Überraschung.
 
@@ -242,7 +242,7 @@ python tools/aggregate_results.py aggregate verification-results.json \
 ## Audit-Workflow (Kurzform)
 
 1. **Profil laden** — Server-Eigenschaften aus Notion-Audit-Tracker oder via Inferenz aus dem Repo
-2. **Katalog laden** — alle 86 Checks parsen
+2. **Katalog laden** — alle 87 Checks parsen
 3. **Applicability-Filter** — nur passende Checks selektieren (z.B. stdio-only-Server überspringt OAuth-Checks)
 4. **Check-Ausführung** — automatisiert (grep, AST, Config-Scan) oder als Code-Review-TODO pro Check
 5. **Findings dokumentieren** — `templates/finding.md`
@@ -274,7 +274,7 @@ Komplementär nutzbar — keiner der Genannten ersetzt die anderen.
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`) und Templates (Finding, Audit-Report)
 - ✅ Reference-Summary
-- ✅ Check-Katalog: **86 Checks, alle 11 Kategorien vollständig**
+- ✅ Check-Katalog: **87 Checks, alle 11 Kategorien vollständig**
 - ✅ Slash-Command für Claude Code (`/audit-mcp <repo>`)
 - ✅ Portfolio-Batch-Audit (`audit-portfolio.sh` für Multi-Server-Runs)
 - ✅ Notion-Sync (`audit-notion-sync.py` für bidirektionale Tracker-Integration)

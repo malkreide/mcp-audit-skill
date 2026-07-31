@@ -6,6 +6,25 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `SCALE-007`: Der Reconnect findet die Session und verliert die Antwort
+
+Der Katalog wächst auf **87 Checks**. `SCALE-007` prüft, ob ein Server einen abgerissenen Streamable-HTTP-Stream wiederaufnimmt: `id:` an den SSE-Events, `Last-Event-ID` beim Reconnect, Replay der verpassten Events aus einem Event-Store.
+
+**Erst gegen §2.5 geprüft, dann geschrieben.** `SCALE-001` fragt nach der Transport*wahl*, `SCALE-002` und `SCALE-003` nach der *Affinität* beim Reconnect. Beide Klauseln zu weiten hätte nichts geholfen — die Frage ist eine andere, nicht ein ausgeschlossener Fall. Und die Verification von `SCALE-002` zu erweitern hätte genau das erzwungen, was §2.5 als Signal für einen eigenen Check nennt: ein `oder` in den Pass-Criteria («Sticky Sessions *oder* Event-Store»), das die beiden Hälften als Alternativen ausgibt, obwohl sie unabhängig voneinander nötig sind. Affinität bringt den Reconnect auf die richtige Instanz; Resumability bringt die verpassten Bytes zurück. Sticky Sessions korrekt, `Mcp-Session-Id` gültig, richtiger Pod — und die Antwort auf den laufenden Tool-Call ist trotzdem weg.
+
+Der Abriss ist der Normalfall: Proxy-Idle-Timeouts liegen im Minutenbereich, ein Rolling Deploy beendet den Pod, ein Mobilfunkwechsel wechselt die IP. Genau dann läuft der lange Tool-Call, für den sich Streaming überhaupt lohnt. Für den Client sieht das nicht wie ein Fehler aus, sondern wie ein geschlossener Stream — kein JSON-RPC-Error, kein Statuscode, nichts, woran eine Fehlerbehandlung greift. Der Reflex ist, den Tool-Call zu wiederholen; ohne `ARCH-010` ist das eine zweite Ausführung.
+
+Zwei Punkte, die der Check über das blosse Vorhandensein eines Stores hinaus prüft:
+
+- **Wo der Store liegt.** Ein `InMemoryEventStore` überlebt weder Pod-Neustart noch einen Reconnect auf eine andere Replica — also genau die beiden Fälle, für die Resumability existiert. Geteilter Session-State (`SCALE-002`) neben lokalem Event-Store ist ein inkonsistentes Deployment.
+- **Wie weit der Replay reicht.** Event-IDs sind pro Session eindeutig, die Folgen aber pro Stream. Ein Store, der nach ID sucht und alles Jüngere nachspielt, mischt die Antwort eines fremden Requests in die wiederaufgenommene Verbindung.
+
+`medium`, nicht `high`: Die Spec stellt Resumability als **MAY**, und bei lesenden Tools kommt ein wiederholender Client ans Ziel. Degradiert, nicht kaputt — die Kategorie behält damit ihr Profil `3 high · 4 medium`. Keine Adoptionsstufe: `advisory` hebt das Veto auf `critical`/`high` auf, das ein `medium`-Check ohnehin nie hat, und wäre hier Zeremonie ohne Wirkung.
+
+Gegenprobe im Check verankert — einmal mit erfundener `Last-Event-ID` aufrufen. Ein Server, der darauf stillschweigend alles nachspielt, was er hat, hat den Resume-Pfad nicht implementiert, sondern nur einen zweiten Weg zum Vollreplay.
+
+Nachgezogen: `checks/MANIFEST.txt`, `SKILL.md` §2.1 (Intro, `SCALE`-Zeile, Total), `README.md` (Badge, Prosa, Kategorien-Zeile inkl. Severity-Profil, Total-Severity), `docs/roadmap.md` `Stand:`. Dazu die beiden Lock-Tests, die den Bestand hart pinnen: `test_parse_catalog.py::test_category_distribution` (`SCALE: 6 → 7`) und `test_applicability.py` (`len(results) 86 → 87`). Das srgssr-Baseline-Profil ist `stdio-only` und nicht cloud-deployed — die Applicable-Schranke bleibt unberührt. 357 Tests.
+
 ### Hinzugefügt — Zwei Regeln zur Audit-Methode (kein neuer Check)
 
 Der Katalog bleibt bei **86 Checks**. Beide Ergänzungen betreffen, *wie* geprüft wird, nicht *was* — sie gehören deshalb in `SKILL.md`, nicht in `checks/`. Die erste ist zugleich ihr eigenes erstes Anwendungsbeispiel.
