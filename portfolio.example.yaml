@@ -12,6 +12,35 @@
 # Pro Server sind name + repo + profile Pflicht. Die Profil-Werte werden
 # autoritativ an /audit-mcp übergeben — Schritt 1 (Profil-Bestätigung) wird
 # im Headless-Modus übersprungen.
+#
+# Inventar-Gate (./audit-portfolio.sh --verify-inventory):
+#   Prüft, ob jedes Server-Manifest (pyproject.toml / package.json) im
+#   Checkout einem Eintrag hier entspricht. Anlass war `openparldata-mcp`:
+#   verschachtelt im Repo `parlament-mcp`, eigene pyproject.toml, durch
+#   jede Aufzählung von Top-Level-Repos gefallen — und deshalb der letzte
+#   Server im Portfolio auf dem alten SDK-Major.
+#
+#   Zwei optionale Felder steuern die Zuordnung:
+#
+#   path:    Wo das Manifest im Checkout liegt. Default ".". Ein
+#            verschachtelter Server bekommt einen EIGENEN Eintrag mit
+#            derselben repo-URL und seinem Pfad:
+#
+#              - name: openparldata-mcp
+#                repo: https://github.com/malkreide/parlament-mcp
+#                path: openparldata-mcp
+#                profile: {...}
+#
+#   ignore:  Verzeichnisse, die kein Server sind (Test-Fixtures,
+#            Beispiele, Tooling-Unterprojekte). Glob-Muster, relativ zum
+#            Checkout. Auch global auf oberster Ebene möglich.
+#
+#              ignore: [examples, "tests/fixtures/*"]
+#
+#   Vendor-Verzeichnisse (node_modules, .venv, __pycache__, …) werden ohne
+#   Deklaration übersprungen. Fixtures und Beispiele NICHT — eine
+#   Heuristik, die "examples/" pauschal für harmlos hält, hätte
+#   `openparldata-mcp` genauso übersehen wie die Handliste.
 
 servers:
   - name: zurich-opendata-mcp

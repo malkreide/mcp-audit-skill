@@ -13,6 +13,7 @@
 #   ./audit-portfolio.sh --force                        # re-run already-audited
 #   ./audit-portfolio.sh --portfolio my-portfolio.yaml  # custom portfolio file
 #   ./audit-portfolio.sh --dry-run                      # plan only, no claude
+#   ./audit-portfolio.sh --verify-inventory             # nur Inventar prüfen, kein Audit
 #   ./audit-portfolio.sh --from-notion                  # pull portfolio.yaml from Notion first
 #   ./audit-portfolio.sh --sync-back                    # push results to Notion after each audit
 #
@@ -31,6 +32,7 @@ set -euo pipefail
 PORTFOLIO_FILE="portfolio.yaml"
 FORCE=0
 DRY_RUN=0
+VERIFY_INVENTORY=0
 FROM_NOTION=0
 SYNC_BACK=0
 declare -a SERVER_FILTER=()
@@ -43,6 +45,8 @@ while [[ $# -gt 0 ]]; do
       FORCE=1; shift ;;
     --dry-run)
       DRY_RUN=1; shift ;;
+    --verify-inventory)
+      VERIFY_INVENTORY=1; shift ;;
     --from-notion)
       FROM_NOTION=1; shift ;;
     --sync-back)
@@ -142,6 +146,20 @@ count=$(yq -r '.servers | length' "$PORTFOLIO_FILE")
 if [[ -z "$count" || "$count" == "null" || "$count" -eq 0 ]]; then
   echo "Error: $PORTFOLIO_FILE contains no servers under .servers." >&2
   exit 1
+fi
+
+# Inventar-Gate. Die Portfolio-Liste ist handgepflegt, und was nicht darin
+# steht, wird nie auditiert — ohne dass irgendwo eine Lücke sichtbar würde.
+# `openparldata-mcp` lag verschachtelt in `parlament-mcp` und ist dadurch
+# der letzte Server auf dem alten SDK-Major geblieben. Details und die
+# Zuordnungsregeln stehen in tools/verify_inventory.py.
+if [[ $VERIFY_INVENTORY -eq 1 ]]; then
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "Error: --verify-inventory braucht python3." >&2
+    exit 1
+  fi
+  exec python3 "$(dirname "$0")/tools/verify_inventory.py" \
+    --portfolio "$PORTFOLIO_FILE" --work-dir "$WORK_DIR"
 fi
 
 mkdir -p "$WORK_DIR" "$LOG_DIR"

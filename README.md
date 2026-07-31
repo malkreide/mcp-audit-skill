@@ -277,6 +277,7 @@ Komplementär nutzbar — keiner der Genannten ersetzt die anderen.
 - ✅ Check-Katalog: **90 Checks, alle 11 Kategorien vollständig**
 - ✅ Slash-Command für Claude Code (`/audit-mcp <repo>`)
 - ✅ Portfolio-Batch-Audit (`audit-portfolio.sh` für Multi-Server-Runs)
+- ✅ Inventar-Gate (`./audit-portfolio.sh --verify-inventory`) — findet Server, die in `portfolio.yaml` fehlen, inklusive verschachtelter
 - ✅ Notion-Sync (`audit-notion-sync.py` für bidirektionale Tracker-Integration)
 - ✅ Vollständige Abdeckung beider Standards-Quellen (Hauptkatalog + Architektur-Anhang)
 
