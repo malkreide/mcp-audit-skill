@@ -62,6 +62,3 @@ offline tests and a passed 68-check audit.
 Rule 6 comes from a second case: an MCP Registry query returned nothing for a
 while because the fields sit under `servers[].server.*` and the client looked one
 level up. Syntactically fine, semantically blind.
-
-[Unreleased]: https://github.com/malkreide/mcp-data-fidelity-skill/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/malkreide/mcp-data-fidelity-skill/releases/tag/v1.0.0
