@@ -12,7 +12,21 @@ Die Aussage stand bisher als ein Satz unter `## Kontext` («Pull Requests willko
 
 Der Satz in `## Kontext` entfällt, damit die Aussage nur an einer Stelle steht.
 
-**Nebenbefund, nicht in dieser Änderung behoben:** Der Repo-Validator prüft `README.md` grundsätzlich als englische Datei. Weil dieses README durchgehend deutsch ist, erkennt er weder `## Mitwirken` noch `## Lizenz` und meldet sie als fehlend. Die WARN zu `contributing` bleibt deshalb bestehen, obwohl die Sektion existiert. Sie verschwindet erst, wenn dieses Repo dem Muster der übrigen folgt — englisches `README.md` plus deutsches `README.de.md`.
+### Umgestellt — englisches `README.md`, deutsches `README.de.md`
+
+Dieses Repo war das letzte im Portfolio mit einem einzigen, deutschsprachigen `README.md`. Der Repo-Validator prüft `README.md` aber grundsätzlich als englische Datei — er erkannte deshalb weder `## Mitwirken` noch `## Lizenz` noch den Autor und meldete sie als fehlend. Fünf ERROR und eine WARN, sämtlich Artefakte dieser einen Annahme. Jetzt: **0 ERROR, 0 WARN**, und dieselbe Struktur wie in den drei Schwester-Repos.
+
+Der deutsche Text zieht unverändert nach `README.de.md` (per `git mv`, damit die History dranbleibt), `README.md` ist die Übersetzung. Beide tragen den Sprachumschalter.
+
+Bei der Gelegenheit zwei Dinge nachgezogen, die derselbe Check meldete: Der Autor steht jetzt als Überschrift `## Autor` statt als Fettdruck — Fettdruck sieht gleich aus, erzeugt aber keine Gliederungsebene. Und beide Fassungen haben eine `## Sicherheit`-Sektion, die drei Betriebsfragen benennt: dass `audits/` und `portfolio-logs/` Roh-Output *fremder* Repos enthalten und vor dem Veröffentlichen durchzusehen sind; dass `portfolio.yaml` (ein Inventar) und `NOTION_TOKEN` nie in einen Commit gehören; und dass ein grünes Audit keine Sicherheitszusage ist, weil der Katalog gegen veröffentlichte Best Practices prüft und nicht gegen ein Bedrohungsmodell.
+
+**`test_readme_counts.py` läuft jetzt über beide Dateien — das war der eigentliche Aufwand.** Die Prosa-Muster waren deutsch (`(\d+)\s+Kategorien`, `Checks\s+aus\s+(\d+)`). Auf englischem Text hätten sie nichts mehr gefunden, und ein Muster, das nichts findet, ist grün: Die Tests wären durchgelaufen, während die Drift-Sicherung, für die es diese Datei überhaupt gibt, still ausgefallen wäre. Genau die Fehlerklasse, gegen die `FID` und `DRIFT` im Katalog stehen — hier in den eigenen Tests.
+
+Deshalb: Prosa-Muster je Sprache in einem `PROSE`-Dict, Fixture parametrisiert über beide Fassungen, `LAYER_ROW` case-insensitive. Dazu zwei neue Tests gegen genau diesen Ausfall — `test_prose_patterns_actually_match_something` verlangt, dass jedes Muster in seiner Fassung mindestens einmal greift, und `test_every_readme_is_covered` vergleicht die `README*.md` auf der Platte gegen die Einträge in `PROSE`, damit eine dritte Sprachfassung nicht lautlos ungeprüft bleibt. 6 → 15 Tests in dieser Datei, 417 → 424 in der Suite.
+
+Beim Übersetzen war die Prosa an den Mustern auszurichten: «alle 23 Security-Checks» wird zu «all 23 security checks» — die Zahl steht dort nicht direkt vor «checks», das Muster greift also korrekt nicht. Andernfalls hätte der Test 23 gegen 90 geprüft und wäre zu Recht rot geworden.
+
+**Nicht angefasst:** Die GitHub-Repo-Description bleibt deutsch, und `tools/check_repo_description.py` prüft sie weiterhin mit deutschen Mustern — beides passt zusammen. Wer die Description später auf Englisch umstellt, muss dort nachziehen; der Check schlägt dann laut fehl («Description nennt keine Check-Zahl») und nicht still.
 
 ### Dokumentiert — warum `SEC-005` `enforced` bleibt
 

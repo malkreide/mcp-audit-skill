@@ -7,6 +7,8 @@
 [![Coverage: A1–A9, B1–B12, C1–C4](https://img.shields.io/badge/Best--Practice%20Coverage-A1%E2%80%93A9%2C%20B1%E2%80%93B12%2C%20C1%E2%80%93C4-success)](./CHANGELOG.md)
 [![MCP Spec: 2025-06-18](https://img.shields.io/badge/MCP%20Spec-2025--06--18-orange)](https://modelcontextprotocol.io/specification/)
 
+🇬🇧 [English Version](README.md)
+
 ---
 
 **Was es ist:** Ein Claude-Skill, der MCP-Server systematisch gegen veröffentlichte Best Practices auditiert. Jeder Check referenziert seine Quelle, hat klare Pass-Kriterien, einen Remediation-Pfad und einen Aufwands-Indikator.
@@ -293,6 +295,18 @@ Besonders willkommen sind ergänzende Compliance-Layer anderer Jurisdiktionen (D
 
 Vor einem grösseren Pull Request bitte ein Issue eröffnen, damit die Form vorher geklärt ist.
 
+## Sicherheit
+
+Dieses Repo liefert eine Methodik, Check-Definitionen und Helfer-Scripts — keinen laufenden Server und kein installierbares Paket. Drei Dinge sind beim Betrieb relevant:
+
+**Der Audit-Output enthält fremden Code.** `audit-portfolio.sh` klont die Repos deiner Server-Liste und ruft `claude -p` darauf non-interactive auf; unter `audits/` und `portfolio-logs/` landet Roh-Output der ausgeführten Befehle. Das ist der Audit-Trail und genau so gewollt — aber es kann interne Pfade, Hostnames oder Konfigurationsauszüge der auditierten Server enthalten. Vor dem Veröffentlichen eines Reports durchsehen.
+
+**Zwei Dateien gehören nie in einen Commit.** `portfolio.yaml` ist `.gitignore`d, weil eine Server-Liste ein Inventar ist. Der `NOTION_TOKEN` gehört in die Shell-RC, nicht ins Repo — `audit-notion-sync.py` liest ihn ausschliesslich aus der Umgebung.
+
+**Ein grünes Audit ist keine Sicherheitszusage.** Der Katalog prüft gegen veröffentlichte Best Practices, nicht gegen dein Bedrohungsmodell; er ist kein Vulnerability-Scanner. Die verbleibende Klasse — Prompt-Injection auf Tool-Description-Ebene — ist strukturell ungelöst und braucht organisatorische Kontrollen, wie oben unter SOLID beschrieben.
+
+Fehler in einem Check gefunden, oder ein Pass-Kriterium, das falsch trennt? Bitte ein Issue eröffnen.
+
 ## Lizenz
 
 MIT — siehe [`LICENSE`](./LICENSE).
@@ -301,6 +315,6 @@ MIT — siehe [`LICENSE`](./LICENSE).
 
 Entwickelt im Rahmen des Swiss Public Data MCP Portfolio. Frei verwendbar von anderen Verwaltungen, Forschungsinstituten oder Privatpersonen, die MCP-Server systematisch auditieren wollen.
 
----
+## Autor
 
-**Autor:** [Hayal Oezkan](https://github.com/malkreide)
+[Hayal Oezkan](https://github.com/malkreide)
