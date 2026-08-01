@@ -14,6 +14,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the same form CI enforces. A plausible-sounding guideline without a scar behind
   it makes the skill longer and weaker.
 
+### Changed
+
+- **CI now checks `reference/patterns.py` for content, not just syntax.** Until
+  now it was verified to exist and to compile; its two claims — the number word
+  in the module docstring and that every rule actually appears — were guarded by
+  nothing. Both happened to be correct, which is the least reliable reason for a
+  value to be right.
+
+  The rule-count step now covers the file as well: the docstring word against the
+  count in `SKILL.md`, and the set of rules mentioned (`Rule 4`, `Rules 2 + 3`,
+  `Rules 5-7` — ranges expanded) against the set that exists. A rule without a
+  pattern is a rule nobody can copy, so a gap fails the build.
+
+  Verified against three mutations rather than a green run: docstring reverted to
+  "six" → *docstring says 'six' rules, SKILL.md defines 7*; the anchor phrase
+  reworded → *anchor removed or reworded, so this check would silently stop
+  checking*; every mention of rule 7 renamed → *nothing for rule(s) [7]*. All
+  three reverted, green again.
+
 ## [1.0.0] - 2026-08-01
 
 Initial release. Seven rules for MCP servers on a network transport, covering the

@@ -71,7 +71,7 @@ jobs:
           print(f"ok — {len(sections)} rules, each with a code pair and a Nachweis")
           PY
 
-      - name: Rule count is consistent across SKILL.md and both READMEs
+      - name: Rule count is consistent across SKILL.md, both READMEs and patterns.py
         env:
           PYTHONUTF8: "1"
         run: |
@@ -94,6 +94,40 @@ jobs:
               if got != expected:
                   sys.exit(f"{path}: lists {got} rules, SKILL.md defines {expected}")
               print(f"ok — {path}: {got} rules")
+
+          # reference/patterns.py makes two claims nothing else checks: the number
+          # word in its module docstring, and that every rule actually appears in
+          # it. Both were correct when written — which is exactly how a sibling
+          # repository went on describing "five rules" for two weeks after the
+          # sixth was added.
+          WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+                   "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+          patterns = pathlib.Path("reference/patterns.py").read_text(encoding="utf-8")
+
+          m = re.search(r"patterns for the (?P<word>\w+) [\w-]+ rules", patterns)
+          if not m:
+              sys.exit("reference/patterns.py: the phrase 'patterns for the <word> "
+                       "... rules' is gone — anchor removed or reworded, so this "
+                       "check would silently stop checking")
+          claimed = WORDS.get(m.group("word"))
+          if claimed != expected:
+              sys.exit(f"reference/patterns.py: docstring says {m.group('word')!r} "
+                       f"rules, SKILL.md defines {expected}")
+
+          # «Rule 4», «Rules 2 + 3», «Rules 5-7», «rule 1(c)» — ranges expanded.
+          mentioned = set()
+          for mm in re.finditer(r"[Rr]ules?\s+(\d+(?:\s*(?:[-–+,]|and)\s*\d+)*)", patterns):
+              nums = [int(n) for n in re.findall(r"\d+", mm.group(1))]
+              if re.search(r"[-–]", mm.group(1)) and len(nums) == 2:
+                  mentioned.update(range(nums[0], nums[1] + 1))
+              else:
+                  mentioned.update(nums)
+          missing = sorted(set(range(1, expected + 1)) - mentioned)
+          if missing:
+              sys.exit(f"reference/patterns.py: nothing for rule(s) {missing} — "
+                       "a rule without a pattern is a rule nobody can copy")
+          print(f"ok — reference/patterns.py: says {m.group('word')}, covers "
+                f"{sorted(mentioned)}")
 
           print(f"ok — {expected} rules, consistent everywhere")
           PY
