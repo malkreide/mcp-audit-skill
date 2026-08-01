@@ -3,17 +3,22 @@
 Copy this pattern into every new *-mcp server. Pydantic's default-value
 mechanism makes it impossible to forget the attribution.
 
-Usage:
+Usage — inside whichever tool returns the payload:
 
     from .models import ServerResponse, MyPayload
 
-    @mcp.tool()
-    async def my_tool(...) -> dict:
-        payload = do_work(...)
-        return ServerResponse(
-            provenance="live_api",          # or "weekly_dump" / "cached"
-            payload=payload,
-        ).model_dump()
+    payload = do_work(...)
+    return ServerResponse(
+        provenance="live_api",          # or "weekly_dump" / "cached"
+        payload=payload,
+    ).model_dump()
+
+The decorator and the signature stay whatever the server already uses, and are
+deliberately not shown: a `@mcp.tool()` directly above a `def` reads as a
+registered tool to anything that scans the repository by pattern — including
+this portfolio's own audit tooling, which reported `my_tool` as an undocumented
+tool of this skill for exactly that reason. A reference file that documents a
+tool should not look like one.
 """
 
 from __future__ import annotations

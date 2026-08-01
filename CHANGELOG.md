@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`reference/response_envelope.py` zeigt das Usage-Beispiel ohne Decorator.**
+  Der Repo-Validator meldete `my_tool` als «nicht im README dokumentiertes Tool»
+  — dieses Repo hat gar keine Tools. Seine E1-Prüfung sucht per Regex ein
+  `@x.tool(...)` unmittelbar über einem `def` im **Rohtext** einer `.py`-Datei
+  und kann Code nicht von einem Docstring-Beispiel unterscheiden. Das Beispiel
+  stand genau in dieser Form im Modul-Docstring.
+
+  Behoben nicht durch Umbenennen, sondern durch Weglassen: Der Decorator war nie
+  der Gegenstand des Beispiels — es geht um die Rückgabe-Hülle. Er ist raus, mit
+  einem Absatz darunter, der festhält warum, damit ihn niemand «zur
+  Vollständigkeit» wieder einfügt. Eine Referenzdatei, die ein Tool
+  dokumentiert, sollte nicht wie eines aussehen.
+
+  Damit ist das einzige Vorkommen dieser Form im Portfolio erledigt; die
+  `patterns.py` der beiden anderen Skills tragen keinen Decorator. Repo-Validator:
+  0 ERROR, 0 WARN.
+
 ### Added
 
 - Contributing section in both READMEs. The same standard the procedure applies
