@@ -265,6 +265,26 @@ Komplementär nutzbar — keiner der Genannten ersetzt die anderen.
 
 ## Verwandte Repos
 
+### Die Skill-Familie
+
+Fünf Skills, ein Bau. Jeder beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt — dieser kommt zuletzt:
+
+| Skill | Rolle | Seine Regeln in diesem Katalog |
+|---|---|---|
+| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generische Bauanleitung — fremder Skill von Anthropic | — |
+| [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Vorgehen *vor* dem Bau | liefert die Ground Truth, gegen die `FID-002` misst |
+| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? | [`FID-001`–`FID-005`](./checks/) |
+| [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? | [`SDK-006`](./checks/SDK-006.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md) |
+| **`mcp-audit-skill`** | **Dieser Skill:** Prüfung *nach* dem Bau | — |
+
+Zwei der Transport-Hardening-Regeln haben hier kein Gegenstück: die über den
+Bind, der die App erreichen muss, und die drei zur Beweisführung (Negativtests,
+Mutationstest, Harness-Fallen). Das erste ist eine echte Lücke, das zweite eine
+Bereichsgrenze — dieser Katalog prüft, ob eine Kontrolle vorhanden ist, nicht ob
+ihr Nachweis trägt.
+
+### Portfolio und Tracker
+
 - [`malkreide` MCP-Server-Portfolio](https://github.com/malkreide?tab=repositories) — die Server, gegen die dieses Skill auditiert wird
 - Notion **MCP Audit Tracker** — laufender Status aller Server-Audits (intern)
 - Notion **MCP Server Portfolio** — Master-Inventar aller Server (intern)
