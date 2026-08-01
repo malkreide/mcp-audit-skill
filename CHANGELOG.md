@@ -14,6 +14,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The skill's own subject applies to the proposal — evidence that comes only from
   a mock is not yet evidence.
 
+### Changed
+
+- **CI now checks `reference/patterns.py` for content, not just syntax.** Until
+  now it was verified to exist and to compile; its two claims — the number word
+  in the module docstring and that every rule actually appears — were guarded by
+  nothing. Both happened to be correct, which is the least reliable reason for a
+  value to be right: `mcp-data-source-probe-skill` described this skill as "five
+  rules" for two weeks after the sixth was added, for exactly that reason.
+
+  The rule-count step now covers the file as well: the docstring word against the
+  count in `SKILL.md`, and the set of rules mentioned (`Rule 1`, `Rules 4 + 5` —
+  ranges expanded) against the set that exists. A rule without a pattern is a rule
+  nobody can copy, so a gap fails the build.
+
+  Verified against mutations rather than a green run: a wrong docstring word, a
+  reworded anchor phrase, and a rule with every mention removed each fail with a
+  message naming the problem.
+
 ## [1.0.0] - 2026-08-01
 
 First standalone release. The skill was previously distributed as
