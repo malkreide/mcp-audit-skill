@@ -6,6 +6,23 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Ergänzt — die vierte Übernahme der eingehenden Allow-List, und was sie nicht ist
+
+Der Abschnitt «Zitate, die nach diesem Release falsch sind» unter `v1.3.0` nennt drei gemergte Portfolio-PRs, die `SEC-005` für die eingehende Host-Allow-List zitieren. Die Vermutung, `zurich-opendata-mcp` habe dieselbe Fehlzuweisung in `0.7.0` übernommen, **ist nachgeprüft und trifft nicht zu.**
+
+Nachgeprüft an `malkreide/zurich-opendata-mcp@2ea82d9`:
+
+- Die Kontrolle **ist** dort implementiert — `MCP_ALLOWED_HOSTS`, portgenau verglichen, Loopback bleibt drin, `421` für alles andere, drei explizit entschiedene Fälle statt der stillen SDK-Ableitung. Damit ist es die vierte Übernahme neben den drei PRs.
+- Der `0.7.0`-Eintrag zitiert dafür aber **keine Katalog-ID**. Er verweist auf `bag-health-mcp#51` und `swiss-transport-mcp#25` als Vorlage und nennt sonst nichts; der gesamte CHANGELOG des Repos enthält keine einzige `SEC-`/`ARCH-`/`SDK-`-ID.
+
+Die Empfehlung an die Repos hat damit **zwei verschiedene Formen**, nicht eine: Bei den drei PRs ist eine vorhandene ID falsch und wäre zu korrigieren. Bei `zurich-opendata-mcp` fehlt sie — dort wäre `SEC-024` zu **ergänzen**, und es gibt nichts zu korrigieren. Der v1.3.0-Abschnitt bleibt unverändert; seine Aussage über die drei PRs war und ist richtig, sie war nur nie eine Aussage über alle Übernahmen.
+
+**Ein `SEC-005`-Zitat gibt es in dem Repo trotzdem**, an anderer Stelle und für etwas Drittes: `SECURITY.md` und `SECURITY.de.md` führen in der Hardening-Tabelle die Zeile «TLS — Zertifikatsprüfung standardmässig aktiv; nie deaktiviert (`SEC-005`)». `verify=False` steht in `SEC-005` tatsächlich unter «Common Failures», die Zeile ist also nicht aus der Luft gegriffen — aber sie steht dort nur als Folgeproblem des DNS-Pinnings, nicht als eigenes Kriterium. Ein Server, der nie pinnt, kann diese Zeile nicht erfüllen und auch nicht verletzen.
+
+Damit trägt der Name `SEC-005` im Portfolio drei Bedeutungen: ausgehendes DNS-Pinning (der Katalog), die eingehende Allow-List (die drei PRs) und TLS-Zertifikatsprüfung (dieses `SECURITY.md`). Das ist kein weiterer Befund gegen die Repos, sondern die nachträgliche Rechtfertigung dafür, dass `SEC-005` umbenannt und `SEC-024` aufgemacht wurde.
+
+Reine CHANGELOG-Ergänzung: kein Check angefasst, 90 Checks in 11 Kategorien, 431 Tests unverändert.
+
 ### Ergänzt — `SEC-024` bekommt seinen `automated`-Modus
 
 Der Check beschrieb die tragende Probe («richtiger Name, falscher Port») bisher nur als `curl`-Block zum Nachbauen. Es gibt sie fertig: `scripts/rebind_probe.py` im [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) bootet das Ziel mit einer selbst gesetzten Allow-List und läuft vier Proben in zwei Durchläufen — ohne Auth und mit gültigem Token. Der Katalog verankert vergleichbare Werkzeuge bereits (`DRIFT-004` → `live_probe.py`, `IDENT-006` → `release_gap.py`); hier fehlte das Muster.
