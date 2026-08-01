@@ -6,6 +6,28 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `SEC-016` misst die Eigenschaft statt des Mechanismus
+
+Zwei Pass-Kriterien waren so formuliert, dass sie an einer korrekten Implementierung vorbeigehen.
+
+**Kriterium 2 verlangte «via Environment-Variable».** `zurich-opendata-mcp` löst dieselbe Aufgabe seit `0.7.0` mit `--host` und Default `127.0.0.1` — Absicht vollständig erfüllt, Kriterium wörtlich verfehlt. Der Check hätte ein Finding gegen eine korrekte Implementierung erzeugt und zur Gegenrichtung eingeladen: eine `MCP_HOST`-Variable nachzurüsten, die niemand liest, damit die Zeile grün wird. Der Mechanismus ist jetzt offen — Env-Var **oder** CLI-Flag.
+
+**Wichtiger ist, was an die Stelle tritt.** Nicht «es gibt eine Option», sondern **der gesetzte Wert erreicht den Listener**. Das ist der Fehler, der hier real gebrochen war: Vor `0.7.0` hatte derselbe Server gar keine Konfigurationsfläche — `mcp.run(transport="streamable-http", port=…)` ohne `host=`, uvicorn band immer Loopback, kein Flag änderte daran etwas. Ein Kriterium der Form «es existiert eine Env-Var» hätte den Zustand angezeigt, aber den Folgefehler nicht gefangen, dass eine vorhandene Option den Listener nie erreicht. Aus einem Kriterium werden damit vier: konfigurierbar, Default Loopback, Wert kommt an, `0.0.0.0` steht in der Deployment-Konfiguration statt im Code.
+
+**Neuer Modus 3 (`runtime_test`) misst genau das.** Das Startlog nennt die tatsächlich gebundene Adresse (`Uvicorn running on http://…`) — zwei Läufe, einer ohne Konfiguration, einer mit gesetztem Wert. Der Default-Lauf allein beweist nichts: Ein Server, der die Option ignoriert, besteht ihn und wirkt dabei besonders sicher. Nicht als Beleg zählt eine Logzeile, die der Server aus seiner **eigenen** Konfigurationsvariablen schreibt — die sagt, was er binden wollte, und wäre in genau dem Fehlerfall grün. Der bisherige `nmap`-Modus rückt auf 4.
+
+### Geändert — die Startwarnung in `SEC-016` ist nicht mehr «Optional»
+
+Sie war als optional geführt und ist es nicht. Nachgeprüft an allen drei Servern, aus denen die Belege stammen — `bag-health-mcp@f108657`, `swiss-transport-mcp@da6c629`, `zurich-opendata-mcp@2ea82d9`: Alle drei warnen beim Nicht-Loopback-Bind, `bag-health-mcp` nennt `SEC-016` dabei namentlich im Code.
+
+**Der Auslöser stimmte allerdings nicht.** Das Kriterium hing die Warnung an eine **Container-Detection** — und die ist in keinem der drei implementiert. Ausgelöst wird überall durch die **fehlende Allow-List**. Wäre der alte Wortlaut einfach verbindlich gemacht worden, wäre ein Kriterium entstanden, das das gesamte Portfolio reisst, ohne dass ein einziger Server unsicherer geworden wäre. Das Kriterium nennt jetzt den Zustand, den die drei tatsächlich prüfen: Ein Bind ausserhalb Loopback ist nicht still, wenn keine Allow-List ihn kompensiert. Die Container-Heuristik steht in der Remediation als möglicher Zusatz — sie rät, wo die Allow-List-Prüfung weiss.
+
+**Damit bedient dieselbe Logzeile zwei Checks**, und die Frage nach einer Doppelung wie bei `SEC-004`/`SEC-005` gehört beantwortet: `SEC-024` fragt, ob die *Abwesenheit der Allow-List* angesagt wird — Subjekt ist die Allow-List. Hier ist das Subjekt die **Exposition**. Ein Server kann hier bestehen und dort durchfallen und umgekehrt; wer die Zeile entfernt, verletzt beide. Eine Ursache mit zwei Wirkungen, kein Doppelbefund. Der Absatz steht in `SEC-016`, damit die Frage nicht bei jedem Audit neu gestellt wird.
+
+Sechs neue Zeilen in «Common Failures», darunter der Auditor-Fehler selbst: ein CLI-Flag als Verstoss zu werten, weil keine Env-Var da ist.
+
+Keine Katalog-Änderung: 90 Checks in 11 Kategorien, `applies_when` und `severity` unverändert, 431 Tests unverändert. Die Lockerung von Kriterium 2 kann nur Findings auflösen; die Verschärfung («Wert erreicht den Listener», Warnung verbindlich) bestehen alle drei geprüften Server bereits, deshalb ohne `adoption: advisory` nach `SKILL.md` 2.3.
+
 ### Ergänzt — die vierte Übernahme der eingehenden Allow-List, und was sie nicht ist
 
 Der Abschnitt «Zitate, die nach diesem Release falsch sind» unter `v1.3.0` nennt drei gemergte Portfolio-PRs, die `SEC-005` für die eingehende Host-Allow-List zitieren. Die Vermutung, `zurich-opendata-mcp` habe dieselbe Fehlzuweisung in `0.7.0` übernommen, **ist nachgeprüft und trifft nicht zu.**
