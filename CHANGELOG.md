@@ -6,6 +6,11 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v1.4.0] — 2026-08-01 — Zwei Sprachfassungen, und keine Zahl mehr ohne Wächter
+
+Reine Doku- und Test-Änderungen: keine neuen Checks, kein Katalog-Eingriff, 90 Checks in 11 Kategorien unverändert. Das englische `README.md` kommt dazu, die deutsche Fassung zieht nach `README.de.md`, und jede Zahl, die im README steht, hat jetzt etwas, das sie prüft.
+
+
 ### Ergänzt — `## Mitwirken` als eigene Sektion
 
 Die Aussage stand bisher als ein Satz unter `## Kontext` («Pull Requests willkommen — insbesondere für ergänzende Compliance-Layer»). Sie hat jetzt eine eigene Überschrift und benennt die Anatomie, die ein neuer Check mitbringen muss: benannte Quelle, ein Pass-Kriterium, das zwei Auditoren gleich beantworten, ein Remediation-Pfad, ein Aufwands-Indikator. Ein Check ohne Quelle ist eine Meinung, und ein auslegbares Pass-Kriterium macht den Katalog unreproduzierbar — also genau das, was er verhindern soll.
@@ -47,54 +52,6 @@ Deshalb: Prosa-Muster je Sprache in einem `PROSE`-Dict, Fixture parametrisiert �
 Beim Übersetzen war die Prosa an den Mustern auszurichten: «alle 23 Security-Checks» wird zu «all 23 security checks» — die Zahl steht dort nicht direkt vor «checks», das Muster greift also korrekt nicht. Andernfalls hätte der Test 23 gegen 90 geprüft und wäre zu Recht rot geworden.
 
 **Nicht angefasst:** Die GitHub-Repo-Description bleibt deutsch, und `tools/check_repo_description.py` prüft sie weiterhin mit deutschen Mustern — beides passt zusammen. Wer die Description später auf Englisch umstellt, muss dort nachziehen; der Check schlägt dann laut fehl («Description nennt keine Check-Zahl») und nicht still.
-
-### Dokumentiert — warum `SEC-005` `enforced` bleibt
-
-Die Reichweiten-Erweiterung aus v1.3.0 hat die Frage aufgeworfen, ob der Check den in `SKILL.md` 2.3 dokumentierten Weg über `adoption: advisory` gehen sollte. Er tut es nicht — und der Grund steht jetzt im Check, nicht nur in einem PR-Kommentar.
-
-Portfolio-Stand zum Zeitpunkt der Erweiterung: **3 Server bisher erfasst, 5 neu erfasst**, Reichweite also 3 → 8. Relativ fast eine Verdreifachung, absolut fünf Server. 2.3 begründet die Stufe mit «30+ Server als rote Pipeline am Tag des Merges» — bei fünf greift diese Begründung nicht.
-
-Ausschlaggebend war die Asymmetrie: Die Stufe wirkt **pro Check, nicht pro Profilsegment**. `advisory` hätte die Blockierung auch bei den drei Servern aufgehoben, wo sie heute schon greift — ein Preis, der gewiss und unsichtbar ist, gegen einen, der ungewiss und laut ist.
-
-Festgehalten sind auch die Umkehrbedingung (ein Durchlauf zeigt, dass alle fünf durchfallen und der Rückstand nicht in einem Sprint abbaubar ist) und die drei Orte, die eine Umstellung berührt. Ohne die Zahlen käme die Frage in drei Monaten wieder — und dann ohne die Zahlen.
-
-Keine Katalog-Änderung: Reichweite, Severity und Adoptionsstufe von `SEC-005` bleiben, wie sie sind. 417 Tests unverändert.
-
-### Behoben — `sdk_language` war Pflichtfeld für sieben Checks und stand nirgends
-
-Sieben Checks fragen `sdk_language` ab (`SDK-001`…`SDK-006`, `IDENT-005`). Das Feld stand weder in `validate_profile.REQUIRED_FIELDS` noch in `portfolio.example.yaml`, noch im Slash-Command, im DSL-Doc oder in der Profil-Tabelle von `SKILL.md` — und `audit-notion-sync.py` hat es nie gesetzt.
-
-**Die Reihenfolge war genau verkehrt.** Nachgemessen mit einem Profil, wie `build_profile()` es erzeugt:
-
-```
-validate_profile: consistent=True          ← das Gate lässt es durch
-evaluate_catalog: 7 Checks unknown-field   ← erst hier fällt es auf
-```
-
-Das Validierungs-Gate existiert, um solche Löcher **vor** Schritt 2 zu fangen. Es war blind, weil das Feld nicht in seiner Liste stand. Der laute Fehlschlag im Evaluator war korrekt — er kam nur zu spät und traf jedes aus Notion gezogene Profil.
-
-Nachgezogen an sechs Orten: `REQUIRED_FIELDS` (15 → 16 Felder), `portfolio.example.yaml`, `.claude/commands/audit-mcp.md`, `SKILL.md` (Profil-Tabelle, Beispielblock, Feldzahl), `docs/applies-when-dsl.md` und `audit-notion-sync.py`. Letzteres liest jetzt eine Notion-Property `SDK-Sprache` mit Default `Python` — dieselbe Konvention, die dort schon für `transport` und `auth_model` gilt.
-
-**Bewusst nicht als geschlossenes Vokabular gepinnt.** Anders als `transport` ist `sdk_language` offen: Ein Server in Go oder Rust trägt eine Sprache, die kein Check abfragt — das ist eine Lücke im Katalog, kein Fehler im Profil, und ein harter Reject würde ein korrekt beschriebenes Profil abweisen. Der Preis ist derselbe Rest-Risiko wie bei jedem offenen Feld: `python` statt `Python` lässt sechs Checks still wegfallen. Ein Test hält die Entscheidung samt Begründung fest, damit eine spätere Umkehr eine bewusste ist.
-
-Fünf Guard-Tests: Feld ist Pflichtfeld · der Katalog nutzt es überhaupt · jeder Wert, gegen den eine Klausel vergleicht, steht in allen vier Doku-Orten · es ist *nicht* in `ALLOWED_VALUES` · `audit-notion-sync.py` setzt es. 409 → 417 Tests.
-
-### Behoben — `SEC-004` und `SEC-005` prüften dasselbe Kriterium doppelt
-
-Seit `SEC-005` auf dieselbe Reichweite wie `SEC-004` erweitert wurde, trugen beide wortgleich dasselbe Pass-Kriterium:
-
-| | Kriterium |
-|---|---|
-| `SEC-004` | «DNS-Resolution erfolgt **einmal**, resolved IP wird für eigentlichen Request verwendet (kein TOCTOU)» |
-| `SEC-005` | «DNS-Resolution erfolgt **einmalig** vor dem HTTP-Request» + «Resolved IP wird für die TCP-Connection verwendet» |
-
-Ein Server, der DNS-Pinning vergisst, erzeugte damit **zwei Findings für eine Ursache** — eines auf `critical`, eines auf `high`. Und nach dem Fix wäre eines davon rot geblieben, weil niemand daran denkt, zwei Checks nachzuführen. Genau der Schaden, den `SKILL.md` §2.5 beschreibt: «Sie doppeln das Finding, und wenn der Server die Ursache behebt, bleibt der zweite rot — der Fix sieht aus, als hätte er nicht gewirkt.»
-
-**Aufgelöst durch Entflechtung, nicht durch Zusammenlegen.** `SEC-004` prüft, ob die aufgelöste IP *erlaubt* ist (HTTPS-Enforcement, Blocklisting); `SEC-005`, ob sie auch die *benutzte* ist (Pinning). Das doppelte Kriterium und die zugehörige Common-Failures-Zeile sind aus `SEC-004` entfernt, beide Checks benennen die Grenze ausdrücklich.
-
-Zusammengelegt wurden sie nicht, weil §2.5 auch die Gegenrichtung kennt: Ein Check muss **in einem Schritt behebbar** bleiben. Blocklisting und Pinning sind getrennt behebbar — ein Server kann die Blockliste korrekt führen und trotzdem zweimal auflösen. Das sind zwei Befunde mit zwei Remediationen.
-
-Das Pass-Pattern von `SEC-004` löst weiterhin einmal auf und verwendet die IP — echter Code macht beides in derselben Funktion. Nur das *Kriterium* liegt jetzt an einer Stelle. Der Unterschied steht im Check, damit ihn niemand für eine Lücke hält.
 
 ## [v1.3.0] — 2026-07-31 — Zwei Richtungen, alle Pfade, und ein Inventar das nachfragt
 
@@ -488,6 +445,58 @@ Damit hängen sechs Orte am Katalog:
 | `docs/roadmap.md` (`Stand:`-Zeile) | `test_roadmap_counts.py` |
 | `.claude/commands/audit-mcp.md` (Kategorienliste) | `test_command_counts.py` |
 | **GitHub-Repo-Description** | **`repo-description.yml` (ausserhalb des Repos, deshalb Workflow statt Test)** |
+
+### Nachgetragen aus `[Unreleased]`
+
+Die drei folgenden Abschnitte standen zum Zeitpunkt des Tags unter `[Unreleased]` und fehlten deshalb in den ursprünglich veröffentlichten Release-Notes — die beschriebene Arbeit ist aber in `v1.3.0` enthalten (Commits `b011432` und `da17222`, beide Vorfahren des Tags). Hierher verschoben, damit Tag-Inhalt und Notes übereinstimmen; die Release-Notes auf GitHub sind entsprechend nachgezogen.
+
+### Dokumentiert — warum `SEC-005` `enforced` bleibt
+
+Die Reichweiten-Erweiterung aus v1.3.0 hat die Frage aufgeworfen, ob der Check den in `SKILL.md` 2.3 dokumentierten Weg über `adoption: advisory` gehen sollte. Er tut es nicht — und der Grund steht jetzt im Check, nicht nur in einem PR-Kommentar.
+
+Portfolio-Stand zum Zeitpunkt der Erweiterung: **3 Server bisher erfasst, 5 neu erfasst**, Reichweite also 3 → 8. Relativ fast eine Verdreifachung, absolut fünf Server. 2.3 begründet die Stufe mit «30+ Server als rote Pipeline am Tag des Merges» — bei fünf greift diese Begründung nicht.
+
+Ausschlaggebend war die Asymmetrie: Die Stufe wirkt **pro Check, nicht pro Profilsegment**. `advisory` hätte die Blockierung auch bei den drei Servern aufgehoben, wo sie heute schon greift — ein Preis, der gewiss und unsichtbar ist, gegen einen, der ungewiss und laut ist.
+
+Festgehalten sind auch die Umkehrbedingung (ein Durchlauf zeigt, dass alle fünf durchfallen und der Rückstand nicht in einem Sprint abbaubar ist) und die drei Orte, die eine Umstellung berührt. Ohne die Zahlen käme die Frage in drei Monaten wieder — und dann ohne die Zahlen.
+
+Keine Katalog-Änderung: Reichweite, Severity und Adoptionsstufe von `SEC-005` bleiben, wie sie sind. 417 Tests unverändert.
+
+### Behoben — `sdk_language` war Pflichtfeld für sieben Checks und stand nirgends
+
+Sieben Checks fragen `sdk_language` ab (`SDK-001`…`SDK-006`, `IDENT-005`). Das Feld stand weder in `validate_profile.REQUIRED_FIELDS` noch in `portfolio.example.yaml`, noch im Slash-Command, im DSL-Doc oder in der Profil-Tabelle von `SKILL.md` — und `audit-notion-sync.py` hat es nie gesetzt.
+
+**Die Reihenfolge war genau verkehrt.** Nachgemessen mit einem Profil, wie `build_profile()` es erzeugt:
+
+```
+validate_profile: consistent=True          ← das Gate lässt es durch
+evaluate_catalog: 7 Checks unknown-field   ← erst hier fällt es auf
+```
+
+Das Validierungs-Gate existiert, um solche Löcher **vor** Schritt 2 zu fangen. Es war blind, weil das Feld nicht in seiner Liste stand. Der laute Fehlschlag im Evaluator war korrekt — er kam nur zu spät und traf jedes aus Notion gezogene Profil.
+
+Nachgezogen an sechs Orten: `REQUIRED_FIELDS` (15 → 16 Felder), `portfolio.example.yaml`, `.claude/commands/audit-mcp.md`, `SKILL.md` (Profil-Tabelle, Beispielblock, Feldzahl), `docs/applies-when-dsl.md` und `audit-notion-sync.py`. Letzteres liest jetzt eine Notion-Property `SDK-Sprache` mit Default `Python` — dieselbe Konvention, die dort schon für `transport` und `auth_model` gilt.
+
+**Bewusst nicht als geschlossenes Vokabular gepinnt.** Anders als `transport` ist `sdk_language` offen: Ein Server in Go oder Rust trägt eine Sprache, die kein Check abfragt — das ist eine Lücke im Katalog, kein Fehler im Profil, und ein harter Reject würde ein korrekt beschriebenes Profil abweisen. Der Preis ist derselbe Rest-Risiko wie bei jedem offenen Feld: `python` statt `Python` lässt sechs Checks still wegfallen. Ein Test hält die Entscheidung samt Begründung fest, damit eine spätere Umkehr eine bewusste ist.
+
+Fünf Guard-Tests: Feld ist Pflichtfeld · der Katalog nutzt es überhaupt · jeder Wert, gegen den eine Klausel vergleicht, steht in allen vier Doku-Orten · es ist *nicht* in `ALLOWED_VALUES` · `audit-notion-sync.py` setzt es. 409 → 417 Tests.
+
+### Behoben — `SEC-004` und `SEC-005` prüften dasselbe Kriterium doppelt
+
+Seit `SEC-005` auf dieselbe Reichweite wie `SEC-004` erweitert wurde, trugen beide wortgleich dasselbe Pass-Kriterium:
+
+| | Kriterium |
+|---|---|
+| `SEC-004` | «DNS-Resolution erfolgt **einmal**, resolved IP wird für eigentlichen Request verwendet (kein TOCTOU)» |
+| `SEC-005` | «DNS-Resolution erfolgt **einmalig** vor dem HTTP-Request» + «Resolved IP wird für die TCP-Connection verwendet» |
+
+Ein Server, der DNS-Pinning vergisst, erzeugte damit **zwei Findings für eine Ursache** — eines auf `critical`, eines auf `high`. Und nach dem Fix wäre eines davon rot geblieben, weil niemand daran denkt, zwei Checks nachzuführen. Genau der Schaden, den `SKILL.md` §2.5 beschreibt: «Sie doppeln das Finding, und wenn der Server die Ursache behebt, bleibt der zweite rot — der Fix sieht aus, als hätte er nicht gewirkt.»
+
+**Aufgelöst durch Entflechtung, nicht durch Zusammenlegen.** `SEC-004` prüft, ob die aufgelöste IP *erlaubt* ist (HTTPS-Enforcement, Blocklisting); `SEC-005`, ob sie auch die *benutzte* ist (Pinning). Das doppelte Kriterium und die zugehörige Common-Failures-Zeile sind aus `SEC-004` entfernt, beide Checks benennen die Grenze ausdrücklich.
+
+Zusammengelegt wurden sie nicht, weil §2.5 auch die Gegenrichtung kennt: Ein Check muss **in einem Schritt behebbar** bleiben. Blocklisting und Pinning sind getrennt behebbar — ein Server kann die Blockliste korrekt führen und trotzdem zweimal auflösen. Das sind zwei Befunde mit zwei Remediationen.
+
+Das Pass-Pattern von `SEC-004` löst weiterhin einmal auf und verwendet die IP — echter Code macht beides in derselben Funktion. Nur das *Kriterium* liegt jetzt an einer Stelle. Der Unterschied steht im Check, damit ihn niemand für eine Lücke hält.
 
 ## [v1.2.0] — 2026-07-30 — Vertrag mit der Quelle, und was davon gemessen ist
 
