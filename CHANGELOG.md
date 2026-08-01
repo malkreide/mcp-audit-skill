@@ -6,7 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.1.0] - 2026-08-01
+
+Documentation and guards. No rule added, changed or removed — six rules, as in
+1.0.0. What changes is that the skill names its place in the family, and that two
+figures nothing used to check now have something behind them: the reference file
+can no longer drift from the rules it claims to cover, and the version badge can
+no longer drift from this file.
 ### Added
+
+- **The related-skills tables now name all five skills in one order** — builder,
+  probe, fidelity, transport-hardening, audit — in `SKILL.md` and both READMEs, so
+  the family reads the same way from every repository in it. The new
+  [`mcp-transport-hardening`](https://github.com/malkreide/mcp-transport-hardening-skill)
+  sits *next to* this skill rather than under it: this one asks whether the answer
+  contains what the source holds, that one whether an answer arrives at all. Same
+  silent class, one layer down.
+
+  `mcp-builder` is described as Anthropic's without a licence claim:
+  `anthropics/skills` carries no LICENSE file and the API reports none, so stating
+  one would be a guess in a public README. `termdat-mcp` moved out of the table
+  into a sentence below it — it is the server the rules came from, not a skill of
+  the family, and in a table of roles it read as if it were.
 
 - Contributing section in both READMEs. It states the bar a new rule has to
   clear: the incident it came from, a counter-example pair, and its Nachweis.
