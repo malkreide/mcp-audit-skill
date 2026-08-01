@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Rule 6 now names the mock as the same failure outside the transport.** The
+  first of the three findings — a test that set the environment variable whose
+  absence was the subject under test, and passed with the mutation applied —
+  generalises beyond a network transport: a mock pins its own assumption, so a
+  wrong assumption produces a test that confirms the fault instead of finding
+  it. Counterpart to the same addition in
+  [`mcp-data-fidelity`](https://github.com/malkreide/mcp-data-fidelity-skill)
+  rule 5, cited from the other side. Two sentences, no new rule.
+
 ## [1.1.1] - 2026-08-01
 
 CI only. No rule, no pattern, no documentation changed — seven rules, as in

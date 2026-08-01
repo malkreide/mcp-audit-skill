@@ -178,6 +178,8 @@ Die drei Funde, jeder mit seinem Merksatz:
 2. **Den Port zwischen zwei Funktionen fallenzulassen liess gar keinen Test scheitern.** Die Naht war ungetestet, weil der vorhandene Test die Zielfunktion mit explizitem Port aufrief. *Getestet wird die Naht, an der der Wert reist — nicht die Funktion, die ihn schon hat.*
 3. **Die Kontrolle zu entfernen liess die Suite hängen statt scheitern.** Das ist kein Betriebsunfall, sondern der Regelfall: Ohne Kontrolle wird die verbotene Anfrage *zugelassen*, und zugelassen heisst bei einem Stream *warten*. Siehe Regel 7.
 
+Der erste Merksatz gilt über den Transport hinaus: In `mcp-data-fidelity` (Regel 5) bildet ein Mock die eigene Annahme ab — ist sie falsch, ist der Mock falsch, und der Test bestätigt den Fehler, statt ihn zu finden. Derselbe Fehler, ein Spezialfall davon: Dort ist die hergestellte Bedingung die ganze Antwort.
+
 **Nachweis:** Die Tabelle selbst — sie entsteht nur, wenn jede Mutation tatsächlich angewandt und die Suite tatsächlich gelaufen ist. Eine Zeile mit null roten Tests ist ein Befund, kein Nebenergebnis: Entweder fehlt der Test, oder die Kontrolle tut nichts. Die Tabelle gehört in den PR.
 
 | Mutation | scheiternde Tests |
