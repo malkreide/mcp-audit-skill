@@ -72,12 +72,17 @@ Regel 6 kam nach einem zweiten Fall dazu: Eine Abfrage der MCP Registry lieferte
 
 ## Verwandte Repos
 
+Fünf Skills, ein Bau. Jeder beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt:
+
 | Repo | Rolle |
 |---|---|
+| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generische Bauanleitung — fremder Skill von Anthropic, wird ergänzt und nicht ersetzt |
 | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Das Vorgehen *vor* dem Bau: Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6). Hat diesen Skill unter `companion/` ausgeliefert, bis dieses Repo sein Zuhause wurde. |
+| **`mcp-data-fidelity-skill`** | **Dieser Skill:** liefert er, was die Quelle hat? |
+| [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
 | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Prüfung *nach* dem Bau. Die Regeln 1–5 erscheinen dort als Checks `FID-001`–`FID-005`. |
-| [`mcp-builder`](https://github.com/anthropics/skills) | Anthropics generische Bauanleitung — dieser Skill ergänzt sie, ersetzt sie nicht. |
-| [`termdat-mcp`](https://github.com/malkreide/termdat-mcp) | Der Server, dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die Regeln 1–5 hervorgebracht hat |
+
+Dazu der Server, aus dem dieser Skill stammt: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die Regeln 1–5 hervorgebracht hat.
 
 Wer nach diesem Skill baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet hier die Behebung.
 

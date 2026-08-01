@@ -197,8 +197,10 @@ Vier Dinge daran sind übertragbar:
 
 | Skill | Rolle |
 |---|---|
-| `mcp-builder` | Generische Bauanleitung — dieser Skill ergänzt sie, ersetzt sie nicht |
+| `mcp-builder` | Generische Bauanleitung — fremder Skill von Anthropic, dieser hier ergänzt ihn |
 | `mcp-data-source-probe` | Vorgehen *vor* dem Bau: Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6) |
+| `mcp-data-fidelity` | **Dieser Skill:** liefert er, was die Quelle hat? |
+| [`mcp-transport-hardening`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
 | `mcp-audit` | Prüfung *nach* dem Bau: dieselben Regeln als Checks `FID-001` bis `FID-005` |
 
 Wer nach diesem Skill baut, besteht die FID-Checks. Wer sie beim Audit reisst, findet hier die Behebung.

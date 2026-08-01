@@ -72,12 +72,17 @@ Rule 6 was added after a second case: an MCP Registry query returned nothing for
 
 ## Related repositories
 
+Five skills, one build. Each answers a different question, in the order they come up:
+
 | Repository | Role |
 |---|---|
+| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generic build guidance — Anthropic's skill, complemented rather than replaced |
 | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | The procedure *before* the build: default matrix (1.2b), recall ground truth (1.4), empty results (3.6). Distributed this skill under `companion/` until this repository became its home. |
+| **`mcp-data-fidelity-skill`** | **This skill:** does it return what the source actually holds? |
+| [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Does it come up, and does it turn away the right callers? The same silent class one layer down — not what the answer contains, but whether one arrives at all |
 | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Auditing *after* the build. Rules 1–5 appear there as checks `FID-001`–`FID-005`. |
-| [`mcp-builder`](https://github.com/anthropics/skills) | Anthropic's generic build guidance — this skill complements it rather than replacing it. |
-| [`termdat-mcp`](https://github.com/malkreide/termdat-mcp) | The server whose [issue #11](https://github.com/malkreide/termdat-mcp/issues/11) produced rules 1–5 |
+
+Plus the server this skill came from: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), whose [issue #11](https://github.com/malkreide/termdat-mcp/issues/11) produced rules 1–5.
 
 Build by this skill and you pass the `FID` checks; fail them in an audit and the remediation is here.
 
