@@ -280,9 +280,22 @@ Sechs Dinge daran sind übertragbar:
 
 | Skill | Rolle |
 |---|---|
-| `mcp-builder` | Generische Bauanleitung — dieser Skill ergänzt sie, ersetzt sie nicht |
-| `mcp-data-fidelity` | Dieselbe stille Fehlerklasse eine Schicht höher: liefert der Server, was die Quelle hat? |
-| `mcp-data-source-probe` | Vorgehen *vor* dem Bau — dort wird die Datenquelle geprüft, hier der eigene Transport |
-| `mcp-audit` | Prüfung *nach* dem Bau: Regel 4 ist Check `SEC-024`, `SEC-005` ist die Gegenrichtung |
+| `mcp-builder` | Generische Bauanleitung — fremder Skill von Anthropic, dieser hier ergänzt ihn |
+| `mcp-data-source-probe` | Vorgehen *vor* dem Bau |
+| `mcp-data-fidelity` | Liefert er, was die Quelle hat? |
+| `mcp-transport-hardening` | **Dieser Skill:** kommt er hoch, weist er richtig ab? |
+| `mcp-audit` | Prüfung *nach* dem Bau — die Zuordnung steht unten |
 
-Wer nach diesem Skill baut, besteht `SEC-024`. Wer ihn beim Audit reisst, findet hier die Behebung.
+### Welche Regel welcher Check ist
+
+Der Katalog von [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) deckt vier der sieben Regeln ab. Die Lücken sind hier benannt, statt sie durch eine ungefähre Zuordnung zu verdecken:
+
+| Regel | Check |
+|---|---|
+| 1 — SDK-Major-Sprung | [`SDK-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SDK-006.md) — «SDK-Major-Migration vollständig abgeschlossen» |
+| 2 — `host` als Saat der Allow-List | **kein Check.** [`SEC-016`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-016.md) liegt daneben, adressiert aber den umgekehrten Fall: `0.0.0.0` als *unbeabsichtigten* Bind (NeighborJack). Regel 2 setzt ein gewolltes `0.0.0.0`-Deployment voraus und fragt, ob der Bind die App erreicht |
+| 3 — jeder Pfad identisch verdrahtet | [`ARCH-013`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-013.md) — «Alle Netz-Transportpfade identisch verdrahtet» |
+| 4 — eingehende Host-Allow-List | [`SEC-024`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-024.md); [`SEC-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-005.md) ist die ausgehende Gegenrichtung |
+| 5–7 — die Beweisführung | **kein Check.** Der Katalog prüft, ob eine Kontrolle vorhanden ist — nicht, ob ihr Nachweis trägt |
+
+Wer nach den Regeln 1, 3 und 4 baut, besteht `SDK-006`, `ARCH-013` und `SEC-024`. Wer sie beim Audit reisst, findet hier die Behebung. Für die Regeln 2 und 5–7 gilt das nicht: Sie beschreiben Fehler, die dieser Katalog derzeit nicht sieht.

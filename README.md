@@ -82,14 +82,20 @@ What generalises:
 
 ## Related repositories
 
+Five skills, one build. Each answers a different question, in the order they come up:
+
 | Repository | Role |
 |---|---|
-| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | The same silent class one layer up: does the server return what the source actually holds? |
-| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Auditing *after* the build. Rule 4 is check `SEC-024`; `SEC-005` is the opposite direction. |
-| [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | The procedure *before* the build — there the data source is probed, here the server's own transport |
-| [`mcp-builder`](https://github.com/anthropics/skills) | Anthropic's generic build guidance — this skill complements it rather than replacing it. |
+| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generic build guidance — Anthropic's skill, complemented rather than replaced |
+| [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | The procedure *before* the build |
+| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Does it return what the source actually holds? |
+| **`mcp-transport-hardening-skill`** | **This skill:** does it come up, and does it turn away the right callers? |
+| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Auditing *after* the build |
 
-Build by this skill and you pass `SEC-024`; fail it in an audit and the remediation is here.
+The audit catalogue covers four of the seven rules: rule 1 is `SDK-006`, rule 3 is
+`ARCH-013`, rule 4 is `SEC-024` (with `SEC-005` as its outbound counterpart).
+Rules 2 and 5–7 have no check — see the mapping in [SKILL.md](SKILL.md), which
+names the gaps rather than papering over them.
 
 ## Changelog
 

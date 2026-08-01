@@ -82,14 +82,20 @@ Was daran übertragbar ist:
 
 ## Verwandte Repos
 
+Fünf Skills, ein Bau. Jeder beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt:
+
 | Repo | Rolle |
 |---|---|
-| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Dieselbe stille Fehlerklasse eine Schicht höher: liefert der Server, was die Quelle hat? |
-| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Prüfung *nach* dem Bau. Regel 4 ist Check `SEC-024`, `SEC-005` ist die Gegenrichtung. |
-| [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Vorgehen *vor* dem Bau — dort wird die Datenquelle geprüft, hier der eigene Transport |
-| [`mcp-builder`](https://github.com/anthropics/skills) | Anthropics generische Bauanleitung — dieser Skill ergänzt sie, ersetzt sie nicht. |
+| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generische Bauanleitung — fremder Skill von Anthropic, wird ergänzt und nicht ersetzt |
+| [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Vorgehen *vor* dem Bau |
+| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? |
+| **`mcp-transport-hardening-skill`** | **Dieser Skill:** kommt er hoch, weist er richtig ab? |
+| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Prüfung *nach* dem Bau |
 
-Wer nach diesem Skill baut, besteht `SEC-024`. Wer ihn beim Audit reisst, findet hier die Behebung.
+Der Audit-Katalog deckt vier der sieben Regeln ab: Regel 1 ist `SDK-006`, Regel 3
+ist `ARCH-013`, Regel 4 ist `SEC-024` (mit `SEC-005` als ausgehender
+Gegenrichtung). Für die Regeln 2 und 5–7 gibt es keinen Check — die Zuordnung in
+[SKILL.md](SKILL.md) benennt die Lücken, statt sie zu überdecken.
 
 ## Changelog
 
