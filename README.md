@@ -271,7 +271,7 @@ Usable side by side — none of these replaces the others.
 
 ## Status
 
-**Version:** v1.3.0 — two directions, every path, and an inventory that asks back (17 helper scripts, 426 pytest cases, CI on Ubuntu + Windows × py3.11 + py3.13). See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
+**Version:** v1.3.0 — two directions, every path, and an inventory that asks back. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
 
 **Completeness:**
 - ✅ Methodology (`SKILL.md`) and templates (finding, audit report)

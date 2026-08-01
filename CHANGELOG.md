@@ -14,13 +14,17 @@ Der Satz in `## Kontext` entfällt, damit die Aussage nur an einer Stelle steht.
 
 ### Nachgezogen — `## Status` und der fehlende `v1.3.0`-Tag
 
-Der Status-Abschnitt stand in beiden Fassungen auf **v1.0.0 vom 2. Mai**, drei Releases zurück, mit «10 Helper-Scripts, 255 pytest cases» — tatsächlich sind es 17 und 426. Jetzt v1.3.0 mit den korrekten Zahlen.
+Der Status-Abschnitt stand in beiden Fassungen auf **v1.0.0 vom 2. Mai**, drei Releases zurück, mit «10 Helper-Scripts, 255 pytest cases» — tatsächlich waren es 17 und 426. Jetzt v1.3.0, und **ohne die beiden Zählungen**.
 
 Dabei kam heraus, dass `v1.3.0` **nie getaggt war**: Der CHANGELOG führt den Block seit dem 31. Juli, die `--skill-version`-Literale in `SKILL.md`, `audit_init.py` und dem Slash-Command stehen auf `1.3.0`, und `test_skill_version_literals.py` hält sie genau daran fest — nur Tag und Release fehlten, letzter war `v1.2.0`. Vier Angaben, drei davon einig, und die vierte war die einzige, die man von aussen sieht.
 
 Der Tag sitzt auf `5ef54e7`, dem letzten Commit vor den Doku-Änderungen dieses Blocks — also genau auf dem Stand, den der `v1.3.0`-Abschnitt beschreibt, und nicht auf einem späteren, der Dinge enthielte, die dort nicht stehen.
 
-**Nicht abgesichert:** «17 Helper-Scripts» und «426 pytest cases» erzwingt nichts. Sie sind schon einmal auseinandergelaufen (von 10 und 255), und sie werden es wieder — dieselbe Mechanik, gegen die `test_readme_counts.py` die Katalog-Zahlen hält. Entweder bekommen sie einen Test, oder sie sollten aus dem Status verschwinden.
+**Warum die Zahlen weg sind.** «10 Helper-Scripts» und «255 pytest cases» erzwang nichts, und beide waren entsprechend gedriftet — dieselbe Mechanik, gegen die `test_readme_counts.py` die Katalog-Zahlen hält. Sie nur zu korrigieren hätte den Zustand um ein paar Monate verlängert, nicht behoben.
+
+Ein Test wäre hier der schlechtere Weg: Eine Testsuite, die ihre eigene Fallzahl festnagelt, wird bei jedem neuen Test rot, ohne dass etwas kaputt ist — und ein Test, der ständig grundlos anschlägt, wird abgeschaltet. Also die Regel, die dieses Repo ohnehin anwendet: Eine Zahl steht dort, wo etwas sie prüft. Die Katalog-Zahlen bleiben (Badge, Kategorien-Tabelle, Total, Provenance — alle gegen `checks/` gesichert), die Skript- und Testzählungen verschwinden. Was sich pro Release ändert, steht im CHANGELOG, wo es hingehört.
+
+Die CI-Matrix bleibt: Sie ist keine Zählung, sondern eine Zusage, und sie steht eine Datei entfernt in `test.yml`.
 
 ### Umgestellt — englisches `README.md`, deutsches `README.de.md`
 
