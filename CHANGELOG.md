@@ -26,6 +26,12 @@ Ein Test wäre hier der schlechtere Weg: Eine Testsuite, die ihre eigene Fallzah
 
 Die CI-Matrix bleibt: Sie ist keine Zählung, sondern eine Zusage, und sie steht eine Datei entfernt in `test.yml`.
 
+**Die Versionszeile selbst hängt jetzt am CHANGELOG.** Sie war die letzte unbewachte Angabe im Status — und die, die drei Releases lang falsch stand. `test_skill_version_literals.py` zog die aktuelle Version schon vorher aus der obersten Release-Überschrift, um die `--skill-version`-Literale daran festzuhalten; dieselbe Quelle deckt jetzt auch `**Version:**` in jeder README-Fassung ab. Zwei Anker, ein Wert.
+
+Die Fassungen kommen per `glob("README*.md")` statt aus einer gepflegten Liste — eine dritte Sprachfassung ist damit automatisch abgedeckt, statt still durchzurutschen. Dazu zwei Tests, die den Anker selbst schützen: dass überhaupt eine README gefunden wird (eine leere Parametrisierung ist grün) und dass die Zeile `**Version:** vX.Y.Z` existiert (ein Muster, das nichts findet, ist ebenfalls grün).
+
+Gegengeprobt, beide Richtungen: Status auf `v1.2.0` zurückgedreht → «Status nennt ['1.2.0'], oberster Release im CHANGELOG ist 1.3.0»; Anker in `**Release:**` umbenannt → «keine Zeile `**Version:** vX.Y.Z` gefunden». Beides zurückgenommen, wieder still. 424 → 429 Tests.
+
 ### Umgestellt — englisches `README.md`, deutsches `README.de.md`
 
 Dieses Repo war das letzte im Portfolio mit einem einzigen, deutschsprachigen `README.md`. Der Repo-Validator prüft `README.md` aber grundsätzlich als englische Datei — er erkannte deshalb weder `## Mitwirken` noch `## Lizenz` noch den Autor und meldete sie als fehlend. Fünf ERROR und eine WARN, sämtlich Artefakte dieser einen Annahme. Jetzt: **0 ERROR, 0 WARN**, und dieselbe Struktur wie in den drei Schwester-Repos.
