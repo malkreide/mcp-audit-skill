@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-01
+
+Documentation and guards. No rule added, changed or removed — seven rules, as in
+1.0.0. What changes is that the skill now says where each rule is audited, and
+that the reference file can no longer drift from the rules it claims to cover.
+
 ### Added
+
+- **Rule-to-check mapping against the `mcp-audit` catalogue.** `SKILL.md` gains a
+  table saying which rule corresponds to which check, verified by reading the
+  check files rather than inferring from titles: rule 1 is `SDK-006`, rule 3 is
+  `ARCH-013`, rule 4 is `SEC-024` with `SEC-005` as its outbound counterpart.
+
+  It also names the two gaps rather than stretching a near-match over them. Rule 2
+  has no check: `SEC-016` looks like one and is the opposite case — it treats
+  `0.0.0.0` as an *unintended* bind (NeighborJack), while rule 2 assumes a
+  deliberate one and asks whether it reaches the app. Rules 5–7 have no check
+  either, which is a scope boundary: the catalogue verifies that a control exists,
+  not that its proof holds.
+
+- **The related-skills tables now name all five skills in one order** — builder,
+  probe, fidelity, transport-hardening, audit — in `SKILL.md` and both READMEs, so
+  the family reads the same way from every repository in it. `mcp-builder` is
+  described as Anthropic's without a licence claim: `anthropics/skills` carries no
+  LICENSE file and the API reports none, so stating one would be a guess in a
+  public README.
 
 - Contributing section in both READMEs. It states the bar a new rule has to
   clear: the incident it came from, a counter-example pair, and its Nachweis —
