@@ -123,6 +123,8 @@ Wildcards serverseitig automatisch anhängen ist **kein** Ersatz — es macht Ph
 
 **Recall.** Mocks bilden die eigene Annahme ab. Ist die Annahme falsch, ist der Mock falsch, und der Test bestätigt den Fehler, statt ihn zu finden. Scope- und Recall-Bugs sind für Mocks strukturell unsichtbar.
 
+Dieselbe Fehlerform tritt auch ohne Mock auf: In `mcp-transport-hardening` setzte ein Regressionstest die Umgebungsvariable, deren *Fehlen* der eigentliche Prüfgegenstand war — und bestand deshalb auch mit absichtlich eingebautem Fehler. **Ein Test, der die Bedingung herstellt, unter der der Fehler nicht auftreten kann, prüft nichts.**
+
 ```python
 @pytest.mark.live
 async def test_recall_floor():

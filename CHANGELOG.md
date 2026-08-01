@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Rule 5 now names the mock-free variant of the same failure.** A regression
+  test in `mcp-transport-hardening` set the environment variable whose *absence*
+  was the actual subject under test, so it passed with a deliberately introduced
+  fault in place. Independent confirmation from a different domain — transport
+  security rather than data fidelity — of what rule 5 already said about mocks:
+  a test that establishes the condition under which the fault cannot occur
+  checks nothing. Two sentences, no new rule.
+
 ## [1.1.0] - 2026-08-01
 
 Documentation and guards. No rule added, changed or removed — six rules, as in
