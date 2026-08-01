@@ -72,9 +72,11 @@ BASE="https://api.example.ch/v2" OUTDIR=/tmp/probe bash reference/probe_template
 │   ├── befund_tabelle_template.md        # Befund-Tabelle: Default-Matrix, Recall-Ground-Truth
 │   ├── response_envelope.py              # Pydantic-v2-Envelope mit source + provenance
 │   └── retry_backoff.py                  # Referenz-Implementation für exponentielles Backoff
-└── companion/
-    └── mcp-data-fidelity/
-        └── README.md                     # Pointer — der Skill hat ein eigenes Repo
+├── companion/
+│   └── mcp-data-fidelity/
+│       └── README.md                     # Pointer — der Skill hat ein eigenes Repo
+└── scripts/
+    └── validate.sh                       # die Checks des Repos; die CI ruft diese Datei auf
 ```
 
 ## Companion-Skill: `mcp-data-fidelity`
@@ -145,6 +147,19 @@ wird zum vollen Preis neu entdeckt.
 Der nützlichste Beitrag ist meist der kleinste — eine einzelne Zeile in der
 Default-Matrix für eine noch nicht gelistete Quelle, mit der Parameterbeschreibung,
 die sie belegt.
+
+Vor einem Pull Request die Checks laufen lassen:
+
+```bash
+bash scripts/validate.sh
+```
+
+Es ist dieselbe Datei, die die CI aufruft — es gibt also keine zweite Kopie, die
+auseinanderlaufen könnte. Alle sieben Checks laufen auch nach einem Fehlschlag
+weiter, ein roter Durchlauf benennt damit alle Probleme auf einmal. Vor einer
+Änderung an der Frontmatter zu wissen: Das Limit für `description` liegt bei 1024
+Zeichen, und die aktuelle lässt einstelligen Spielraum — das Skript gibt aus,
+wie viel übrig ist.
 
 Vor einem grösseren Pull Request bitte ein Issue eröffnen, damit die Form vorher
 geklärt ist.
