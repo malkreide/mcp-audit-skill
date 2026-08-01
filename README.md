@@ -265,6 +265,26 @@ Usable side by side — none of these replaces the others.
 
 ## Related repositories
 
+### The skill family
+
+Five skills, one build. Each answers a different question, in the order they come up — this one comes last:
+
+| Skill | Role | Its rules in this catalogue |
+|---|---|---|
+| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generic build guidance — Anthropic's skill | — |
+| [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | The procedure *before* the build | supplies the ground truth `FID-002` measures against |
+| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Does it return what the source actually holds? | [`FID-001`–`FID-005`](./checks/) |
+| [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Does it come up, and does it turn away the right callers? | [`SDK-006`](./checks/SDK-006.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md) |
+| **`mcp-audit-skill`** | **This skill:** auditing *after* the build | — |
+
+Two of the transport-hardening rules have no counterpart here: the one about a
+bind reaching the app, and the three on how a control is proven (negative tests,
+mutation testing, harness traps). The first is a genuine gap; the second is a
+scope boundary — this catalogue checks whether a control exists, not whether its
+proof holds.
+
+### Portfolio and trackers
+
 - [`malkreide` MCP server portfolio](https://github.com/malkreide?tab=repositories) — the servers this skill audits
 - Notion **MCP Audit Tracker** — running status of all server audits (internal)
 - Notion **MCP Server Portfolio** — master inventory of all servers (internal)
