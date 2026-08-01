@@ -6,6 +6,21 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Ergänzt — `SEC-024` bekommt seinen `automated`-Modus
+
+Der Check beschrieb die tragende Probe («richtiger Name, falscher Port») bisher nur als `curl`-Block zum Nachbauen. Es gibt sie fertig: `scripts/rebind_probe.py` im [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) bootet das Ziel mit einer selbst gesetzten Allow-List und läuft vier Proben in zwei Durchläufen — ohne Auth und mit gültigem Token. Der Katalog verankert vergleichbare Werkzeuge bereits (`DRIFT-004` → `live_probe.py`, `IDENT-006` → `release_gap.py`); hier fehlte das Muster.
+
+Der neue **Modus 2 (`automated`)** steht vor der Handprobe, die zu **Modus 3** wird; `config_check` rutscht auf **Modus 4**. Inhaltlich neu ist vor allem, was die Ausgänge des Gates für diesen Check bedeuten:
+
+- **`allowed` ist keine Kontrollprobe zum Weglassen.** Was trägt, ist das *Paar* (`wrong-port` abgewiesen, `allowed` angenommen) — zwei Requests, die sich nur im Port unterscheiden. Eine zurückgefallene Loopback-Policy weist beide ab, eine namensweise verglichene Liste nimmt beide an. Das Pass-Kriterium für Evidence 2 ist entsprechend geschärft.
+- **Exit `3` ist kein Pass.** Der Gate meldet «nicht konfiguriert» absichtlich als eigene Kategorie, weil er Deployments beobachtet und der Fail-open-Zustand auf `0.0.0.0` dokumentiert ist. Gegen die Pass Criteria dieses Checks ist derselbe Befund ein `fail` — Kriterium 1 verlangt die Verdrahtung. Wer den Exit-Code direkt auf einen Status abbildet, verbucht die Abwesenheit der Kontrolle als bestanden.
+- **Exit `2` ist nicht durchgängig `fail`.** Beim `case` `not-attributable` wurde nichts gemessen; das ist `todo`. Ein Fail-Befund daraus wäre erfunden.
+- **`not-applicable` ist ein Abgleich, kein Freispruch.** Der Gate leitet die Transporte aus dem Ziel-Checkout ab, `applies_when` aus dem Profil. Widersprechen sie sich, ist das ein eigener Befund.
+
+Dazu zwei Ausführungs-Stolperfallen, die beim Lesen des Skripts sichtbar wurden: Der Gate setzt die Allow-List unter allen Schreibweisen, die ein Ziel lesen könnte — darunter `ALLOWED_HOSTS`, das bei manchen Servern die **Egress**-Liste aus `SEC-021` ist und im Lauf überschrieben wird (Artefakt, kein Befund). Und ein Ziel, das seine Liste im Code pinnt, lässt die Kontrollprobe scheitern; dafür gibt es `REBIND_ALLOWED_HOST`.
+
+Drei Zeilen in «Common Failures», drei Verweise (`OPS-005`, das Skript, die Boot-Harness darunter). Keine Katalog-Änderung: 90 Checks in 11 Kategorien unverändert, `applies_when` unverändert, 431 Tests unverändert.
+
 ## [v1.4.1] — 2026-08-01 — Die Familie steht jetzt auch im README
 
 ### Ergänzt — die Skill-Familie im Abschnitt «Verwandte Repos»
