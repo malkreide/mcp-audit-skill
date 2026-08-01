@@ -6,7 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.2.0] - 2026-08-01
+
+Documentation and guards, no change to the procedure itself — the four
+disciplines and their steps are as in 1.1.0. What changes is that the skill names
+its place in the family correctly, and that two things which nothing checked
+before now fail loudly.
 ### Added
+
+- **Die Verwandte-Repos-Tabelle nennt jetzt alle fünf Skills in einer
+  Reihenfolge** — builder, probe, fidelity, transport-hardening, audit —, damit
+  die Familie sich aus jedem Repo gleich liest. Zwei der fünf fehlten hier ganz:
+  `mcp-data-fidelity` stand nur in der Companion-Sektion weiter oben,
+  `mcp-builder` überhaupt nicht — obwohl die Rahmung dieses Skills «vor dem Bau»
+  ist und die anderen damit voraussetzt.
+
+  `mcp-continuous-auditor` und `termdat-mcp` sind aus der Tabelle in einen Satz
+  darunter gewandert: Keiner von beiden ist ein Skill der Familie, und in einer
+  Tabelle mit Rollenverteilung lasen sie sich, als wären sie welche.
+
+  Dabei fiel ein Sachfehler auf: Der Schlusssatz lautete «Wer nach diesem Skill
+  baut, besteht die `FID`-Checks». Die bestehen aber, wer nach `mcp-data-fidelity`
+  baut — dieser Skill liefert die Ground Truth, an der jene Regeln gemessen
+  werden, er ersetzt sie nicht. Korrigiert.
 
 - Contributing section in both READMEs. The same standard the procedure applies
   to data sources applies to the procedure itself: a proposed step should come
