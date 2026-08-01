@@ -6,6 +6,23 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v1.4.1] — 2026-08-01 — Die Familie steht jetzt auch im README
+
+### Ergänzt — die Skill-Familie im Abschnitt «Verwandte Repos»
+
+Der Abschnitt listete nur das Server-Portfolio und die beiden Notion-Tracker. Die Skills, neben denen dieser Katalog existiert, waren nirgends genannt — für das Repo am Ende der Kette die falsche Auslassung.
+
+Aus dieser Richtung ist die nützliche Information, welche Checks welchen Skill-Regeln entsprechen. Die Tabelle trägt das jetzt: `FID-001`–`FID-005` für `mcp-data-fidelity`, und `SDK-006`, `ARCH-013`, `SEC-024` für das neue `mcp-transport-hardening`. Die Zuordnung ist durch Lesen der Check-Dateien belegt, nicht aus den Titeln geschlossen.
+
+Festgehalten ist auch, was der Katalog **nicht** abdeckt, weil das aus Audit-Sicht die interessantere Hälfte ist. Zwei Transport-Hardening-Regeln haben hier kein Gegenstück, und die beiden Fälle sind verschieden:
+
+- Die Regel, dass der Bind die App erreichen muss, ist eine **echte Lücke**. `SEC-016` liegt daneben, adressiert aber den umgekehrten Fall — dort ist `0.0.0.0` der unbeabsichtigte Bind (NeighborJack), dort ein gewollter.
+- Die drei Regeln zur Beweisführung (Negativtest-Schärfe, Mutationstest, Harness-Fallen) sind eine **Bereichsgrenze**: Der Katalog prüft, ob eine Kontrolle vorhanden ist, nicht ob ihr Nachweis trägt.
+
+Keine Katalog-Änderung: 90 Checks in 11 Kategorien unverändert, 429 Tests.
+
+`mcp-builder` steht ohne Lizenzangabe in der Tabelle. `anthropics/skills` trägt keine LICENSE-Datei, die GitHub-API meldet `license: null`, und `THIRD_PARTY_NOTICES.md` betrifft Abhängigkeiten. Eine unbelegte Lizenzangabe gehört nicht in ein öffentliches README.
+
 ## [v1.4.0] — 2026-08-01 — Zwei Sprachfassungen, und keine Zahl mehr ohne Wächter
 
 Reine Doku- und Test-Änderungen: keine neuen Checks, kein Katalog-Eingriff, 90 Checks in 11 Kategorien unverändert. Das englische `README.md` kommt dazu, die deutsche Fassung zieht nach `README.de.md`, und jede Zahl, die im README steht, hat jetzt etwas, das sie prüft.
