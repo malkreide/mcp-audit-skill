@@ -6,6 +6,34 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `IDENT-006` bekommt eine zweite Achse: läuft das Artefakt überhaupt?
+
+Der Check war lückenbasiert und hätte einen realen Vorfall durchgewunken. `zurich-opendata-mcp` `0.5.1`, reproduziert am 2026-07-31: Repo-Version, letzter Git-Tag und PyPI standen **alle drei auf `0.5.1`** — jeder Versionsvergleich meldete «in sync» — und das Artefakt starb beim Import.
+
+```
+ModuleNotFoundError: No module named 'mcp.server.fastmcp'
+```
+
+Gebrochen hatte nichts im Repository. `0.5.1` trug `mcp[cli]>=1.28.1` **ohne Obergrenze**; `mcp` 2.0.0 erschien am 2026-07-28 und entfernte das Modul ersatzlos. Das publizierte Artefakt änderte sich, ohne dass jemand es publizierte.
+
+**Die Lehre, die dem Check fehlte, steht jetzt als eigener Abschnitt darin:** Versionsgleichheit über Repo, Tag und Index ist ein Vergleich von *Etiketten*. Sie sagt, dass niemand vergessen hat zu publizieren — nicht ob das Artefakt installiert, importiert oder antwortet. Die einzige Aussage darüber kommt daher, dass man es installiert und startet.
+
+**Zwei Achsen statt einer.** Die bisherigen Lücken-Kriterien bleiben unverändert und richtig; sie waren im Vorfall sogar *erfüllt* — zwischen dem `mcp`-2.0.0-Release und dem Fund lagen ein bis drei Tage. Daneben steht jetzt die Gesundheits-Achse: installiert, importiert, startet, beantwortet einen echten `tools/call`, nicht zurückgezogen. **Ein Verstoss dort ist ein sofortiger Befund, unabhängig vom Alter der Lücke** — auch bei null unveröffentlichten Commits. Ist die Achse nicht gemessen worden, ist der Check `todo`, nicht bestanden.
+
+### Geändert — `shipped_probe.py` ist der primäre Modus, `pip show` fliegt raus
+
+**Modus 1** ist jetzt `scripts/shipped_probe.py` aus dem `mcp-continuous-auditor`: Installation der Distribution **aus dem Index in ein frisches venv**, Start des installierten Entry Points, echtes `initialize` plus echter `tools/call`. Die zwanzig Befundcodes der Probe sind auf die zwei Achsen aufgeteilt, mit den beiden, die erfahrungsgemäss falsch gelesen werden: `NOT_ON_INDEX` («nie publiziert», Prozess einrichten) gegen `STALE_ON_INDEX` («publiziert, aber hinterher», Workflow-Run ansehen) — und `TOOL_ERROR`, das für sich genommen auch eine Egress-Allow-List sein kann und nicht ungeprüft als Artefakt-Defekt gehört. Exit `127` ist kein Pass (`OPS-005`).
+
+Der bisherige Metadaten-Vergleich wird **Modus 2** und behält seinen Wert — er ist billig und findet die Lücke. Sein Fail-Pattern-Block trägt jetzt aber auch den Fall, den er *nicht* sehen kann: drei gleiche Nummern, null Commits, totes Artefakt.
+
+**Nebenbefund beim Verifizieren:** Der Check zeigte auf `release_gap.py`. Das ist seit dem Zusammenlegen **nur noch ein Kompatibilitäts-Shim** über `shipped_probe.py --metadata-only` — Argument-Weiterleitung und Exit-Code-Übersetzung, keine eigene Logik, im Quell-Repo ausdrücklich zur Löschung vorgesehen. Der Shim übersetzt ausserdem auf das alte Vokabular zurück und ebnet damit den Unterschied zwischen «Befund» und «Vergleich nicht möglich» wieder ein. Beide Verweise zeigen jetzt auf `shipped_probe.py`.
+
+**In der Remediation ersetzt ein echter Start den `pip show`-Zweizeiler.** `pip show` beweist, dass ein Verzeichnis mit Metadaten angelegt wurde — nicht, dass ein `import` durchläuft. Genau diese Unterscheidung *war* der Vorfall: `0.5.1` installierte sauber. An seiner Stelle stehen Import-Test und ein `initialize`/`tools/list`-Handshake gegen den installierten Entry Point, mit den zwei Fallen, die ihn wertlos machen — stdin zu früh schliessen, und die eigene Umgebung mitbenutzen.
+
+Zwei neue Schritte: die Ursache schliessen (Obergrenze in der Range; ein Lockfile schützt hier nicht, es gilt nicht für die Auflösung beim Nutzer) und die Gesundheit **wiederkehrend** prüfen — der Vorfall entstand nach einem korrekten Release, eine Prüfung nur beim Publish kann diese Klasse prinzipiell nicht sehen.
+
+Acht neue Zeilen in «Common Failures». Keine Katalog-Änderung: 90 Checks in 11 Kategorien, `applies_when` und `severity` unverändert, 431 Tests unverändert.
+
 ### Geändert — `SEC-016` misst die Eigenschaft statt des Mechanismus
 
 Zwei Pass-Kriterien waren so formuliert, dass sie an einer korrekten Implementierung vorbeigehen.
