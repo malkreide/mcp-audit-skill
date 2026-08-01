@@ -110,13 +110,19 @@ generische Bauanleitung und diese Regeln zusammen.
 
 ## Verwandte Repos
 
+Fünf Skills, ein Bau. Jeder beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt:
+
 | Repo | Rolle |
 |---|---|
-| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Prüfung *nach* dem Bau. Dieselben Regeln erscheinen dort als Checks `FID-001`–`FID-005`. |
-| [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Laufende Verifikation von Servern im Betrieb |
-| [`termdat-mcp`](https://github.com/malkreide/termdat-mcp) | Der Server, dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die vierte Disziplin hervorgebracht hat |
+| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generische Bauanleitung — fremder Skill von Anthropic, wird ergänzt und nicht ersetzt |
+| **`mcp-data-source-probe-skill`** | **Dieser Skill:** Vorgehen *vor* dem Bau |
+| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? Wurde hier unter `companion/` ausgeliefert, bis er ein eigenes Repo bekam |
+| [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? |
+| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Prüfung *nach* dem Bau |
 
-Wer nach diesem Skill baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet hier das Vorgehen zur Behebung.
+Daneben: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) für die laufende Verifikation von Servern im Betrieb, und [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die vierte Disziplin hervorgebracht hat.
+
+Wer nach diesem Skill probt und nach `mcp-data-fidelity` baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet dort das Vorgehen zur Behebung.
 
 ## Changelog
 

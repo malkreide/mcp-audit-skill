@@ -111,13 +111,19 @@ build guidance and these rules apply together.
 
 ## Related repositories
 
+Five skills, one build. Each answers a different question, in the order they come up:
+
 | Repository | Role |
 |---|---|
-| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Auditing *after* the build. The same rules appear there as checks `FID-001`–`FID-005`. |
-| [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Continuous verification of servers in operation |
-| [`termdat-mcp`](https://github.com/malkreide/termdat-mcp) | The server whose [issue #11](https://github.com/malkreide/termdat-mcp/issues/11) produced the fourth discipline |
+| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generic build guidance — Anthropic's skill, complemented rather than replaced |
+| **`mcp-data-source-probe-skill`** | **This skill:** the procedure *before* the build |
+| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Does it return what the source actually holds? Shipped here under `companion/` until it got its own repository |
+| [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Does it come up, and does it turn away the right callers? |
+| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Auditing *after* the build |
 
-Build by this skill and you pass the `FID` checks; fail them in an audit and the remediation procedure is here.
+Alongside them: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) for continuous verification of servers in operation, and [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), whose [issue #11](https://github.com/malkreide/termdat-mcp/issues/11) produced the fourth discipline.
+
+Probe by this skill and build by `mcp-data-fidelity`, and you pass the `FID` checks; fail them in an audit and the remediation is there.
 
 ## Changelog
 
