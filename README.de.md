@@ -271,7 +271,7 @@ Komplementär nutzbar — keiner der Genannten ersetzt die anderen.
 
 ## Status
 
-**Version:** v1.0.0 — Production-Ready Reproducibility (10 Helper-Scripts, 255 pytest cases, CI auf Ubuntu + Windows × py3.11 + py3.13). Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
+**Version:** v1.3.0 — Zwei Richtungen, alle Pfade, und ein Inventar das nachfragt (17 Helper-Scripts, 426 pytest cases, CI auf Ubuntu + Windows × py3.11 + py3.13). Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
 
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`) und Templates (Finding, Audit-Report)

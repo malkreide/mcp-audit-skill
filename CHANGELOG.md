@@ -12,6 +12,16 @@ Die Aussage stand bisher als ein Satz unter `## Kontext` («Pull Requests willko
 
 Der Satz in `## Kontext` entfällt, damit die Aussage nur an einer Stelle steht.
 
+### Nachgezogen — `## Status` und der fehlende `v1.3.0`-Tag
+
+Der Status-Abschnitt stand in beiden Fassungen auf **v1.0.0 vom 2. Mai**, drei Releases zurück, mit «10 Helper-Scripts, 255 pytest cases» — tatsächlich sind es 17 und 426. Jetzt v1.3.0 mit den korrekten Zahlen.
+
+Dabei kam heraus, dass `v1.3.0` **nie getaggt war**: Der CHANGELOG führt den Block seit dem 31. Juli, die `--skill-version`-Literale in `SKILL.md`, `audit_init.py` und dem Slash-Command stehen auf `1.3.0`, und `test_skill_version_literals.py` hält sie genau daran fest — nur Tag und Release fehlten, letzter war `v1.2.0`. Vier Angaben, drei davon einig, und die vierte war die einzige, die man von aussen sieht.
+
+Der Tag sitzt auf `5ef54e7`, dem letzten Commit vor den Doku-Änderungen dieses Blocks — also genau auf dem Stand, den der `v1.3.0`-Abschnitt beschreibt, und nicht auf einem späteren, der Dinge enthielte, die dort nicht stehen.
+
+**Nicht abgesichert:** «17 Helper-Scripts» und «426 pytest cases» erzwingt nichts. Sie sind schon einmal auseinandergelaufen (von 10 und 255), und sie werden es wieder — dieselbe Mechanik, gegen die `test_readme_counts.py` die Katalog-Zahlen hält. Entweder bekommen sie einen Test, oder sie sollten aus dem Status verschwinden.
+
 ### Umgestellt — englisches `README.md`, deutsches `README.de.md`
 
 Dieses Repo war das letzte im Portfolio mit einem einzigen, deutschsprachigen `README.md`. Der Repo-Validator prüft `README.md` aber grundsätzlich als englische Datei — er erkannte deshalb weder `## Mitwirken` noch `## Lizenz` noch den Autor und meldete sie als fehlend. Fünf ERROR und eine WARN, sämtlich Artefakte dieser einen Annahme. Jetzt: **0 ERROR, 0 WARN**, und dieselbe Struktur wie in den drei Schwester-Repos.
