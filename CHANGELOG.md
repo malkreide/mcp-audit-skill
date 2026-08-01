@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+
+- **CI checks the version badge against the CHANGELOG.** It was the last figure
+  in the README with nothing behind it, and it is the one most likely to be
+  forgotten: the release is cut, the badge stays. In `mcp-audit-skill` it sat
+  three releases behind before anyone noticed.
+
+  Source is the topmost `## [X.Y.Z]` heading — `[Unreleased]` carries no version
+  and is skipped by the pattern. The READMEs come from `glob("README*.md")`
+  rather than a maintained list, so a third language is covered automatically.
+  Both anchors are asserted separately: a CHANGELOG without a release heading and
+  a README without a badge each fail, because a check that finds nothing is green.
+
+  Mutation-tested four ways. One of them changed the design: removing the topmost
+  release heading does not report a missing anchor, it silently falls back to the
+  next release and blames the badge. The check still goes red, but the diagnosis
+  pointed at the wrong file — so the failure message now names the CHANGELOG line
+  it derived the expected version from, and says that either side may have moved.
 
 ## [1.1.0] - 2026-08-01
 
