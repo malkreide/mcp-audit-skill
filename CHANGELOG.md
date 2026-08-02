@@ -41,6 +41,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Exactly the drift this repository documents as a hazard: the probe skill
   described this one as "five rules" for two weeks after the sixth was added.
 
+- **The table in `SKILL.md` was still the old five-skill list.** The READMEs
+  became the quality chain — five repositories along the lifecycle, with
+  `mcp-continuous-auditor` in and `mcp-builder` beside it — and the table the
+  model actually reads kept naming the previous set. The CI guard added with the
+  chain only reads the READMEs, so nothing caught it. `SKILL.md` now carries the
+  same five in the same order, with the stage column, and keeps the two
+  detail lines that belong to this skill (the probe's section numbers, the
+  rule-to-`FID` mapping).
+
 - **The related-skills row for `mcp-audit` claimed more than it delivers.** It
   read «dieselben Regeln als Checks `FID-001` bis `FID-005`», which reads as if
   all rules had a check. Rules 1–5 do; rule 6 has none. Both READMEs already
