@@ -19,8 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   configuration error undercuts the very rule that exists to prevent guessing.
   Rule 6 already made this distinction for schema drift, but a request turned away
   at the transport never reaches the parsing layer. One paragraph and one
-  checklist item in `SKILL.md`, one sentence on the rule-3 line in both READMEs.
-  No new rule.
+  checklist item in `SKILL.md`, one sentence on the rule-3 line in both READMEs,
+  and a `search_or_raise` block in `reference/patterns.py` that names the
+  `except httpx.HTTPError: entries = []` clause as the bug it is. No new rule.
 
 - **Rule 5 now names the mock-free variant of the same failure.** A regression
   test in `mcp-transport-hardening` set the environment variable whose *absence*

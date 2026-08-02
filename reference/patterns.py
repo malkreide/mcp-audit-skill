@@ -109,6 +109,60 @@ def build_result(entries: list[dict], **envelope: Any) -> SearchResult:
 
 
 # ---------------------------------------------------------------------------
+# Rule 3, boundary — a failed request is not an empty result
+# ---------------------------------------------------------------------------
+
+class UpstreamUnreachableError(RuntimeError):
+    """The request never reached the source: rejected, refused or timed out.
+
+    Deliberately an error and not an empty result — the same line rule 6 draws
+    for a shape change, one layer further out. To the calling layer a rejected
+    request looks like "failed, no data", which is indistinguishable from zero
+    hits for anything that only asks "any records?".
+
+    Measured case: a request carrying a foreign Host header comes back as
+    HTTP 421 with the body ``Invalid Host header``. Formatted as an empty set it
+    arrives at the model with EMPTY_HINT attached — try a wildcard, widen the
+    fields — while the query never reached the source at all. The next step here
+    is a different one: check the configuration, do not widen the search.
+    """
+
+
+def _unreachable(exc: Exception) -> UpstreamUnreachableError:
+    return UpstreamUnreachableError(
+        f"The source did not answer the query ({exc}). This is not an empty "
+        "result: the request was turned away before any search ran. Check the "
+        "endpoint, the Host header and the credentials — widening the query "
+        "will not help."
+    )
+
+
+async def search_or_raise(client: Client, term: str, **envelope: Any) -> SearchResult:
+    """Read path for rule 3, with the boundary in place.
+
+    ✗ What this deliberately does NOT do::
+
+        try:
+            entries = await client.search(term)
+        except httpx.HTTPError:
+            entries = []          # a 421/401/403 becomes "nothing found"
+        return build_result(entries, **envelope)
+
+    That except clause is the whole bug: it hands a configuration error to the
+    model dressed as a fact about the corpus, and a hint that sends it the wrong
+    way. Note that a passing mock cannot see this either — the failure only
+    exists on the wire.
+    """
+    try:
+        entries = await client.search(term)
+    except httpx.HTTPStatusError as exc:      # 4xx/5xx — rejected, not answered
+        raise _unreachable(exc) from exc
+    except httpx.RequestError as exc:         # DNS, TLS, refused, timeout
+        raise _unreachable(exc) from exc
+    return build_result(entries, **envelope)
+
+
+# ---------------------------------------------------------------------------
 # Rules 4 + 5 — the tool description does the heavy lifting
 # ---------------------------------------------------------------------------
 
