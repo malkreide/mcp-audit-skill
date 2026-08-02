@@ -33,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The table in `SKILL.md` was still the old five-skill list.** The READMEs
+  became the quality chain — five repositories along the lifecycle, with
+  `mcp-continuous-auditor` in and `mcp-builder` beside it — while the table the
+  model actually reads still named the previous set. The CI guard added with the
+  chain only reads the READMEs, so nothing caught it. `SKILL.md` now carries the
+  same five in the same order, with the stage column, and keeps the pointer from
+  the audit row to the rule-to-check mapping below it.
+
 - **The rule-to-check mapping said four rules where it covers three.** The table
   maps rule 1 to `SDK-006`, rule 3 to `ARCH-013` and rule 4 to `SEC-024` — and
   the sentence directly below it already read «Wer nach den Regeln 1, 3 und 4

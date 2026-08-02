@@ -282,13 +282,17 @@ Sechs Dinge daran sind übertragbar:
 
 ## Verwandte Skills
 
-| Skill | Rolle |
-|---|---|
-| `mcp-builder` | Generische Bauanleitung — fremder Skill von Anthropic, dieser hier ergänzt ihn |
-| `mcp-data-source-probe` | Vorgehen *vor* dem Bau |
-| `mcp-data-fidelity` | Liefert er, was die Quelle hat? |
-| `mcp-transport-hardening` | **Dieser Skill:** kommt er hoch, weist er richtig ab? |
-| `mcp-audit` | Prüfung *nach* dem Bau — die Zuordnung steht unten |
+Fünf Repos, ein Lebenszyklus — gemeinsames GitHub-Topic [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain).
+
+| Phase | Repo | Frage, die es beantwortet |
+|---|---|---|
+| vor dem Bau | [`mcp-data-source-probe`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? |
+| im Bau | [`mcp-data-fidelity`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? Dieselbe stille Fehlerklasse eine Schicht höher — nicht ob eine Antwort kommt, sondern was sie enthält |
+| im Bau | **`mcp-transport-hardening`** | **Dieser Skill:** kommt er hoch, weist er richtig ab? |
+| nach dem Bau | [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Zuordnung Regel → Check steht unten |
+| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? |
+
+Daneben, nicht Teil der Kette: `mcp-builder` — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
 ### Welche Regel welcher Check ist
 
