@@ -6,6 +6,24 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Ergänzt — Qualitätsketten-Guard: die fünf Repos als Gruppe erkennbar
+
+Die fünf Repos verweisen in ihren READMEs seit je aufeinander. Auf GitHub taten sie es nicht: Die Schnittmenge der Topics über alle fünf war **leer**. `mcp-continuous-auditor` trug überhaupt keine Topics, die vier Skills benutzten zwei Vokabulare (`claude-skill` gegen `claude-skills`), und eine Homepage hatte eines von fünf. Damit war die Zusammengehörigkeit genau dort unsichtbar, wo sie jemand findet, der nicht schon eines der Repos offen hat — in der Suche.
+
+Dasselbe Muster wie bei `check_repo_description.py`, und aus demselben Grund: Metadaten ausserhalb der Arbeitskopie erreicht kein Test, also driften sie.
+
+- **`docs/quality-chain.json`** — die Mitgliedschaft steht an einer Stelle: gemeinsames Topic, gemeinsame Homepage, fünf Mitglieder mit Phase und Leitfrage in beiden Sprachen.
+- **`tools/check_quality_chain.py`** — prüft Topic, Homepage und Description aller fünf gegen das Manifest und druckt die fertigen `gh`-Kommandos. Er **schreibt nicht**: Topics zu setzen braucht ein Token mit Administrationsrechten, und Repo-Metadaten zu ändern gehört einem Menschen. Zwei Eigenschaften wiegen schwerer als die Einzelfälle — ein fehlendes Feld in der API-Antwort ist `UNVERIFIED` und nicht «keine Topics» (die Trennung, die `FID-006` verlangt), und eine nicht erreichbare API endet mit 1 statt mit «stimmt» (`DRIFT-003`).
+- **`.github/workflows/quality-chain.yml`** — montags 06:41 UTC, versetzt zu `repo-description.yml` (06:23), damit sich die beiden nicht dasselbe Rate-Limit teilen. Bewusst nicht bei `pull_request`: Die Korrektur ist erst nach dem Merge möglich, ein PR-Gate bestrafte das falsche Ereignis.
+- **`docs/hub-readme.md`** — Entwurf für ein optionales Hub-Repo `mcp-quality-chain`. Nötig ist es nicht: `github.com/topics/mcp-quality-chain` listet die fünf von selbst, sobald das Topic gesetzt ist.
+- **28 Tests** in `tests/test_quality_chain.py`, davon acht allein auf der Eigenschaft, dass ein fehlendes Feld weder als Befund erfunden noch als Bestehen gelesen wird.
+
+Der Guard läuft nur hier, prüft aber alle fünf Mitglieder — die vier Schwester-Repos brauchen dafür nichts.
+
+### Geändert — «Die Skill-Familie» heisst jetzt «Die MCP-Qualitätskette»
+
+Die Tabelle nannte vier Skills plus `mcp-builder` und liess `mcp-continuous-auditor` weg. Der ist kein Skill, gehört aber in die Kette: Er ist das einzige Glied, das nach dem Audit weiterprüft, und `OPS-005` stammt aus ihm. Die Tabelle führt jetzt fünf Repos entlang des Lebenszyklus — vor dem Bau, im Bau, nach dem Bau, im Betrieb. `mcp-builder` steht daneben statt darin, weil es ein fremdes Repo ist und das gemeinsame Topic nicht tragen kann.
+
 ### Geändert — `OPS-005` bekommt eine fünfte Ausprägung: der Geltungsbereich des grünen Hakens
 
 Die vier bisherigen Ausprägungen sind Abdeckungslücken — etwas lief nicht. Der Fall, der die fünfte auslöst, ist anders gelagert: Der Check lief, bestand, und war korrekt. Zu weit war nur, was aus ihm gelesen wurde. `ruff format --check .` belegt «formatgerecht unter der `line-length` dieses Repos»; gelesen wurde es als «formatgerecht». Für `scripts/check_version_sync.py`, das in 33 Repos liegt, war das zu wenig: eine 99 Zeichen lange Zeile, bei 100 einzeilig und grün, bei 88 mehrzeilig und rot. Der Bruch entstand beim Kopieren und fiel erst im Zielrepo auf, wo er wie ein Fehler am Skript aussah — die gemeldete Fehlermeldung nannte eine Datei, in der das genannte Symbol gar nicht vorkam.

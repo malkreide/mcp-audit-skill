@@ -1,0 +1,110 @@
+name: quality-chain
+
+# Die fünf Repos der Qualitätskette verweisen in ihren READMEs aufeinander.
+# Auf GitHub selbst taten sie das nicht: die Schnittmenge der Topics über alle
+# fünf war leer, `mcp-continuous-auditor` trug gar keine, und eine Homepage
+# hatte eines von fünf. Genau wie die Repo-Description liegt das ausserhalb
+# jeder Arbeitskopie — also fängt es kein Test, also driftet es.
+#
+# Dieser Job prüft die Metadaten aller fünf Mitglieder, nicht nur die dieses
+# Repos. Der Guard läuft hier, weil hier das Manifest und die übrige
+# Repo-übergreifende Werkzeugkiste liegen; die vier Schwester-Repos brauchen
+# dafür nichts.
+#
+# Bewusst NICHT bei `pull_request`: Topics und Homepage kann nur ein Mensch mit
+# Administrationsrechten setzen, und zwar nach dem Merge. Ein PR-Gate würde das
+# falsche Ereignis bestrafen und wäre nach zwei Wochen abgeschaltet — dieselbe
+# Überlegung wie in repo-description.yml.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/quality-chain.json"
+      - "tools/check_quality_chain.py"
+      - ".github/workflows/quality-chain.yml"
+  schedule:
+    # Montags 06:41 UTC. Ungerade Minute gegen den Scheduler-Stampede, und
+    # versetzt zu repo-description.yml (06:23), damit sich die beiden nicht
+    # dasselbe Rate-Limit teilen.
+    - cron: "41 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Metadaten der fünf Mitglieder gegen das Manifest prüfen
+        id: check
+        env:
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+          # Für öffentliche Repo-Metadaten nicht nötig, aber der Job macht fünf
+          # Anfragen und hebt damit das Limit von 60/h auf 1000/h.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python tools/check_quality_chain.py --format json > result.json \
+            || echo "failed=true" >> "$GITHUB_OUTPUT"
+          cat result.json
+
+      - name: Befund in die Job-Summary schreiben
+        if: always()
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+          p = pathlib.Path("result.json")
+          if not p.exists() or not p.read_text().strip():
+              print("## Qualitätskette\n\nKein Ergebnis — siehe Log des vorigen Schritts.")
+              raise SystemExit(0)
+          r = json.loads(p.read_text(encoding="utf-8"))
+          members = r["members"]
+
+          if r.get("ok"):
+              print(f"## Qualitätskette OK\n")
+              print(f"Alle {len(members)} Mitglieder tragen das Topic "
+                    f"`{r['topic']}`, die Homepage und eine Description.\n")
+              for m in members:
+                  print(f"- `{m['repo']}` — {m['stage']}")
+              raise SystemExit(0)
+
+          print("## Qualitätskette — Abweichungen\n")
+          print("| Repo | Phase | Befund |")
+          print("|---|---|---|")
+          for m in members:
+              if m["ok"]:
+                  print(f"| `{m['repo']}` | {m['stage']} | OK |")
+              else:
+                  detail = "<br>".join(m["problems"])
+                  print(f"| `{m['repo']}` | {m['stage']} | {detail} |")
+
+          commands = [c for m in members for c in m.get("fix", [])]
+          if commands:
+              print("\n**Zu setzen:**\n")
+              print("```bash")
+              for c in commands:
+                  print(c)
+              print("```")
+
+          print("\nTopics und Homepage stehen auf der Repo-Startseite in der "
+                "rechten Spalte **About**, Zahnrad-Symbol — *nicht* in den "
+                "Settings.\n\nDer Guard schreibt bewusst nicht: Topics zu setzen "
+                "braucht ein Token mit Administrationsrechten, und Repo-Metadaten "
+                "zu ändern gehört einem Menschen.")
+          PY
+
+      - name: Rot, wenn die Kette nicht zusammenhält
+        if: steps.check.outputs.failed == 'true'
+        run: |
+          echo "Mindestens ein Mitglied weicht ab oder konnte nicht geholt werden."
+          echo "Die fertigen Kommandos stehen in der Job-Summary."
+          exit 1

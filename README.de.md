@@ -269,17 +269,21 @@ Komplementär nutzbar — keiner der Genannten ersetzt die anderen.
 
 ## Verwandte Repos
 
-### Die Skill-Familie
+### Die MCP-Qualitätskette
 
-Fünf Skills, ein Bau. Jeder beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt — dieser kommt zuletzt:
+Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt — dieses kommt als viertes von fünf. Das gemeinsame GitHub-Topic ist [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain) und listet alle fünf auf einer Seite.
 
-| Skill | Rolle | Seine Regeln in diesem Katalog |
+| Phase | Repo | Seine Regeln in diesem Katalog |
 |---|---|---|
-| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generische Bauanleitung — fremder Skill von Anthropic | — |
-| [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Vorgehen *vor* dem Bau | liefert die Ground Truth, gegen die `FID-002` misst |
-| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? | [`FID-001`–`FID-005`](./checks/) |
-| [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? | [`SDK-006`](./checks/SDK-006.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md) |
-| **`mcp-audit-skill`** | **Dieser Skill:** Prüfung *nach* dem Bau | — |
+| vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | liefert die Ground Truth, gegen die `FID-002` misst |
+| im Bau | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | [`FID-001`–`FID-005`](./checks/) |
+| im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | [`SDK-006`](./checks/SDK-006.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md) |
+| nach dem Bau | **`mcp-audit-skill`** | **Dieser Skill** — der Katalog selbst |
+| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | der Vorfall hinter [`OPS-005`](./checks/OPS-005.md) — eine Testsuite, die kein Workflow je ausgeführt hat ([#29](https://github.com/malkreide/mcp-continuous-auditor/pull/29)) |
+
+Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
+
+Die Mitgliedschaft steht an einer Stelle: [`docs/quality-chain.json`](./docs/quality-chain.json). [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) prüft wöchentlich, ob alle fünf das Topic auf GitHub tatsächlich tragen — Metadaten, die keine Arbeitskopie testen kann, und genau deshalb hatten die fünf bis zum ersten Hinsehen kein einziges Topic gemeinsam.
 
 Zwei der Transport-Hardening-Regeln haben hier kein Gegenstück: die über den
 Bind, der die App erreichen muss, und die drei zur Beweisführung (Negativtests,

@@ -1,0 +1,47 @@
+{
+  "_comment": [
+    "Die einzige Quelle für die Zusammengehörigkeit der fünf Repos.",
+    "Gelesen von tools/check_quality_chain.py und tests/test_quality_chain.py.",
+    "Wer hier ein Mitglied hinzufügt, muss die Tabelle in README.md und",
+    "README.de.md mitziehen — der Test verlangt es."
+  ],
+  "topic": "mcp-quality-chain",
+  "homepage": "https://github.com/topics/mcp-quality-chain",
+  "members": [
+    {
+      "repo": "malkreide/mcp-data-source-probe-skill",
+      "stage": "before the build",
+      "stage_de": "vor dem Bau",
+      "question": "Is the source usable, and what does it hold?",
+      "question_de": "Taugt die Quelle, und was hat sie?"
+    },
+    {
+      "repo": "malkreide/mcp-data-fidelity-skill",
+      "stage": "in the build",
+      "stage_de": "im Bau",
+      "question": "Does it return what the source actually holds?",
+      "question_de": "Liefert er, was die Quelle hat?"
+    },
+    {
+      "repo": "malkreide/mcp-transport-hardening-skill",
+      "stage": "in the build",
+      "stage_de": "im Bau",
+      "question": "Does it come up, and does it turn away the right callers?",
+      "question_de": "Kommt er hoch, weist er richtig ab?"
+    },
+    {
+      "repo": "malkreide/mcp-audit-skill",
+      "stage": "after the build",
+      "stage_de": "nach dem Bau",
+      "question": "Does it hold up against the catalogue?",
+      "question_de": "Hält er gegen den Katalog?"
+    },
+    {
+      "repo": "malkreide/mcp-continuous-auditor",
+      "stage": "in operation",
+      "stage_de": "im Betrieb",
+      "question": "Does it still hold up tomorrow?",
+      "question_de": "Hält er morgen noch?"
+    }
+  ]
+}
