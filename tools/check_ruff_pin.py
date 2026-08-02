@@ -33,6 +33,19 @@ wird vor dem Vergleich abgeschnitten.
 Bewusst Regex statt PyYAML: für zwei Felder lohnt keine Abhängigkeit, und der
 Check läuft damit in einem Job, der nichts installiert hat.
 
+Formatierung: dieselben zwei Regeln wie in `check_version_sync.py` im übrigen
+Portfolio, denn diese Datei ist zum Kopieren gedacht, und dort stehen
+`line-length` 88, 100, 110 und 120 nebeneinander. `ruff format` zieht einen
+Ausdruck zusammen, sobald er in die jeweilige Breite passt — eine Zeile
+zwischen 89 und 120 Zeichen wäre also in der einen Hälfte der Repos
+formatgerecht und in der anderen nicht, und `ruff format --check` fiele beim
+Kopieren um:
+
+  - keine Zeile über 88 Zeichen — lange Ausdrücke bekommen eine lokale
+    Variable statt eines Umbruchs
+  - keine impliziten String-Verkettungen über mehrere Zeilen, ausser in
+    Aufrufen mit Magic Trailing Comma
+
 Exit-Codes:
   0  beide Pins nennen dieselbe Version
   1  Abweichung, oder einer der Pins fehlt
@@ -101,24 +114,20 @@ def compare(workflow_text: str, precommit_text: str) -> tuple[bool, str]:
     pins = workflow_pins(workflow_text)
     hook = precommit_pin(precommit_text)
 
+    workflow = LINT_WORKFLOW.as_posix()
+    config = PRECOMMIT_CONFIG.as_posix()
+
     if not pins:
-        return (
-            False,
-            f"KEIN PIN: in {LINT_WORKFLOW.as_posix()} steht kein `ruff==<version>`.",
-        )
+        return False, f"KEIN PIN: in {workflow} steht kein `ruff==<version>`."
     if hook is None:
-        return False, (
-            f"KEIN PIN: in {PRECOMMIT_CONFIG.as_posix()} fehlt das "
-            "ruff-pre-commit-Repo oder dessen `rev:`."
-        )
+        missing = "fehlt das ruff-pre-commit-Repo oder dessen `rev:`."
+        return False, f"KEIN PIN: in {config} {missing}"
 
     divergent = sorted({p for p in pins if p != hook})
     if divergent:
         others = ", ".join(repr(p) for p in divergent)
-        return False, (
-            f"DRIFT: {PRECOMMIT_CONFIG.as_posix()} pinnt Ruff auf {hook!r}, "
-            f"{LINT_WORKFLOW.as_posix()} auf {others}."
-        )
+        head = f"DRIFT: {config} pinnt Ruff auf {hook!r},"
+        return False, f"{head} {workflow} auf {others}."
 
     return True, f"Ruff-Pin OK ({hook}; beide Stellen stimmen ueberein)."
 
