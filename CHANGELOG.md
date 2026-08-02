@@ -31,6 +31,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so a check makes sure it has not quietly lost a member, in both language
   versions, and that it links the topic page.
 
+### Fixed
+
+- **`SKILL.md` still said «fünf Regeln» in two places.** The guiding question in
+  the introduction and the opening line of rule 4 both carried the count from
+  before rule 6 existed. Headings, both READMEs, the CHANGELOG and the CI counter
+  all say six — the CI counts `## Regel N` headings against the list items in the
+  READMEs and does not read prose, which is why this survived three releases.
+  Exactly the drift this repository documents as a hazard: the probe skill
+  described this one as "five rules" for two weeks after the sixth was added.
+
+- **The related-skills row for `mcp-audit` claimed more than it delivers.** It
+  read «dieselben Regeln als Checks `FID-001` bis `FID-005`», which reads as if
+  all rules had a check. Rules 1–5 do; rule 6 has none. Both READMEs already
+  stated it precisely — the table in `SKILL.md` now does too.
+
 ## [1.2.0] - 2026-08-02
 
 Two boundaries, both drawn from an incident in a neighbouring skill rather than

@@ -9,7 +9,7 @@ Companion zu `mcp-builder`. Dessen Best Practices decken ab, ob ein Server **kor
 
 Das ist eine eigene Fehlerklasse, weil sie still ist. HTTP 200, wohlgeformtes JSON, grüne Tests — und inhaltlich falsch. Ein Server, der zwei Prozent des Bestands durchsucht und das nicht meldet, produziert Antworten, die niemand als falsch erkennt.
 
-**Die Leitfrage bei jedem datenabfragenden Tool:** *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der fünf Regeln unten.
+**Die Leitfrage bei jedem datenabfragenden Tool:** *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der sechs Regeln unten.
 
 ---
 
@@ -85,7 +85,7 @@ Der Hinweis muss **konkret** sein. «Versuchen Sie eine andere Suche» ist kein 
 
 ## Regel 4 — Die Tool-Description ist eine Halluzinations-Oberfläche
 
-Die schwerste der fünf Regeln, weil sie kontraintuitiv ist: **Eine Formulierung, die eine Leermenge erklärt, erzeugt Konfabulation zuverlässiger als gar keine Formulierung.**
+Die schwerste der sechs Regeln, weil sie kontraintuitiv ist: **Eine Formulierung, die eine Leermenge erklärt, erzeugt Konfabulation zuverlässiger als gar keine Formulierung.**
 
 Realer Fall (`termdat-mcp`, 2026-07). Die Description enthielt:
 
@@ -206,6 +206,6 @@ Vier Dinge daran sind übertragbar:
 | `mcp-data-source-probe` | Vorgehen *vor* dem Bau: Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6) |
 | `mcp-data-fidelity` | **Dieser Skill:** liefert er, was die Quelle hat? |
 | [`mcp-transport-hardening`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
-| `mcp-audit` | Prüfung *nach* dem Bau: dieselben Regeln als Checks `FID-001` bis `FID-005` |
+| `mcp-audit` | Prüfung *nach* dem Bau: die Regeln 1–5 erscheinen dort als Checks `FID-001`–`FID-005`; Regel 6 hat keinen Check |
 
 Wer nach diesem Skill baut, besteht die FID-Checks. Wer sie beim Audit reisst, findet hier die Behebung.
