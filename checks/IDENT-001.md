@@ -34,6 +34,37 @@ Der Schaden ist nicht theoretisch. Bundesstellen ordnen Requests über den User-
 
 **Abgrenzung zu ARCH-012:** Dort geht es um die MCP-Protokollversion des SDK. Hier um die Version des Servers selbst.
 
+### Der Produkt-Token ist nicht der Dist-Name
+
+Ein User-Agent beginnt mit einem Produkt-Token, und niemand verpflichtet den Autor, dafür den Dist-Namen zu übernehmen. Zwei Server im Portfolio tun es nicht:
+
+| Dist-Name | gesendeter Produkt-Token |
+|---|---|
+| `swisstopo-mcp` | `SwisstopoMCP/…` |
+| `zurich-opendata-mcp` | `ZurichOpenDataMCP/…` |
+
+Beide sind korrekt — der Token identifiziert den Server eindeutig, und darum geht es. Falsch wird es beim **Vergleich**: Wer den Dist-Namen wörtlich gegen den Token hält, findet bei diesen beiden nichts. Das Muster `<dist>/<Ziffer>` trifft `SwisstopoMCP/0.3.1` nicht, und der Server fällt entweder als «kein User-Agent gefunden» durch oder — schlimmer — als *fremder* User-Agent auf, also als die Befundklasse für gefälschte Browser-Kennungen.
+
+Das ist die unangenehme Stelle: Ausgerechnet ein Server, der seinen User-Agent als Literal führt, wird von einem wörtlichen Vergleich nicht gesehen. Der Check ist dort blind für genau das, wogegen er existiert. **Zwei von 33** Paketen — keine Randerscheinung, sondern eine Schreibweise, die jeder zweite Autor plausibel findet.
+
+**Regel: Vor dem Vergleich normalisieren.** Kleinschreibung, Trennzeichen weg — auf beiden Seiten, und nur für die *Identität* des Tokens. Die Versionsnummer daneben wird weiterhin exakt verglichen; sie ist der eigentliche Gegenstand des Checks.
+
+```python
+import re
+
+def norm(token: str) -> str:
+    """Vergleichsform eines Produkt-Tokens: kleingeschrieben, ohne Trenner."""
+    return re.sub(r"[^a-z0-9]", "", token.casefold())
+
+norm("SwisstopoMCP")       == norm("swisstopo-mcp")        # True
+norm("ZurichOpenDataMCP")  == norm("zurich-opendata-mcp")  # True
+norm("Mozilla")            == norm("swisstopo-mcp")        # False — bleibt ein fremder UA
+```
+
+**Der Gegenfehler wäre, weiter zu normalisieren.** Ziffern oder Wortbestandteile wegzuwerfen, bis irgendetwas passt, macht die Prüfung wertlos: Ein fremder User-Agent muss fremd bleiben. Trennzeichen und Gross-/Kleinschreibung sind genau die beiden Freiheiten, die der Autor beim Schreiben desselben Namens hat — mehr nicht.
+
+Und wenn der Token nach der Normalisierung immer noch nicht passt, ist das **kein** Pass und auch nicht automatisch ein fremder UA: Ein Server darf sich `swisstopo/…` nennen, ein Kürzel wählen oder den Namen eines Vorgängerprojekts tragen. Dann ist die Zuordnung ungeklärt — `unverified`, von Hand nachzusehen. Siehe den `unverified`-Absatz in Modus 3.
+
 ## Verification
 
 ### Modus 1: code_review (Literal-Suche über das ganze Modul)
@@ -50,14 +81,25 @@ DEFAULT_USER_AGENT = (
 Ein `grep -i "user.agent"` mit Versionsfilter auf derselben Zeile findet das **nicht**. Die Konstante wurde an drei Stellen verwendet; der Server meldete weiter 0.2.0.
 
 ```bash
+# Dist-Name zu einem Muster machen, das auch SwisstopoMCP trifft:
+# jeder Trenner wird optional, die Suche läuft case-insensitiv (-i).
+DIST=$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['name'])")
+PAT=$(printf '%s' "$DIST" | sed 's/[-_]/[-_]?/g')
+
 # RICHTIG: das ganze src/ nach dem Wertmuster absuchen, unabhängig vom Bezeichner
-grep -rnE "$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['name'])")/[0-9]+\.[0-9]" src/
+grep -rniE "${PAT}/[0-9]+\.[0-9]" src/
+
+# FALSCH: wörtlicher Dist-Name, gross-/kleinschreibungsempfindlich —
+# findet `swiss-electricity-mcp/0.2.0`, aber nie `SwisstopoMCP/0.3.1`
+grep -rnE "${DIST}/[0-9]+\.[0-9]" src/
 
 # FALSCH: setzt voraus, dass Bezeichner und Wert dieselbe Zeile teilen
 grep -rn -i "user.agent" src/ | grep -E "[0-9]+\.[0-9]"
 ```
 
 Zusätzlich muss `USER_AGENT` auch die Schreibweise mit Unterstrich abdecken: `grep -i 'user-agent'` trifft die Konstante `USER_AGENT` **nicht**.
+
+Findet die normalisierte Suche nichts, ist das **kein Beleg für Abwesenheit**: Ein f-String-User-Agent trägt hinter dem Schrägstrich keine Ziffer und wird von diesem Modus grundsätzlich nicht gefunden — siehe Modus 3.
 
 **Pass-Pattern:**
 
@@ -127,9 +169,11 @@ Die Probe fährt deshalb **alle drei** und schreibt zu jedem Befund, welche ihn 
 
 **Ein fremder User-Agent ist eine eigene Befundklasse.** Im Sweep sandte ein Paket eine gefälschte Browser-Kennung. Das ist keine Drift, sondern eine Falschangabe gegenüber dem Upstream — es gehört nicht mit «Version veraltet» in denselben Topf, und die Behebung ist eine andere.
 
+**Diese Klasse ist auf die Normalisierung angewiesen.** «Fremd» heisst «gehört nicht zu diesem Server», und diese Aussage entsteht erst aus einem Vergleich. Ohne Normalisierung wären `SwisstopoMCP/0.3.1` und `Mozilla/5.0 (…)` derselbe Befund — der erste ist der Server, der zweite gibt sich als Browser aus. Ein Befundtopf, der beide enthält, wird beim ersten Fehlalarm nicht mehr gelesen.
+
 ## Pass Criteria
 
-- [ ] Keine Datei unter `src/` enthält `<dist>/<Ziffer>.<Ziffer>` als Literal
+- [ ] Keine Datei unter `src/` enthält `<dist>/<Ziffer>.<Ziffer>` als Literal — gesucht mit **normalisiertem** Dist-Namen (case-insensitiv, Trennzeichen optional), nicht wörtlich
 - [ ] Der User-Agent wird aus `__version__` gebaut (f-String oder Äquivalent)
 - [ ] `__version__` stammt aus den Paket-Metadaten (siehe IDENT-002)
 - [ ] Die Prüfung wurde über das **ganze Modul** geführt, nicht zeilenweise nach Schlüsselwort
@@ -137,6 +181,8 @@ Die Probe fährt deshalb **alle drei** und schreibt zu jedem Befund, welche ihn 
 - [ ] Der User-Agent wurde am **aus dem Index installierten** Paket aufgelöst, nicht nur am Checkout — ein sauberes Repository ist kein Nachweis
 - [ ] Die Auflösung lief über **mehr als eine** Strategie (Modul-Namespace, Quelltext-Literale, f-String-Muster); keine davon trägt allein
 - [ ] Ein nicht aufgelöster User-Agent wurde als `unverified` geführt, **nicht als «sendet keinen»** — das sind zwei Aussagen, und nur eine davon ist ein Pass
+- [ ] Der Produkt-Token wurde **normalisiert** gegen den Dist-Namen gehalten (`casefold`, Trennzeichen entfernt) — ein `SwisstopoMCP` gilt als derselbe Server wie `swisstopo-mcp`
+- [ ] Ein Token, der auch normalisiert nicht passt, ist `unverified` und von Hand zugeordnet — weder Pass noch automatisch «fremd»
 - [ ] Ein **fremder** User-Agent (Browser-Kennung o. Ä.) ist als eigener Befund geführt, nicht als Versionsdrift
 - [ ] Bei mehreren HTTP-Clients im Server: **alle** verwenden dieselbe Konstante
 
@@ -152,6 +198,9 @@ Die Probe fährt deshalb **alle drei** und schreibt zu jedem Befund, welche ihn 
 | Prüfung am Checkout statt am Index-Artefakt | 16 von 33 Paketen drifteten bei sauberem Repository — der Fix war gemergt, nie released |
 | UA über ein Modulattribut gelesen | Findet ihn nicht, wenn er in einem verschachtelten Dict oder inline in einem Konstruktor-Aufruf steht |
 | «Kein UA gefunden» als «sendet keinen» verbucht | Genau so wurden 24 Pakete für unauffällig erklärt, 16 davon drifteten |
+| Produkt-Token wörtlich gegen den Dist-Namen gehalten | Blind bei jedem Server, der sich `SwisstopoMCP` statt `swisstopo-mcp` nennt — 2 von 33, und ausgerechnet bei Literalen, also der Klasse, die dieser Check meldet |
+| PascalCase-Selbstname als «fremder UA» gemeldet | Fehlalarm in der Befundklasse, die für gefälschte Browser-Kennungen reserviert ist — nach dem zweiten liest sie niemand mehr |
+| So lange normalisiert, bis irgendetwas passt | Ziffern oder Wortteile wegzuwerfen lässt auch `Mozilla` passen. Erlaubt sind genau zwei Freiheiten: Schreibweise und Trennzeichen |
 | Fremder UA als Versionsdrift geführt | Andere Ursache, andere Behebung — eine Falschangabe gegenüber dem Upstream, keine vergessene Zahl |
 | Exit-Codes von `published_probe.py` und `shipped_probe.py` gleich behandelt | Die Vokabulare unterscheiden sich; `2` heisst hier «nicht installierbar», dort «Befund» |
 
@@ -177,6 +226,7 @@ S — Pro Server 10–20 Minuten, inklusive Laufzeitprobe.
 
 - Portfolio-Sweep 2026-07-29 (Repositories): 12 von 30 Servern betroffen
 - Portfolio-Sweep 2026-07-30 (**publizierte Artefakte**): 16 von 33 Paketen sendeten eine andere Version, als die sie installiert wurden; alle 16 mit gemergtem, nie released Fix. Dazu ein Paket mit gefälschtem Browser-User-Agent
+- Derselbe Sweep: 2 von 33 Paketen (`swisstopo-mcp` → `SwisstopoMCP/…`, `zurich-opendata-mcp` → `ZurichOpenDataMCP/…`) senden einen Produkt-Token, den ein wörtlicher Vergleich mit dem Dist-Namen nicht erkennt
 - `swiss-electricity-mcp#26` / `#27` — der Fall, den die zeilenweise Suche verfehlte
 - `mcp-continuous-auditor` → `scripts/published_probe.py` (Modus 3, liest das Artefakt), `scripts/identity_probe.py` (liest das Repository)
 - `IDENT-006` — derselbe Abstand zwischen Quelle und Artefakt, dort als eigener Check

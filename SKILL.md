@@ -5,7 +5,7 @@ description: Reproduzierbares Audit von MCP-Servern gegen einen versionierten Be
 
 # MCP Audit — Standardisiertes Audit-Vorgehen
 
-Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer, 90 Checks in elf Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
+Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer, 93 Checks in zwölf Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
 
 **Das Mantra in drei Zeilen:**
 
@@ -178,7 +178,7 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 
 **Ziel:** Den vollständigen Katalog (`checks/*.md`) parsen und nach `category` + `severity` indizieren.
 
-### 2.1 Elf Kategorien
+### 2.1 Zwölf Kategorien
 
 | Kategorie | Quelle | Typische Anzahl Checks | Status |
 |---|---|---|---|
@@ -191,9 +191,10 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 | `CH` | Custom — DSG/EDÖB, Schweiz-Compliance | 5–8 | 8 / 8 ✅ |
 | `OPS` | Anhang C + Custom — Test-Strategie, Doku, Phasenarchitektur, Audit-Redlichkeit, Pipeline-Ehrlichkeit | 3–6 | 5 / 5 ✅ |
 | `FID` | Custom — Datentreue: Scope, Recall, Leermengen | 4–6 | 5 / 5 ✅ |
-| `IDENT` | Custom — Identität: User-Agent, `__version__`, Manifest, Doku-Version, Release-Gap | 5–7 | 6 / 6 ✅ |
-| `DRIFT` | Custom — Upstream-Vertrag: Endpoint-Drift, Fallback-Semantik, Testgüte | 4–6 | 5 / 5 ✅ |
-| **Total** | | **~83** | **90 / 90 ✅** |
+| `IDENT` | Custom — Identität: User-Agent, `__version__`, Manifest, Doku-Version, Release-Gap, Gesundheit des Artefakts | 5–8 | 7 / 7 ✅ |
+| `DRIFT` | Custom — Upstream-Vertrag und Repo-Prosa: Endpoint-Drift, Fallback-Semantik, Testgüte, CHANGELOG gegen Code | 4–7 | 6 / 6 ✅ |
+| `DEP` | Custom — Auflösungsraum des publizierten Artefakts: Obergrenzen, Major-Wechsel | 1–3 | 1 / 1 ✅ |
+| **Total** | | **~83** | **93 / 93 ✅** |
 
 ### 2.2 Severity-Stufen
 
@@ -280,6 +281,33 @@ Nur die dritte Frage rechtfertigt eine neue Datei in `checks/`.
 **Der Gegenfehler:** Einen Check so weit dehnen, bis er ein Sammelbehälter wird. Das Signal ist konkret — wenn die Erweiterung ein `oder` in die Pass-Criteria zwingt, das mit dem ursprünglichen Kriterium nichts zu tun hat, ist es ein neuer Check. Ein Check muss in **einem** Schritt behebbar bleiben.
 
 **Eselsbrücke:** *«Zuerst fragen, ob die Regel zu kurz gegriffen hat — nicht, ob sie fehlt.»*
+
+### 2.6 Ein Check, der nichts findet, muss sagen können, ob er gesucht hat
+
+Diese Regel gilt für den **Katalog selbst**, nicht für einen einzelnen Server. Sie ist die Bedingung dafür, dass die Ergebnisse aller anderen Checks etwas bedeuten.
+
+Ein Check hat drei mögliche Ausgänge, nicht zwei:
+
+| Ausgang | Bedeutung |
+|---|---|
+| `pass` | Gesucht, und der geprüfte Zustand liegt vor |
+| `fail` | Gesucht, und ein Verstoss liegt vor |
+| `todo` / `unverified` | **Nicht gesucht, oder gesucht und die Form nicht erkannt** |
+
+Die dritte Zeile ist die, die in der Praxis verschwindet. «Nichts gefunden» und «nicht hingeschaut» erzeugen dieselbe Beobachtung — eine leere Ergebnisliste — und werden deshalb ohne Zutun zum selben Ausgang zusammengelegt. Der Ausgang, zu dem sie zusammenfallen, ist immer `pass`, weil ein Werkzeug meldet, was es findet, und nicht, was es nicht gesucht hat.
+
+**Der Beleg** steht in `IDENT-001`: Die erste Fassung der Identitäts-Probe erklärte **24 Pakete für unauffällig, von denen 16 drifteten**. Kein Fehler in der Vergleichslogik — die Probe erkannte die Form des User-Agents nicht (verschachteltes Dict, Literal im Konstruktor, f-String ohne Ziffer) und meldete für diese Pakete nichts. Nichts las sich als «in Ordnung». Zwei Drittel der Befunde gingen an genau dieser Stelle verloren, und die Zusammenfassung war grün.
+
+**Was das für jeden Check im Katalog heisst:**
+
+1. **Jeder `automated`-Modus braucht einen Ausgang für «Harness lief nicht».** Ein Exit-Code, ein Statuswert, irgendetwas Unterscheidbares — und er wird auf `todo` abgebildet, nie auf `pass`. `IDENT-006` und `IDENT-007` tun das mit Exit `127`, `IDENT-001` mit `unverified`.
+2. **Eine Pass-Criterion in der Form «kein X gefunden» ist unvollständig.** Sie muss sagen, *wie* gesucht wurde und woran man erkennt, dass die Suche funktioniert hat. Sonst besteht sie jedes Repo, in dem das Werkzeug versagt hat.
+3. **Wo die Erkennung selbst scheitern kann, gehört das als eigener Befundwert in den Check** — nicht in eine Fussnote. `IDENT-001` führt `unverified` als Ergebnis mit eigenem Exit-Code, gerade damit es nicht in `pass` fällt.
+4. **Gegenprobe beim Schreiben des Checks:** Die Verifikation einmal gegen ein Repo laufen lassen, in dem der Verstoss sicher vorliegt. Meldet sie nichts, prüft sie nichts — dieselbe Gegenprobe wie bei jedem Gate, siehe [§4.1](#41-drei-verifikationsmodi).
+
+**Verhältnis zu `OPS-005`:** Dort geht es um die Pipeline eines auditierten Servers — ein Test, der nie lief, sieht aus wie ein Test, der bestand. Hier geht es eine Ebene höher um die Bauart der Checks selbst. Dieselbe Asymmetrie, zwei verschiedene Adressaten: `OPS-005` prüfen wir an fremden Repos, §2.6 schulden wir dem eigenen Katalog.
+
+**Eselsbrücke:** *«Schweigen ist kein Freispruch.»*
 
 ---
 
@@ -698,6 +726,38 @@ python "$SKILL_BASE/tools/tracker_sync.py" --backend notion update "$SERVER_NAME
 
 ---
 
+## Portfolio-Hygiene: ein Commit, 33 Repos
+
+Findings aus diesem Katalog treffen selten einen Server allein. Ein User-Agent aus den Metadaten, eine Obergrenze in der Dependency-Range, ein Header im HTTP-Client — die Remediation ist dann **einmal geschrieben und 33-mal angewandt**. Für diesen Fall gilt eine Regel, die keinem einzelnen Repo ansieht, warum es sie gibt.
+
+### Gemeinsam ausgerollter Code wird auf die schmalste konfigurierte Zeilenbreite geschrieben
+
+Im Portfolio stehen `line-length` 88, 100 und 120 nebeneinander. Das ist für sich harmlos: Jedes Repo formatiert nach seiner eigenen Konfiguration, und `ruff format --check` in seiner CI ist zufrieden.
+
+Ein identischer Commit über alle Repos ist es nicht. `ruff format` **zieht einen Ausdruck zusammen, sobald er passt**, und bricht ihn um, sobald er nicht mehr passt — beides deterministisch aus der konfigurierten Breite. Derselbe Text kann deshalb nicht gleichzeitig die Ausgabe des Formatters für 88 und für 120 sein, sobald irgendeine Zeile dazwischenliegt:
+
+- Für 120 geschrieben, in ein 88er-Repo kopiert: Der Formatter dort will umbrechen → `--check` rot.
+- Für 88 umgebrochen, in ein 120er-Repo kopiert: Der Formatter dort will zusammenziehen → `--check` rot.
+
+Die Formulierung, die überall hält, ist deshalb nicht «für 88 umgebrochen», sondern **kurz genug, dass die zusammengezogene Form in 88 Spalten passt**. Dann hat kein Formatter etwas zu tun, und alle drei Breiten erzeugen denselben Text. Praktisch heisst das: eine Zwischenvariable statt eines langen Ausdrucks, ein kürzerer Bezeichner, ein Aufruf auf zwei Anweisungen verteilt.
+
+**Vor dem Ausrollen prüfen, nicht danach:**
+
+```bash
+for W in 88 100 120; do
+  ruff format --check --line-length "$W" path/to/patch.py \
+    || echo "nicht formatkonform bei line-length $W"
+done
+```
+
+Alle drei müssen still bleiben. Bleibt eine übrig, ist der Patch noch nicht portfolio-tauglich — dann entweder das Fragment kürzen, oder bewusst darauf verzichten, denselben Commit auszurollen, und stattdessen pro Repo formatieren lassen. Das ist zulässig, kostet aber genau die Eigenschaft, wegen der man einen identischen Commit wollte: dass 33 Diffs vergleichbar sind.
+
+**Woher die Regel kommt:** aus einem roten CI-Lauf und 33 Force-Pushes. Der Patch war in einem Repo mit `line-length 120` geschrieben und getestet, sah überall gleich aus und war in jedem 88er-Repo nicht formatkonform. Der Fehler fiel erst in der CI auf, weil lokal jedes Repo mit seiner eigenen Konfiguration grün war.
+
+**Eselsbrücke:** *«Der schmalste Wert im Portfolio schreibt den Code.»*
+
+---
+
 ## Anti-Patterns (vermeiden)
 
 1. **«Wir machen den Audit, sobald alles fertig ist»** — Audits sind iterativ. Server in Phase 1 auditieren, nicht erst in Phase 3.
@@ -708,6 +768,8 @@ python "$SKILL_BASE/tools/tracker_sync.py" --backend notion update "$SERVER_NAME
 6. **«Audit-Report ohne Remediation-Plan»** — wertlos. Findings ohne Fix-Vorschlag werden nicht angegangen.
 7. **«Kein Check hat das gemeldet, also fehlt ein Check»** — meistens fehlt keiner. Meistens hat einer zu kurz gegriffen. Siehe [§2.5](#25-reichweite-vor-neuer-regel).
 8. **«`grep` findet den Satz nicht, also fehlt die Doku»** — `grep` ist zeilenweise. Ein Satz, der umbricht, wird nie gefunden. Vor dem Vergleich normalisieren, siehe [§4.1](#whitespace-normalisieren-bevor-auf-text-geprüft-wird).
+9. **«Das Werkzeug hat nichts gemeldet, also ist der Check bestanden»** — nur wenn das Werkzeug gelaufen ist *und* gefunden hätte. Sonst ist es `todo`, nicht `pass`. Siehe [§2.6](#26-ein-check-der-nichts-findet-muss-sagen-können-ob-er-gesucht-hat).
+10. **«Der Patch läuft in meinem Repo grün, also überall»** — bei portfolio-weiten Fixes entscheidet die schmalste konfigurierte Zeilenbreite, nicht die eigene. Siehe [Portfolio-Hygiene](#portfolio-hygiene-ein-commit-33-repos).
 
 ---
 
@@ -719,6 +781,8 @@ python "$SKILL_BASE/tools/tracker_sync.py" --backend notion update "$SERVER_NAME
 - **Evidenz-Pflicht:** *«Ein Finding ohne `path/to/file.py:42` ist eine Meinung, kein Befund.»*
 - **Katalog-Erweiterung:** *«Zuerst fragen, ob die Regel zu kurz gegriffen hat — nicht, ob sie fehlt.»*
 - **Textprüfung:** *«Wer auf Zeilenumbrüche prüft, prüft den Zeilenumbruch — nicht den Satz.»*
+- **Leere Ergebnisliste:** *«Schweigen ist kein Freispruch.»*
+- **Portfolio-Rollout:** *«Der schmalste Wert im Portfolio schreibt den Code.»*
 
 ---
 
@@ -738,6 +802,7 @@ python "$SKILL_BASE/tools/tracker_sync.py" --backend notion update "$SERVER_NAME
 - [ ] Alle anwendbaren Checks abgearbeitet (kein Skip ohne Begründung)
 - [ ] Checks in Severity-Reihenfolge ausgeführt (`critical` zuerst)
 - [ ] Pro Check Evidenz mit Datei + Zeilen-Referenz dokumentiert
+- [ ] Jeder Check ohne Fund belegt, dass gesucht wurde — sonst `todo` statt `pass` (§2.6)
 
 **Schritt 5 — Findings**
 - [ ] Pro fehlgeschlagenem Check ein Finding nach Template

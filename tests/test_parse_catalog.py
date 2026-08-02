@@ -56,11 +56,12 @@ class TestRealCatalog:
         # Expected per SKILL.md table.
         assert counts == {
             "ARCH": 13,
-            "DRIFT": 5,
+            "DEP": 1,
+            "DRIFT": 6,
             "CH": 8,
             "FID": 5,
             "HITL": 5,
-            "IDENT": 6,
+            "IDENT": 7,
             "OBS": 6,
             "OPS": 5,
             "SCALE": 7,

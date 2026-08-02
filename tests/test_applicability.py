@@ -301,8 +301,9 @@ class TestRealCatalog:
         # content changes, this number must be updated together with a
         # CHANGELOG entry.
         # Note: total count of checks (79 → 85 mit DRIFT und IDENT-006,
-        # 86 mit OPS-005, 87 mit SCALE-007)
-        assert len(results) == 90
+        # 86 mit OPS-005, 87 mit SCALE-007, 93 mit IDENT-007, DEP-001 und
+        # DRIFT-006)
+        assert len(results) == 93
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
         # test fails loudly only on grammar drift.
