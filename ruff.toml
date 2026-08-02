@@ -1,0 +1,15 @@
+# Nur Formatierung, kein Linting.
+#
+# Die Python-Dateien dieses Repos liegen unter `reference/` und sind
+# Copy-Paste-Vorlagen fuer die Zielcodebasis, kein lauffaehiges Modul. Sie
+# referenzieren absichtlich Namen aus der Zielumgebung — ruff meldet das
+# korrekt als F821, aber es ist hier kein Defekt, sondern der Zweck. Die CI
+# fuehrt sie deshalb nur durch `compileall` und `ruff format --check`.
+#
+# `select = []` schaltet das Linting aus: wer hier doch einmal `ruff check`
+# laufen laesst, bekommt keine Fehlalarme auf Vorlagen-Code. Damit steht die
+# Entscheidung in der Konfiguration statt nur in einem Commit-Text.
+target-version = "py311"
+
+[lint]
+select = []
