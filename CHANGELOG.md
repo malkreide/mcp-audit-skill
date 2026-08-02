@@ -31,6 +31,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so a check makes sure it has not quietly lost a member, in both language
   versions, and that it links the topic page.
 
+### Fixed
+
+- **The rule-to-check mapping said four rules where it covers three.** The table
+  maps rule 1 to `SDK-006`, rule 3 to `ARCH-013` and rule 4 to `SEC-024` — and
+  the sentence directly below it already read «Wer nach den Regeln 1, 3 und 4
+  baut» and «Für die Regeln 2 und 5–7 gilt das nicht». Four is the count of the
+  rules the catalogue does *not* see; it had been stated as the number it covers.
+  Corrected in `SKILL.md` and both READMEs. Cross-checked from the other side:
+  the row for this skill in `mcp-audit-skill`'s README lists exactly three
+  checks.
+
 ## [1.2.0] - 2026-08-02
 
 Two documentation changes, no rule added, changed or removed — seven rules, as

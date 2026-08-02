@@ -96,7 +96,7 @@ Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihe
 
 Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
-Der Audit-Katalog deckt vier der sieben Regeln ab: Regel 1 ist `SDK-006`, Regel 3
+Der Audit-Katalog deckt drei der sieben Regeln ab: Regel 1 ist `SDK-006`, Regel 3
 ist `ARCH-013`, Regel 4 ist `SEC-024` (mit `SEC-005` als ausgehender
 Gegenrichtung). Für die Regeln 2 und 5–7 gibt es keinen Check — die Zuordnung in
 [SKILL.md](SKILL.md) benennt die Lücken, statt sie zu überdecken.

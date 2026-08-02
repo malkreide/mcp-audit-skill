@@ -292,7 +292,7 @@ Sechs Dinge daran sind übertragbar:
 
 ### Welche Regel welcher Check ist
 
-Der Katalog von [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) deckt vier der sieben Regeln ab. Die Lücken sind hier benannt, statt sie durch eine ungefähre Zuordnung zu verdecken:
+Der Katalog von [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) deckt drei der sieben Regeln ab. Die Lücken sind hier benannt, statt sie durch eine ungefähre Zuordnung zu verdecken:
 
 | Regel | Check |
 |---|---|

@@ -96,7 +96,7 @@ Five repositories, one lifecycle. Each answers a different question, in the orde
 
 Alongside, not part of the chain: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — Anthropic's generic build guidance, complemented rather than replaced. It is someone else's repository and cannot carry the topic.
 
-The audit catalogue covers four of the seven rules: rule 1 is `SDK-006`, rule 3 is
+The audit catalogue covers three of the seven rules: rule 1 is `SDK-006`, rule 3 is
 `ARCH-013`, rule 4 is `SEC-024` (with `SEC-005` as its outbound counterpart).
 Rules 2 and 5–7 have no check — see the mapping in [SKILL.md](SKILL.md), which
 names the gaps rather than papering over them.
