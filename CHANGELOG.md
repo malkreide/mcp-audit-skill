@@ -8,6 +8,16 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 > **Zur Lesart der Zahlen in diesem Abschnitt:** Jeder Eintrag nennt den Katalogstand *zum Zeitpunkt seiner Änderung*. Die Einträge weiter unten sagen deshalb «90 Checks in 11 Kategorien», und das war dort richtig. Der Stand, den dieses Release ausliefert, steht hier oben: **93 Checks in zwölf Kategorien, 431 Tests.**
 
+### Ergänzt — `FID-003` gilt in beide Richtungen: ein Fehlschlag ist keine Leermenge
+
+`FID-003` führte «Leermenge als `isError` maskiert» seit dem ersten Tag als Anti-Pattern. Die Gegenrichtung stand nirgends, und sie ist die häufigere: **Ein Transport- oder Autorisierungsfehler kommt bei der aufrufenden Schicht als Fehlschlag ohne Daten an — also wie eine Leermenge**, und wer nur prüft, ob Datensätze da sind, reicht ihn als solche durch.
+
+Gemessener Fall aus dem Transport-Vorfall: Eine Anfrage mit fremdem Host-Header bekommt `HTTP 421` mit dem Body `Invalid Host header` (Ursache in `SEC-016` und `SEC-024`). Daraus wird ein Result mit `returned: 0` — und, wenn der Server diesen Check sonst sauber erfüllt, mit dem Hinweis aus genau dieser Prüfung: Wildcard versuchen, Felder erweitern. Der Hinweis zeigt dann auf die Query, während die Abfrage nie angekommen ist. **Ein Konfigurationsfehler unterläuft damit den Check, der das Raten verhindern soll** — die Umsetzung macht den Fall schlimmer als die Nicht-Umsetzung.
+
+Kein neuer Check, nach §2.5 Frage 2: Es fehlte keine Dimension, die Verification griff nur auf einen Pfad. Die Gegenprobe zum Sammelbehälter fällt hier eindeutig aus — das Kriterium ist dasselbe (was das Modell sieht, wenn keine Datensätze kommen) und in einem Schritt behebbar (Fehlerkanal statt Result).
+
+Dazu ein dritter Verifikationsmodus, weil dieser Pfad ohne Bestand prüfbar ist: den Abruf gezielt scheitern lassen und schauen, was am Tool ankommt. `isError` mit Konfigurations-Meldung ist `pass`, jedes wohlgeformte `returned: 0` ist `fail` — und lief das Harness nicht, ist es `todo`, nicht `pass` (§2.6). Katalogstand unverändert: 93 Checks in zwölf Kategorien.
+
 ### Hinzugefügt — `IDENT-007`: das veröffentlichte Artefakt startet in einer leeren Umgebung
 
 Die Gesundheits-Achse, die `IDENT-006` im Eintrag weiter unten dazubekommen hat, ist jetzt ein eigener Check. Der Auslöser ist ein zweiter Fall derselben Klasse, diesmal bei `swiss-energy-mcp`: **Die Versionsnummern stimmten überein, der Gap-Check war zufrieden — und die Installation war trotzdem tot.** Nicht weil die Prüfung falsch gerechnet hätte, sondern weil sie eine andere Frage beantwortet.
