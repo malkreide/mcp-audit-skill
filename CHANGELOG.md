@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-02
+
+Three changes: one to the tooling, two to the procedure. The repository's checks
+now live in a single file that can be run before opening a pull request. The
+transport decision sits where its consequence becomes visible — among the
+consequences of the architecture decision. And 3.5 separates an outage from a
+rejection, because the two carry different next steps and "try again in ten
+minutes" does not terminate on a wrong host header.
+
+The five steps and the four disciplines are unchanged, and step 3 still has six
+points: 3.5 grew, no section was added.
+
 ### Added
 
 - **`scripts/validate.sh` — alle Checks des Repos in einem Kommando.** Vier der
