@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`SKILL.md` gains the quality chain as its closing section.** The change below
+  renewed the table in both READMEs; `SKILL.md` named the neighbouring skills
+  only in passing — in the transport hint and in the finding at the end — and
+  that is the file the model actually receives. It now carries the same five
+  repositories in the same order, with a stage column, and with the entries that
+  matter from this end: `mcp-data-fidelity` shipped here under `companion/`
+  until it got its own repository, and `mcp-continuous-auditor` is the recall
+  ground truth from 1.4 measured continuously rather than once.
+
+  The CI guard added with the chain reads the READMEs only. `SKILL.md` is
+  structured differently in every repository of the chain and deliberately
+  carries a repo-specific third column, so it is checked by reading, not by
+  pattern.
+
 ### Changed
 
 - **The related-repositories table is now the MCP quality chain, and it names all

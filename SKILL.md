@@ -564,3 +564,19 @@ Was der Fall über das Vorgehen gezeigt hat, in absteigender Unbequemlichkeit:
 **Metapher:** *«Ein optionaler Filter ist wie ein Museumswärter, der ungefragt entscheidet, welchen Flügel du zu sehen bekommst — und dich freundlich versichert, du habest alles gesehen.»*
 
 **Querverweis:** Als Audit-Checks kodifiziert in `mcp-audit` unter `FID-001` bis `FID-005`. Wer diesen Skill korrekt anwendet, besteht sie; wer sie beim Audit reisst, findet hier das Vorgehen zur Behebung.
+
+---
+
+## Verwandte Skills
+
+Fünf Repos, ein Lebenszyklus — gemeinsames GitHub-Topic [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain). Dieser Skill kommt zuerst.
+
+| Phase | Repo | Frage, die es beantwortet |
+|---|---|---|
+| vor dem Bau | **`mcp-data-source-probe`** | **Dieser Skill:** taugt die Quelle, und was hat sie? |
+| im Bau | [`mcp-data-fidelity`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? Sechs Regeln für den Abfrage-Code; als Audit-Checks `FID-001`–`FID-005`. Wurde hier unter `companion/` ausgeliefert, bis er ein eigenes Repo bekam |
+| im Bau | [`mcp-transport-hardening`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Die Umsetzung im Einstiegspunkt und das Abweis-Verhalten (siehe «Welchen Transport-Modus unterstützen?») |
+| nach dem Bau | [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? |
+| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Die Recall-Ground-Truth aus 1.4, laufend statt einmalig gemessen |
+
+Daneben, nicht Teil der Kette: `mcp-builder` — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
