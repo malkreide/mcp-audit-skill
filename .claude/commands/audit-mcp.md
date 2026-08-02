@@ -6,7 +6,7 @@ allowed-tools: Bash(git:*), Bash(gh:*), Bash(grep:*), Bash(find:*), Bash(curl:*)
 
 # /audit-mcp — MCP-Server Audit-Workflow
 
-Du führst jetzt einen strukturierten Audit eines MCP-Servers durch, basierend auf dem `mcp-audit-skill`-Katalog (11 Kategorien: ARCH, SDK, SEC, SCALE, OBS, HITL, CH, OPS, FID, IDENT, DRIFT; vollständige Check-Liste in `checks/MANIFEST.txt`).
+Du führst jetzt einen strukturierten Audit eines MCP-Servers durch, basierend auf dem `mcp-audit-skill`-Katalog (12 Kategorien: ARCH, SDK, SEC, SCALE, OBS, HITL, CH, OPS, FID, IDENT, DRIFT, DEP; vollständige Check-Liste in `checks/MANIFEST.txt`).
 
 Argument: `$ARGUMENTS` (Repo-URL oder lokaler Pfad zum Server-Repo)
 

@@ -85,8 +85,19 @@ class TestRealCatalogUnchanged:
         #
         # OPS-005 is the first check to take the documented route: merged
         # advisory, promoted to enforced once a portfolio run shows whether it
-        # is cut correctly.
-        assert advisory_ids(parse_catalog(CHECKS_DIR)) == ["OPS-005"]
+        # is cut correctly. DEP-001 and DRIFT-006 arrived the same way — both
+        # would turn a large part of the portfolio red on the day they merge
+        # (uncapped ranges, stale [Unreleased] prose), which is precisely the
+        # situation the stage exists for.
+        #
+        # IDENT-007 is deliberately NOT on this list. It is not a new demand
+        # but the health axis carved out of IDENT-006, where it was already
+        # enforced; entering it as advisory would be a silent demotion.
+        assert advisory_ids(parse_catalog(CHECKS_DIR)) == [
+            "DEP-001",
+            "DRIFT-006",
+            "OPS-005",
+        ]
 
     def test_the_mechanism_is_not_a_blanket_demotion(self):
         # An advisory stage is a bridge for a specific new check, not a way to

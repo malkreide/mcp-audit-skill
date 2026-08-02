@@ -122,9 +122,12 @@ TOTAL_ROW = re.compile(
 )
 # Provenance-Zeile eines eigenen Layers: «8 Checks (`CH-*`)».
 # Case-insensitive, damit eine Fassung, die «checks» klein schreibt, nicht
-# stillschweigend ungeprüft bleibt.
+# stillschweigend ungeprüft bleibt. Die Einzahl ist mitgemustert: Ein Layer
+# mit genau einem Check schreibt «1 Check (`DEP-*`)», und ein Muster, das
+# nur den Plural kennt, hätte ausgerechnet den neuesten Layer ungeprüft
+# durchgelassen — sichtbar erst, wenn er wächst.
 LAYER_ROW = re.compile(
-    r"(?P<count>\d+)\s+Checks\s+\(`(?P<prefix>[A-Z]+)-\*`\)", re.IGNORECASE
+    r"(?P<count>\d+)\s+Checks?\s+\(`(?P<prefix>[A-Z]+)-\*`\)", re.IGNORECASE
 )
 BADGE_URL = re.compile(r"img\.shields\.io/badge/Checks-(\d+)-")
 BADGE_ALT = re.compile(r"!\[Checks:\s*(\d+)\]")

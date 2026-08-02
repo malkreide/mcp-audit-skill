@@ -6,6 +6,94 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+> **Zur Lesart der Zahlen in diesem Abschnitt:** Jeder Eintrag nennt den Katalogstand *zum Zeitpunkt seiner Änderung*. Die Einträge weiter unten sagen deshalb «90 Checks in 11 Kategorien», und das war dort richtig. Der Stand, den dieses Release ausliefert, steht hier oben: **93 Checks in zwölf Kategorien, 431 Tests.**
+
+### Hinzugefügt — `IDENT-007`: das veröffentlichte Artefakt startet in einer leeren Umgebung
+
+Die Gesundheits-Achse, die `IDENT-006` im Eintrag weiter unten dazubekommen hat, ist jetzt ein eigener Check. Der Auslöser ist ein zweiter Fall derselben Klasse, diesmal bei `swiss-energy-mcp`: **Die Versionsnummern stimmten überein, der Gap-Check war zufrieden — und die Installation war trotzdem tot.** Nicht weil die Prüfung falsch gerechnet hätte, sondern weil sie eine andere Frage beantwortet.
+
+Zwei Checks statt einem, weil §2.5 des Skills genau dieses Signal nennt: Sobald eine Erweiterung ein «oder» in die Pass-Criteria zwingt, das mit dem ursprünglichen Kriterium nichts zu tun hat, ist es ein neuer Check. `IDENT-006` hatte seit dem Umbau zwei Achsen, zwei Kriterienblöcke, zwei Befundcode-Tabellen und zwei Remediation-Stränge — und ein Verstoss auf der einen Achse war in einem Schritt behebbar, auf der anderen nicht. Ab jetzt:
+
+| Check | Frage | Ist die Antwort messbar aus Metadaten? |
+|---|---|---|
+| `IDENT-006` | Hat jemand vergessen zu publizieren? | ja — Versionsnummern in Repo, Tag und Index |
+| `IDENT-007` | Läuft das, was auf dem Index liegt? | nein — nur durch Installieren und Starten |
+
+Neu gegenüber der Fassung in `IDENT-006` ist vor allem **die Umgebung als Teil des Kriteriums**. «Frisch» genügt nicht; die Umgebung muss *leer* sein. Ein venv mit dem Lockfile des Repos pinnt genau die Verschiebung weg, die den Vorfall ausmacht, und ein `pip install -e .` prüft den Branch — also das, was CI ohnehin prüft. Dazu ein dritter Modus, der fragt, ob die Prüfung **wiederkehrend** läuft: Der Zustand kann sich ohne Commit ändern, deshalb ist eine einmalige Messung hier ein Datum und kein Ergebnis.
+
+`IDENT-007` ist **`enforced`**, nicht `advisory`. Der Weg über die Advisory-Stufe (§2.3) existiert, damit eine *neue Forderung* das Portfolio nicht am Merge-Tag rot färbt. Diese Forderung ist nicht neu — sie stand seit dem letzten Eintrag als Achse 1 in `IDENT-006` und war dort blockierend. Sie als `advisory` einzutragen wäre eine stille Demotion, also genau das, wovor die Adoptionsstufe schützen soll.
+
+### Hinzugefügt — Kategorie `DEP` mit `DEP-001`: Obergrenzen für Abhängigkeiten, die den Import tragen
+
+`mcp[cli]>=1.28.1` sieht aus wie eine Mindestanforderung und ist eine Vollmacht. Am 2026-07-28 erschien `mcp` 2.0.0 und entfernte `mcp.server.fastmcp` ersatzlos; von da an löste jede frische Installation zweier Portfolio-Server eine Major-Version auf, gegen die ihr Code nicht lief. **Kein Commit, kein roter Test, kein Release — und trotzdem ein anderes Artefakt.**
+
+Bisher stand das als Anti-Pattern-Zeile und als Remediation-Schritt in `IDENT-006`. Das war zu wenig: Es ist keine Nachbemerkung zu einem Release-Problem, sondern die Ursache einer eigenen Fehlerklasse, und sie ist an einer anderen Stelle zu beheben (`pyproject.toml`, nicht der Release-Prozess). Nach §2.5 ist das die dritte Frage mit «ja» — eine eigene Prüfdimension, kein zu enger Zuschnitt eines bestehenden Checks. Die Kategorie `DEP` heisst deshalb nicht «Dependencies», sondern steht für den **Auflösungsraum des publizierten Artefakts**: den Bereich, den das Paket der Zukunft offenlässt.
+
+Der Check verlangt ausdrücklich **nicht**, alles zu deckeln — das hält Sicherheitspatches zurück und macht den Server mit anderen Paketen unvereinbar. Gedeckelt gehört, was beim Major-Wechsel den Import bricht: Abhängigkeiten, aus deren Modulpfaden importiert wird, deren Typen abgeleitet werden, und das SDK ausnahmslos. Und weil ein `<3` nach zwei Jahren kein Schutz mehr ist, sondern der Grund für eine tote Major-Version, sind Deckel und automatisierter Anhebungs-PR ein Paar — das steht als Kriterium drin, nicht als Empfehlung.
+
+Drei Mechanismen, die den Vorfall nicht verhindert hätten und regelmässig dafür gehalten werden, stehen als Tabelle im Check: das Lockfile (gilt für die Entwicklungsumgebung), grüne CI (löst nicht auf, was heute aufgelöst würde) und ein frisch geschnittenes Release (die Range wirkt beim Installieren, nicht beim Publizieren).
+
+`DEP-001` ist **`advisory`**: eine neue Forderung, die am Merge-Tag einen grossen Teil des Portfolios träfe. Das ist der Fall, für den §2.3 die Stufe vorsieht.
+
+### Hinzugefügt — `DRIFT-006`: der CHANGELOG darf dem Code nicht widersprechen
+
+Bei `swiss-energy-mcp` stand im `[Unreleased]`, die Migration auf 2.x bleibe «a separate, deliberate piece of work». Sie war längst gemergt. Der Satz hatte den PR überlebt, der ihn widerlegte.
+
+**Prosa, die dem Repo widerspricht, ist schlimmer als fehlende Prosa.** Eine Lücke führt dazu, dass jemand nachsieht; ein falscher Satz führt dazu, dass niemand nachsieht — er beantwortet die Frage plausibel, bevor sie gestellt wird. Im Fall oben lieferte er zusätzlich eine fertige Erklärung für einen dringenden Zustand: Ein Artefakt, das auf dem Index nicht mehr startete, sah aus wie die bekannte, bewusst zurückgestellte Migration statt wie ein Ausfall. Die falsche Prosa war die Deckung, unter der ein Befund liegen blieb.
+
+Derselbe Mechanismus wie in `DRIFT-003`, eine Ebene höher: Dort erfüllt der Degradationspfad die Assertion, hier erfüllt die veraltete Absicht die Frage. Beide Male sieht der Ausfall aus wie der erwartete Fall — deshalb steht der Check in `DRIFT` und nicht in `IDENT`.
+
+Abgegrenzt gegen die beiden Nachbarn: `IDENT-004` prüft eine **Zahl** in der Doku (mechanisch vergleichbar, per Skript erzwingbar), `IDENT-006` prüft, ob `[Unreleased]` zu **alt** ist. `DRIFT-006` prüft, ob der Inhalt **wahr** ist. Für diesen dritten gibt es kein Skript — Zahlen lassen sich vergleichen, Sätze nicht —, und genau deshalb überlebt die Sorte Fehler am längsten. Der Check sagt das über sich selbst: Sein `grep`-Modus sammelt Kandidaten und **eine leere Trefferliste ist kein Pass**, weil ein Absichtssatz ohne jedes Schlüsselwort auskommt.
+
+Ebenfalls `advisory`, aus demselben Grund wie `DEP-001`.
+
+### Geändert — `IDENT-006` gibt die Gesundheits-Achse ab und misst nur noch den Abstand
+
+Die Lücken-Kriterien bleiben Wort für Wort. Entfernt sind Achse 1 (installiert/importiert/startet/antwortet), ihre Befundcodes und die zugehörige Remediation — sie stehen jetzt in `IDENT-007`. Was bleibt, sagt der Check jetzt explizit über sich: Er vergleicht **Etiketten**, und drei gleiche Etiketten heissen genau eines — niemand hat vergessen zu publizieren.
+
+Der Abschnitt «Was dieser Check nicht sagt» führt den Fall vor, der die Trennung erzwungen hat: `zurich-opendata-mcp` `0.5.1` bestand **jedes Kriterium dieses Checks** und war tot. Ein grünes `IDENT-006` war dort die Wahrheit und trotzdem wertlos. Als Kriterium ergänzt: `IDENT-007` wurde separat beantwortet und ein Pass hier nicht als Beleg dafür verbucht.
+
+Modus 1 ist damit wieder `--metadata-only` — die billige Hälfte, zwei Requests und etwas Git. Der Aufruf ohne das Flag ist ab jetzt `IDENT-007`.
+
+### Geändert — `IDENT-001` vergleicht den Produkt-Token normalisiert
+
+Zwei von 33 Paketen im Sweep senden einen Produkt-Token, der nicht der Dist-Name ist:
+
+| Dist-Name | gesendeter Token |
+|---|---|
+| `swisstopo-mcp` | `SwisstopoMCP/…` |
+| `zurich-opendata-mcp` | `ZurichOpenDataMCP/…` |
+
+Beide sind korrekt — der Token identifiziert den Server eindeutig. Falsch war der **Vergleich**: Das vorgeschriebene Muster `<dist>/<Ziffer>.<Ziffer>` trifft `SwisstopoMCP/0.3.1` nicht. Bei genau diesen beiden Servern fiel der Check also entweder in «kein User-Agent gefunden» oder — schlimmer — in die Befundklasse für *fremde* User-Agents, die für gefälschte Browser-Kennungen reserviert ist.
+
+Das ist die unangenehme Stelle: Ausgerechnet ein Server, der seinen User-Agent als Literal führt, wurde von der Literal-Suche nicht gesehen. Der Check war dort blind für genau das, wogegen er existiert. Zwei von 33 ist keine Randerscheinung, sondern eine Schreibweise, die jeder zweite Autor plausibel findet.
+
+**Neu: vor dem Vergleich normalisieren** — `casefold`, Trennzeichen entfernt, auf beiden Seiten, und nur für die Identität des Tokens; die Versionsnummer daneben wird weiter exakt verglichen. Der `grep` in Modus 1 macht dasselbe (`-i`, jeder Trenner optional), mit dem bisherigen wörtlichen Aufruf als Gegenbeispiel daneben. Dazu zwei Grenzen, die mit drinstehen: Weiter zu normalisieren, bis irgendetwas passt, macht die Prüfung wertlos (`Mozilla` muss fremd bleiben) — und ein Token, der auch normalisiert nicht passt, ist `unverified` und von Hand zuzuordnen, weder Pass noch automatisch «fremd».
+
+### Hinzugefügt — `SKILL.md` §2.6: «Ein Check, der nichts findet, muss sagen können, ob er gesucht hat»
+
+Die Regel hinter `unverified` in der Identitäts-Probe, jetzt als Regel für den **Katalog selbst**. Ein Check hat drei Ausgänge, nicht zwei, und der dritte — «nicht gesucht, oder gesucht und die Form nicht erkannt» — verschwindet in der Praxis ohne Zutun: «nichts gefunden» und «nicht hingeschaut» erzeugen dieselbe Beobachtung, nämlich eine leere Ergebnisliste. Zusammenfallen tun sie immer nach `pass`, weil ein Werkzeug meldet, was es findet, und nicht, was es nicht gesucht hat.
+
+Der Beleg steht in `IDENT-001`: Die erste Fassung der Probe erklärte **24 Pakete für unauffällig, von denen 16 drifteten**. Kein Fehler in der Vergleichslogik — sie erkannte die Form des User-Agents nicht und meldete nichts. Nichts las sich als «in Ordnung». Zwei Drittel der Befunde gingen an dieser Stelle verloren, und die Zusammenfassung war grün.
+
+Vier Konsequenzen für jeden Check im Katalog stehen im Abschnitt: ein Ausgang für «Harness lief nicht» in jedem `automated`-Modus (auf `todo`, nie auf `pass`); eine Pass-Criterion der Form «kein X gefunden» muss sagen, wie gesucht wurde; wo die Erkennung selbst scheitern kann, gehört das als eigener Befundwert in den Check; und die Gegenprobe gegen ein Repo, in dem der Verstoss sicher vorliegt. Verhältnis zu `OPS-005`: dieselbe Asymmetrie, andere Adressaten — `OPS-005` prüfen wir an fremden Repos, §2.6 schulden wir dem eigenen Katalog.
+
+Dazu ein Anti-Pattern («Das Werkzeug hat nichts gemeldet, also ist der Check bestanden»), ein Punkt in der Qualitätschecklist und die Eselsbrücke *«Schweigen ist kein Freispruch.»*
+
+### Hinzugefügt — `SKILL.md`: Portfolio-Hygiene für gemeinsam ausgerollten Code
+
+Findings aus diesem Katalog treffen selten einen Server allein; die Remediation ist dann einmal geschrieben und 33-mal angewandt. Im Portfolio stehen `line-length` 88, 100 und 120 nebeneinander, und `ruff format` zieht einen Ausdruck zusammen, sobald er passt — beides für sich harmlos, zusammen der Grund für **einen roten CI-Lauf und 33 Force-Pushes**: Der Patch war in einem 120er-Repo geschrieben und getestet, sah überall gleich aus und war in jedem 88er-Repo nicht formatkonform.
+
+Die Regel steht als eigener Abschnitt, und sie ist etwas schärfer formuliert als «für 88 schreiben»: Weil der Formatter in beide Richtungen arbeitet — umbrechen bei zu schmal, zusammenziehen bei zu breit —, hält ein identischer Text nur dann überall, wenn seine **zusammengezogene Form in 88 Spalten passt**. Dann hat kein Formatter etwas zu tun und alle drei Breiten erzeugen dasselbe. Praktisch: eine Zwischenvariable, ein kürzerer Bezeichner, eine Anweisung mehr. Dazu die Prüfschleife über alle drei Breiten vor dem Ausrollen, der zulässige Ausweg (pro Repo formatieren lassen — kostet aber die Vergleichbarkeit der 33 Diffs) und die Eselsbrücke *«Der schmalste Wert im Portfolio schreibt den Code.»*
+
+### Katalog-Zahlen
+
+**90 → 93 Checks, 11 → 12 Kategorien.** `IDENT` 6 → 7, `DRIFT` 5 → 6, neue Kategorie `DEP` mit 1. Severity-Verteilung 16 critical · 45 high · 31 medium · 1 low. Advisory sind jetzt drei statt einem: `OPS-005`, `DEP-001`, `DRIFT-006` — der Pin in `tests/test_adoption_stage.py` ist entsprechend erweitert, mit der Begründung, warum `IDENT-007` nicht dazugehört.
+
+Kein Re-Audit-Auslöser nach §5 der Katalog-Versionierung: keine Severity angehoben, keine `applies_when` erweitert, kein Prüfkriterium korrigiert. `IDENT-007` trägt eine Forderung weiter, die als Achse 1 von `IDENT-006` bereits blockierend war; `DEP-001` und `DRIFT-006` blockieren als `advisory` nicht. Mitgezogen: die Kategorienliste im Slash-Command (sie ist Instruktion, nicht Doku), beide READMEs samt Provenance-Zeilen, `docs/roadmap.md` und die vier Guard-Tests. Das Muster für die Provenance-Zeilen in `test_readme_counts.py` kennt jetzt auch die Einzahl — «1 Check (`DEP-*`)» wäre sonst ungeprüft durchgelaufen, was §2.6 in eigener Sache wäre.
+
+431 Tests, unverändert grün.
+
 ### Geändert — der Blindfleck aus `IDENT-006` in den übrigen `IDENT`-Checks
 
 Nach dem Umbau von `IDENT-006` wurden `IDENT-001` bis `IDENT-005` auf dieselbe Frage geprüft: Messen sie die Quelle und schliessen daraus auf das Artefakt? Drei Befunde, in absteigender Schwere. Ausserdem referenzierte **kein einziger** `IDENT`-Check die beiden Identitäts-Proben des `mcp-continuous-auditor` — dieselbe Lücke, die bei `IDENT-006` für `shipped_probe.py` bestand.
