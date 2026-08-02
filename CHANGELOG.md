@@ -6,6 +6,20 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `OPS-005` bekommt eine fünfte Ausprägung: der Geltungsbereich des grünen Hakens
+
+Die vier bisherigen Ausprägungen sind Abdeckungslücken — etwas lief nicht. Der Fall, der die fünfte auslöst, ist anders gelagert: Der Check lief, bestand, und war korrekt. Zu weit war nur, was aus ihm gelesen wurde. `ruff format --check .` belegt «formatgerecht unter der `line-length` dieses Repos»; gelesen wurde es als «formatgerecht». Für `scripts/check_version_sync.py`, das in 33 Repos liegt, war das zu wenig: eine 99 Zeichen lange Zeile, bei 100 einzeilig und grün, bei 88 mehrzeilig und rot. Der Bruch entstand beim Kopieren und fiel erst im Zielrepo auf, wo er wie ein Fehler am Skript aussah — die gemeldete Fehlermeldung nannte eine Datei, in der das genannte Symbol gar nicht vorkam.
+
+Die Mechanik dahinter stand seit `v1.5.0` in `SKILL.md` unter «Portfolio-Hygiene: ein Commit, 33 Repos» — und hat den Rückfall nicht verhindert. Das ist der eigentliche Befund: Die Sektion ist Anleitung für den, der ausrollt, und es gibt keinen Zeitpunkt, an dem etwas rot wird, wenn niemand sie liest. Der Check fragt deshalb nicht «kennt jemand die Regel», sondern «erzwingt die Pipeline sie». Dazu ein `Modus 3` in der Verifikation (Breiten auszählen, Kopien hashen, gegen jede Breite prüfen), ein Pass-Kriterium, zwei Anti-Patterns, ein Remediation-Schritt und die Gegenprobe — der neue Schritt muss anschlagen, **und** der gewöhnliche `ruff format --check .` muss dieselbe Zeile durchlassen; erst das belegt, dass er eine Lücke schliesst statt den lokalen Lint zu duplizieren.
+
+Kein neuer Check: Ein eigener Eintrag bräuchte ein `applies_when` für «gehört zum Portfolio», das es im Profil nicht gibt — mit `always` liefe er bei jedem Einzelserver-Audit sinnlos durch. Als Ausprägung eines bestehenden Checks kostet er keine Applicability-Prüfung. Katalog-Zahlen unverändert, `evidence_required` und `severity` unverändert, `adoption` bleibt `advisory`. Kein Re-Audit-Auslöser nach §5: keine Severity angehoben, keine `applies_when` erweitert. Das ergänzte Pass-Kriterium ist neu, blockiert aber als `advisory` nicht.
+
+### Geändert — `SKILL.md` Portfolio-Hygiene: 110 fehlte in der Breitenliste
+
+Die Sektion nannte «88, 100 und 120», und die Prüfschleife lief über genau diese drei. Ein Durchlauf über alle 43 Portfolio-Repos zeigt vier Breiten: 24-mal 100, 5-mal 120, **2-mal 110** (`sbb-opendata-mcp`, `termdat-mcp`), 1-mal 88 (`swiss-snb-mcp`, ohne Eintrag und damit auf dem ruff-Default). Die Zahlen stehen jetzt mit Beleg in der Sektion, die Schleife prüft vier Werte.
+
+Praktisch ändert das wenig — wessen zusammengezogene Form in 88 Spalten passt, hält bei jeder Breite darüber —, aber die Sektion behauptete eine vollständige Aufzählung und war es nicht. Die Formulierung sagt jetzt «jede Breite ab 88» statt «alle drei Breiten», damit die Regel nicht wieder an einer Liste hängt. Dazu ein Absatz am Ende, der auf `OPS-005` verweist: Die Sektion beschreibt die Regel, der Check erzwingt sie.
+
 ### Geändert — Ruff-Regelsatz auf den Portfolio-Standard angehoben
 
 Der Regelsatz startete bewusst schmal (`E4`, `E7`, `E9`, `F`), damit die Einführung von Ruff nicht an über hundert Befunden hängenblieb. Er steht jetzt auf demselben Satz wie das übrige Portfolio: zusätzlich `I` (Import-Sortierung), `UP` (pyupgrade), `B` (bugbear), `C4` (comprehensions), `SIM` (simplify) und `RUF`. `RUF001`–`RUF003` bleiben aus — die deutsche Prosa nutzt bewusste Typografie (—, –, →), die diese Regeln als Verwechslungszeichen melden würden.
