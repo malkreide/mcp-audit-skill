@@ -112,17 +112,21 @@ generische Bauanleitung und diese Regeln zusammen.
 
 ## Verwandte Repos
 
-Fünf Skills, ein Bau. Jeder beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt:
+### Die MCP-Qualitätskette
 
-| Repo | Rolle |
-|---|---|
-| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generische Bauanleitung — fremder Skill von Anthropic, wird ergänzt und nicht ersetzt |
-| **`mcp-data-source-probe-skill`** | **Dieser Skill:** Vorgehen *vor* dem Bau |
-| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? Wurde hier unter `companion/` ausgeliefert, bis er ein eigenes Repo bekam |
-| [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? |
-| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Prüfung *nach* dem Bau |
+Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt — dieses kommt zuerst. Das gemeinsame GitHub-Topic ist [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain) und listet alle fünf auf einer Seite.
 
-Daneben: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) für die laufende Verifikation von Servern im Betrieb, und [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die vierte Disziplin hervorgebracht hat.
+| Phase | Repo | Frage, die es beantwortet |
+|---|---|---|
+| vor dem Bau | **`mcp-data-source-probe-skill`** | **Dieser Skill:** taugt die Quelle, und was hat sie? |
+| im Bau | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? Wurde hier unter `companion/` ausgeliefert, bis er ein eigenes Repo bekam |
+| im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? |
+| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? |
+| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Die Recall-Ground-Truth aus Schritt 1.4, laufend statt einmalig gemessen |
+
+Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
+
+Dazu der Server, aus dem die vierte Disziplin stammt: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) sie hervorgebracht hat.
 
 Wer nach diesem Skill probt und nach `mcp-data-fidelity` baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet dort das Vorgehen zur Behebung.
 

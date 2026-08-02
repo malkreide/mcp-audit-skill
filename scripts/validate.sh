@@ -130,6 +130,49 @@ companion_pointer() {
     echo "pointer names the canonical repository"
 }
 
+quality_chain() {
+    # The five repositories of the chain are named together in exactly one
+    # place per language, and nothing outside this repo can be tested from
+    # here. What CAN be tested is that the table has not quietly lost a member
+    # — which is how the trailing "alongside them, there is also
+    # mcp-continuous-auditor" sentence went unnoticed for as long as it did:
+    # the auditor was mentioned but not in the table, so it read as an
+    # afterthought rather than as the fifth link.
+    #
+    # The topic itself lives on GitHub and is checked by the guard in
+    # mcp-audit-skill (tools/check_quality_chain.py), which is the only repo
+    # that carries the manifest.
+    "$PY" - <<'PY'
+import pathlib, re, sys
+
+MEMBERS = [
+    "mcp-data-source-probe-skill",
+    "mcp-data-fidelity-skill",
+    "mcp-transport-hardening-skill",
+    "mcp-audit-skill",
+    "mcp-continuous-auditor",
+]
+TOPIC_URL = "https://github.com/topics/mcp-quality-chain"
+
+for path, heading in [("README.md", "The MCP quality chain"),
+                      ("README.de.md", "Die MCP-Qualitätskette")]:
+    text = pathlib.Path(path).read_text(encoding="utf-8")
+    m = re.search(rf"^### {re.escape(heading)}\n(.*?)(?=^#{{2,3}} |\Z)",
+                  text, re.M | re.S)
+    if not m:
+        sys.exit(f"{path}: section '### {heading}' not found — anchor gone or "
+                 "reworded, so this check would silently stop checking")
+    body = m.group(1)
+    missing = [r for r in MEMBERS if r not in body]
+    if missing:
+        sys.exit(f"{path}: the chain table does not name {missing}")
+    if TOPIC_URL not in body:
+        sys.exit(f"{path}: the shared topic page {TOPIC_URL} is not linked — "
+                 "without it the table is a list nobody outside can find")
+    print(f"{path}: all {len(MEMBERS)} members named, topic page linked")
+PY
+}
+
 version_badge() {
     "$PY" - <<'PY'
 import pathlib, re, sys
@@ -185,6 +228,7 @@ check "4  cross-references resolve to real sections"  cross_references
 check "5  referenced files exist"                     referenced_files
 check "6  the companion pointer still points somewhere" companion_pointer
 check "7  version badge matches the latest CHANGELOG release" version_badge
+check "8  the quality-chain table names all five members"    quality_chain
 
 echo ""
 if [ "$failed" -eq 0 ]; then
