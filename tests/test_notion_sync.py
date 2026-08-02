@@ -7,6 +7,7 @@ suite; they're integration-tested manually via the `health` subcommand.
 The build_profile derivation got more complex in issue #16 (added
 is_cloud_deployed), so a small unit test guards against drift.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -46,6 +47,7 @@ def _props(
     org=(),
 ):
     """Build a minimal Notion-shape props dict the builder expects."""
+
     def select(value):
         return {"select": {"name": value}} if value else {"select": None}
 
@@ -97,9 +99,15 @@ class TestProfileShape:
     def test_required_fields_present(self, sync_mod):
         profile = sync_mod.build_profile(_props())
         for field in (
-            "transport", "auth_model", "data_class", "write_capable",
-            "deployment", "is_cloud_deployed", "uses_sampling",
-            "tools_make_external_requests", "data_source",
+            "transport",
+            "auth_model",
+            "data_class",
+            "write_capable",
+            "deployment",
+            "is_cloud_deployed",
+            "uses_sampling",
+            "tools_make_external_requests",
+            "data_source",
         ):
             assert field in profile, f"missing field {field}"
 

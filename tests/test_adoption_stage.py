@@ -14,6 +14,7 @@ Two properties matter most and are asserted in both directions:
    still counted, still carries its severity. A stage that merely hid the
    finding would be worse than no stage at all.
 """
+
 from __future__ import annotations
 
 import json
@@ -51,19 +52,24 @@ def _check(dir: Path, cid: str, adoption: str | None = None) -> None:
     ]
     if adoption is not None:
         fm.append(f"adoption: {adoption}")
-    (dir / f"{cid}.md").write_text("---\n" + "\n".join(fm) + "\n---\n\nbody\n", encoding="utf-8")
+    (dir / f"{cid}.md").write_text(
+        "---\n" + "\n".join(fm) + "\n---\n\nbody\n", encoding="utf-8"
+    )
 
 
 def _results(**per_check: dict) -> VerificationResults:
-    return VerificationResults.from_dict({
-        "audit_meta": {"server_name": "s"},
-        "results": per_check,
-    })
+    return VerificationResults.from_dict(
+        {
+            "audit_meta": {"server_name": "s"},
+            "results": per_check,
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
 # The real catalogue: the mechanism must be a no-op on arrival
 # ---------------------------------------------------------------------------
+
 
 class TestRealCatalogUnchanged:
     def test_every_check_has_a_valid_adoption(self):
@@ -112,6 +118,7 @@ class TestRealCatalogUnchanged:
 # Catalogue parsing
 # ---------------------------------------------------------------------------
 
+
 class TestCatalogParsing:
     def test_absent_field_defaults_to_enforced(self, tmp_path):
         _check(tmp_path, "TST-001")
@@ -143,6 +150,7 @@ class TestCatalogParsing:
 # Aggregation: the stage has to actually bite
 # ---------------------------------------------------------------------------
 
+
 class TestAggregation:
     FAIL_HIGH = {"status": "fail", "category": "ARCH", "severity": "high"}
 
@@ -153,9 +161,13 @@ class TestAggregation:
         assert s["production_ready"] is False
 
     def test_advisory_failure_does_not_block(self):
-        s = aggregate(_results(**{
-            "ARCH-001": dict(self.FAIL_HIGH, adoption="advisory"),
-        }))
+        s = aggregate(
+            _results(
+                **{
+                    "ARCH-001": dict(self.FAIL_HIGH, adoption="advisory"),
+                }
+            )
+        )
         assert s["blocking_findings"] == []
         assert s["advisory_findings"] == ["ARCH-001"]
         assert s["production_ready"] is True
@@ -163,28 +175,46 @@ class TestAggregation:
     def test_advisory_still_produces_a_finding(self):
         # The stage must not hide the finding — only its veto. A stage that
         # suppressed the report would be worse than no stage.
-        s = aggregate(_results(**{
-            "ARCH-001": dict(self.FAIL_HIGH, adoption="advisory"),
-        }))
+        s = aggregate(
+            _results(
+                **{
+                    "ARCH-001": dict(self.FAIL_HIGH, adoption="advisory"),
+                }
+            )
+        )
         assert s["findings"]["expected_ids"] == ["ARCH-001"]
         assert s["totals"]["by_severity_among_findings"]["high"] == 1
         assert s["findings"]["details"][0]["adoption"] == "advisory"
 
     def test_one_enforced_failure_still_blocks_beside_an_advisory_one(self):
-        s = aggregate(_results(**{
-            "ARCH-001": dict(self.FAIL_HIGH, adoption="advisory"),
-            "SEC-001": dict(self.FAIL_HIGH, category="SEC", adoption="enforced"),
-        }))
+        s = aggregate(
+            _results(
+                **{
+                    "ARCH-001": dict(self.FAIL_HIGH, adoption="advisory"),
+                    "SEC-001": dict(
+                        self.FAIL_HIGH, category="SEC", adoption="enforced"
+                    ),
+                }
+            )
+        )
         assert s["blocking_findings"] == ["SEC-001"]
         assert s["advisory_findings"] == ["ARCH-001"]
         assert s["production_ready"] is False
 
     def test_advisory_below_blocking_severity_is_not_listed(self):
         # advisory_findings means "would have blocked"; a medium never would.
-        s = aggregate(_results(**{
-            "ARCH-001": {"status": "fail", "category": "ARCH",
-                         "severity": "medium", "adoption": "advisory"},
-        }))
+        s = aggregate(
+            _results(
+                **{
+                    "ARCH-001": {
+                        "status": "fail",
+                        "category": "ARCH",
+                        "severity": "medium",
+                        "adoption": "advisory",
+                    },
+                }
+            )
+        )
         assert s["advisory_findings"] == []
         assert s["findings"]["expected_ids"] == ["ARCH-001"]
 
@@ -197,10 +227,18 @@ class TestAggregation:
             _results(**{"ARCH-001": dict(self.FAIL_HIGH, adoption="maybe")})
 
     def test_by_adoption_counts_exclude_not_applicable(self):
-        s = aggregate(_results(**{
-            "ARCH-001": dict(self.FAIL_HIGH),
-            "ARCH-002": {"status": "n/a", "category": "ARCH", "severity": "low"},
-        }))
+        s = aggregate(
+            _results(
+                **{
+                    "ARCH-001": dict(self.FAIL_HIGH),
+                    "ARCH-002": {
+                        "status": "n/a",
+                        "category": "ARCH",
+                        "severity": "low",
+                    },
+                }
+            )
+        )
         assert s["totals"]["by_adoption"] == {"advisory": 0, "enforced": 1}
 
 
@@ -208,22 +246,31 @@ class TestAggregation:
 # The catalogue is authoritative
 # ---------------------------------------------------------------------------
 
+
 class TestCatalogIsAuthoritative:
     def test_catalog_overrides_the_results_file(self, tmp_path):
         _check(tmp_path, "ARCH-001", "advisory")
-        vr = _results(**{
-            "ARCH-001": {"status": "fail", "category": "ARCH",
-                         "severity": "high", "adoption": "enforced"},
-        })
+        vr = _results(
+            **{
+                "ARCH-001": {
+                    "status": "fail",
+                    "category": "ARCH",
+                    "severity": "high",
+                    "adoption": "enforced",
+                },
+            }
+        )
         assert apply_catalog_adoption(vr, tmp_path) == []
         assert aggregate(vr)["production_ready"] is True
 
     def test_unknown_ids_are_reported_and_keep_the_safe_default(self, tmp_path):
         _check(tmp_path, "ARCH-001", "advisory")
-        vr = _results(**{
-            "ARCH-001": {"status": "fail", "category": "ARCH", "severity": "high"},
-            "GHOST-001": {"status": "fail", "category": "ARCH", "severity": "high"},
-        })
+        vr = _results(
+            **{
+                "ARCH-001": {"status": "fail", "category": "ARCH", "severity": "high"},
+                "GHOST-001": {"status": "fail", "category": "ARCH", "severity": "high"},
+            }
+        )
         assert apply_catalog_adoption(vr, tmp_path) == ["GHOST-001"]
         # The unknown one keeps `enforced`, so the verdict errs towards blocking.
         assert aggregate(vr)["blocking_findings"] == ["GHOST-001"]
@@ -231,19 +278,37 @@ class TestCatalogIsAuthoritative:
     def test_cli_checks_dir_changes_the_verdict(self, tmp_path, capsys):
         _check(tmp_path, "ARCH-001", "advisory")
         results = tmp_path / "verification-results.json"
-        results.write_text(json.dumps({
-            "audit_meta": {"server_name": "s"},
-            "results": {"ARCH-001": {"status": "fail", "category": "ARCH",
-                                     "severity": "high"}},
-        }), encoding="utf-8")
+        results.write_text(
+            json.dumps(
+                {
+                    "audit_meta": {"server_name": "s"},
+                    "results": {
+                        "ARCH-001": {
+                            "status": "fail",
+                            "category": "ARCH",
+                            "severity": "high",
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
 
         assert aggregate_main(["aggregate", str(results)]) == 0
         without = json.loads(capsys.readouterr().out)
         assert without["production_ready"] is False
 
-        assert aggregate_main([
-            "aggregate", str(results), "--checks-dir", str(tmp_path),
-        ]) == 0
+        assert (
+            aggregate_main(
+                [
+                    "aggregate",
+                    str(results),
+                    "--checks-dir",
+                    str(tmp_path),
+                ]
+            )
+            == 0
+        )
         with_catalog = json.loads(capsys.readouterr().out)
         assert with_catalog["production_ready"] is True
         assert with_catalog["advisory_findings"] == ["ARCH-001"]
@@ -253,12 +318,16 @@ class TestCatalogIsAuthoritative:
 # The report must not swallow an advisory failure
 # ---------------------------------------------------------------------------
 
+
 class TestReport:
     def _summary(self, **over):
         base = {
             "audit_meta": {"server_name": "s"},
-            "totals": {"applicable": 1, "by_status": {"pass": 0},
-                       "by_severity_among_findings": {}},
+            "totals": {
+                "applicable": 1,
+                "by_status": {"pass": 0},
+                "by_severity_among_findings": {},
+            },
             "findings": {"expected_count": 1},
             "production_ready": True,
             "blocking_findings": [],
@@ -278,9 +347,11 @@ class TestReport:
         assert "advisory" not in text
 
     def test_red_verdict_still_lists_advisory_separately(self):
-        text = render_executive_summary(self._summary(
-            production_ready=False,
-            blocking_findings=["SEC-001"],
-            advisory_findings=["FID-003"],
-        ))
+        text = render_executive_summary(
+            self._summary(
+                production_ready=False,
+                blocking_findings=["SEC-001"],
+                advisory_findings=["FID-003"],
+            )
+        )
         assert "SEC-001" in text and "FID-003" in text

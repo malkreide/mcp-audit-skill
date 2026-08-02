@@ -47,6 +47,7 @@ Aufruf:
     python tools/check_repo_description.py --repo <o/r> --format json
     python tools/check_repo_description.py --description "…"   # ohne Netz
 """
+
 from __future__ import annotations
 
 import argparse
@@ -206,9 +207,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
         if not problems:
-            print(
-                f"Description OK ({n_checks} Checks, {n_categories} Kategorien)"
-            )
+            print(f"Description OK ({n_checks} Checks, {n_categories} Kategorien)")
         else:
             for p in problems:
                 print(f"DRIFT    {p}")

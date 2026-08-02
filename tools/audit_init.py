@@ -20,6 +20,7 @@ Usage:
     python tools/audit_init.py make-run-id srgssr-mcp [--base-dir audits/] [--now 2026-05-02T09:12:45+00:00]
     python tools/audit_init.py init srgssr-mcp [--base-dir audits/] [--skill-version 1.5.0] [--catalog-dir checks/]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -186,6 +187,7 @@ def init_audit(
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def _parse_now(value: str | None) -> datetime | None:
     if value is None:

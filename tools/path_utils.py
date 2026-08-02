@@ -37,6 +37,7 @@ import sys
 # UTF-8 stdio
 # ---------------------------------------------------------------------------
 
+
 def force_utf8_stdio() -> None:
     """Reconfigure sys.stdout/stderr to UTF-8 if not already.
 
@@ -125,7 +126,7 @@ def _posix_to_windows(path: str) -> str:
     if not m:
         return path
     drive = m.group(1).upper()
-    rest = path[m.end():]
+    rest = path[m.end() :]
     rest = rest.replace("/", "\\")
     return f"{drive}:\\{rest}"
 
@@ -135,13 +136,14 @@ def _windows_to_posix(path: str) -> str:
     if not m:
         return path
     drive = m.group(1).lower()
-    rest = path[m.end():].replace("\\", "/")
+    rest = path[m.end() :].replace("\\", "/")
     return f"/{drive}/{rest}"
 
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def main(argv: list[str] | None = None) -> int:
     force_utf8_stdio()

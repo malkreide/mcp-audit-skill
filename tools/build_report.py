@@ -18,6 +18,7 @@ Usage:
     python tools/build_report.py audits/<run>/
     python tools/build_report.py audits/<run>/ --profile profile.yaml --out report.md
 """
+
 from __future__ import annotations
 
 import argparse
@@ -56,7 +57,12 @@ def _load_profile(path: Path | None) -> dict[str, Any]:
     except ImportError:
         return {}
     data = yaml.safe_load(text)
-    if isinstance(data, dict) and "servers" in data and isinstance(data["servers"], list) and data["servers"]:
+    if (
+        isinstance(data, dict)
+        and "servers" in data
+        and isinstance(data["servers"], list)
+        and data["servers"]
+    ):
         first = data["servers"][0]
         return first.get("profile", first) if isinstance(first, dict) else {}
     if isinstance(data, dict) and "profile" in data:
@@ -77,6 +83,7 @@ def _ready_marker(production_ready: bool) -> str:
 # ---------------------------------------------------------------------------
 # Section renderers
 # ---------------------------------------------------------------------------
+
 
 def render_executive_summary(summary: dict[str, Any]) -> str:
     server = summary.get("audit_meta", {}).get("server_name", "<server>")
@@ -113,9 +120,7 @@ def render_executive_summary(summary: dict[str, Any]) -> str:
     else:
         if blocking:
             ids = ", ".join(blocking)
-            sentence_3 = (
-                f"Production-Readiness: NICHT erreicht — blockierend: {ids}."
-            )
+            sentence_3 = f"Production-Readiness: NICHT erreicht — blockierend: {ids}."
         else:
             sentence_3 = (
                 "Production-Readiness: NICHT erreicht — siehe Findings-Tabelle."
@@ -148,17 +153,22 @@ def render_profile_snapshot(
     out.append(f"| Catalog-Version | {meta.get('catalog_version', '?')} |")
     if profile:
         for key in (
-            "transport", "auth_model", "data_class", "write_capable",
-            "deployment", "uses_sampling", "tools_make_external_requests",
-            "stadt_zuerich_context", "schulamt_context",
+            "transport",
+            "auth_model",
+            "data_class",
+            "write_capable",
+            "deployment",
+            "uses_sampling",
+            "tools_make_external_requests",
+            "stadt_zuerich_context",
+            "schulamt_context",
         ):
             if key in profile:
                 out.append(f"| {key} | `{profile[key]}` |")
         ds = profile.get("data_source")
         if isinstance(ds, dict) and "is_swiss_open_data" in ds:
             out.append(
-                f"| data_source.is_swiss_open_data | "
-                f"`{ds['is_swiss_open_data']}` |"
+                f"| data_source.is_swiss_open_data | `{ds['is_swiss_open_data']}` |"
             )
     out.append("")
     return "\n".join(out)
@@ -270,8 +280,7 @@ def render_remediation_plan(summary: dict[str, Any]) -> str:
     out.append("### Empfohlene Reihenfolge\n")
     for i, d in enumerate(sorted_details, start=1):
         out.append(
-            f"{i}. **{d.get('check_id')}** "
-            f"({d.get('severity')}, {d.get('status')})"
+            f"{i}. **{d.get('check_id')}** ({d.get('severity')}, {d.get('status')})"
         )
     out.append("")
     return "\n".join(out)
@@ -283,8 +292,11 @@ def render_metadata(summary: dict[str, Any]) -> str:
     out.append("| Feld | Wert |")
     out.append("|---|---|")
     for key in (
-        "skill_version", "catalog_version", "applies_when_dsl_version",
-        "policy", "audit_date",
+        "skill_version",
+        "catalog_version",
+        "applies_when_dsl_version",
+        "policy",
+        "audit_date",
     ):
         if key in meta:
             out.append(f"| {key} | `{meta[key]}` |")
@@ -295,6 +307,7 @@ def render_metadata(summary: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------------------------------
+
 
 def build_report(
     summary: dict[str, Any],

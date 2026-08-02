@@ -28,6 +28,7 @@ aktuell ist:
 - `tests/` — Fixtures und Parametrisierungen brauchen frei wählbare
   Versionen.
 """
+
 from __future__ import annotations
 
 import re

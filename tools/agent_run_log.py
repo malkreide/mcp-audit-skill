@@ -32,6 +32,7 @@ Schema (audit-meta.json):
       ]
     }
 """
+
 from __future__ import annotations
 
 import argparse
@@ -55,9 +56,9 @@ def _classify_run(
     incomplete_ids: list[str],
 ) -> str:
     """Three-state status:
-      ok          — every expected ID has a non-empty output
-      incomplete  — some IDs missing or below threshold
-      empty       — agent returned 0 tokens (silent failure mode from #12)
+    ok          — every expected ID has a non-empty output
+    incomplete  — some IDs missing or below threshold
+    empty       — agent returned 0 tokens (silent failure mode from #12)
     """
     if tokens == 0:
         return "empty"
@@ -149,15 +150,14 @@ def summarise(meta: dict[str, Any]) -> dict[str, Any]:
         "incomplete_ids": incomplete,
         "last_run_status": last.get("status"),
         "overall_status": overall,
-        "had_retries": any(
-            r.get("retry_of_run_index") is not None for r in runs
-        ),
+        "had_retries": any(r.get("retry_of_run_index") is not None for r in runs),
     }
 
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(

@@ -64,6 +64,7 @@ Exit codes:
     1 — unbekanntes Manifest gefunden, oder ein Checkout fehlt
     2 — Bedienfehler (Datei nicht da, YAML kaputt)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -87,23 +88,25 @@ MANIFEST_NAMES = ("pyproject.toml", "package.json")
 # bewusst nur solche, in denen kein von Hand geschriebener, versionierter
 # Server liegen kann. Das ist keine Aussage darüber, was ein Server ist —
 # es ist eine Aussage darüber, was Werkzeuge dort ablegen.
-VENDOR_DIRS = frozenset({
-    ".git",
-    ".hg",
-    ".svn",
-    "node_modules",
-    ".venv",
-    "venv",
-    "env",
-    "__pycache__",
-    ".tox",
-    ".nox",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    "site-packages",
-    ".eggs",
-})
+VENDOR_DIRS = frozenset(
+    {
+        ".git",
+        ".hg",
+        ".svn",
+        "node_modules",
+        ".venv",
+        "venv",
+        "env",
+        "__pycache__",
+        ".tox",
+        ".nox",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        "site-packages",
+        ".eggs",
+    }
+)
 
 
 def _is_vendor(rel: Path) -> bool:
@@ -195,14 +198,16 @@ def verify_inventory(
             # weil noch nicht geklont wurde — dann ist die Aussage dieses
             # Laufs für diesen Server schlicht keine.
             unverified.append(name)
-            servers.append({
-                "name": name,
-                "status": "unverified",
-                "checkout": str(checkout),
-                "known": [],
-                "ignored": [],
-                "unlisted": [],
-            })
+            servers.append(
+                {
+                    "name": name,
+                    "status": "unverified",
+                    "checkout": str(checkout),
+                    "known": [],
+                    "ignored": [],
+                    "unlisted": [],
+                }
+            )
             continue
 
         declared = paths_by_repo.get(repo, {"."})
@@ -227,20 +232,24 @@ def verify_inventory(
                 continue
 
             server_unlisted.append(str(rel).replace("\\", "/"))
-            unlisted.append({
-                "server": name,
-                "path": rel_dir,
-                "manifest": str(rel).replace("\\", "/"),
-            })
+            unlisted.append(
+                {
+                    "server": name,
+                    "path": rel_dir,
+                    "manifest": str(rel).replace("\\", "/"),
+                }
+            )
 
-        servers.append({
-            "name": name,
-            "status": "drift" if server_unlisted else "ok",
-            "checkout": str(checkout),
-            "known": known,
-            "ignored": ignored,
-            "unlisted": server_unlisted,
-        })
+        servers.append(
+            {
+                "name": name,
+                "status": "drift" if server_unlisted else "ok",
+                "checkout": str(checkout),
+                "known": known,
+                "ignored": ignored,
+                "unlisted": server_unlisted,
+            }
+        )
 
     consistent = not unlisted and (skip_missing or not unverified)
     return {
@@ -280,7 +289,9 @@ def _print_text(report: dict[str, Any]) -> None:
 
     if report["unlisted"]:
         print()
-        print("UNBEKANNTE SERVER-MANIFESTE — nicht in portfolio.yaml und nicht ignoriert:")
+        print(
+            "UNBEKANNTE SERVER-MANIFESTE — nicht in portfolio.yaml und nicht ignoriert:"
+        )
         for u in report["unlisted"]:
             print(f"  {u['server']}: {u['manifest']}")
         print()
@@ -333,6 +344,7 @@ def main(argv: list[str] | None = None) -> int:
         work_dir = Path(args.work_dir)
     else:
         import os
+
         work_dir = Path(os.environ.get("WORK_DIR") or (Path.home() / "mcp-audit-runs"))
 
     try:
@@ -354,7 +366,8 @@ def main(argv: list[str] | None = None) -> int:
         _print_text(report)
         if args.out:
             Path(args.out).write_text(
-                json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+                json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
             )
 
     return 0 if report["consistent"] else 1

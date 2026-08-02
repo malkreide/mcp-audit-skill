@@ -29,6 +29,7 @@ Nicht geprüft werden die beiden PDF-Zeilen der Provenance-Tabelle
 historische Herkunft, nicht den aktuellen Bestand, und überlappen mit den
 Layer-Zeilen — ihre Summe ergibt bewusst nicht das Total.
 """
+
 from __future__ import annotations
 
 import re
@@ -156,8 +157,12 @@ class TestReadmeMatchesCatalog:
         alts = [int(n) for n in BADGE_ALT.findall(text)]
         assert urls, f"Checks-Badge in {name} nicht gefunden"
         assert alts, f"Alt-Text des Checks-Badge in {name} nicht gefunden"
-        assert set(urls) == {total}, f"{name}: Badge-URL zeigt {urls}, Katalog hat {total}"
-        assert set(alts) == {total}, f"{name}: Badge-Alt-Text zeigt {alts}, Katalog hat {total}"
+        assert set(urls) == {total}, (
+            f"{name}: Badge-URL zeigt {urls}, Katalog hat {total}"
+        )
+        assert set(alts) == {total}, (
+            f"{name}: Badge-Alt-Text zeigt {alts}, Katalog hat {total}"
+        )
 
     def test_prose_mentions_match_catalog(self, readme, catalog):
         """Jede Prosa-Erwähnung «NN Checks» / «NN Kategorien» muss stimmen.
@@ -225,7 +230,9 @@ class TestReadmeMatchesCatalog:
                 f"Severity-Profil für `{code}` in {name} weicht vom Katalog ab "
                 f"(Katalog: {actual[code]})"
             )
-        assert seen == set(actual), f"{name}: Kategorien-Tabelle deckt nicht alle Kategorien ab"
+        assert seen == set(actual), (
+            f"{name}: Kategorien-Tabelle deckt nicht alle Kategorien ab"
+        )
 
     def test_total_row(self, readme, catalog):
         name, lines = readme

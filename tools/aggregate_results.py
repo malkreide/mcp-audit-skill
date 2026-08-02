@@ -73,6 +73,7 @@ class ValidationError(AggregationError):
 # Schema
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CheckResult:
     check_id: str
@@ -140,6 +141,7 @@ class VerificationResults:
 # Aggregation
 # ---------------------------------------------------------------------------
 
+
 def apply_catalog_adoption(vr: "VerificationResults", checks_dir: Path) -> list[str]:
     """Overwrite each result's adoption stage from the catalogue.
 
@@ -197,13 +199,15 @@ def aggregate(
 
         if r.status in finding_statuses:
             by_severity[r.severity] = by_severity.get(r.severity, 0) + 1
-            expected_findings.append({
-                "check_id": cid,
-                "category": r.category,
-                "severity": r.severity,
-                "status": r.status,
-                "adoption": r.adoption,
-            })
+            expected_findings.append(
+                {
+                    "check_id": cid,
+                    "category": r.category,
+                    "severity": r.severity,
+                    "status": r.status,
+                    "adoption": r.adoption,
+                }
+            )
             # An advisory check still produces a finding — it is reported,
             # counted and carries the same severity. It just does not veto the
             # release. That is the whole distinction: severity describes the
@@ -215,9 +219,7 @@ def aggregate(
                 else:
                     advisory.append(cid)
 
-    applicable = sum(
-        v for k, v in by_status.items() if k != "n/a"
-    )
+    applicable = sum(v for k, v in by_status.items() if k != "n/a")
 
     summary = {
         "audit_meta": vr.audit_meta,
@@ -250,6 +252,7 @@ def aggregate(
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
+
 
 def list_finding_files(findings_dir: Path) -> list[Path]:
     if not findings_dir.exists():
@@ -331,7 +334,9 @@ def validate_findings_persistence(
 
     missing = sorted(expected - found)
     unexpected = sorted(found - expected)
-    empty = sorted(cid for cid in expected & found if substance.get(cid, 0) < min_substance)
+    empty = sorted(
+        cid for cid in expected & found if substance.get(cid, 0) < min_substance
+    )
 
     report = {
         "expected_count": len(expected),
@@ -355,6 +360,7 @@ def validate_findings_persistence(
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -460,7 +466,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "validate":
         audit_dir = Path(args.audit_dir)
-        summary_path = Path(args.summary) if args.summary else audit_dir / "summary.json"
+        summary_path = (
+            Path(args.summary) if args.summary else audit_dir / "summary.json"
+        )
         findings_dir = (
             Path(args.findings_dir) if args.findings_dir else audit_dir / "findings"
         )

@@ -117,6 +117,7 @@ def get_db_id() -> str:
 # Property extractors — the Notion API encodes each property type differently.
 # ---------------------------------------------------------------------------
 
+
 def prop_title(prop: dict[str, Any]) -> str:
     parts = prop.get("title", [])
     return "".join(p.get("plain_text", "") for p in parts).strip()
@@ -151,6 +152,7 @@ def prop_rich_text(prop: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 # Profile builder
 # ---------------------------------------------------------------------------
+
 
 def build_profile(props: dict[str, Any]) -> dict[str, Any]:
     transport = prop_select(props.get("Transport", {})) or "dual"
@@ -211,6 +213,7 @@ def build_server_entry(page: dict[str, Any]) -> dict[str, Any] | None:
 # Database query (pagination-aware)
 # ---------------------------------------------------------------------------
 
+
 def query_database(
     token: str,
     db_id: str,
@@ -242,6 +245,7 @@ def query_database(
 # ---------------------------------------------------------------------------
 # YAML emitter (custom — stdlib has no yaml)
 # ---------------------------------------------------------------------------
+
 
 def yaml_scalar(v: Any) -> str:
     if isinstance(v, bool):
@@ -288,6 +292,7 @@ def emit_portfolio_yaml(servers: list[dict[str, Any]]) -> str:
 # ---------------------------------------------------------------------------
 # Subcommands
 # ---------------------------------------------------------------------------
+
 
 def cmd_health(_args: argparse.Namespace) -> None:
     token = get_token()
@@ -412,7 +417,9 @@ def main() -> None:
     )
     sp.add_argument("--report", help="Audit-report path or URL.")
     sp.add_argument("--page-id", help="Skip name lookup; use this Notion page ID.")
-    sp.add_argument("--dry-run", action="store_true", help="Print payload, do not PATCH.")
+    sp.add_argument(
+        "--dry-run", action="store_true", help="Print payload, do not PATCH."
+    )
     sp.set_defaults(func=cmd_push)
 
     args = parser.parse_args()

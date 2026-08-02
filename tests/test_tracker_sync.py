@@ -2,6 +2,7 @@
 """Tests for tools/tracker_sync.py — focus on the CSV backend (zero-deps)
 and the backend resolver. Notion is exercised only via constructor / env
 plumbing; real API calls are not mocked here."""
+
 from __future__ import annotations
 
 import json
@@ -29,6 +30,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # CsvBackend
 # ---------------------------------------------------------------------------
 
+
 class TestCsvBackend:
     def test_creates_file_with_header(self, tmp_path: Path) -> None:
         path = tmp_path / "tracker.csv"
@@ -51,8 +53,7 @@ class TestCsvBackend:
     def test_update_merges_partial(self, tmp_path: Path) -> None:
         backend = CsvBackend(tmp_path / "t.csv")
         backend.update("srv", {"audit_status": "In Audit", "findings": 5})
-        backend.update("srv", {"production_ready": True,
-                                "released_version": "1.0.0"})
+        backend.update("srv", {"production_ready": True, "released_version": "1.0.0"})
 
         record = backend.get("srv")
         assert record is not None
@@ -93,9 +94,11 @@ class TestCsvBackend:
 # Backend resolver
 # ---------------------------------------------------------------------------
 
+
 class TestGetBackend:
-    def test_default_is_csv(self, monkeypatch: pytest.MonkeyPatch,
-                            tmp_path: Path) -> None:
+    def test_default_is_csv(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         monkeypatch.delenv("MCP_AUDIT_TRACKER_BACKEND", raising=False)
         monkeypatch.delenv("MCP_AUDIT_TRACKER_PATH", raising=False)
         monkeypatch.chdir(tmp_path)
@@ -108,8 +111,9 @@ class TestGetBackend:
         assert isinstance(backend, CsvBackend)
         assert backend.path == tmp_path / "x.csv"
 
-    def test_csv_path_from_env(self, monkeypatch: pytest.MonkeyPatch,
-                               tmp_path: Path) -> None:
+    def test_csv_path_from_env(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         target = tmp_path / "env.csv"
         monkeypatch.setenv("MCP_AUDIT_TRACKER_PATH", str(target))
         backend = get_backend("csv")
@@ -140,6 +144,7 @@ class TestGetBackend:
 # TrackerRecord
 # ---------------------------------------------------------------------------
 
+
 class TestTrackerRecord:
     def test_to_dict_nonnull_drops_none(self) -> None:
         record = TrackerRecord(
@@ -159,28 +164,43 @@ class TestTrackerRecord:
 # CLI integration
 # ---------------------------------------------------------------------------
 
-def _run(args: list[str], env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
+
+def _run(
+    args: list[str], env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess:
     full_env = {**os.environ, "PYTHONUTF8": "1"}
     if env:
         full_env.update(env)
     return subprocess.run(
         [sys.executable, "tools/tracker_sync.py"] + args,
         cwd=str(REPO_ROOT),
-        capture_output=True, text=True, env=full_env,
+        capture_output=True,
+        text=True,
+        env=full_env,
     )
 
 
 class TestCli:
     def test_update_set_writes_csv(self, tmp_path: Path) -> None:
         csv_path = tmp_path / "t.csv"
-        result = _run([
-            "--backend", "csv", "--csv-path", str(csv_path),
-            "update", "my-mcp",
-            "--set", "audit_status=Released",
-            "--set", "findings=0",
-            "--set", "production_ready=true",
-            "--set", "released_version=1.2.0",
-        ])
+        result = _run(
+            [
+                "--backend",
+                "csv",
+                "--csv-path",
+                str(csv_path),
+                "update",
+                "my-mcp",
+                "--set",
+                "audit_status=Released",
+                "--set",
+                "findings=0",
+                "--set",
+                "production_ready=true",
+                "--set",
+                "released_version=1.2.0",
+            ]
+        )
         assert result.returncode == 0, result.stderr
         out = json.loads(result.stdout)
         assert out["ok"] is True
@@ -196,17 +216,32 @@ class TestCli:
     def test_update_from_summary(self, tmp_path: Path) -> None:
         csv_path = tmp_path / "t.csv"
         summary_path = tmp_path / "summary.json"
-        summary_path.write_text(json.dumps({
-            "audit_meta": {"run_id": "2026-05-09T120000-Z-srv",
-                           "started_at": "2026-05-09T12:00:00Z"},
-            "findings": {"expected_count": 2},
-            "production_ready": False,
-        }), encoding="utf-8")
+        summary_path.write_text(
+            json.dumps(
+                {
+                    "audit_meta": {
+                        "run_id": "2026-05-09T120000-Z-srv",
+                        "started_at": "2026-05-09T12:00:00Z",
+                    },
+                    "findings": {"expected_count": 2},
+                    "production_ready": False,
+                }
+            ),
+            encoding="utf-8",
+        )
 
-        result = _run([
-            "--backend", "csv", "--csv-path", str(csv_path),
-            "update", "srv", "--from-summary", str(summary_path),
-        ])
+        result = _run(
+            [
+                "--backend",
+                "csv",
+                "--csv-path",
+                str(csv_path),
+                "update",
+                "srv",
+                "--from-summary",
+                str(summary_path),
+            ]
+        )
         assert result.returncode == 0, result.stderr
 
         backend = CsvBackend(csv_path)
@@ -218,18 +253,29 @@ class TestCli:
 
     def test_get_missing_exits_2(self, tmp_path: Path) -> None:
         csv_path = tmp_path / "t.csv"
-        result = _run([
-            "--backend", "csv", "--csv-path", str(csv_path),
-            "get", "ghost",
-        ])
+        result = _run(
+            [
+                "--backend",
+                "csv",
+                "--csv-path",
+                str(csv_path),
+                "get",
+                "ghost",
+            ]
+        )
         assert result.returncode == 2
 
     def test_list_empty(self, tmp_path: Path) -> None:
         csv_path = tmp_path / "t.csv"
-        result = _run([
-            "--backend", "csv", "--csv-path", str(csv_path),
-            "list",
-        ])
+        result = _run(
+            [
+                "--backend",
+                "csv",
+                "--csv-path",
+                str(csv_path),
+                "list",
+            ]
+        )
         assert result.returncode == 0
         out = json.loads(result.stdout)
         assert out["count"] == 0
@@ -237,9 +283,17 @@ class TestCli:
 
     def test_unknown_field_in_set_fails(self, tmp_path: Path) -> None:
         csv_path = tmp_path / "t.csv"
-        result = _run([
-            "--backend", "csv", "--csv-path", str(csv_path),
-            "update", "srv", "--set", "bogus_field=x",
-        ])
+        result = _run(
+            [
+                "--backend",
+                "csv",
+                "--csv-path",
+                str(csv_path),
+                "update",
+                "srv",
+                "--set",
+                "bogus_field=x",
+            ]
+        )
         assert result.returncode == 1
         assert "Unknown field" in result.stderr

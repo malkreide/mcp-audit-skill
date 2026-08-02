@@ -22,6 +22,7 @@ Regex, der nach einer Umformulierung ins Leere greift, prüft
 stillschweigend nichts mehr — dieselbe Fehlerklasse, die `OPS-005`
 beschreibt.
 """
+
 from __future__ import annotations
 
 import re
@@ -97,17 +98,28 @@ class TestCatalogUsesCanonicalVocabulary:
 class TestDocumentationDeclaresSameVocabulary:
     """Jede Datei, die dem Autor eines Profils sagt, was er schreiben darf."""
 
-    @pytest.mark.parametrize("relpath,pattern", [
-        # | `Transport` | `stdio-only` / `dual` / `HTTP/SSE` | filtert … |
-        ("SKILL.md", r"^\|\s*`Transport`\s*\|\s*(?P<values>[^|]+?)\s*\|"),
-        # | Transport | stdio-only / dual / HTTP/SSE |
-        ("templates/audit-report.md", r"^\|\s*Transport\s*\|\s*(?P<values>[^|]+?)\s*\|"),
-        # | `transport` | `stdio-only`, `dual`, `HTTP/SSE` | `dual` |
-        (".claude/commands/audit-mcp.md",
-         r"^\|\s*`transport`\s*\|\s*(?P<values>[^|]+?)\s*\|"),
-        # transport: dual    # stdio-only | dual | HTTP/SSE
-        ("portfolio.example.yaml", r"^\s*transport:\s*\S+\s*#\s*(?P<values>.+?)\s*$"),
-    ])
+    @pytest.mark.parametrize(
+        "relpath,pattern",
+        [
+            # | `Transport` | `stdio-only` / `dual` / `HTTP/SSE` | filtert … |
+            ("SKILL.md", r"^\|\s*`Transport`\s*\|\s*(?P<values>[^|]+?)\s*\|"),
+            # | Transport | stdio-only / dual / HTTP/SSE |
+            (
+                "templates/audit-report.md",
+                r"^\|\s*Transport\s*\|\s*(?P<values>[^|]+?)\s*\|",
+            ),
+            # | `transport` | `stdio-only`, `dual`, `HTTP/SSE` | `dual` |
+            (
+                ".claude/commands/audit-mcp.md",
+                r"^\|\s*`transport`\s*\|\s*(?P<values>[^|]+?)\s*\|",
+            ),
+            # transport: dual    # stdio-only | dual | HTTP/SSE
+            (
+                "portfolio.example.yaml",
+                r"^\s*transport:\s*\S+\s*#\s*(?P<values>.+?)\s*$",
+            ),
+        ],
+    )
     def test_declared_values_match_canonical(self, relpath, pattern):
         path = REPO_ROOT / relpath
         rx = re.compile(pattern, re.MULTILINE)
@@ -124,8 +136,7 @@ class TestDocumentationDeclaresSameVocabulary:
                 if tok.strip().strip("`").strip()
             }
             assert declared == CANONICAL, (
-                f"{relpath} nennt {sorted(declared)}, kanonisch ist "
-                f"{sorted(CANONICAL)}"
+                f"{relpath} nennt {sorted(declared)}, kanonisch ist {sorted(CANONICAL)}"
             )
 
     def test_example_profile_values_are_canonical(self):
@@ -180,6 +191,7 @@ class TestSdkLanguageIsDocumented:
 
     def test_it_is_a_required_field(self):
         from tools.validate_profile import REQUIRED_FIELDS
+
         assert REQUIRED_FIELDS.get("sdk_language") is str, (
             "sdk_language muss Pflichtfeld sein — sonst passiert ein Profil "
             "ohne das Feld das Gate und sieben Checks fallen erst im "
@@ -214,6 +226,7 @@ class TestSdkLanguageIsDocumented:
         da wird ein Go-Server abgewiesen.
         """
         from tools.validate_profile import ALLOWED_VALUES
+
         assert "sdk_language" not in ALLOWED_VALUES
 
     def test_notion_sync_sets_the_field(self):

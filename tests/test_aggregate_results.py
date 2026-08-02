@@ -8,6 +8,7 @@ step 5 announced 15 finding docs, step 6 reported 6, and the on-disk
 findings/ dir held only 6. The tests lock in deterministic behaviour so
 that bug cannot recur.
 """
+
 from __future__ import annotations
 
 import json
@@ -29,6 +30,7 @@ from tools.aggregate_results import (
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def srgssr_results() -> VerificationResults:
@@ -110,6 +112,7 @@ def minimal_results() -> VerificationResults:
 # Schema validation
 # ---------------------------------------------------------------------------
 
+
 class TestSchema:
     def test_valid_result(self):
         r = CheckResult("X-001", "pass", "ARCH", "medium")
@@ -153,6 +156,7 @@ class TestSchema:
 # Aggregation arithmetic — locks in the regression
 # ---------------------------------------------------------------------------
 
+
 class TestAggregateMinimal:
     def test_default_policy_counts(self, minimal_results):
         s = aggregate(minimal_results)
@@ -181,7 +185,9 @@ class TestAggregateMinimal:
         # FAIL + PARTIAL + TODO = 3
         assert s["findings"]["expected_count"] == 3
         assert set(s["findings"]["expected_ids"]) == {
-            "SEC-001", "OBS-001", "OPS-001",
+            "SEC-001",
+            "OBS-001",
+            "OPS-001",
         }
 
     def test_blocking_findings_critical_or_high(self, minimal_results):
@@ -248,6 +254,7 @@ class TestAggregateSrgssrRegression:
 # ---------------------------------------------------------------------------
 # Validation against on-disk findings/
 # ---------------------------------------------------------------------------
+
 
 class TestValidationAgainstDisk:
     def _write_finding(self, dir: Path, check_id: str, slug: str = "test") -> None:
@@ -379,24 +386,25 @@ class TestValidationAgainstDisk:
 
 class TestFilenameParser:
     def test_arch_id_extracted(self):
-        assert extract_check_id_from_finding_filename(
-            Path("ARCH-001-tool-naming.md")
-        ) == "ARCH-001"
+        assert (
+            extract_check_id_from_finding_filename(Path("ARCH-001-tool-naming.md"))
+            == "ARCH-001"
+        )
 
     def test_multi_segment_check_id(self):
-        assert extract_check_id_from_finding_filename(
-            Path("SEC-021-egress-allowlist.md")
-        ) == "SEC-021"
+        assert (
+            extract_check_id_from_finding_filename(Path("SEC-021-egress-allowlist.md"))
+            == "SEC-021"
+        )
 
     def test_no_id_in_filename(self):
-        assert extract_check_id_from_finding_filename(
-            Path("README.md")
-        ) is None
+        assert extract_check_id_from_finding_filename(Path("README.md")) is None
 
 
 # ---------------------------------------------------------------------------
 # CLI smoke tests
 # ---------------------------------------------------------------------------
+
 
 class TestCli:
     def _write_results(self, path: Path, vr: VerificationResults) -> None:
@@ -417,6 +425,7 @@ class TestCli:
 
     def test_aggregate_to_file(self, tmp_path, minimal_results):
         from tools.aggregate_results import main
+
         results_path = tmp_path / "results.json"
         out_path = tmp_path / "summary.json"
         self._write_results(results_path, minimal_results)
@@ -428,6 +437,7 @@ class TestCli:
 
     def test_validate_command_passes(self, tmp_path, minimal_results, capsys):
         from tools.aggregate_results import main
+
         audit_dir = tmp_path / "audit"
         findings_dir = audit_dir / "findings"
         findings_dir.mkdir(parents=True)
@@ -445,6 +455,7 @@ class TestCli:
 
     def test_validate_command_fails_on_mismatch(self, tmp_path, minimal_results):
         from tools.aggregate_results import main
+
         audit_dir = tmp_path / "audit"
         findings_dir = audit_dir / "findings"
         findings_dir.mkdir(parents=True)
@@ -458,6 +469,7 @@ class TestCli:
 
     def test_expected_findings_command(self, tmp_path, minimal_results, capsys):
         from tools.aggregate_results import main
+
         results_path = tmp_path / "results.json"
         self._write_results(results_path, minimal_results)
         rc = main(["expected-findings", str(results_path)])

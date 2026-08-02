@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for tools/parse_catalog.py — replaces inline awk/heredoc parsing."""
+
 from __future__ import annotations
 
 import json
@@ -25,6 +26,7 @@ CHECKS_DIR = REPO_ROOT / "checks"
 # ---------------------------------------------------------------------------
 # Real-catalog regression
 # ---------------------------------------------------------------------------
+
 
 class TestRealCatalog:
     def test_count_matches_manifest(self):
@@ -82,6 +84,7 @@ class TestRealCatalog:
 # Hermetic fixtures
 # ---------------------------------------------------------------------------
 
+
 def _write_check(dir: Path, fm: str, body: str = "body") -> None:
     path = dir / f"{fm.split('id:')[1].split()[0].strip()}.md"
     path.write_text(f"---\n{fm}\n---\n\n{body}\n", encoding="utf-8")
@@ -89,19 +92,21 @@ def _write_check(dir: Path, fm: str, body: str = "body") -> None:
 
 class TestHermetic:
     def test_two_checks_parse(self, tmp_path):
-        _write_check(tmp_path,
+        _write_check(
+            tmp_path,
             "id: TST-001\n"
-            "title: \"Tiny check\"\n"
+            'title: "Tiny check"\n'
             "category: ARCH\n"
             "severity: medium\n"
-            "applies_when: 'always'"
+            "applies_when: 'always'",
         )
-        _write_check(tmp_path,
+        _write_check(
+            tmp_path,
             "id: TST-002\n"
-            "title: \"Other tiny check\"\n"
+            'title: "Other tiny check"\n'
             "category: SEC\n"
             "severity: high\n"
-            "applies_when: 'transport != \"stdio-only\"'"
+            "applies_when: 'transport != \"stdio-only\"'",
         )
         catalog = parse_catalog(tmp_path)
         assert set(catalog) == {"TST-001", "TST-002"}
@@ -121,7 +126,7 @@ class TestHermetic:
 
     def test_missing_required_field_rejected(self, tmp_path):
         (tmp_path / "x.md").write_text(
-            "---\nid: TST-099\ntitle: \"x\"\ncategory: ARCH\nseverity: medium\n---\n",
+            '---\nid: TST-099\ntitle: "x"\ncategory: ARCH\nseverity: medium\n---\n',
             encoding="utf-8",
         )
         with pytest.raises(ValueError, match="missing required field"):
@@ -129,12 +134,13 @@ class TestHermetic:
 
     def test_manifest_check_detects_orphan_file(self, tmp_path):
         # Catalog has 1, manifest is empty
-        _write_check(tmp_path,
+        _write_check(
+            tmp_path,
             "id: ORPH-001\n"
-            "title: \"Orphan\"\n"
+            'title: "Orphan"\n'
             "category: ARCH\n"
             "severity: medium\n"
-            "applies_when: 'always'"
+            "applies_when: 'always'",
         )
         (tmp_path / "MANIFEST.txt").write_text("", encoding="utf-8")
         report = manifest_check(tmp_path)
@@ -144,20 +150,19 @@ class TestHermetic:
 
     def test_manifest_check_detects_missing_file(self, tmp_path):
         # Manifest references a check not on disk
-        (tmp_path / "MANIFEST.txt").write_text(
-            "GHOST-001\n", encoding="utf-8"
-        )
+        (tmp_path / "MANIFEST.txt").write_text("GHOST-001\n", encoding="utf-8")
         report = manifest_check(tmp_path)
         assert report["consistent"] is False
         assert report["in_manifest_only"] == ["GHOST-001"]
 
     def test_list_check_files_excludes_manifest(self, tmp_path):
-        _write_check(tmp_path,
+        _write_check(
+            tmp_path,
             "id: TST-010\n"
-            "title: \"x\"\n"
+            'title: "x"\n'
             "category: ARCH\n"
             "severity: medium\n"
-            "applies_when: 'always'"
+            "applies_when: 'always'",
         )
         (tmp_path / "MANIFEST.txt").write_text("TST-010\n", encoding="utf-8")
         files = list_check_files(tmp_path)
@@ -169,14 +174,16 @@ class TestHermetic:
 # CLI smoke tests
 # ---------------------------------------------------------------------------
 
+
 class TestCli:
     def test_json_format_to_stdout(self, tmp_path, capsys):
-        _write_check(tmp_path,
+        _write_check(
+            tmp_path,
             "id: CLI-001\n"
-            "title: \"x\"\n"
+            'title: "x"\n'
             "category: ARCH\n"
             "severity: medium\n"
-            "applies_when: 'always'"
+            "applies_when: 'always'",
         )
         rc = main(["--checks-dir", str(tmp_path), "--format", "json"])
         assert rc == 0
@@ -185,19 +192,25 @@ class TestCli:
         assert "CLI-001" in data
 
     def test_json_format_to_file(self, tmp_path):
-        _write_check(tmp_path,
+        _write_check(
+            tmp_path,
             "id: FIL-001\n"
-            "title: \"x\"\n"
+            'title: "x"\n'
             "category: ARCH\n"
             "severity: medium\n"
-            "applies_when: 'always'"
+            "applies_when: 'always'",
         )
         out = tmp_path / "catalog.json"
-        rc = main([
-            "--checks-dir", str(tmp_path),
-            "--format", "json",
-            "--out", str(out),
-        ])
+        rc = main(
+            [
+                "--checks-dir",
+                str(tmp_path),
+                "--format",
+                "json",
+                "--out",
+                str(out),
+            ]
+        )
         assert rc == 0
         data = json.loads(out.read_text(encoding="utf-8"))
         assert "FIL-001" in data
@@ -208,12 +221,13 @@ class TestCli:
 
     def test_manifest_check_inconsistent_returns_one(self, tmp_path, capsys):
         # Catalog has one file, manifest is empty → inconsistent.
-        _write_check(tmp_path,
+        _write_check(
+            tmp_path,
             "id: INC-001\n"
-            "title: \"x\"\n"
+            'title: "x"\n'
             "category: ARCH\n"
             "severity: medium\n"
-            "applies_when: 'always'"
+            "applies_when: 'always'",
         )
         (tmp_path / "MANIFEST.txt").write_text("", encoding="utf-8")
         rc = main(["--checks-dir", str(tmp_path), "--format", "manifest-check"])

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for cross-platform path conversion helpers."""
+
 from __future__ import annotations
 
 import io
@@ -108,8 +109,12 @@ class TestForceUtf8Stdio:
         try:
             fake_out = io.BytesIO()
             fake_err = io.BytesIO()
-            sys.stdout = io.TextIOWrapper(fake_out, encoding="cp1252", write_through=True)
-            sys.stderr = io.TextIOWrapper(fake_err, encoding="cp1252", write_through=True)
+            sys.stdout = io.TextIOWrapper(
+                fake_out, encoding="cp1252", write_through=True
+            )
+            sys.stderr = io.TextIOWrapper(
+                fake_err, encoding="cp1252", write_through=True
+            )
             assert sys.stdout.encoding.lower() == "cp1252"
             force_utf8_stdio()
             assert sys.stdout.encoding.lower() == "utf-8"
@@ -133,11 +138,13 @@ class TestPathsShell:
     @staticmethod
     def _bash_available():
         import shutil
+
         return shutil.which("bash") is not None
 
     @staticmethod
     def _helper_posix():
         from pathlib import Path
+
         helper = Path(__file__).resolve().parent.parent / "tools" / "paths.sh"
         return helper, helper.as_posix()
 
@@ -150,6 +157,7 @@ class TestPathsShell:
         # to source. The to_posix_path call on Windows hosts may delegate
         # to cygpath, which on Git Bash for Windows returns /c/Users/foo.
         import subprocess
+
         # Python source: 'C:\\Users\\foo' is 4 escapes → in the actual
         # string, single backslashes: C:\Users\foo. Bash single-quotes
         # preserve those literally.
@@ -180,10 +188,8 @@ class TestPathsShell:
             pytest.skip("bash not on PATH")
         helper, helper_posix = self._helper_posix()
         import subprocess
-        script = (
-            f'source "{helper_posix}"\n'
-            "to_windows_path '/c/Users/foo'\n"
-        )
+
+        script = f"source \"{helper_posix}\"\nto_windows_path '/c/Users/foo'\n"
         result = subprocess.run(
             ["bash", "-c", script],
             capture_output=True,

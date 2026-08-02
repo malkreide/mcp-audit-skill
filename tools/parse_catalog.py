@@ -13,6 +13,7 @@ Usage:
     python tools/parse_catalog.py --format manifest-check
     python tools/parse_catalog.py --checks-dir path/to/checks
 """
+
 from __future__ import annotations
 
 import argparse
@@ -154,7 +155,8 @@ def adoption_counts(catalog: dict[str, dict[str, Any]]) -> dict[str, int]:
 def advisory_ids(catalog: dict[str, dict[str, Any]]) -> list[str]:
     """IDs of the checks that report but do not block, sorted."""
     return sorted(
-        cid for cid, fm in catalog.items()
+        cid
+        for cid, fm in catalog.items()
         if fm.get("adoption", DEFAULT_ADOPTION) == "advisory"
     )
 

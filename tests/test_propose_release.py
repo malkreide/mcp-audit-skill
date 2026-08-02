@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Tests for tools/propose_release.py — semver, CHANGELOG insertion,
 production-ready gating, and proposal output structure."""
+
 from __future__ import annotations
 
 import json
@@ -24,6 +25,7 @@ from tools.propose_release import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def audit_dir(tmp_path: Path) -> Path:
     d = tmp_path / "audit"
@@ -40,8 +42,12 @@ def audit_dir(tmp_path: Path) -> Path:
             "checks_evaluated": 20,
             "applicable": 20,
             "by_status": {"pass": 18, "fail": 0, "partial": 0, "todo": 2, "n/a": 0},
-            "by_severity_among_findings": {"critical": 0, "high": 0,
-                                           "medium": 0, "low": 0},
+            "by_severity_among_findings": {
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+            },
         },
         "findings": {
             "policy": "fail-or-partial",
@@ -66,12 +72,19 @@ def failing_audit_dir(tmp_path: Path) -> Path:
             "checks_evaluated": 5,
             "applicable": 5,
             "by_status": {"pass": 2, "fail": 3, "partial": 0, "todo": 0, "n/a": 0},
-            "by_severity_among_findings": {"critical": 1, "high": 2,
-                                           "medium": 0, "low": 0},
+            "by_severity_among_findings": {
+                "critical": 1,
+                "high": 2,
+                "medium": 0,
+                "low": 0,
+            },
         },
-        "findings": {"policy": "fail-or-partial", "expected_count": 3,
-                     "expected_ids": ["SEC-001", "SEC-002", "SEC-003"],
-                     "details": []},
+        "findings": {
+            "policy": "fail-or-partial",
+            "expected_count": 3,
+            "expected_ids": ["SEC-001", "SEC-002", "SEC-003"],
+            "details": [],
+        },
         "production_ready": False,
         "blocking_findings": ["SEC-001", "SEC-002", "SEC-003"],
     }
@@ -82,6 +95,7 @@ def failing_audit_dir(tmp_path: Path) -> Path:
 # ---------------------------------------------------------------------------
 # AuditSummary
 # ---------------------------------------------------------------------------
+
 
 class TestAuditSummary:
     def test_loads_from_dir(self, audit_dir: Path) -> None:
@@ -98,8 +112,13 @@ class TestAuditSummary:
     def test_meta_overrides_audit_meta(self, audit_dir: Path) -> None:
         # audit-meta.json beats inline audit_meta on overlap.
         (audit_dir / "audit-meta.json").write_text(
-            json.dumps({"server_name": "from-meta", "run_id": "from-meta-rid",
-                        "skill_version": "9.9.9"}),
+            json.dumps(
+                {
+                    "server_name": "from-meta",
+                    "run_id": "from-meta-rid",
+                    "skill_version": "9.9.9",
+                }
+            ),
             encoding="utf-8",
         )
         s = AuditSummary.from_dir(audit_dir)
@@ -111,15 +130,19 @@ class TestAuditSummary:
 # Semver bump
 # ---------------------------------------------------------------------------
 
+
 class TestBumpVersion:
-    @pytest.mark.parametrize("current,bump,expected", [
-        ("1.2.3", "patch", "1.2.4"),
-        ("1.2.3", "minor", "1.3.0"),
-        ("1.2.3", "major", "2.0.0"),
-        ("0.0.0", "patch", "0.0.1"),
-        ("v1.0.0", "minor", "1.1.0"),  # leading v tolerated
-        ("1.0.0-rc1", "patch", "1.0.1"),  # pre-release suffix dropped
-    ])
+    @pytest.mark.parametrize(
+        "current,bump,expected",
+        [
+            ("1.2.3", "patch", "1.2.4"),
+            ("1.2.3", "minor", "1.3.0"),
+            ("1.2.3", "major", "2.0.0"),
+            ("0.0.0", "patch", "0.0.1"),
+            ("v1.0.0", "minor", "1.1.0"),  # leading v tolerated
+            ("1.0.0-rc1", "patch", "1.0.1"),  # pre-release suffix dropped
+        ],
+    )
     def test_bumps(self, current: str, bump: str, expected: str) -> None:
         assert bump_version(current, bump) == expected
 
@@ -135,6 +158,7 @@ class TestBumpVersion:
 # ---------------------------------------------------------------------------
 # Version detection
 # ---------------------------------------------------------------------------
+
 
 class TestDetectCurrentVersion:
     def test_pyproject_wins(self, tmp_path: Path) -> None:
@@ -170,6 +194,7 @@ class TestDetectCurrentVersion:
 # CHANGELOG rendering / insertion
 # ---------------------------------------------------------------------------
 
+
 class TestChangelog:
     def _summary(self) -> AuditSummary:
         return AuditSummary(
@@ -186,8 +211,9 @@ class TestChangelog:
         )
 
     def test_render_includes_audit_metadata(self) -> None:
-        entry = render_changelog_entry("1.2.3", self._summary(),
-                                       notes="Added X.", today="2026-05-09")
+        entry = render_changelog_entry(
+            "1.2.3", self._summary(), notes="Added X.", today="2026-05-09"
+        )
         assert "## [v1.2.3] — 2026-05-09" in entry
         assert "Added X." in entry
         assert "Production-ready:" in entry
@@ -240,25 +266,28 @@ PROPOSE_BIN = [sys.executable, "tools/propose_release.py"]
 
 def _run_propose(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
     import os
+
     return subprocess.run(
         PROPOSE_BIN + args,
         cwd=str(Path(__file__).resolve().parent.parent),
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
         env={**os.environ, "PYTHONUTF8": "1"},
     )
 
 
 class TestCli:
-    def test_propose_blocks_when_not_ready(self, failing_audit_dir: Path,
-                                           tmp_path: Path) -> None:
+    def test_propose_blocks_when_not_ready(
+        self, failing_audit_dir: Path, tmp_path: Path
+    ) -> None:
         target = tmp_path / "target"
         target.mkdir()
         (target / "pyproject.toml").write_text(
-            '[project]\nversion = "0.1.0"\n', encoding="utf-8",
+            '[project]\nversion = "0.1.0"\n',
+            encoding="utf-8",
         )
         result = _run_propose(
-            ["propose", str(failing_audit_dir), str(target),
-             "--format", "json"],
+            ["propose", str(failing_audit_dir), str(target), "--format", "json"],
             cwd=tmp_path,
         )
         assert result.returncode == 2, result.stderr
@@ -267,17 +296,27 @@ class TestCli:
         assert out["reason"] == "not_production_ready"
         assert "SEC-001" in out["blocking_findings"]
 
-    def test_propose_emits_proposal_when_ready(self, audit_dir: Path,
-                                               tmp_path: Path) -> None:
+    def test_propose_emits_proposal_when_ready(
+        self, audit_dir: Path, tmp_path: Path
+    ) -> None:
         target = tmp_path / "target"
         target.mkdir()
         (target / "pyproject.toml").write_text(
-            '[project]\nversion = "0.4.2"\n', encoding="utf-8",
+            '[project]\nversion = "0.4.2"\n',
+            encoding="utf-8",
         )
         result = _run_propose(
-            ["propose", str(audit_dir), str(target),
-             "--format", "json", "--bump", "minor",
-             "--today", "2026-05-09"],
+            [
+                "propose",
+                str(audit_dir),
+                str(target),
+                "--format",
+                "json",
+                "--bump",
+                "minor",
+                "--today",
+                "2026-05-09",
+            ],
             cwd=tmp_path,
         )
         assert result.returncode == 0, result.stderr
@@ -289,16 +328,26 @@ class TestCli:
         # Working tree must be untouched.
         assert not (target / "CHANGELOG.md").exists()
 
-    def test_propose_force_overrides_gating(self, failing_audit_dir: Path,
-                                            tmp_path: Path) -> None:
+    def test_propose_force_overrides_gating(
+        self, failing_audit_dir: Path, tmp_path: Path
+    ) -> None:
         target = tmp_path / "target"
         target.mkdir()
         (target / "pyproject.toml").write_text(
-            '[project]\nversion = "0.1.0"\n', encoding="utf-8",
+            '[project]\nversion = "0.1.0"\n',
+            encoding="utf-8",
         )
         result = _run_propose(
-            ["propose", str(failing_audit_dir), str(target),
-             "--format", "json", "--force", "--today", "2026-05-09"],
+            [
+                "propose",
+                str(failing_audit_dir),
+                str(target),
+                "--format",
+                "json",
+                "--force",
+                "--today",
+                "2026-05-09",
+            ],
             cwd=tmp_path,
         )
         assert result.returncode == 0, result.stderr

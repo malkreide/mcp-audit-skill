@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for tools/build_report.py — audit-report generation from summary.json."""
+
 from __future__ import annotations
 
 import json
@@ -27,6 +28,7 @@ from tools.build_report import (
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def srgssr_summary() -> dict:
@@ -78,6 +80,7 @@ def sample_profile() -> dict:
 # ---------------------------------------------------------------------------
 # Section renderers
 # ---------------------------------------------------------------------------
+
 
 class TestExecutiveSummary:
     def test_includes_server_name(self, srgssr_summary):
@@ -172,9 +175,13 @@ class TestMetadata:
 # End-to-end build
 # ---------------------------------------------------------------------------
 
+
 class TestBuildReport:
     def test_full_report_includes_all_sections(
-        self, tmp_path, srgssr_summary, sample_profile,
+        self,
+        tmp_path,
+        srgssr_summary,
+        sample_profile,
     ):
         findings_dir = tmp_path / "findings"
         findings_dir.mkdir()
@@ -197,13 +204,16 @@ class TestBuildReport:
             assert f"body for {cid}" in report
 
     def test_missing_finding_doc_flagged_in_report(
-        self, tmp_path, srgssr_summary,
+        self,
+        tmp_path,
+        srgssr_summary,
     ):
         findings_dir = tmp_path / "findings"
         findings_dir.mkdir()
         # Persist only one of three expected findings.
         (findings_dir / "ARCH-002-test.md").write_text(
-            "## Finding: ARCH-002\n\ndocumented\n", encoding="utf-8",
+            "## Finding: ARCH-002\n\ndocumented\n",
+            encoding="utf-8",
         )
         report = build_report(srgssr_summary, {}, findings_dir)
         # Missing findings get a warning section
@@ -216,6 +226,7 @@ class TestBuildReport:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 class TestCli:
     def _setup_audit_dir(
         self,
@@ -227,15 +238,18 @@ class TestCli:
         findings_dir = audit_dir / "findings"
         findings_dir.mkdir(parents=True)
         (audit_dir / "summary.json").write_text(
-            json.dumps(summary), encoding="utf-8",
+            json.dumps(summary),
+            encoding="utf-8",
         )
         for cid in summary["findings"]["expected_ids"]:
             (findings_dir / f"{cid}-test.md").write_text(
-                f"## {cid}\nbody\n", encoding="utf-8",
+                f"## {cid}\nbody\n",
+                encoding="utf-8",
             )
         if profile:
             (audit_dir / "profile.json").write_text(
-                json.dumps(profile), encoding="utf-8",
+                json.dumps(profile),
+                encoding="utf-8",
             )
         return audit_dir
 

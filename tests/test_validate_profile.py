@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for tools/validate_profile.py — placeholder + schema gate for Step 1."""
+
 from __future__ import annotations
 
 import json
@@ -39,19 +40,41 @@ def _good_profile() -> dict:
 # Placeholder detection
 # ---------------------------------------------------------------------------
 
+
 class TestPlaceholderDetection:
-    @pytest.mark.parametrize("value", [
-        "...", "  ...  ", "<placeholder>", "<TODO>", "<>",
-        "TODO", "todo", "fixme", "FIXME", "XXX",
-        "", "   ", None,
-    ])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "...",
+            "  ...  ",
+            "<placeholder>",
+            "<TODO>",
+            "<>",
+            "TODO",
+            "todo",
+            "fixme",
+            "FIXME",
+            "XXX",
+            "",
+            "   ",
+            None,
+        ],
+    )
     def test_recognises_placeholder(self, value):
         assert _is_placeholder_value(value) is True, f"value={value!r}"
 
-    @pytest.mark.parametrize("value", [
-        "stdio-only", "Public Open Data", "API-Key",
-        "0", 0, False, True,
-    ])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "stdio-only",
+            "Public Open Data",
+            "API-Key",
+            "0",
+            0,
+            False,
+            True,
+        ],
+    )
     def test_real_values_pass(self, value):
         assert _is_placeholder_value(value) is False, f"value={value!r}"
 
@@ -65,6 +88,7 @@ class TestPlaceholderDetection:
 # ---------------------------------------------------------------------------
 # Whole-profile validation
 # ---------------------------------------------------------------------------
+
 
 class TestValidateProfile:
     def test_clean_profile_passes(self):
@@ -140,6 +164,7 @@ class TestValidateProfile:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 class TestCli:
     def _write_profile(self, tmp_path: Path, profile: dict) -> Path:
         path = tmp_path / "profile.json"
@@ -178,6 +203,7 @@ class TestCli:
 # Closed vocabularies (enum_mismatch)
 # ---------------------------------------------------------------------------
 
+
 class TestClosedVocabularies:
     """Ein unbekannter *Wert* muss laut scheitern, nicht still filtern.
 
@@ -202,17 +228,21 @@ class TestClosedVocabularies:
             assert report["consistent"] is True, f"{value!r} sollte gültig sein"
             assert report["enum_mismatch"] == []
 
-    @pytest.mark.parametrize("value", ["HTTP", "SSE", "http/sse", "streamable-http", "stdio"])
+    @pytest.mark.parametrize(
+        "value", ["HTTP", "SSE", "http/sse", "streamable-http", "stdio"]
+    )
     def test_unknown_transport_is_reported(self, value):
         profile = _good_profile()
         profile["transport"] = value
         report = validate_profile(profile)
         assert report["consistent"] is False, f"{value!r} sollte abgelehnt werden"
-        assert report["enum_mismatch"] == [{
-            "field": "transport",
-            "allowed": ["stdio-only", "dual", "HTTP/SSE"],
-            "got": value,
-        }]
+        assert report["enum_mismatch"] == [
+            {
+                "field": "transport",
+                "allowed": ["stdio-only", "dual", "HTTP/SSE"],
+                "got": value,
+            }
+        ]
 
     def test_unknown_transport_returns_exit_one(self, tmp_path):
         bad = _good_profile()
