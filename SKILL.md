@@ -226,7 +226,9 @@ Ein Advisory-Finding auf blockierender Severity wird im Report unter `advisory_f
 
 1. Als `advisory` mergen. Der Check läuft im nächsten Portfolio-Durchlauf mit und meldet, ohne zu blockieren.
 2. Die Advisory-Findings über das Portfolio auswerten: Ist der Check richtig geschnitten? Produziert er Fehlalarme?
-3. Wenn die betroffenen Server nachgezogen haben — oder der Rückstand bewusst akzeptiert ist —, auf `enforced` promovieren. Die Promotion gehört in den CHANGELOG, nicht in einen Diff, den niemand liest.
+3. Wenn die betroffenen Server nachgezogen haben — oder der Rückstand bewusst akzeptiert ist —, auf `enforced` promovieren. Die Promotion gehört in den CHANGELOG, nicht in einen Diff, den niemand liest. Wird sie auf `critical` oder `high` ausgesprochen, ist sie ausserdem ein **Re-Audit-Auslöser** nach [§5d](#versionierung-des-check-katalogs): Ab diesem Moment verlieren Server ihre Production-Readiness, deren letztes Audit dasselbe Finding noch als folgenlos führen durfte.
+
+   Wird Schritt 2 übersprungen — Promotion ohne dazwischenliegenden Portfolio-Durchlauf —, stützt sie sich auf «Rückstand bewusst akzeptiert» und **nicht** auf ausgewertete Advisory-Findings. Beides ist zulässig; welches von beidem gilt, gehört in den CHANGELOG-Eintrag. Eine Promotion, die Evidenz behauptet, die nicht erhoben wurde, ist der Fehler aus `OPS-004`.
 
 Ein Tippfehler in `adoption` ist ein **harter Fehler** beim Katalog-Parsen. Eine stille Demotion wäre die leiseste Art, einen Check zu verlieren.
 
@@ -828,16 +830,21 @@ Wenn das PDF aktualisiert wird oder neue Best Practices auftauchen:
 2. `evidence_required` und `applies_when` mit Care befüllen
 3. CHANGELOG-Eintrag im Repo-Root
 4. Bestehende Server, die schon ein Audit hatten, **nicht automatisch reauditiert** — sondern bei nächstem Refactoring oder geplantem Re-Audit
-5. **Re-Audit-Auslöser bei `critical` oder `high`** — drei Fälle, in denen ein bestehendes Audit-Ergebnis nicht mehr gilt:
+5. **Re-Audit-Auslöser bei `critical` oder `high`** — vier Fälle, in denen ein bestehendes Audit-Ergebnis nicht mehr gilt:
    - **a) Severity angehoben.** Der Verstoss wiegt jetzt schwerer, als das Audit ihn geführt hat.
    - **b) `applies_when` nach oben erweitert.** Der Check gilt jetzt für Server, die beim letzten Audit **nicht** dagegen gemessen wurden. Formal keine Severity-Änderung — für die betroffenen Server aber ununterscheidbar davon, denn ein blockierender Check greift, wo vorher keiner war. Die Gegenrichtung (Reichweite verengt) löst kein Re-Audit aus, kann aber alte Findings gegenstandslos machen; das gehört in den CHANGELOG, nicht in die Warteschlange.
    - **c) Prüfkriterium korrigiert.** Der Check hat die falsche Sache als bestanden ausgewiesen — ein fehlerhaftes Pass-Pattern, ein Kriterium, das am Ziel vorbeiging. Ein „bestanden" aus der Zeit davor belegt nichts.
+   - **d) Adoptionsstufe von `advisory` auf `enforced` promoviert.** Der Check hat vorher gemeldet und nicht geurteilt; ab jetzt blockiert er. Formal ändert sich weder Severity noch Reichweite noch Kriterium — für die betroffenen Server ist es trotzdem von a) nicht zu unterscheiden, denn ein blockierender Check greift, wo vorher keiner griff. Ein Audit, dessen `production_ready: true` sich darauf stützte, dass dieses Finding nicht zählte, gilt nicht mehr. Die Gegenrichtung (Demotion auf `advisory`) löst kein Re-Audit aus — sie kann aber ein Verdikt nachträglich grün machen, und das gehört in den CHANGELOG, nicht in die Warteschlange. Bei `medium`/`low` entfällt d) ganz: Dort blockierte auch vorher nichts, die Promotion ändert also an keinem Verdikt etwas.
 
 **Warum b) und c) dazugehören.** Punkt 5 nannte bis v1.3.0 nur die Severity. Dieses Release hatte **keine** einzige Severity-Änderung und trotzdem beide anderen Fälle: `SEC-005` wurde auf stdio-only-Server ausgeweitet, die den `high`-Check nie gesehen hatten, und `SEC-016` lehrte im Pass-Pattern eine SDK-API, die auf der aktuellen Major-Version einen `ValueError` wirft — wer ihn „bestanden" hatte und dem Muster gefolgt war, hatte einen Server, der auf HTTP-Transport nicht startet. Nach der alten Fassung wäre die Re-Audit-Liste leer gewesen. Eine Regel, die genau dann nichts meldet, wenn der Katalog sich geirrt hat, ist die falsche Regel.
 
+**Warum d) dazukam.** Bei der Promotion von `DEP-001` (`high`, `always`) in v1.5.0 nannte Punkt 5 nur a) bis c) — und keiner der drei traf zu: Die Severity blieb, `applies_when` blieb, das Kriterium blieb. Nach dem Buchstaben der Regel wäre die Re-Audit-Liste leer gewesen, während in Wahrheit **jeder** Server mit einer ungedeckelten Range von diesem Moment an seine Production-Readiness verlor. Die Adoptionsstufe war der einzige Hebel im Katalog, der ein Verdikt kippen kann, ohne dass irgendein Feld sich ändert, das die Regel las. Genau dieselbe Lehre wie bei b) und c), eine Achse weiter.
+
+Der Fall ist selten und deshalb leicht zu übersehen: Promotionen sind einzelne, bewusste Entscheidungen. Aber eine Regel, die nur die häufigen Fälle kennt, meldet nichts, wenn es darauf ankommt — sie muss den Fall benennen, gerade weil er selten ist.
+
 **Eselsbrücke:** *«Ein neuer Check ist ein neuer Vertrag. Bestehende Audits sind nicht rückwirkend ungültig, aber bei nächstem Audit gilt der neue Katalog.»*
 
-**Zweite Eselsbrücke, für Punkt 5:** *«Re-Audit, wenn sich geändert hat, wie hart geprüft wird (a), wer geprüft wird (b) oder worauf geprüft wird (c).»*
+**Zweite Eselsbrücke, für Punkt 5:** *«Re-Audit, wenn sich geändert hat, wie hart geprüft wird (a), wer geprüft wird (b), worauf geprüft wird (c) — oder ob der Befund noch folgenlos bleibt (d).»*
 
 ---
 
