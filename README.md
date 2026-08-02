@@ -72,9 +72,11 @@ BASE="https://api.example.ch/v2" OUTDIR=/tmp/probe bash reference/probe_template
 │   ├── befund_tabelle_template.md        # findings table: default matrix, recall ground truth
 │   ├── response_envelope.py              # pydantic v2 envelope with source + provenance
 │   └── retry_backoff.py                  # exponential backoff reference implementation
-└── companion/
-    └── mcp-data-fidelity/
-        └── README.md                     # pointer — the skill moved to its own repo
+├── companion/
+│   └── mcp-data-fidelity/
+│       └── README.md                     # pointer — the skill moved to its own repo
+└── scripts/
+    └── validate.sh                       # the repository's checks; CI runs this file
 ```
 
 ## Companion skill: `mcp-data-fidelity`
@@ -144,6 +146,18 @@ nobody wrote down gets rediscovered at full price.
 The most useful contribution is usually the smallest one — a single line in the
 default matrix for a source not yet listed, with the parameter description that
 proves it.
+
+Before opening a pull request, run the checks:
+
+```bash
+bash scripts/validate.sh
+```
+
+It is the same file CI invokes, so there is no second copy to drift out of step.
+All seven checks run even after one fails, so a red run names every problem at
+once. Worth knowing before editing the frontmatter: the `description` limit is
+1024 characters and the current one leaves single digits of headroom — the
+script prints what is left.
 
 Open an issue before a large pull request, so the shape can be settled first.
 

@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`scripts/validate.sh` — alle Checks des Repos in einem Kommando.** Vier der
+  sieben Prüfungen lagen bisher als Python-Heredocs inline in `ci.yml` und waren
+  lokal nur per Copy-paste aus der YAML zu bekommen. Wer SKILL.md editierte,
+  erfuhr das Ergebnis frühestens im Pull Request.
+
+  Die CI ruft das Skript jetzt auf, statt die Checks zu wiederholen: Eine zweite
+  Kopie würde auseinanderlaufen, und ein lokaler Runner, der von der CI
+  abgewichen ist, meldet grün auf einem Baum, den die CI ablehnt — das ist genau
+  der Fehlermodus, den eine Vorabprüfung nicht haben darf. Dasselbe Argument, das
+  in 1.1.0 den Companion-Ordner zu einem Pointer gemacht hat.
+
+  Drei Unterschiede zum bisherigen Verhalten, alle absichtlich:
+
+  Das Skript läuft **nach einem Fehlschlag weiter**. Als Kette von
+  Workflow-Steps brach die Prüfung beim ersten roten Schritt ab, was bei zwei
+  Problemen zwei Pushes kostete; jetzt benennt ein Durchlauf alle. Der
+  Exit-Code ist 0 nur, wenn keiner fehlgeschlagen ist.
+
+  Der Frontmatter-Check gibt den **verbleibenden Spielraum** aus statt nur der
+  Länge: `1017/1024 chars (7 left)`. Die Zahl ist die schärfste Nebenbedingung
+  im Repo — ein zusätzlicher Trigger-Begriff in der `description` reisst das
+  Limit in einer einzigen Bearbeitung, und die blosse Länge lässt das nicht
+  sehen.
+
+  `compileall` schreibt seine Bytecode-Caches über `PYTHONPYCACHEPREFIX` in ein
+  temporäres Verzeichnis. In der CI war das egal, lokal legt derselbe Befehl ein
+  untracked `reference/__pycache__/` an — auf diesem Weg ist in 1.1.0 schon
+  einmal eine `.pyc` in den Commit geraten.
+
+  Zehnfach mutationsgetestet: je eine Mutation pro Check, plus die beiden Fälle,
+  in denen Check 3 und Check 7 aus zwei verschiedenen Gründen rot werden können
+  (falscher Name / zu lange Description, veralteter Badge / fehlende
+  Release-Überschrift). Alle zehn wurden vom jeweils zuständigen Check gefangen,
+  bei allen zehn liefen die übrigen sechs zu Ende.
+
+- `__pycache__/` und `*.pyc` in `.gitignore` — die zweite Hälfte desselben
+  Problems. Der Cache-Prefix hält das Skript sauber, der Eintrag hält jeden
+  anderen `python`-Aufruf im Repo sauber.
+
 ## [1.2.0] - 2026-08-01
 
 Documentation and guards, no change to the procedure itself — the four
