@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests für den Repo-Description-Guard.
 
 Die Description ist der sechste Ort, an dem die Katalog-Zahlen stehen, und der
@@ -29,7 +28,6 @@ from pathlib import Path
 import pytest
 
 from tools.check_repo_description import compare, main, suggest
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKS_DIR = REPO_ROOT / "checks"

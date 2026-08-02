@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for the adoption stage — `advisory` vs `enforced`.
 
 Severity says how bad a violation is. Adoption says whether the catalogue is
@@ -19,6 +18,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -27,6 +27,8 @@ from tools.aggregate_results import (
     VerificationResults,
     aggregate,
     apply_catalog_adoption,
+)
+from tools.aggregate_results import (
     main as aggregate_main,
 )
 from tools.build_report import render_executive_summary
@@ -159,7 +161,11 @@ class TestCatalogParsing:
 
 
 class TestAggregation:
-    FAIL_HIGH = {"status": "fail", "category": "ARCH", "severity": "high"}
+    FAIL_HIGH: ClassVar[dict[str, str]] = {
+        "status": "fail",
+        "category": "ARCH",
+        "severity": "high",
+    }
 
     def test_enforced_failure_blocks(self):
         s = aggregate(_results(**{"ARCH-001": dict(self.FAIL_HIGH)}))

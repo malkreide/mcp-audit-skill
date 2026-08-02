@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Append Task-agent run metadata to audit-meta.json.
 
 Closes the audit-trail half of issue #12. Whenever the slash command
@@ -38,7 +37,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -101,7 +100,7 @@ def append_run(
     retry_of_run_index: int | None = None,
 ) -> dict[str, Any]:
     """Append a structured run entry. Returns the entry that was added."""
-    started_at = started_at or datetime.now(timezone.utc)
+    started_at = started_at or datetime.now(UTC)
     verify = verify_raw_outputs(raw_dir, expected_ids, min_bytes=min_bytes)
     status = _classify_run(tokens, verify["incomplete_ids"])
     entry = {

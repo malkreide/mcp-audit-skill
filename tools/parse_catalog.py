@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Parse the check catalog (checks/*.md frontmatter) into structured data.
 
 Replaces the inline awk/heredoc loops that the slash command and Step 2 of
@@ -30,7 +29,6 @@ if str(_REPO_ROOT) not in sys.path:
 
 from tools.eval_applicability import parse_check_frontmatter  # noqa: E402
 from tools.path_utils import force_utf8_stdio  # noqa: E402
-
 
 REQUIRED_FIELDS = ("id", "title", "category", "severity", "applies_when")
 
@@ -146,7 +144,7 @@ def adoption_counts(catalog: dict[str, dict[str, Any]]) -> dict[str, int]:
     reads as "not measured" rather than "none", and the whole point of the
     stage is that nobody should have to guess which checks are blocking.
     """
-    counts: dict[str, int] = {a: 0 for a in VALID_ADOPTIONS}
+    counts: dict[str, int] = dict.fromkeys(VALID_ADOPTIONS, 0)
     for fm in catalog.values():
         counts[fm.get("adoption", DEFAULT_ADOPTION)] += 1
     return counts

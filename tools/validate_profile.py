@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Validate a server profile YAML/JSON against the canonical schema.
 
 Closes issue #14. In the first audit the user pasted a template with `...`
@@ -54,7 +53,6 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from tools.path_utils import force_utf8_stdio  # noqa: E402
-
 
 # Canonical required fields. The list mirrors the profile shape used in
 # applies_when expressions across the v0.5.0+ catalog.

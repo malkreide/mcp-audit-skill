@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for tools/build_report.py — audit-report generation from summary.json."""
 
 from __future__ import annotations
@@ -23,7 +22,6 @@ from tools.build_report import (
     render_profile_snapshot,
     render_remediation_plan,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

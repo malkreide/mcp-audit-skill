@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for the canonical applies_when DSL evaluator.
 
 Covers every DSL construct used in the v0.5.0 catalog plus negative cases.
@@ -7,6 +6,7 @@ Covers every DSL construct used in the v0.5.0 catalog plus negative cases.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -18,7 +18,6 @@ from tools.eval_applicability import (
     evaluate_catalog,
     parse_check_frontmatter,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -361,7 +360,7 @@ class TestRealCatalog:
     # migrated to `is_cloud_deployed == true` in issue #16. The catalog
     # must now be type-clean — every check evaluates without a
     # type-mismatch error against any well-formed profile.
-    PREVIOUSLY_BUGGY_CHECKS = {
+    PREVIOUSLY_BUGGY_CHECKS: ClassVar[set[str]] = {
         "OBS-005",
         "OBS-006",
         "SCALE-003",

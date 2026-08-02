@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Verify raw/ output completeness after Task-agent execution.
 
 Solves the silent-failure problem from issue #12: in the first real audit,
@@ -38,7 +37,6 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from tools.path_utils import force_utf8_stdio  # noqa: E402
-
 
 DEFAULT_MIN_BYTES = 1
 DEFAULT_FILE_SUFFIX = ".txt"
