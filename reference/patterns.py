@@ -20,6 +20,7 @@ SEARCH_FIELDS = ("Terminus", "Name", "Abbreviation", "Definition", "Note", "Sour
 # Rule 1 — resolve the full scope when the caller does not narrow it
 # ---------------------------------------------------------------------------
 
+
 class Client:
     async def _all_scope_ids(self) -> list[int] | None:
         """Every scope ID, so that an unfiltered query really is unfiltered.
@@ -51,7 +52,9 @@ class Client:
             raise ValueError("term must not be empty")
         for field in fields:
             if field not in SEARCH_FIELDS:
-                raise ValueError(f"Unknown field {field!r}; expected one of {SEARCH_FIELDS}")
+                raise ValueError(
+                    f"Unknown field {field!r}; expected one of {SEARCH_FIELDS}"
+                )
 
         # Rule 1: None means "search everything", not "let the API decide".
         if scope_ids is None:
@@ -112,6 +115,7 @@ def build_result(entries: list[dict], **envelope: Any) -> SearchResult:
 # Rule 3, boundary — a failed request is not an empty result
 # ---------------------------------------------------------------------------
 
+
 class UpstreamUnreachableError(RuntimeError):
     """The request never reached the source: rejected, refused or timed out.
 
@@ -155,9 +159,9 @@ async def search_or_raise(client: Client, term: str, **envelope: Any) -> SearchR
     """
     try:
         entries = await client.search(term)
-    except httpx.HTTPStatusError as exc:      # 4xx/5xx — rejected, not answered
+    except httpx.HTTPStatusError as exc:  # 4xx/5xx — rejected, not answered
         raise _unreachable(exc) from exc
-    except httpx.RequestError as exc:         # DNS, TLS, refused, timeout
+    except httpx.RequestError as exc:  # DNS, TLS, refused, timeout
         raise _unreachable(exc) from exc
     return build_result(entries, **envelope)
 
@@ -165,6 +169,7 @@ async def search_or_raise(client: Client, term: str, **envelope: Any) -> SearchR
 # ---------------------------------------------------------------------------
 # Rules 4 + 5 — the tool description does the heavy lifting
 # ---------------------------------------------------------------------------
+
 
 async def search_terms(search_term: str, fields: str = "") -> SearchResult:
     """Search the source for official designations.
@@ -218,7 +223,9 @@ async def test_fields_can_narrow(client: Client) -> None:
     """Rule 2: an argument whose effect cannot be measured does not exist."""
     broad = await client.search("Steuer", max_results=1000)
     narrow = await client.search("Steuer", fields=("Abbreviation",), max_results=1000)
-    assert len(narrow) < len(broad), "`fields` does not narrow — flags sent incompletely?"
+    assert len(narrow) < len(broad), (
+        "`fields` does not narrow — flags sent incompletely?"
+    )
 
 
 async def test_wildcard_finds_compounds(client: Client) -> None:
@@ -231,6 +238,7 @@ async def test_wildcard_finds_compounds(client: Client) -> None:
 # ---------------------------------------------------------------------------
 # Rule 6 — confirm the response shape before counting it
 # ---------------------------------------------------------------------------
+
 
 class UpstreamSchemaError(RuntimeError):
     """The upstream answered, but not in the shape this client reads.
