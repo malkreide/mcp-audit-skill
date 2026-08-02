@@ -32,7 +32,7 @@ import json
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 # Make `tools.*` importable when this script is invoked directly
 # (e.g. `python tools/aggregate_results.py`) and not as part of a package.

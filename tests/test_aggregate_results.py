@@ -18,7 +18,6 @@ import pytest
 from tools.aggregate_results import (
     AggregationError,
     CheckResult,
-    POLICIES,
     VerificationResults,
     ValidationError,
     aggregate,

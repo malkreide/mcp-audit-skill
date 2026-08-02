@@ -96,7 +96,6 @@ class TestToNativePath:
 class TestForceUtf8Stdio:
     def test_idempotent(self):
         # Already UTF-8 → nothing changes.
-        before_stdout = sys.stdout
         force_utf8_stdio()
         force_utf8_stdio()
         # We cannot strictly require "before is after" because the wrapper

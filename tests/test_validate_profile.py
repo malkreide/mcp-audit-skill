@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from tools.validate_profile import (
-    REQUIRED_FIELDS,
     _is_placeholder_value,
     main,
     validate_profile,

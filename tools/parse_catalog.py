@@ -233,7 +233,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.format == "table":
         if args.out:
-            print(f"--out is not supported with --format table", file=sys.stderr)
+            print("--out is not supported with --format table", file=sys.stderr)
             return 2
         _print_table(catalog)
         return 0
