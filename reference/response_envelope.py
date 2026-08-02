@@ -33,8 +33,7 @@ ATTRIBUTION_OGD_CH = (
 )
 
 ATTRIBUTION_CC_BY_40 = (
-    "Data: {source} — CC BY 4.0 "
-    "(https://creativecommons.org/licenses/by/4.0/)."
+    "Data: {source} — CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)."
 )
 
 ATTRIBUTION_CC_BY_SA_40 = (
@@ -91,6 +90,4 @@ class ServerResponse(BaseModel):
 class MyServerResponse(ServerResponse):
     """Example: set the source default once, use everywhere."""
 
-    source: str = Field(
-        default=ATTRIBUTION_CC_BY_40.format(source="Example.ch")
-    )
+    source: str = Field(default=ATTRIBUTION_CC_BY_40.format(source="Example.ch"))
