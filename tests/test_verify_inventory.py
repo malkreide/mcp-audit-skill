@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests für tools/verify_inventory.py — das Inventar-Gate.
 
 Der tragende Test ist `test_nested_unlisted_server_is_a_hard_failure`: Er
@@ -26,7 +25,6 @@ from tools.verify_inventory import (
     main,
     verify_inventory,
 )
-
 
 REPO_URL = "https://github.com/malkreide/parlament-mcp"
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Hält die fünf Repos der Qualitätskette auf GitHub als Gruppe erkennbar.
 
 Die fünf Repos gehören zusammen — Probe vor dem Bau, Datentreue und
@@ -141,7 +140,9 @@ def compare(meta: dict[str, Any], topic: str, homepage: str) -> list[str]:
     return problems
 
 
-def fix_commands(repo: str, meta: dict[str, Any], topic: str, homepage: str) -> list[str]:
+def fix_commands(
+    repo: str, meta: dict[str, Any], topic: str, homepage: str
+) -> list[str]:
     """Die `gh`-Kommandos, die die Abweichungen dieses Repos beheben.
 
     Die REST-API kennt für Topics nur *ersetzen*, nicht ergänzen; `gh repo edit
@@ -185,7 +186,7 @@ def fetch(repo: str, timeout: float = 15.0) -> tuple[dict[str, Any] | None, str]
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         return None, f"GitHub antwortete HTTP {exc.code}"
@@ -198,8 +199,7 @@ def fetch(repo: str, timeout: float = 15.0) -> tuple[dict[str, Any] | None, str]
         return None, "Antwort ist kein Repo-Objekt"
 
     return {
-        key: payload.get(key, MISSING)
-        for key in ("topics", "homepage", "description")
+        key: payload.get(key, MISSING) for key in ("topics", "homepage", "description")
     }, "ok"
 
 

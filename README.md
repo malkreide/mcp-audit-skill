@@ -327,8 +327,9 @@ Please open an issue before a large pull request, so the shape can be settled fi
 
 The Python helpers are linted and formatted with [Ruff](https://docs.astral.sh/ruff/). One-off step per clone:
 
-```bash
-pip install pre-commit && pre-commit install
+```
+pip install pre-commit
+pre-commit install
 ```
 
 The hooks in `.pre-commit-config.yaml` mirror the `lint` workflow, so what passes locally passes in CI. Two details worth knowing:

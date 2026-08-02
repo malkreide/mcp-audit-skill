@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Hält das `transport`-Vokabular an einer einzigen Stelle fest.
 
 Das Repo beschrieb dieselbe geschlossene Werteliste an fünf Orten und
@@ -33,7 +32,6 @@ import pytest
 from tools.eval_applicability import parse_check_frontmatter
 from tools.parse_catalog import list_check_files
 from tools.validate_profile import ALLOWED_VALUES
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKS_DIR = REPO_ROOT / "checks"

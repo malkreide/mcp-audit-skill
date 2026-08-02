@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Hält die beiden Ruff-Pins aneinander fest.
 
 Ruff ist an zwei Orten gepinnt, und beide müssen dieselbe Version nennen:

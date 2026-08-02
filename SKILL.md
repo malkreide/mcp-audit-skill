@@ -734,29 +734,31 @@ Findings aus diesem Katalog treffen selten einen Server allein. Ein User-Agent a
 
 ### Gemeinsam ausgerollter Code wird auf die schmalste konfigurierte Zeilenbreite geschrieben
 
-Im Portfolio stehen `line-length` 88, 100 und 120 nebeneinander. Das ist für sich harmlos: Jedes Repo formatiert nach seiner eigenen Konfiguration, und `ruff format --check` in seiner CI ist zufrieden.
+Im Portfolio stehen `line-length` 88, 100, 110 und 120 nebeneinander — ausgezählt über die 32 Repos mit einer Kopie des Versions-Checks: 24-mal 100, 5-mal 120, 2-mal 110 (`sbb-opendata-mcp`, `termdat-mcp`), 1-mal 88 (`swiss-snb-mcp`, ohne Eintrag und damit auf dem ruff-Default). Das ist für sich harmlos: Jedes Repo formatiert nach seiner eigenen Konfiguration, und `ruff format --check` in seiner CI ist zufrieden.
 
 Ein identischer Commit über alle Repos ist es nicht. `ruff format` **zieht einen Ausdruck zusammen, sobald er passt**, und bricht ihn um, sobald er nicht mehr passt — beides deterministisch aus der konfigurierten Breite. Derselbe Text kann deshalb nicht gleichzeitig die Ausgabe des Formatters für 88 und für 120 sein, sobald irgendeine Zeile dazwischenliegt:
 
 - Für 120 geschrieben, in ein 88er-Repo kopiert: Der Formatter dort will umbrechen → `--check` rot.
 - Für 88 umgebrochen, in ein 120er-Repo kopiert: Der Formatter dort will zusammenziehen → `--check` rot.
 
-Die Formulierung, die überall hält, ist deshalb nicht «für 88 umgebrochen», sondern **kurz genug, dass die zusammengezogene Form in 88 Spalten passt**. Dann hat kein Formatter etwas zu tun, und alle drei Breiten erzeugen denselben Text. Praktisch heisst das: eine Zwischenvariable statt eines langen Ausdrucks, ein kürzerer Bezeichner, ein Aufruf auf zwei Anweisungen verteilt.
+Die Formulierung, die überall hält, ist deshalb nicht «für 88 umgebrochen», sondern **kurz genug, dass die zusammengezogene Form in 88 Spalten passt**. Dann hat kein Formatter etwas zu tun, und jede Breite ab 88 erzeugt denselben Text — auch eine, die heute noch niemand konfiguriert hat. Praktisch heisst das: eine Zwischenvariable statt eines langen Ausdrucks, ein kürzerer Bezeichner, ein Aufruf auf zwei Anweisungen verteilt.
 
 **Vor dem Ausrollen prüfen, nicht danach:**
 
 ```bash
-for W in 88 100 120; do
+for W in 88 100 110 120; do
   ruff format --check --line-length "$W" path/to/patch.py \
     || echo "nicht formatkonform bei line-length $W"
 done
 ```
 
-Alle drei müssen still bleiben. Bleibt eine übrig, ist der Patch noch nicht portfolio-tauglich — dann entweder das Fragment kürzen, oder bewusst darauf verzichten, denselben Commit auszurollen, und stattdessen pro Repo formatieren lassen. Das ist zulässig, kostet aber genau die Eigenschaft, wegen der man einen identischen Commit wollte: dass 33 Diffs vergleichbar sind.
+Alle vier müssen still bleiben. Bleibt eine übrig, ist der Patch noch nicht portfolio-tauglich — dann entweder das Fragment kürzen, oder bewusst darauf verzichten, denselben Commit auszurollen, und stattdessen pro Repo formatieren lassen. Das ist zulässig, kostet aber genau die Eigenschaft, wegen der man einen identischen Commit wollte: dass 33 Diffs vergleichbar sind.
 
 **Woher die Regel kommt:** aus einem roten CI-Lauf und 33 Force-Pushes. Der Patch war in einem Repo mit `line-length 120` geschrieben und getestet, sah überall gleich aus und war in jedem 88er-Repo nicht formatkonform. Der Fehler fiel erst in der CI auf, weil lokal jedes Repo mit seiner eigenen Konfiguration grün war.
 
 **Eselsbrücke:** *«Der schmalste Wert im Portfolio schreibt den Code.»*
+
+**Und die Regel braucht einen Ort, an dem sie rot wird.** Diese Sektion ist Anleitung für den, der ausrollt — sie wirkt nur, solange sie jemand liest. Derselbe Bruch kam prompt zurück, diesmal aus der Gegenrichtung: eine 99 Zeichen lange Zeile, in einem 100er-Repo geschrieben, formatgerecht dort und nicht im 88er-Repo. Erzwungen wird die Regel erst durch einen Pipeline-Schritt, der die Prüfschleife oben ausführt — als Kriterium ist das `OPS-005`, fünfte Ausprägung.
 
 ---
 

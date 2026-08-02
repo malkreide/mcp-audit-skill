@@ -24,6 +24,42 @@ Der Guard läuft nur hier, prüft aber alle fünf Mitglieder — die vier Schwes
 
 Die Tabelle nannte vier Skills plus `mcp-builder` und liess `mcp-continuous-auditor` weg. Der ist kein Skill, gehört aber in die Kette: Er ist das einzige Glied, das nach dem Audit weiterprüft, und `OPS-005` stammt aus ihm. Die Tabelle führt jetzt fünf Repos entlang des Lebenszyklus — vor dem Bau, im Bau, nach dem Bau, im Betrieb. `mcp-builder` steht daneben statt darin, weil es ein fremdes Repo ist und das gemeinsame Topic nicht tragen kann.
 
+### Geändert — `OPS-005` bekommt eine fünfte Ausprägung: der Geltungsbereich des grünen Hakens
+
+Die vier bisherigen Ausprägungen sind Abdeckungslücken — etwas lief nicht. Der Fall, der die fünfte auslöst, ist anders gelagert: Der Check lief, bestand, und war korrekt. Zu weit war nur, was aus ihm gelesen wurde. `ruff format --check .` belegt «formatgerecht unter der `line-length` dieses Repos»; gelesen wurde es als «formatgerecht». Für `scripts/check_version_sync.py`, das in 33 Repos liegt, war das zu wenig: eine 99 Zeichen lange Zeile, bei 100 einzeilig und grün, bei 88 mehrzeilig und rot. Der Bruch entstand beim Kopieren und fiel erst im Zielrepo auf, wo er wie ein Fehler am Skript aussah — die gemeldete Fehlermeldung nannte eine Datei, in der das genannte Symbol gar nicht vorkam.
+
+Die Mechanik dahinter stand seit `v1.5.0` in `SKILL.md` unter «Portfolio-Hygiene: ein Commit, 33 Repos» — und hat den Rückfall nicht verhindert. Das ist der eigentliche Befund: Die Sektion ist Anleitung für den, der ausrollt, und es gibt keinen Zeitpunkt, an dem etwas rot wird, wenn niemand sie liest. Der Check fragt deshalb nicht «kennt jemand die Regel», sondern «erzwingt die Pipeline sie». Dazu ein `Modus 3` in der Verifikation (Breiten auszählen, Kopien hashen, gegen jede Breite prüfen), ein Pass-Kriterium, zwei Anti-Patterns, ein Remediation-Schritt und die Gegenprobe — der neue Schritt muss anschlagen, **und** der gewöhnliche `ruff format --check .` muss dieselbe Zeile durchlassen; erst das belegt, dass er eine Lücke schliesst statt den lokalen Lint zu duplizieren.
+
+Kein neuer Check: Ein eigener Eintrag bräuchte ein `applies_when` für «gehört zum Portfolio», das es im Profil nicht gibt — mit `always` liefe er bei jedem Einzelserver-Audit sinnlos durch. Als Ausprägung eines bestehenden Checks kostet er keine Applicability-Prüfung. Katalog-Zahlen unverändert, `evidence_required` und `severity` unverändert, `adoption` bleibt `advisory`. Kein Re-Audit-Auslöser nach §5: keine Severity angehoben, keine `applies_when` erweitert. Das ergänzte Pass-Kriterium ist neu, blockiert aber als `advisory` nicht.
+
+### Geändert — `SKILL.md` Portfolio-Hygiene: 110 fehlte in der Breitenliste
+
+Die Sektion nannte «88, 100 und 120», und die Prüfschleife lief über genau diese drei. Ein Durchlauf über alle 43 Portfolio-Repos zeigt vier Breiten: 24-mal 100, 5-mal 120, **2-mal 110** (`sbb-opendata-mcp`, `termdat-mcp`), 1-mal 88 (`swiss-snb-mcp`, ohne Eintrag und damit auf dem ruff-Default). Die Zahlen stehen jetzt mit Beleg in der Sektion, die Schleife prüft vier Werte.
+
+Praktisch ändert das wenig — wessen zusammengezogene Form in 88 Spalten passt, hält bei jeder Breite darüber —, aber die Sektion behauptete eine vollständige Aufzählung und war es nicht. Die Formulierung sagt jetzt «jede Breite ab 88» statt «alle drei Breiten», damit die Regel nicht wieder an einer Liste hängt. Dazu ein Absatz am Ende, der auf `OPS-005` verweist: Die Sektion beschreibt die Regel, der Check erzwingt sie.
+
+### Geändert — Ruff-Regelsatz auf den Portfolio-Standard angehoben
+
+Der Regelsatz startete bewusst schmal (`E4`, `E7`, `E9`, `F`), damit die Einführung von Ruff nicht an über hundert Befunden hängenblieb. Er steht jetzt auf demselben Satz wie das übrige Portfolio: zusätzlich `I` (Import-Sortierung), `UP` (pyupgrade), `B` (bugbear), `C4` (comprehensions), `SIM` (simplify) und `RUF`. `RUF001`–`RUF003` bleiben aus — die deutsche Prosa nutzt bewusste Typografie (—, –, →), die diese Regeln als Verwechslungszeichen melden würden.
+
+113 Befunde, davon 98 automatisch behoben. Die beiden grössten Gruppen sind rein mechanisch: 37 × `UP009` (`# -*- coding: utf-8 -*-`, in Python 3 ein No-op, da UTF-8 ohnehin die Standard-Quellcodierung ist) und 29 × `I001` (Import-Sortierung). **Diese Zeilen haben nichts mit dem Laufzeit-Encoding zu tun** — dafür sorgen weiterhin `PYTHONUTF8=1` und `force_utf8_stdio()`, beide unangetastet.
+
+19 × `UP017` ersetzt `timezone.utc` durch `datetime.UTC`. Das ist ab Python 3.11 verfügbar; `target-version` steht auf `py311` und die Matrix fährt 3.11 und 3.13.
+
+15 Befunde brauchten Handarbeit, drei davon mit inhaltlicher Wirkung:
+
+* **`B904` (2 ×, `tools/tracker_sync.py`)** — die `TrackerError` der Notion-Anbindung verdeckte bisher ihre Ursache. Jetzt `raise … from e`, womit im Traceback sichtbar bleibt, ob ein `HTTPError` oder ein `URLError` dahintersteht. Für einen Katalog, der mit `OBS-007` Fehler-Diagnostizierbarkeit verlangt, war das die eigene Baustelle.
+* **`RUF012` (3 ×)** — veränderliche Klassenattribute (`FIELD_MAP`, `FAIL_HIGH`, `PREVIOUSLY_BUGGY_CHECKS`) tragen jetzt `ClassVar`.
+* **`RUF043`** — `pytest.raises(match="summary.json not found")`: der Punkt ist ein Regex-Metazeichen und hätte auf jedes Zeichen gepasst. Jetzt maskiert.
+
+Der Rest ist Kosmetik: sechs ungenutzte Entpackungen mit `_`-Präfix gekennzeichnet, zwei Listen-Konkatenationen entpackt, ein `if`/`else` zum Ternär.
+
+Testsuite unverändert 441 bestanden, Smoke-Test exit 0.
+
+### Behoben — Setup-Anleitung war in PowerShell nicht lauffähig
+
+`pip install pre-commit && pre-commit install` in beiden READMEs: `&&` ist in PowerShell 5.1 ein Syntaxfehler. Jetzt zwei Zeilen, gültig in Bash wie in PowerShell — passend dazu, dass das Repo Windows ausdrücklich unterstützt und die Test-Matrix dort läuft.
+
 ### Ergänzt — `ARCH-014`: Retry-Politik gegenüber der Quelle
 
 Beim Formulieren von `OBS-007` fiel auf, dass der Katalog zwar regelt, was in der Meldung steht, wenn alle Versuche verbraucht sind, aber nirgends, **was, wie schnell und wie lange** überhaupt wiederholt wird. `Retry-After` kam in keinem der 94 Checks vor, `429` nur als Beispiel für einen Execution-Error in `OBS-001`.

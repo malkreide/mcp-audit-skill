@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for tools/propose_release.py — semver, CHANGELOG insertion,
 production-ready gating, and proposal output structure."""
 
@@ -19,7 +18,6 @@ from tools.propose_release import (
     insert_changelog_entry,
     render_changelog_entry,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -106,7 +104,7 @@ class TestAuditSummary:
         assert s.run_id.startswith("2026-05-09T")
 
     def test_missing_summary_raises(self, tmp_path: Path) -> None:
-        with pytest.raises(ReleaseError, match="summary.json not found"):
+        with pytest.raises(ReleaseError, match=r"summary\.json not found"):
             AuditSummary.from_dir(tmp_path)
 
     def test_meta_overrides_audit_meta(self, audit_dir: Path) -> None:
@@ -178,7 +176,7 @@ class TestDetectCurrentVersion:
         assert (v, src) == ("0.4.0", "package")
 
     def test_none_when_no_metadata(self, tmp_path: Path) -> None:
-        v, src = detect_current_version(tmp_path)
+        _v, src = detect_current_version(tmp_path)
         assert src in ("none", "git")  # may pick up git tag if tmp is in a repo
 
     def test_pyproject_only_inside_project_section(self, tmp_path: Path) -> None:

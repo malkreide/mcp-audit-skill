@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """tracker_sync.py — Pluggable audit-tracker backend.
 
 The Notion-only `audit-notion-sync.py` worked for the original Stadt-Zürich
@@ -35,9 +34,10 @@ import csv
 import json
 import os
 import sys
-from dataclasses import dataclass, asdict
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, ClassVar
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -204,7 +204,7 @@ class NotionBackend(TrackerBackend):
 
     # Map canonical field → (notion property name, notion property type).
     # Properties not present in this map fall through to "Notizen" rich-text.
-    FIELD_MAP: dict[str, tuple[str, str]] = {
+    FIELD_MAP: ClassVar[dict[str, tuple[str, str]]] = {
         "audit_status": ("Audit-Status", "select"),
         "findings": ("Findings", "number"),
         "released_version": ("Released Version", "rich_text"),
@@ -218,7 +218,7 @@ class NotionBackend(TrackerBackend):
         self.db_id = db_id
 
     @classmethod
-    def from_env(cls) -> "NotionBackend":
+    def from_env(cls) -> NotionBackend:
         token = os.environ.get("NOTION_TOKEN")
         if not token:
             raise TrackerError(
@@ -246,9 +246,9 @@ class NotionBackend(TrackerBackend):
                 msg = err.get("message", str(e))
             except Exception:
                 msg = str(e)
-            raise TrackerError(f"Notion API {e.code}: {msg} [{method} {path}]")
+            raise TrackerError(f"Notion API {e.code}: {msg} [{method} {path}]") from e
         except URLError as e:
-            raise TrackerError(f"Notion network error: {e.reason}")
+            raise TrackerError(f"Notion network error: {e.reason}") from e
 
     def _find_page_id(self, server_name: str) -> str | None:
         body = {

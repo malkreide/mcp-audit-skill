@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Hält die Kategorienliste im Slash-Command am Katalog fest.
 
 `.claude/commands/audit-mcp.md` nennt in der Einleitung die Kategorien
@@ -25,7 +24,6 @@ from pathlib import Path
 import pytest
 
 from tools.parse_catalog import category_counts, parse_catalog
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKS_DIR = REPO_ROOT / "checks"

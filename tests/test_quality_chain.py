@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests für den Qualitätsketten-Guard und für die Ketten-Tabelle in den READMEs.
 
 Zwei Dinge werden hier geprüft, und sie liegen bewusst in einer Datei, weil sie
@@ -36,7 +35,6 @@ from tools.check_quality_chain import (
     fix_commands,
     load_manifest,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = REPO_ROOT / "docs" / "quality-chain.json"
@@ -202,7 +200,10 @@ def test_doppelte_mitglieder_werden_abgelehnt(tmp_path):
 
 @pytest.mark.parametrize(
     ("readme", "heading"),
-    [("README.md", "The MCP quality chain"), ("README.de.md", "Die MCP-Qualitätskette")],
+    [
+        ("README.md", "The MCP quality chain"),
+        ("README.de.md", "Die MCP-Qualitätskette"),
+    ],
 )
 def test_readme_tabelle_nennt_jedes_mitglied_des_manifests(readme, heading):
     """Die Tabelle ist die menschenlesbare Fassung des Manifests.
@@ -211,8 +212,9 @@ def test_readme_tabelle_nennt_jedes_mitglied_des_manifests(readme, heading):
     hinzufügt und die READMEs vergisst, sieht es hier statt in vier Wochen.
     """
     text = (REPO_ROOT / readme).read_text(encoding="utf-8")
-    section = re.search(rf"^### {re.escape(heading)}\n(.*?)(?=^#{{2,3}} )",
-                        text, re.M | re.S)
+    section = re.search(
+        rf"^### {re.escape(heading)}\n(.*?)(?=^#{{2,3}} )", text, re.M | re.S
+    )
     assert section, f"{readme}: Abschnitt '### {heading}' nicht gefunden"
     body = section.group(1)
 

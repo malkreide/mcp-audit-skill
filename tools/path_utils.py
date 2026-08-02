@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Cross-platform path utilities for the mcp-audit-skill.
 
 Solves two recurring issues observed in real audits:
@@ -31,7 +30,6 @@ import io
 import os
 import re
 import sys
-
 
 # ---------------------------------------------------------------------------
 # UTF-8 stdio

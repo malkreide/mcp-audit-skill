@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 """Tests for tools/audit_init.py — run-id + audit-meta initialization."""
 
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -19,7 +18,6 @@ from tools.audit_init import (
     resolve_output_dir,
 )
 
-
 # ---------------------------------------------------------------------------
 # Run-ID format
 # ---------------------------------------------------------------------------
@@ -27,7 +25,7 @@ from tools.audit_init import (
 
 class TestMakeRunId:
     def test_utc_uses_z_suffix(self):
-        now = datetime(2026, 5, 2, 9, 12, 45, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 2, 9, 12, 45, tzinfo=UTC)
         assert make_run_id("srgssr-mcp", now) == "2026-05-02T091245-Z-srgssr-mcp"
 
     def test_positive_offset_uses_plus_hhmm(self):
@@ -46,20 +44,20 @@ class TestMakeRunId:
 
     def test_invalid_server_name_rejected(self):
         with pytest.raises(ValueError, match="must match"):
-            make_run_id("has spaces", datetime.now(timezone.utc))
+            make_run_id("has spaces", datetime.now(UTC))
 
     def test_server_name_with_digits_dashes_underscores_ok(self):
-        now = datetime(2026, 5, 2, 0, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 2, 0, 0, 0, tzinfo=UTC)
         assert "valid-name_123" in make_run_id("valid-name_123", now)
 
     def test_empty_server_name_rejected(self):
         with pytest.raises(ValueError):
-            make_run_id("", datetime.now(timezone.utc))
+            make_run_id("", datetime.now(UTC))
 
 
 class TestFormatOffset:
     def test_utc(self):
-        assert _format_offset(datetime(2026, 5, 2, tzinfo=timezone.utc)) == "Z"
+        assert _format_offset(datetime(2026, 5, 2, tzinfo=UTC)) == "Z"
 
     def test_zero_offset_named_zone(self):
         # explicit zero offset still renders as Z
@@ -78,12 +76,12 @@ class TestFormatOffset:
 
 class TestResolveOutputDir:
     def test_first_run_no_suffix(self, tmp_path):
-        now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=timezone.utc)
-        run_id, path = resolve_output_dir("srgssr-mcp", tmp_path, now=now)
+        now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=UTC)
+        _run_id, path = resolve_output_dir("srgssr-mcp", tmp_path, now=now)
         assert path.name == "2026-05-02T090000-Z-srgssr-mcp"
 
     def test_second_run_same_second_gets_suffix(self, tmp_path):
-        now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=UTC)
         run_id, path1 = resolve_output_dir("srgssr-mcp", tmp_path, now=now)
         path1.mkdir()
         run_id_2, path2 = resolve_output_dir("srgssr-mcp", tmp_path, now=now)
@@ -92,11 +90,11 @@ class TestResolveOutputDir:
         assert path2.name.endswith("-2")
 
     def test_third_run_continues_suffix_chain(self, tmp_path):
-        now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=UTC)
         for _ in range(3):
             _, p = resolve_output_dir("srgssr-mcp", tmp_path, now=now)
             p.mkdir()
-        run_id_4, path4 = resolve_output_dir("srgssr-mcp", tmp_path, now=now)
+        _run_id_4, path4 = resolve_output_dir("srgssr-mcp", tmp_path, now=now)
         assert path4.name.endswith("-4")
 
 
@@ -136,7 +134,7 @@ class TestHashCatalog:
 
 class TestBuildInitialMeta:
     def test_required_fields_set(self, tmp_path):
-        now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=UTC)
         meta = build_initial_meta(
             server="srgssr-mcp",
             run_id="2026-05-02T090000-Z-srgssr-mcp",
@@ -155,7 +153,7 @@ class TestBuildInitialMeta:
         catalog = tmp_path / "checks"
         catalog.mkdir()
         (catalog / "X-001.md").write_text("body", encoding="utf-8")
-        now = datetime(2026, 5, 2, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 2, tzinfo=UTC)
         meta = build_initial_meta(
             server="x",
             run_id="2026-05-02T000000-Z-x",
@@ -175,7 +173,7 @@ class TestBuildInitialMeta:
 
 class TestInitAudit:
     def test_creates_dir_and_meta(self, tmp_path):
-        now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=UTC)
         result = init_audit(
             server="srgssr-mcp",
             base_dir=tmp_path,
@@ -190,7 +188,7 @@ class TestInitAudit:
         assert meta["audit_meta"]["server_name"] == "srgssr-mcp"
 
     def test_collision_creates_suffixed_dir(self, tmp_path):
-        now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=UTC)
         r1 = init_audit(server="x", base_dir=tmp_path, now=now)
         r2 = init_audit(server="x", base_dir=tmp_path, now=now)
         assert r1["output_dir"] != r2["output_dir"]
