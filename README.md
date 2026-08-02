@@ -20,7 +20,7 @@ The guiding question for every data-querying tool: *if this tool finds nothing, 
 
 1. **Send scope parameters explicitly, never inherit them.** An omitted optional filter often means an arbitrary slice rather than "unrestricted" — a fact stated only in the spec's parameter description, never visible from a working call.
 2. **Send parameter groups in full.** Send some members of a group and the rest keep their server-side default, so the argument can only widen, never narrow — a no-op that looks like control.
-3. **An empty result carries a next step.** Zero hits are ambiguous. The result needs a concrete `hint` field, in the tool result rather than the README.
+3. **An empty result carries a next step.** Zero hits are ambiguous. The result needs a concrete `hint` field, in the tool result rather than the README. A transport or authorization failure is not an empty result and must never be formatted as one — it carries a different next step: check the configuration, do not widen the search.
 4. **The tool description is a hallucination surface.** A phrasing that *explains* an empty result causes confabulation more reliably than no phrasing at all. Ask for a retry, never license a conclusion.
 5. **Query syntax in the description, recall in the tests.** Document the query language and its matching granularity; guard recall with live floors, because a mock reproduces the assumption it was written with.
 6. **Confirm the response shape before counting it.** `payload.get("servers", [])` turns an upstream shape change into a valid-looking empty result. A schema mismatch belongs in the error channel, not in an empty list.

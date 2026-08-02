@@ -19,7 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   configuration error undercuts the very rule that exists to prevent guessing.
   Rule 6 already made this distinction for schema drift, but a request turned away
   at the transport never reaches the parsing layer. One paragraph and one
-  checklist item, no new rule.
+  checklist item in `SKILL.md`, one sentence on the rule-3 line in both READMEs.
+  No new rule.
 
 - **Rule 5 now names the mock-free variant of the same failure.** A regression
   test in `mcp-transport-hardening` set the environment variable whose *absence*
