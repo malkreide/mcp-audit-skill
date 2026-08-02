@@ -6,6 +6,24 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Ergänzt — §5 kennt jetzt den Promotionsfall (`d`)
+
+Punkt 5 der Katalog-Versionierung nannte drei Re-Audit-Auslöser: Severity angehoben (a), `applies_when` erweitert (b), Prüfkriterium korrigiert (c). Bei der Promotion von `DEP-001` auf `enforced` in v1.5.0 traf **keiner** davon zu — Severity blieb `high`, Reichweite blieb `always`, das Kriterium blieb Wort für Wort. Nach dem Buchstaben der Regel wäre die Re-Audit-Liste leer gewesen, während in Wahrheit jeder Server mit einer ungedeckelten Range in diesem Moment seine Production-Readiness verlor.
+
+Der Grund ist strukturell: **Die Adoptionsstufe ist der einzige Hebel im Katalog, der ein Verdikt kippt, ohne dass sich ein Feld ändert, das die Regel las.** Genau dieselbe Lehre wie bei b) und c) in v1.3.0, eine Achse weiter — dort war der Auslöser, dass ein Release ohne jede Severity-Änderung trotzdem zwei Re-Audit-Gründe hatte.
+
+Neu als **d)**, mit den drei Abgrenzungen, die sonst nachgefragt würden:
+
+- Nur bei `critical`/`high`. Bei `medium`/`low` blockierte auch vorher nichts, die Promotion ändert an keinem Verdikt etwas — deshalb war `DRIFT-006` kein Auslöser und `DEP-001` einer.
+- Die Gegenrichtung (Demotion auf `advisory`) löst kein Re-Audit aus, kann aber ein Verdikt nachträglich grün machen. Das gehört in den CHANGELOG, nicht in die Warteschlange — dieselbe Konstruktion wie bei b).
+- Betroffen sind Audits, deren `production_ready: true` sich darauf stützte, dass dieses Finding nicht zählte.
+
+Dazu zwei Stellen, die auf den Fall zeigen mussten: §2.3 Schritt 3 verweist jetzt auf §5d, und die zweite Eselsbrücke zu Punkt 5 nennt die vierte Achse («…oder ob der Befund noch folgenlos bleibt»).
+
+**Miterledigt, weil derselbe Diff die Stelle berührt:** §2.3 Schritt 3 hält jetzt auch fest, was gilt, wenn Schritt 2 übersprungen wird — eine Promotion ohne dazwischenliegenden Portfolio-Durchlauf stützt sich auf «Rückstand bewusst akzeptiert» und nicht auf ausgewertete Advisory-Findings. Welches von beidem gilt, gehört in den CHANGELOG-Eintrag; eine Promotion, die Evidenz behauptet, die nicht erhoben wurde, ist der Fehler aus `OPS-004`. Genau dieser Fall lag bei `DEP-001` vor und steht dort auch so.
+
+Reine Prozess-Regel, kein Check angefasst: 93 Checks in zwölf Kategorien, alle `applies_when`, `severity` und `adoption` unverändert, 431 Tests.
+
 ## [v1.5.0] — 2026-08-02 — Schweigen ist kein Freispruch
 
 **Drei neue Checks** (`IDENT-007`, `DEP-001`, `DRIFT-006`) mit der neuen Kategorie `DEP` — der Katalog wächst von 90 auf **93** —, **zwei erweiterte** (`FID-003`, `IDENT-001`), ein abgegebener Prüfgegenstand (`IDENT-006`) und mit §2.6 eine Regel, die für den Katalog selbst gilt.
