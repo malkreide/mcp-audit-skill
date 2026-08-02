@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Hält die Zahlen in BEIDEN READMEs am Katalog fest.
 
 Die Katalog-Zählungen leben an drei Orten: `checks/MANIFEST.txt`, den
@@ -39,7 +38,6 @@ from pathlib import Path
 import pytest
 
 from tools.parse_catalog import category_counts, parse_catalog, severity_counts
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKS_DIR = REPO_ROOT / "checks"

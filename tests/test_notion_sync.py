@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for audit-notion-sync.py — only the pure profile-builder logic.
 
 Network-dependent code paths (Notion HTTP) are out of scope for this
@@ -14,7 +13,6 @@ import importlib.util
 from pathlib import Path
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 

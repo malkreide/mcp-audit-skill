@@ -8,17 +8,26 @@
 target-version = "py311"
 
 [lint]
-# Genau der Regelsatz, den ruff heute per Default aktiviert — hier explizit
-# hingeschrieben. Ein `select` in der Konfiguration ersetzt die eingebauten
-# Defaults vollstaendig; damit ist der erzwungene Satz exakt diese Liste,
-# unabhaengig davon, ob eine spaetere ruff-Version ihre Defaults aendert.
+# Expliziter Regelsatz, gleichgezogen mit dem uebrigen Portfolio. Ein `select`
+# in der Konfiguration ersetzt die eingebauten Defaults vollstaendig; damit ist
+# der erzwungene Satz exakt diese Liste, unabhaengig davon, ob eine spaetere
+# ruff-Version ihre Defaults aendert.
 #
 #   E4 — pycodestyle: Importe (u.a. E402, Import nicht am Dateianfang)
 #   E7 — pycodestyle: Anweisungen (Vergleiche, mehrere Statements pro Zeile)
 #   E9 — pycodestyle: Syntax- und IO-Fehler
 #   F  — Pyflakes (ungenutzte Importe und Variablen, f-String-Fehler, …)
+#   I  — Import-Sortierung (isort)
+#   UP — pyupgrade (moderne Syntax, z.B. `X | None`, collections.abc)
+#   B  — flake8-bugbear
+#   C4 — flake8-comprehensions
+#   SIM— flake8-simplify
+#   RUF— ruff-eigene Regeln
 #
-# Bewusst schmal gehalten: der Bestand war vorher ungelintet, und dieser Satz
-# kostet 12 Befunde statt 101. Erweitern (I, UP, B, SIM, RUF) ist jederzeit
-# moeglich — dann aber als eigener Commit, dessen Diff nur das ist.
-select = ["E4", "E7", "E9", "F"]
+# E501 (Zeilenlaenge) bleibt bewusst aussen vor: das entscheidet der Formatter.
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+
+# Die Prosa im Repo ist deutsch und nutzt bewusste Typografie — Geviert- und
+# Halbgeviertstriche (—, –), Pfeile (→), typografische Anfuehrungszeichen.
+# Die Ambiguous-Unicode-Regeln wuerden die als Verwechslungszeichen melden.
+ignore = ["RUF001", "RUF002", "RUF003"]

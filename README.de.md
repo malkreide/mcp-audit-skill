@@ -323,8 +323,9 @@ Vor einem grösseren Pull Request bitte ein Issue eröffnen, damit die Form vorh
 
 Die Python-Helfer werden mit [Ruff](https://docs.astral.sh/ruff/) gelintet und formatiert. Einmalig pro Clone:
 
-```bash
-pip install pre-commit && pre-commit install
+```
+pip install pre-commit
+pre-commit install
 ```
 
 Die Hooks aus `.pre-commit-config.yaml` spiegeln den `lint`-Workflow — was lokal durchkommt, kommt auch in der CI durch. Zwei Details, die man kennen sollte:

@@ -6,6 +6,28 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — Ruff-Regelsatz auf den Portfolio-Standard angehoben
+
+Der Regelsatz startete bewusst schmal (`E4`, `E7`, `E9`, `F`), damit die Einführung von Ruff nicht an über hundert Befunden hängenblieb. Er steht jetzt auf demselben Satz wie das übrige Portfolio: zusätzlich `I` (Import-Sortierung), `UP` (pyupgrade), `B` (bugbear), `C4` (comprehensions), `SIM` (simplify) und `RUF`. `RUF001`–`RUF003` bleiben aus — die deutsche Prosa nutzt bewusste Typografie (—, –, →), die diese Regeln als Verwechslungszeichen melden würden.
+
+113 Befunde, davon 98 automatisch behoben. Die beiden grössten Gruppen sind rein mechanisch: 37 × `UP009` (`# -*- coding: utf-8 -*-`, in Python 3 ein No-op, da UTF-8 ohnehin die Standard-Quellcodierung ist) und 29 × `I001` (Import-Sortierung). **Diese Zeilen haben nichts mit dem Laufzeit-Encoding zu tun** — dafür sorgen weiterhin `PYTHONUTF8=1` und `force_utf8_stdio()`, beide unangetastet.
+
+19 × `UP017` ersetzt `timezone.utc` durch `datetime.UTC`. Das ist ab Python 3.11 verfügbar; `target-version` steht auf `py311` und die Matrix fährt 3.11 und 3.13.
+
+15 Befunde brauchten Handarbeit, drei davon mit inhaltlicher Wirkung:
+
+* **`B904` (2 ×, `tools/tracker_sync.py`)** — die `TrackerError` der Notion-Anbindung verdeckte bisher ihre Ursache. Jetzt `raise … from e`, womit im Traceback sichtbar bleibt, ob ein `HTTPError` oder ein `URLError` dahintersteht. Für einen Katalog, der mit `OBS-007` Fehler-Diagnostizierbarkeit verlangt, war das die eigene Baustelle.
+* **`RUF012` (3 ×)** — veränderliche Klassenattribute (`FIELD_MAP`, `FAIL_HIGH`, `PREVIOUSLY_BUGGY_CHECKS`) tragen jetzt `ClassVar`.
+* **`RUF043`** — `pytest.raises(match="summary.json not found")`: der Punkt ist ein Regex-Metazeichen und hätte auf jedes Zeichen gepasst. Jetzt maskiert.
+
+Der Rest ist Kosmetik: sechs ungenutzte Entpackungen mit `_`-Präfix gekennzeichnet, zwei Listen-Konkatenationen entpackt, ein `if`/`else` zum Ternär.
+
+Testsuite unverändert 441 bestanden, Smoke-Test exit 0.
+
+### Behoben — Setup-Anleitung war in PowerShell nicht lauffähig
+
+`pip install pre-commit && pre-commit install` in beiden READMEs: `&&` ist in PowerShell 5.1 ein Syntaxfehler. Jetzt zwei Zeilen, gültig in Bash wie in PowerShell — passend dazu, dass das Repo Windows ausdrücklich unterstützt und die Test-Matrix dort läuft.
+
 ### Ergänzt — `ARCH-014`: Retry-Politik gegenüber der Quelle
 
 Beim Formulieren von `OBS-007` fiel auf, dass der Katalog zwar regelt, was in der Meldung steht, wenn alle Versuche verbraucht sind, aber nirgends, **was, wie schnell und wie lange** überhaupt wiederholt wird. `Retry-After` kam in keinem der 94 Checks vor, `429` nur als Beispiel für einen Execution-Error in `OBS-001`.

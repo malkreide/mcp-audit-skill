@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for cross-platform path conversion helpers."""
 
 from __future__ import annotations
@@ -186,7 +185,7 @@ class TestPathsShell:
     def test_paths_sh_to_windows(self):
         if not self._bash_available():
             pytest.skip("bash not on PATH")
-        helper, helper_posix = self._helper_posix()
+        _helper, helper_posix = self._helper_posix()
         import subprocess
 
         script = f"source \"{helper_posix}\"\nto_windows_path '/c/Users/foo'\n"

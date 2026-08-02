@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Single source of truth for audit verification results.
 
 Solves the inconsistency observed in the first real audit (srgssr-mcp,
@@ -46,7 +45,6 @@ from tools.parse_catalog import (  # noqa: E402
     parse_catalog,
 )
 from tools.path_utils import force_utf8_stdio  # noqa: E402
-
 
 VALID_STATUSES = ("pass", "fail", "partial", "todo", "n/a")
 VALID_SEVERITIES = ("critical", "high", "medium", "low")
@@ -108,7 +106,7 @@ class VerificationResults:
     results: dict[str, CheckResult]
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "VerificationResults":
+    def from_dict(cls, data: dict[str, Any]) -> VerificationResults:
         if not isinstance(data, dict):
             raise AggregationError("Top-level results must be a dict")
         if "results" not in data or not isinstance(data["results"], dict):
@@ -132,7 +130,7 @@ class VerificationResults:
         )
 
     @classmethod
-    def from_path(cls, path: Path) -> "VerificationResults":
+    def from_path(cls, path: Path) -> VerificationResults:
         text = path.read_text(encoding="utf-8")
         return cls.from_dict(json.loads(text))
 
@@ -142,7 +140,7 @@ class VerificationResults:
 # ---------------------------------------------------------------------------
 
 
-def apply_catalog_adoption(vr: "VerificationResults", checks_dir: Path) -> list[str]:
+def apply_catalog_adoption(vr: VerificationResults, checks_dir: Path) -> list[str]:
     """Overwrite each result's adoption stage from the catalogue.
 
     The catalogue is authoritative. Leaving the stage to whoever wrote
@@ -179,19 +177,19 @@ def aggregate(
             f"Unknown findings policy {policy!r}; valid: {sorted(POLICIES)}"
         )
 
-    by_status: dict[str, int] = {s: 0 for s in VALID_STATUSES}
-    by_severity: dict[str, int] = {s: 0 for s in VALID_SEVERITIES}
+    by_status: dict[str, int] = dict.fromkeys(VALID_STATUSES, 0)
+    by_severity: dict[str, int] = dict.fromkeys(VALID_SEVERITIES, 0)
     by_category: dict[str, dict[str, int]] = {}
 
     finding_statuses = POLICIES[policy]
     expected_findings: list[dict[str, Any]] = []
     blocking: list[str] = []
     advisory: list[str] = []
-    by_adoption: dict[str, int] = {a: 0 for a in VALID_ADOPTIONS}
+    by_adoption: dict[str, int] = dict.fromkeys(VALID_ADOPTIONS, 0)
 
     for cid, r in sorted(vr.results.items()):
         by_status[r.status] = by_status.get(r.status, 0) + 1
-        cat = by_category.setdefault(r.category, {s: 0 for s in VALID_STATUSES})
+        cat = by_category.setdefault(r.category, dict.fromkeys(VALID_STATUSES, 0))
         cat[r.status] = cat.get(r.status, 0) + 1
 
         if r.status != "n/a":

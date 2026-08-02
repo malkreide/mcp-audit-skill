@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Hält die Zahlen in SKILL.md am Katalog fest.
 
 Gegenstück zu `test_readme_counts.py`. `SKILL.md` führt dieselbe
@@ -26,7 +25,6 @@ from pathlib import Path
 import pytest
 
 from tools.parse_catalog import category_counts, parse_catalog
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKS_DIR = REPO_ROOT / "checks"

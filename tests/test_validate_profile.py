@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for tools/validate_profile.py — placeholder + schema gate for Step 1."""
 
 from __future__ import annotations

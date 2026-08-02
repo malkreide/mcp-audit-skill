@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests für den Ruff-Pin-Guard.
 
 Der Pre-Commit-Hook verspricht, lokal genau das zu erzwingen, was der lint-Job

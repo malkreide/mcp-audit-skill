@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for tools/aggregate_results.py — single source of truth for audit
 verification results.
 
@@ -19,13 +18,12 @@ import pytest
 from tools.aggregate_results import (
     AggregationError,
     CheckResult,
-    VerificationResults,
     ValidationError,
+    VerificationResults,
     aggregate,
     extract_check_id_from_finding_filename,
     validate_findings_persistence,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
