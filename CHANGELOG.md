@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-02
+
+Two documentation changes, no rule added, changed or removed — seven rules, as
+in 1.1.0. Both are about the same thing seen from two sides: a fault that
+produces no signal. Rule 6 names the variant that needs no network at all, a
+test that establishes the very condition under which the fault cannot occur. The
+introduction drops the assurance that a 421 gets noticed, because one layer up
+it can arrive as an ordinary empty result.
+
 ### Changed
 
 - **The introduction no longer promises that a 421 is noticed.** It distinguished
