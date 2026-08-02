@@ -5,7 +5,7 @@ description: Reproduzierbares Audit von MCP-Servern gegen einen versionierten Be
 
 # MCP Audit — Standardisiertes Audit-Vorgehen
 
-Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer, 94 Checks in zwölf Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
+Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer, 95 Checks in zwölf Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
 
 **Das Mantra in drei Zeilen:**
 
@@ -182,7 +182,7 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 
 | Kategorie | Quelle | Typische Anzahl Checks | Status |
 |---|---|---|---|
-| `ARCH` | PDF Sec 2 + Anhang A — Tool-Design, Annotations, Idempotency, Repo-Struktur, Spec-Versionierung | 10–13 | 13 / 13 ✅ |
+| `ARCH` | PDF Sec 2 + Anhang A + Custom — Tool-Design, Annotations, Idempotency, Retry-Politik, Repo-Struktur, Spec-Versionierung | 10–15 | 14 / 14 ✅ |
 | `SDK` | PDF Sec 3 — FastMCP, TypeScript, Zod, Lifecycle | 5–7 | 6 / 6 ✅ |
 | `SEC` | PDF Sec 4 + Anhang B — Security (grösste Kategorie) | 20–25 | 24 / 24 ✅ |
 | `SCALE` | PDF Sec 5 — Transport, LB, Container, Gateway | 5–7 | 7 / 7 ✅ |
@@ -194,7 +194,7 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 | `IDENT` | Custom — Identität: User-Agent, `__version__`, Manifest, Doku-Version, Release-Gap, Gesundheit des Artefakts | 5–8 | 7 / 7 ✅ |
 | `DRIFT` | Custom — Upstream-Vertrag und Repo-Prosa: Endpoint-Drift, Fallback-Semantik, Testgüte, CHANGELOG gegen Code | 4–7 | 6 / 6 ✅ |
 | `DEP` | Custom — Auflösungsraum des publizierten Artefakts: Obergrenzen, Major-Wechsel | 1–3 | 1 / 1 ✅ |
-| **Total** | | **~84** | **94 / 94 ✅** |
+| **Total** | | **~85** | **95 / 95 ✅** |
 
 ### 2.2 Severity-Stufen
 
