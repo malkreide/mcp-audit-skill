@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Prüft, ob `portfolio.yaml` jeden Server im Checkout tatsächlich kennt.
 
 WARUM ES DAS GIBT
@@ -79,7 +78,6 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from tools.path_utils import force_utf8_stdio  # noqa: E402
-
 
 # Was einen Server ausmacht: ein Manifest, das ihn beschreibt.
 MANIFEST_NAMES = ("pyproject.toml", "package.json")

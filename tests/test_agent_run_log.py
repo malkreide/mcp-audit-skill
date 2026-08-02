@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 """Tests for tools/agent_run_log.py — Task-agent run logging."""
 
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -17,7 +16,6 @@ from tools.agent_run_log import (
     save_meta,
     summarise,
 )
-
 
 # ---------------------------------------------------------------------------
 # Classification logic — locks in the failure-mode taxonomy
@@ -146,7 +144,7 @@ class TestAppendRun:
     def test_started_at_iso_format(self, tmp_path):
         raw = self._setup_raw(tmp_path, ["X-1"])
         meta = {"audit_meta": {}, "agent_runs": []}
-        fixed = datetime(2026, 5, 2, 7, 15, 0, tzinfo=timezone.utc)
+        fixed = datetime(2026, 5, 2, 7, 15, 0, tzinfo=UTC)
         entry = append_run(
             meta,
             tool_uses=1,

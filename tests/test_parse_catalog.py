@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for tools/parse_catalog.py — replaces inline awk/heredoc parsing."""
 
 from __future__ import annotations
@@ -17,7 +16,6 @@ from tools.parse_catalog import (
     parse_catalog,
     severity_counts,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKS_DIR = REPO_ROOT / "checks"

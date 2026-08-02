@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Render the final audit-report.md from summary.json + findings/.
 
 Replaces the inline Python heredocs that the original SKILL Step 6 used to
@@ -33,7 +32,6 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from tools.path_utils import force_utf8_stdio  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Helpers

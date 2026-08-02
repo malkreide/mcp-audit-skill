@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Hält die `Stand:`-Zeile in docs/roadmap.md am Katalog fest.
 
 Anders als `README.md` und `SKILL.md` darf diese Datei **nicht** als
@@ -20,7 +19,6 @@ from pathlib import Path
 import pytest
 
 from tools.parse_catalog import category_counts, parse_catalog
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKS_DIR = REPO_ROOT / "checks"

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Hält die Versionsangaben im Repo an der letzten Release-Version.
 
 Zwei Anker, eine Quelle: die `--skill-version`-Literale in der Doku und
@@ -35,7 +34,6 @@ import re
 from pathlib import Path
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHANGELOG = REPO_ROOT / "CHANGELOG.md"

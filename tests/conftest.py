@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Add repo root to sys.path so `tools/` and `checks/` are importable/locatable."""
 
 import sys

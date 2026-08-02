@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for tools/tracker_sync.py — focus on the CSV backend (zero-deps)
 and the backend resolver. Notion is exercised only via constructor / env
 plumbing; real API calls are not mocked here."""
@@ -21,7 +20,6 @@ from tools.tracker_sync import (
     TrackerRecord,
     get_backend,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -172,7 +170,7 @@ def _run(
     if env:
         full_env.update(env)
     return subprocess.run(
-        [sys.executable, "tools/tracker_sync.py"] + args,
+        [sys.executable, "tools/tracker_sync.py", *args],
         cwd=str(REPO_ROOT),
         capture_output=True,
         text=True,

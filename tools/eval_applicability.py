@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Canonical applies_when DSL evaluator for mcp-audit-skill.
 
 The DSL is a small Boolean language used in check frontmatter to declare
@@ -46,7 +45,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Errors
@@ -382,9 +380,9 @@ def parse_check_frontmatter(path: Path) -> dict[str, Any]:
         key, _, value = line.partition(":")
         key = key.strip()
         value = value.strip()
-        if value.startswith("'") and value.endswith("'"):
-            value = value[1:-1]
-        elif value.startswith('"') and value.endswith('"'):
+        if (value.startswith("'") and value.endswith("'")) or (
+            value.startswith('"') and value.endswith('"')
+        ):
             value = value[1:-1]
         fm[key] = value
     return fm

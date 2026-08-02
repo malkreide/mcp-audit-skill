@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for tools/verify_raw_outputs.py."""
 
 from __future__ import annotations
@@ -6,9 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-
 from tools.verify_raw_outputs import main, verify_raw_outputs
-
 
 # ---------------------------------------------------------------------------
 # Pure verification function

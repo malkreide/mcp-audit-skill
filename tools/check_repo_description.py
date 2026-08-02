@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Hält die GitHub-Repo-Description am Katalog fest.
 
 Die Zahlen des Katalogs stehen an sechs Orten, und fünf davon sichert die
@@ -129,7 +128,7 @@ def fetch(repo: str, timeout: float = 15.0) -> tuple[str | None, str]:
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         return None, f"GitHub antwortete HTTP {exc.code}"

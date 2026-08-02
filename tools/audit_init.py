@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Initialize an audit run: generate run-id, create output dir, write
 initial audit-meta.json.
 
@@ -28,7 +27,7 @@ import hashlib
 import json
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -38,7 +37,6 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from tools.path_utils import force_utf8_stdio  # noqa: E402
-
 
 _VALID_SERVER_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 
@@ -70,7 +68,7 @@ def make_run_id(server: str, now: datetime | None = None) -> str:
         raise ValueError(
             f"server name {server!r} must match {_VALID_SERVER_RE.pattern}"
         )
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     if now.tzinfo is None:
         raise ValueError("`now` must be timezone-aware")
     offset = _format_offset(now)
@@ -114,7 +112,7 @@ def hash_catalog(catalog_dir: Path) -> str:
     files = sorted(catalog_dir.glob("*.md"))
     manifest = catalog_dir / "MANIFEST.txt"
     if manifest.exists():
-        files = files + [manifest]
+        files = [*files, manifest]
     for path in sorted(files, key=lambda p: p.name):
         h.update(path.name.encode("utf-8"))
         h.update(b"\0")
@@ -160,7 +158,7 @@ def init_audit(
     """Create the audit dir, write the initial audit-meta.json, return
     the metadata that was written.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     run_id, output_dir = resolve_output_dir(server, base_dir, now=now)
     output_dir.mkdir(parents=True, exist_ok=False)
     meta = build_initial_meta(
@@ -195,7 +193,7 @@ def _parse_now(value: str | None) -> datetime | None:
     dt = datetime.fromisoformat(value)
     if dt.tzinfo is None:
         # Treat naive input as UTC for predictable behaviour in CI.
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 

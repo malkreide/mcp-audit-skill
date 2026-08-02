@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """propose_release.py — Generate a release proposal for an audited MCP server.
 
 Triggered after an audit + remediation loop reaches `production_ready: true`
@@ -38,7 +37,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -75,7 +74,7 @@ class AuditSummary:
     findings_count: int
 
     @classmethod
-    def from_dir(cls, audit_dir: Path) -> "AuditSummary":
+    def from_dir(cls, audit_dir: Path) -> AuditSummary:
         summary_path = audit_dir / "summary.json"
         meta_path = audit_dir / "audit-meta.json"
         if not summary_path.exists():
@@ -263,10 +262,7 @@ def insert_changelog_entry(
         # Insert before the next `## [` heading.
         start = unreleased.end()
         next_release = re.search(r"^## \[", original[start:], re.MULTILINE)
-        if next_release:
-            insertion_at = start + next_release.start()
-        else:
-            insertion_at = len(original)
+        insertion_at = start + next_release.start() if next_release else len(original)
         new_text = (
             original[:insertion_at]
             + ("\n" if not original[:insertion_at].endswith("\n\n") else "")
@@ -394,11 +390,11 @@ def cmd_propose(args: argparse.Namespace) -> int:
 
     current_version, source = detect_current_version(target_repo)
     next_version = args.next_version or bump_version(current_version, args.bump)
-    today = args.today or datetime.now(timezone.utc).date().isoformat()
+    today = args.today or datetime.now(UTC).date().isoformat()
 
     entry = render_changelog_entry(next_version, summary, args.notes, today)
     changelog = target_repo / args.changelog
-    new_text, _ = insert_changelog_entry(changelog, entry)
+    _new_text, _ = insert_changelog_entry(changelog, entry)
 
     proposal = {
         "ok": True,
@@ -458,9 +454,9 @@ def cmd_apply(args: argparse.Namespace) -> int:
         )
         return 2
 
-    current_version, source = detect_current_version(target_repo)
+    current_version, _source = detect_current_version(target_repo)
     next_version = args.next_version or bump_version(current_version, args.bump)
-    today = args.today or datetime.now(timezone.utc).date().isoformat()
+    today = args.today or datetime.now(UTC).date().isoformat()
 
     entry = render_changelog_entry(next_version, summary, args.notes, today)
     changelog = target_repo / args.changelog
