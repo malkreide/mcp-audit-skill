@@ -78,6 +78,10 @@ assert pkg.__version__ == expected, (
 
 Im Sweep hat genau dieser Test beim Schreiben sofort einen veralteten Editable-Install aufgedeckt (0.4.1 gegen 0.5.1).
 
+**Reichweite: der Checkout, und zwar mit Absicht.** Dieser Modus vergleicht die installierten Metadaten gegen `pyproject.toml` — beide aus demselben Baum. Das ist für die Frage dieses Checks richtig: Ob `__version__` *abgeleitet* statt von Hand gepflegt wird, ist eine Eigenschaft der Quelle, und ein Vergleich mit dem Index würde sie nicht schärfer beantworten.
+
+Es heisst aber auch, dass der Vergleich **über das publizierte Artefakt nichts aussagt**. Beide Seiten stammen aus derselben Datei; sie können gar nicht widersprechen. Ein Server kann diesen Check vollständig bestehen, während das Paket auf dem Index eine andere Nummer meldet — weil der Fix nie released wurde (`IDENT-006`) oder weil die Pipeline den Wert unterwegs ersetzt (`IDENT-003`). Wer aus einem grünen `IDENT-002` auf die Identität des ausgelieferten Pakets schliesst, macht denselben Fehler, den `IDENT-006` beschreibt: Er vergleicht Etiketten innerhalb einer Quelle und hält das Ergebnis für eine Aussage über das Artefakt.
+
 ## Pass Criteria
 
 - [ ] `__version__` wird über `importlib.metadata.version()` (bzw. das Sprach-Äquivalent) gelesen
@@ -86,6 +90,7 @@ Im Sweep hat genau dieser Test beim Schreiben sofort einen veralteten Editable-I
 - [ ] Die Fehlermeldung dieses Tests nennt den Editable-Install-Fall
 - [ ] Der Test wird ohne Installation **übersprungen**, nicht rot (sonst scheitert er im reinen Quell-Checkout)
 - [ ] Bei Submodul-Importen in `__init__.py`: Versionsblock steht **vor** ihnen (Zirkelimport)
+- [ ] Aus dem Bestehen dieses Checks wurde **nicht** auf die Identität des publizierten Pakets geschlossen — dafür sind `IDENT-001` (Modus 3) und `IDENT-006` zuständig
 
 ## Common Failures
 
@@ -131,5 +136,6 @@ S — Pro Server 10 Minuten. Der Testumbau ist der grössere Teil.
 - Portfolio-Sweep 2026-07-29: 20 von 30 Servern betroffen
 - `eth-library-mcp#12` — Test, der das Literal festschrieb statt die Drift zu erkennen
 - `seco-labor-mcp#12` — Zirkelimport durch Blockreihenfolge
-- IDENT-001 — User-Agent, der aus diesem Wert gebaut wird
+- IDENT-001 — User-Agent, der aus diesem Wert gebaut wird; dessen Modus 3 misst am Artefakt, was hier an der Quelle geprüft wird
 - IDENT-005 — Fallback-Marker
+- `IDENT-003` / `IDENT-006` — wo die Aussage über das *publizierte* Paket herkommt. Dieser Check trifft sie nicht

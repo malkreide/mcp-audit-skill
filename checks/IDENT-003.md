@@ -54,6 +54,33 @@ grep -rn "sed -i\|jq '\.\|yq -i\|::set-output\|GITHUB_REF_NAME" .github/workflow
 
 Jeder Treffer bezeichnet einen Wert, der im Repo steht, aber im Artefakt anders lautet. Für jeden davon gilt die Frage: Prüft irgendetwas die committete Fassung?
 
+### Modus 3: runtime_test — das Ergebnis der Überschreibung zurücklesen
+
+Die Modi 1 und 2 prüfen die **Eingangsseite**: den committeten Wert und die Stelle, an der die Pipeline ihn ersetzt. Was dabei herauskommt, kommt in beiden nicht vor — und damit trifft die These dieses Checks ihn selbst:
+
+> Ein Wert, den die Pipeline zur Laufzeit überschreibt, wird nie geprüft.
+
+Der committete Wert ist geprüft. Der geschriebene nicht. Zwei Wege, das zu schliessen:
+
+**a) Die beiden publizierten Seiten gegeneinander.** Registry-Manifest und Paket-Index tragen dieselbe Version, weil dieselbe Pipeline sie aus demselben Tag ableitet. Weichen sie ab, hat genau ein Schritt nicht gegriffen. Die Index-Seite liefert `shipped_probe.py` (siehe `IDENT-006`), die Registry-Seite die Oberfläche, unter der der Server dort geführt wird.
+
+**b) Die Transformation selbst nachvollziehen.** Das `jq`/`sed`-Kommando aus dem Workflow lokal gegen einen Tag-Namen laufen lassen und das Ergebnis ansehen — nicht den Workflow lesen, sondern ausführen. Hier zeigt sich, ob es **jedes** Vorkommen erfasst:
+
+```bash
+# Die Transformation aus publish.yml, mit einem Tag durchgespielt
+VERSION=1.2.3
+jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json |
+  python3 -c "
+import json,sys,os
+d=json.load(sys.stdin); v=os.environ['VERSION']
+bad=[('version',d.get('version'))]+[(f'packages[{i}]',p.get('version')) for i,p in enumerate(d.get('packages',[]))]
+for w,x in bad: print(('OK  ' if x==v else '!!  ')+f'{w} = {x!r} (erwartet {v!r})')"
+```
+
+**Das ist keine erfundene Sorge.** Genau diese Zeile steht so in den Publish-Workflows des Portfolios — sie schreibt `.version` und `.packages[0].version`, also **nur den ersten** Package-Eintrag. Kriterium 2 dieses Checks verlangt für die committete Fassung ausdrücklich «**jeder** `packages[*]`». Die Pipeline, die diese Fassung ersetzt, erfüllt das nicht. Bei einem Server mit zwei Einträgen wäre der zweite im *publizierten* Manifest desynchronisiert — und kein Kriterium dieses Checks hätte es je gesehen, weil alle nur die Datei im Repo ansehen. Solange ein Server genau einen Eintrag führt, ist es folgenlos; das ist ein Zustand, keine Eigenschaft.
+
+Ist die publizierte Seite nicht erreichbar, ist das Ergebnis `todo`, nicht `pass` — ein Vergleich, der nicht stattgefunden hat, ist keine Bestätigung (`OPS-005`).
+
 ## Pass Criteria
 
 - [ ] `server.json → version` stimmt mit `pyproject.toml` überein
@@ -62,6 +89,9 @@ Jeder Treffer bezeichnet einen Wert, der im Repo steht, aber im Artefakt anders 
 - [ ] Der Check läuft ohne Projekt-Installation (schlanker Lint-Job genügt)
 - [ ] Die Werte, die `publish.yml` zur Laufzeit überschreibt, sind dokumentiert
 - [ ] Für jeden überschriebenen Wert existiert ein Check auf die committete Fassung
+- [ ] **Und einer auf die geschriebene**: Der publizierte Wert wurde zurückgelesen — Registry gegen Index, oder die Transformation nachvollzogen (Modus 3)
+- [ ] Die Transformation erfasst **jedes** Vorkommen des Wertes, nicht nur das erste (`packages[0]` ist kein `packages[*]`)
+- [ ] Die Ableitung des Wertes ist gegen Nicht-Tag-Läufe abgesichert: Bei `workflow_dispatch` aus einem Branch ist `GITHUB_REF_NAME` der Branch-Name, und ein blindes `${VAR#v}` schreibt `main` als Version
 
 ## Common Failures
 
@@ -71,6 +101,10 @@ Jeder Treffer bezeichnet einen Wert, der im Repo steht, aber im Artefakt anders 
 | Nur `version` geprüft, `packages[*].version` nicht | Halber Bump bleibt unentdeckt |
 | Check erst im Test-Job mit voller Installation | Läuft nicht im schlanken Lint-Job, wird umgangen |
 | Abbruch beim ersten Befund | Weitere, schwerere Abweichungen bleiben ungesehen (siehe IDENT-004) |
+| Nur die committete Fassung geprüft | Die These des Checks, auf ihn selbst angewandt: der geschriebene Wert wird nie geprüft |
+| Transformation greift auf `packages[0]` statt `packages[*]` | Im publizierten Manifest desynchron, sobald es mehr als einen Eintrag gibt — im Repo unsichtbar |
+| Version aus `GITHUB_REF_NAME` ohne Tag-Prüfung abgeleitet | Ein `workflow_dispatch` aus `main` publiziert die Version `main` |
+| Workflow gelesen statt ausgeführt | `jq`-Ausdrücke sind still bei Pfaden, die nicht existieren — der Fehler steht nicht im Text, sondern im Ergebnis |
 
 ## Remediation
 
@@ -100,4 +134,6 @@ S — 30 Minuten inklusive CI-Einbau. Das Inventar der überschriebenen Werte ka
 - Portfolio-Sweep 2026-07-29: 4 von 30 Servern betroffen
 - `swiss-environment-mcp` v0.5.1 — Manifest stand von v0.2.3 bis v0.5.0 falsch
 - IDENT-004 — dieselbe Klasse für dokumentierte Werte
+- `IDENT-006` — die Index-Seite des Vergleichs aus Modus 3; `shipped_probe.py` liest die Version aus der installierten Distribution
+- `OPS-005` — nicht erreichbare publizierte Seite heisst `todo`, nicht `pass`
 - OPS-001 — CI-Gates

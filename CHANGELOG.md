@@ -6,6 +6,40 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — der Blindfleck aus `IDENT-006` in den übrigen `IDENT`-Checks
+
+Nach dem Umbau von `IDENT-006` wurden `IDENT-001` bis `IDENT-005` auf dieselbe Frage geprüft: Messen sie die Quelle und schliessen daraus auf das Artefakt? Drei Befunde, in absteigender Schwere. Ausserdem referenzierte **kein einziger** `IDENT`-Check die beiden Identitäts-Proben des `mcp-continuous-auditor` — dieselbe Lücke, die bei `IDENT-006` für `shipped_probe.py` bestand.
+
+**`IDENT-003` — der schärfste Fall, weil der Check ihn selbst beschreibt.** Sein Titel lautet «Werte, die die **Pipeline überschreibt**», seine These:
+
+> Ein Wert, den die Pipeline zur Laufzeit überschreibt, wird nie geprüft.
+
+Beide Modi lasen das Repo, und ein Kriterium verlangte wörtlich einen Check «auf die **committete** Fassung». Der committete Wert war geprüft, der geschriebene nicht — die These, auf den Check selbst angewandt. Neuer **Modus 3** liest zurück: Registry gegen Index (die Index-Seite liefert `shipped_probe.py`), oder die Transformation lokal gegen einen Tag ausführen statt den Workflow zu lesen.
+
+Dabei ist ein realer Fund aufgefallen. Die Publish-Workflows des Portfolios schreiben:
+
+```
+jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json
+```
+
+**Nur `packages[0]`.** Kriterium 2 dieses Checks verlangt für die committete Fassung ausdrücklich «*jeder* `packages[*]`» — die Pipeline, die diese Fassung ersetzt, erfüllt genau das nicht. Bei einem Server mit zwei Einträgen wäre der zweite im publizierten Manifest desynchron, und kein Kriterium hätte es gesehen. Aktuell führt jeder geprüfte Server genau einen Eintrag; das ist ein Zustand, keine Eigenschaft, und steht jetzt als Kriterium und als Anti-Pattern drin. Dazu die Nicht-Tag-Falle, die dieselben Workflows bereits kommentieren: Bei `workflow_dispatch` aus einem Branch ist `GITHUB_REF_NAME` der Branch-Name, und ein blindes `${VAR#v}` publiziert die Version `main`.
+
+**`IDENT-001` — Achse vorhanden, Methoden belegt blind.** Der Check mass bereits am installierten Paket, schrieb dafür aber zwei Techniken vor, die an realen Servern versagt haben. Neuer **Modus 3** ist `published_probe.py`, das drei Strategien gleichzeitig fährt und zu jedem Befund festhält, welche ihn erzeugte:
+
+| Strategie | Woran sie scheiterte |
+|---|---|
+| Regex auf `f"…{__version__}…"` | `lobbywatch-mcp` — die Variable heisst dort `PACKAGE_VERSION` |
+| Modul-Namespace lesen (bisheriger Modus 2) | `seco-labor-mcp` — Wert in `_HTTP_KWARGS["headers"]["User-Agent"]`; `swiss-transport-mcp` — Literal inline im `httpx`-Konstruktor *innerhalb einer Funktion* |
+| Quelltext-Literale (bisheriger Modus 1) | jeden f-String-User-Agent — nach dem Schrägstrich steht keine Ziffer zum Verankern |
+
+Zwei Dinge, die dem Check ganz fehlten. Erstens die Zahl: Der Sweep im `pdf_ref` (2026-07-29, 30 Server) ist der **repo-seitige**. Ein zweiter am Folgetag installierte **33 publizierte Pakete aus dem Index — 16 sendeten eine andere Version, als die sie installiert wurden.** Alle 16 hatten den Fix gemergt, keines released. Zweitens `unverified`: Eine Probe, die keinen User-Agent findet, darf nicht melden, dass es keinen gibt. Genau so wurden 24 Pakete für unauffällig erklärt, 16 davon drifteten. Und ein **fremder** User-Agent — im Sweep eine gefälschte Browser-Kennung — ist eine eigene Befundklasse mit anderer Behebung, nicht Versionsdrift.
+
+Ergänzt ist auch, dass die Exit-Vokabulare der beiden Proben **nicht** übereinstimmen: Bei `published_probe.py` heisst `2` «nicht installierbar», bei `shipped_probe.py` «Befund».
+
+**`IDENT-002` und `IDENT-005` — Reichweite bestätigt, Abgrenzung ergänzt.** Beide prüfen zu Recht die Quelle. `IDENT-002` vergleicht installierte Metadaten gegen `pyproject.toml` — beide aus demselben Baum, sie können gar nicht widersprechen; wer daraus auf das publizierte Paket schliesst, macht den Fehler aus `IDENT-006`. `IDENT-005` prüft die *Form* des Fallback-Markers; dass der Marker im installierten Paket feuert (beschädigte Wheel-Metadaten), ist ein Befund gegen `IDENT-002`, sichtbar in `IDENT-001` Modus 3. Beides steht jetzt als Absatz und als Verweis drin, `IDENT-002` zusätzlich als Kriterium.
+
+Keine Katalog-Änderung: 90 Checks in 11 Kategorien, alle `applies_when` und `severity` unverändert, 431 Tests unverändert.
+
 ### Geändert — `IDENT-006` bekommt eine zweite Achse: läuft das Artefakt überhaupt?
 
 Der Check war lückenbasiert und hätte einen realen Vorfall durchgewunken. `zurich-opendata-mcp` `0.5.1`, reproduziert am 2026-07-31: Repo-Version, letzter Git-Tag und PyPI standen **alle drei auf `0.5.1`** — jeder Versionsvergleich meldete «in sync» — und das Artefakt starb beim Import.

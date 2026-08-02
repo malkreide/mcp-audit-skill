@@ -31,6 +31,10 @@ Die Konvention im Portfolio ist ein **lokales Segment** nach `+`:
 
 Das Segment ist PEP-440-konform, überlebt Versionsvergleiche und ist auf einen Blick als «keine Version bekannt» lesbar.
 
+**Der Fallback kann auch im installierten Paket feuern — und dann ist er ein Befund, kein Fallback.** Dieser Check prüft die *Form* des Markers, eine reine Quell-Eigenschaft, und das ist richtig so. Er sagt aber nichts darüber, ob der Zweig im ausgelieferten Artefakt greift. Sind die Metadaten im publizierten Wheel beschädigt oder fehlt der Distributionsname, den `version()` nachschlägt, dann meldet das installierte Paket `0.0.0+source` auf der Leitung — korrekt geformt, und trotzdem ein kaputtes Artefakt.
+
+Genau dafür ist der Marker gebaut: Er macht diesen Zustand **sichtbar**, statt ihn als plausible Release-Nummer zu tarnen. Gemessen wird er anderswo — `IDENT-001` Modus 3 löst den User-Agent am aus dem Index installierten Paket auf, und `0.0.0+source` dort ist ein Befund gegen `IDENT-002`, nicht gegen diesen Check.
+
 **Der zweite Grund ist maschineller Natur:** Ein Check, der hartkodierte Versionen in `src/` findet (IDENT-002), muss den Fallback ausnehmen — und zwar am Aufbau, nicht am Wert. Das `+`-Segment ist das einzige verlässliche Unterscheidungsmerkmal. Ein Fallback `"0.0.0"` ist von einem echten Literal nicht trennbar und wird korrekt als Befund gemeldet.
 
 Im Sweep war das mehr als Theorie: Meine erste Fassung des Checks nahm `0+unknown` als Marker an (die Form eines einzelnen Servers) und meldete daraufhin **neun Fehlalarme** gegen die Portfolio-Form `0.0.0+source`. Erst die Umstellung auf «enthält `+`» statt «gleicht diesem String» war robust.
@@ -107,4 +111,5 @@ XS — Minuten pro Server.
 - Portfolio-Sweep 2026-07-29: `swiss-statistics-mcp#20`
 - Neun Fehlalarme durch marker-spezifische statt struktureller Erkennung
 - IDENT-002 — der Zweig, um den es geht
+- `IDENT-001` Modus 3 — wo sich zeigt, ob der Marker im *installierten* Paket feuert; dort ist er ein Befund, kein Fallback
 - PEP 440, Abschnitt «Local version identifiers»
