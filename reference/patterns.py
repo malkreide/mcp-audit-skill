@@ -57,6 +57,7 @@ _LOOPBACK_BINDS = frozenset({"127.0.0.1", "::1", "localhost"})
 # Rule 1(b) — the bind travels as kwargs; mcp.settings is read-only in 2.x
 # ---------------------------------------------------------------------------
 
+
 def serve(settings: Any) -> None:
     """Start the server.
 
@@ -85,6 +86,7 @@ def serve(settings: Any) -> None:
 # Rule 1(c) — annotations are read in snake_case; the wire format is unchanged
 # ---------------------------------------------------------------------------
 
+
 def is_read_only(tool: Any) -> bool:
     """Read a tool annotation under 2.x.
 
@@ -112,13 +114,16 @@ def test_wire_format_is_unchanged(tool: Any) -> None:
     concern only and no client contract is at stake.
     """
     dumped = tool.annotations.model_dump(by_alias=True)
-    assert "readOnlyHint" in dumped, "alias lost — this IS a wire change, stop and re-read"
+    assert "readOnlyHint" in dumped, (
+        "alias lost — this IS a wire change, stop and re-read"
+    )
     assert "read_only_hint" not in dumped
 
 
 # ---------------------------------------------------------------------------
 # Rule 4 — the inbound allow-list, built in one place
 # ---------------------------------------------------------------------------
+
 
 def build_transport_security(
     *,
@@ -190,6 +195,7 @@ def _origins(cors_origins: Sequence[str]) -> list[str]:
 # Rules 2 + 3 — one policy object, and every path that builds an app gets it
 # ---------------------------------------------------------------------------
 
+
 def build_http_app(settings: Any, *, transport_security: Any = None) -> Any:
     """Build the ASGI app. Never constructs the policy itself — it receives it.
 
@@ -199,7 +205,7 @@ def build_http_app(settings: Any, *, transport_security: Any = None) -> Any:
     """
     return mcp.create_http_app(
         host=settings.host,
-        port=settings.port,          # rule 3: the port travels WITH the host.
+        port=settings.port,  # rule 3: the port travels WITH the host.
         transport_security=transport_security,
     )
 
@@ -289,6 +295,7 @@ def serve_http(settings: Any) -> None:
 
 # --- Rule 7(a): the harness, because everything below depends on it ---------
 
+
 @pytest.fixture
 def client(settings: Any) -> Any:
     """Drive the app through its lifespan.
@@ -322,6 +329,7 @@ def client(settings: Any) -> Any:
 # That one is green in three different states — correct list, loopback fallback,
 # and a list that matches the hostname while ignoring the port. A test that
 # cannot tell those apart reports on the environment, not on the code.
+
 
 def test_right_host_right_port_is_accepted(client: Any) -> None:
     """The positive twin. Without it, "rejected" cannot be told from "everything
@@ -367,6 +375,7 @@ def test_valid_token_does_not_save_a_foreign_host(client: Any) -> None:
 
 # --- Rule 6: the test that voids itself -------------------------------------
 
+
 def test_real_hostname_is_accepted(client: Any, monkeypatch: Any) -> None:
     """Rule 6: the load-bearing test, and the one that is easiest to void.
 
@@ -384,6 +393,7 @@ def test_real_hostname_is_accepted(client: Any, monkeypatch: Any) -> None:
 
 
 # --- Rule 7(b): keep the patch level consistent -----------------------------
+
 
 def _patch_run(monkeypatch: Any) -> list[dict]:
     """Record the kwargs `mcp.run` was called with, patching the INSTANCE.
@@ -406,7 +416,10 @@ def _patch_run(monkeypatch: Any) -> list[dict]:
 
 # --- Rule 7(c): every branch test claims its branch --------------------------
 
-def test_the_sdk_served_path_gets_the_allowlist_too(settings: Any, monkeypatch: Any) -> None:
+
+def test_the_sdk_served_path_gets_the_allowlist_too(
+    settings: Any, monkeypatch: Any
+) -> None:
     """Assert WHICH branch ran, so taking the wrong one fails instead of hanging."""
     calls = _patch_run(monkeypatch)
     settings.transport = "streamable-http"
@@ -415,11 +428,15 @@ def test_the_sdk_served_path_gets_the_allowlist_too(settings: Any, monkeypatch: 
 
     serve_http(settings)
 
-    assert len(calls) == 1, "the custom-builder branch ran — this test asserts the run() branch"
+    assert len(calls) == 1, (
+        "the custom-builder branch ran — this test asserts the run() branch"
+    )
     assert calls[0]["transport_security"] is not None
 
 
-def test_the_custom_builder_path_gets_the_allowlist_too(settings: Any, monkeypatch: Any) -> None:
+def test_the_custom_builder_path_gets_the_allowlist_too(
+    settings: Any, monkeypatch: Any
+) -> None:
     """The twin of the test above. Both branches, both claiming their branch.
 
     Without the pair, a change that routes everything through one branch leaves
@@ -430,11 +447,13 @@ def test_the_custom_builder_path_gets_the_allowlist_too(settings: Any, monkeypat
     served: list[Any] = []
     monkeypatch.setattr(uvicorn, "run", lambda app, **kw: served.append(app))
     settings.transport = "streamable-http"
-    settings.auth_token = "t"          # forces the custom-builder branch
+    settings.auth_token = "t"  # forces the custom-builder branch
 
     serve_http(settings)
 
-    assert not calls, "the run() branch ran — this test asserts the custom-builder branch"
+    assert not calls, (
+        "the run() branch ran — this test asserts the custom-builder branch"
+    )
     assert len(served) == 1
 
 
@@ -452,7 +471,9 @@ def test_the_sse_path_is_wired(settings: Any, monkeypatch: Any) -> None:
     one wiring assertion covers both without a test that can hang.
     """
     built: list[dict] = []
-    monkeypatch.setattr(mcp, "create_sse_app", lambda **kw: built.append(kw) or object())
+    monkeypatch.setattr(
+        mcp, "create_sse_app", lambda **kw: built.append(kw) or object()
+    )
     monkeypatch.setattr(uvicorn, "run", lambda *a, **kw: None)
     settings.transport = "sse"
 
@@ -460,7 +481,7 @@ def test_the_sse_path_is_wired(settings: Any, monkeypatch: Any) -> None:
 
     assert len(built) == 1
     assert built[0]["transport_security"] is not None
-    assert built[0]["port"] == settings.port      # rule 3: the port travels too
+    assert built[0]["port"] == settings.port  # rule 3: the port travels too
 
 
 # NOTE ON RUNNING THE SUITE (rule 7): run it under a timeout

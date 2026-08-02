@@ -25,6 +25,42 @@ jobs:
             echo "skipped — no reference/ directory yet"
           fi
 
+      # Nur Formatierung, kein `ruff check` — Begruendung in ruff.toml.
+      # Ruff gepinnt, damit ein Upstream-Release den Formatter nicht aendert
+      # und die CI an unberuehrtem Vorlagen-Code rot wird. Bewusst anheben.
+      #
+      # ACHTUNG: diese Version und die `rev` in .pre-commit-config.yaml
+      # muessen uebereinstimmen — der Schritt darunter prueft es.
+      - name: Ruff installieren
+        run: pip install ruff==0.15.8
+
+      - name: Formatierung der Referenz-Vorlagen
+        run: ruff format --check .
+
+      # Der Ruff-Pin steht zweimal: oben und als `rev` im Pre-Commit-Hook.
+      # Laufen sie auseinander, formatiert der Hook nach der einen und dieser
+      # Job prueft nach der anderen Version — der Hook meldet gruen und die CI
+      # wird rot. Ein fehlender Pin ist ebenfalls ein Fehler: dann hat der
+      # Vergleich nicht stattgefunden.
+      #
+      # Reine Shell statt eines Python-Skripts: in einem Repo, dessen einziger
+      # Python-Code Vorlagen sind, waere ein eigenes Modul samt Tests
+      # unverhaeltnismaessig.
+      - name: Ruff-Pin-Sync (ci.yml ↔ .pre-commit-config.yaml)
+        run: |
+          ci=$(sed -n 's/.*ruff==\([0-9][^ "'"'"']*\).*/\1/p' .github/workflows/ci.yml | head -1)
+          hook=$(sed -n '/ruff-pre-commit/,/hooks:/{s/^[[:space:]]*rev:[[:space:]]*v\{0,1\}\([0-9][^[:space:]]*\)[[:space:]]*$/\1/p;}' .pre-commit-config.yaml | head -1)
+          if [ -z "$ci" ]; then
+            echo "::error::.github/workflows/ci.yml nennt kein ruff==<version>."; exit 1
+          fi
+          if [ -z "$hook" ]; then
+            echo "::error::.pre-commit-config.yaml nennt keine rev fuer ruff-pre-commit."; exit 1
+          fi
+          if [ "$ci" != "$hook" ]; then
+            echo "::error::Ruff-Pins laufen auseinander — ci.yml $ci, Hook $hook. Beide im selben Commit bumpen."; exit 1
+          fi
+          echo "Ruff-Pin OK ($ci; beide Stellen stimmen ueberein)."
+
       - name: SKILL.md carries a well-formed frontmatter
         env:
           PYTHONUTF8: "1"
