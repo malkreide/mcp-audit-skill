@@ -48,6 +48,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Problems. Der Cache-Prefix hält das Skript sauber, der Eintrag hält jeden
   anderen `python`-Aufruf im Repo sauber.
 
+### Changed
+
+- **Der Transport steht jetzt in 2.3, bei den Konsequenzen des
+  Architektur-Entscheids** — nicht mehr nur als Zeile in der Schnellreferenz.
+  Der Grund ist die Cache-Semantik: Bei ARCH B und C trifft die Transport-Wahl
+  eine zweite Entscheidung mit, ohne dass sie jemand ausspricht. Unter `stdio`
+  läuft ein Prozess pro Client, der Cache lebt eine Sitzung und der Dump wird
+  pro Sitzung neu geladen; unter `streamable-http` bedient ein Prozess viele
+  Clients, derselbe Cache lebt so lange wie die Instanz und wird geteilt.
+  Dieselbe TTL bedeutet damit zwei verschiedene Dinge. Das README-Template
+  nennt die Transporte und diese Folge jetzt in den `Consequences`.
+
+  Daran hängt eine Reichweiten-Korrektur statt einer neuen Regel: Den
+  Zeitstempel des letzten erfolgreichen Abrufs verlangt 3.5 schon, aber nur für
+  den Ausfall. Bei geteiltem Cache sagt `provenance: cached` aus 3.2 unter
+  `streamable-http` etwas anderes als unter `stdio` — «womöglich Stunden alt und
+  für jemand anderen geholt» statt «in dieser Sitzung schon geholt» —, also
+  braucht auch die erfolgreiche Antwort den Zeitstempel. Sonst hängt das Alter
+  der Daten an der Deployment-Konfiguration statt an der Antwort.
+
+  Erwogen und verworfen wurde ein eigener Abschnitt 3.7. Er wäre zur Hälfte
+  eine Wiederholung der bestehenden «immer beide»-Regel gewesen und hätte
+  Schritt 3 auf sieben Punkte gebracht, dessen Wert darin liegt, kurz genug zu
+  sein, dass ihn niemand überspringt. Das ist Lehre 1 aus dem VARIA-Fundstück,
+  angewandt auf den Skill selbst: erst fragen, ob eine bestehende Regel zu eng
+  gefasst war, statt sofort eine neue zu schreiben. Eine Zeile in der
+  Qualitätschecklist unter «Schritt 2 – Architektur» hält den Punkt prüfbar.
+
+  Offen und bewusst so vermerkt: Für diese Regel gibt es **kein Fundstück**. Die
+  Mechanik ist aus dem bestehenden Text ableitbar, aber kein Server im Portfolio
+  ist bisher nachweislich darüber gestolpert. Nach dem Massstab des
+  Contributing-Abschnitts ist das ein Mangel — wer den Fall trifft, trägt ihn
+  bitte nach.
+
+- **`ENV_VAR_TRANSPORT` und `__main__.py` sind aus der Schnellreferenz raus.**
+  Beides ist Implementierungsdetail des Einstiegspunkts und gehört damit in
+  `mcp-transport-hardening`, das genau diese Rolle hat. Die Schnellreferenz
+  behält die Entscheidung («immer beide») und verweist für die Folgen auf 2.3,
+  für die Umsetzung auf den Schwester-Skill.
+
 ## [1.2.0] - 2026-08-01
 
 Documentation and guards, no change to the procedure itself — the four

@@ -268,9 +268,28 @@ Rationale (verified live on YYYY-MM-DD):
   calls.
 
 Consequences:
-- Dump is cached on disk with Z hours TTL.
+- Transports: stdio and streamable-http.
+- Dump is cached on disk with Z hours TTL — one cache per process under stdio,
+  one shared cache per instance under streamable-http.
 - Library functions / retry / provenance behaviour: see docstrings.
 ```
+
+**Der Transport gehört in die Konsequenzen.** Unterstützt werden immer beide —
+`stdio` für Claude Desktop, `streamable-http` für Cloud-Deployments. Damit ist
+bei ARCH B und C eine zweite Entscheidung getroffen, ohne dass sie jemand
+ausgesprochen hat: Unter `stdio` startet pro Client ein eigener Prozess, der
+Cache lebt genau eine Sitzung und der Dump wird pro Sitzung neu geladen. Unter
+`streamable-http` bedient ein Prozess viele Clients, derselbe Cache lebt so
+lange wie die Instanz und wird geteilt. Dieselbe TTL bedeutet also zwei
+verschiedene Dinge — bei einem 17-MB-Dump die Frage, ob jede Sitzung ihn zieht
+oder keine.
+
+Das ändert auch, was `provenance: cached` aus 3.2 aussagt: unter `stdio` «in
+dieser Sitzung schon geholt», unter `streamable-http` «womöglich Stunden alt und
+für jemand anderen geholt». Den Zeitstempel des letzten erfolgreichen Abrufs
+verlangt 3.5 bereits — dort für den Ausfall. Bei geteiltem Cache braucht ihn
+auch die erfolgreiche Antwort, sonst hängt das Alter der Daten an der
+Deployment-Konfiguration statt an der Antwort.
 
 ---
 
@@ -455,7 +474,7 @@ Nach Release (Tag `v0.1.0`) wird die Karte in der Notion-Datenbank `aa6b672a-e5e
 
 ### Welchen Transport-Modus unterstützen?
 
-**Immer beide:** `stdio` (Claude Desktop) + `streamable-http` / `sse` (Cloud, Railway, Render). Auswahl via `ENV_VAR_TRANSPORT`-Variable im `__main__.py`.
+**Immer beide:** `stdio` (Claude Desktop) + `streamable-http` / `sse` (Cloud, Railway, Render). Was das für den Cache bedeutet, steht in 2.3. Die Umsetzung im Einstiegspunkt und das Abweis-Verhalten gehören in `mcp-transport-hardening`.
 
 ---
 
@@ -492,6 +511,7 @@ Vor `v0.1.0`-Tag alle folgenden Punkte abhaken:
 - [ ] Architektur-Entscheid (A/B/C) explizit getroffen
 - [ ] Portfolio-Synergie-Check durchgeführt
 - [ ] Entscheid im README dokumentiert
+- [ ] **Transport**: beide unterstützt, und bei ARCH B/C die Cache-Lebensdauer pro Transport im Entscheid benannt (2.3)
 
 **Schritt 3 – Resilienz**
 - [ ] Retry mit exponentiellem Backoff für alle HTTP
