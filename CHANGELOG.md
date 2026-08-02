@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-02
+
+Two boundaries, both drawn from an incident in a neighbouring skill rather than
+from this one. Still six rules — what changes is that two of them now say where
+they stop. Rule 3 no longer lets a rejected request pass as an empty set, and
+rule 5 names the variant of its own failure that needs no mock at all.
+
 ### Changed
 
 - **Rule 3 now draws the line against transport and authorization failures.** The
