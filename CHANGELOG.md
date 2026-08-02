@@ -6,6 +6,14 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v1.6.0] — 2026-08-02 — Zwei Befunde aus dem Durchlauf, und eine Kette die man findet
+
+**Zwei neue Checks** (`ARCH-014`, `OBS-007`) — der Katalog wächst von 93 auf **95 in zwölf Kategorien**, 469 Tests. Beide stammen nicht aus einem einzelnen Vorfall, sondern aus dem Blick über zehn Server gleichzeitig: Acht von ihnen retryen, keiner liest `Retry-After` oder streut seinen Backoff (`ARCH-014`); und zwei von acht packen die ursprüngliche Exception so ein, dass nach aussen sauber maskiert und nach innen nichts mehr übrig ist (`OBS-007`). Was ein Review pro Repo nicht sieht, weil in jedem einzelnen nichts falsch aussieht.
+
+Daneben wird die Familie als Gruppe auffindbar. Die fünf Repos verwiesen in ihren READMEs seit je aufeinander, auf GitHub war die Schnittmenge ihrer Topics **leer** — sichtbar also nur für den, der ohnehin schon eines offen hatte. Jetzt tragen sie ein gemeinsames Topic, die Mitgliedschaft steht an einer Stelle (`docs/quality-chain.json`), ein wöchentlicher Guard prüft sie, und die Kette steht neben den READMEs auch in `SKILL.md` — der Datei, die das Modell beim Audit tatsächlich bekommt.
+
+**Re-Audit:** Die Promotion von `OBS-007` auf `enforced` fällt unter den neuen Auslöser d) aus §5 der Katalog-Versionierung — sie kippt ein Verdikt, ohne dass sich ein Feld ändert, das die Regel las. `ARCH-014` startet `advisory` und blockiert nicht. Damit sind weiterhin genau zwei Checks `advisory`: `ARCH-014` und `OPS-005`.
+
 ### Behoben — `tools/check_ruff_pin.py` war selbst nicht breitenunabhängig
 
 Nachgereichter Eintrag zu [#73](https://github.com/malkreide/mcp-audit-skill/pull/73). Der Guard, der Pin-Drift zwischen `lint.yml` und `.pre-commit-config.yaml` verhindert, verstiess selbst gegen die Regel, die `OPS-005` mit [#72](https://github.com/malkreide/mcp-audit-skill/pull/72) als fünfte Ausprägung aufgenommen hat.

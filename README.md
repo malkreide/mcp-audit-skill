@@ -299,7 +299,7 @@ proof holds.
 
 ## Status
 
-**Version:** v1.5.0 — silence is not an acquittal. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
+**Version:** v1.6.0 — two findings from the portfolio sweep, and a chain you can find. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
 
 **Completeness:**
 - ✅ Methodology (`SKILL.md`) and templates (finding, audit report)
