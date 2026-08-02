@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-02
+
+Six rules, unchanged — nothing in this release touches what the skill teaches.
+What changes is where the family is named and how reliably the figures about it
+hold. The related-repositories table becomes the MCP quality chain, five
+repositories along the lifecycle with a shared GitHub topic, and the same table
+now stands in `SKILL.md` rather than only in the READMEs — that is the file the
+model actually receives.
+
+Three figures were wrong and are corrected. Two of them had been wrong since the
+sixth rule was added: the guiding question and rule 4 still spoke of five. The
+CI counts headings against the README list items and does not read prose, which
+is exactly how a number survives three releases.
+
 ### Changed
 
 - **The related-repositories table is now the MCP quality chain, and it names all
