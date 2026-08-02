@@ -293,7 +293,7 @@ ihr Nachweis trägt.
 
 ## Status
 
-**Version:** v1.4.1 — Die Familie steht jetzt auch im README. CI auf Ubuntu + Windows × py3.11 + py3.13. Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
+**Version:** v1.5.0 — Schweigen ist kein Freispruch. CI auf Ubuntu + Windows × py3.11 + py3.13. Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
 
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`) und Templates (Finding, Audit-Report)

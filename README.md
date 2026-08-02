@@ -293,7 +293,7 @@ proof holds.
 
 ## Status
 
-**Version:** v1.4.1 — the family is now named in the README too. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
+**Version:** v1.5.0 — silence is not an acquittal. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
 
 **Completeness:**
 - ✅ Methodology (`SKILL.md`) and templates (finding, audit report)

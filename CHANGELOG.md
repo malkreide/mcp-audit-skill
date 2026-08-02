@@ -6,6 +6,14 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v1.5.0] — 2026-08-02 — Schweigen ist kein Freispruch
+
+**Drei neue Checks** (`IDENT-007`, `DEP-001`, `DRIFT-006`) mit der neuen Kategorie `DEP` — der Katalog wächst von 90 auf **93** —, **zwei erweiterte** (`FID-003`, `IDENT-001`), ein abgegebener Prüfgegenstand (`IDENT-006`) und mit §2.6 eine Regel, die für den Katalog selbst gilt.
+
+Der Titel ist die Eselsbrücke aus §2.6, und er beschreibt die Herkunft fast aller Einträge unten. Jeder von ihnen kommt aus einem Fall, in dem nichts gemeldet wurde und das als Freispruch gelesen wurde: `IDENT-001` erklärte 24 Pakete für unauffällig, von denen 16 drifteten; bei `IDENT-007` stimmten die Versionsnummern und die Installation war tot; `DEP-001` änderte das Artefakt ohne einen einzigen Commit; und `FID-003` liess einen abgewiesenen Request als Leermenge durchgehen — mit dem Hinweis, die Suche zu verbreitern. Vier verschiedene Ebenen, eine Fehlerform.
+
+Kein Re-Audit-Auslöser nach §5 der Katalog-Versionierung; die Begründung steht unter «Katalog-Zahlen».
+
 > **Zur Lesart der Zahlen in diesem Abschnitt:** Jeder Eintrag nennt den Katalogstand *zum Zeitpunkt seiner Änderung*. Die Einträge weiter unten sagen deshalb «90 Checks in 11 Kategorien», und das war dort richtig. Der Stand, den dieses Release ausliefert, steht hier oben: **93 Checks in zwölf Kategorien, 431 Tests.**
 
 ### Geändert — `DEP-001` und `DRIFT-006` sind `enforced`
