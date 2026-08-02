@@ -852,6 +852,24 @@ Der Fall ist selten und deshalb leicht zu übersehen: Promotionen sind einzelne,
 
 ## Übergabe & Folge-Skills
 
+### Die MCP-Qualitätskette
+
+Fünf Repos, ein Lebenszyklus — gemeinsames GitHub-Topic [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain). Dieser Katalog ist das vierte Glied und prüft nach dem Bau, was die drei davor beim Bauen fordern. Ein Finding lässt sich damit an den Skill zurückgeben, der die Behebung beschreibt.
+
+| Phase | Repo | Seine Regeln in diesem Katalog |
+|---|---|---|
+| vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | liefert die Ground Truth, gegen die `FID-002` misst |
+| im Bau | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | [`FID-001`–`FID-005`](./checks/) |
+| im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | [`SDK-006`](./checks/SDK-006.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md) — seine Regeln 2 und 5–7 hat der Katalog nicht |
+| nach dem Bau | **`mcp-audit-skill`** | **Dieser Skill** — der Katalog selbst |
+| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | der Vorfall hinter [`OPS-005`](./checks/OPS-005.md) — eine Testsuite, die kein Workflow je ausgeführt hat |
+
+Daneben, nicht Teil der Kette: `mcp-builder` — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
+
+Die Mitgliedschaft steht an einer Stelle: [`docs/quality-chain.json`](./docs/quality-chain.json), wöchentlich geprüft von [`tools/check_quality_chain.py`](./tools/check_quality_chain.py).
+
+### Nach dem Audit
+
 Nach erfolgreichem Audit:
 
 - **Findings als GitHub-Issues** anlegen via [`github-repo`](../github-repo/SKILL.md)-Skill (mit Labels `audit`, `severity:critical`, etc.)

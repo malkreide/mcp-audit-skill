@@ -20,6 +20,14 @@ Dasselbe Muster wie bei `check_repo_description.py`, und aus demselben Grund: Me
 
 Der Guard läuft nur hier, prüft aber alle fünf Mitglieder — die vier Schwester-Repos brauchen dafür nichts.
 
+### Ergänzt — die Kette steht jetzt auch in `SKILL.md`, nicht nur in den READMEs
+
+Die Umbenennung darunter hat die Tabelle in beiden READMEs erneuert. `SKILL.md` nannte die Nachbar-Repos gar nicht — und das ist die Datei, die das Modell beim Audit tatsächlich bekommt. Wer ein Finding gegen `FID-003` schreibt, sollte ohne Umweg über das README wissen, welcher Skill die Behebung beschreibt.
+
+Die Tabelle steht in «Übergabe & Folge-Skills», wo der Rückweg ohnehin hingehört, und trägt dieselbe dritte Spalte wie im README: nicht die Rolle des Repos, sondern **seine Regeln in diesem Katalog**. Für `mcp-transport-hardening` ist dort auch die Lücke benannt — seine Regeln 2 und 5–7 hat der Katalog nicht, und das ist von dieser Seite aus die nützlichere Information als eine ungefähre Zuordnung.
+
+Derselbe Nachzug ist in den drei anderen Skill-Repos gelaufen: Die Kette stand überall im README und in keiner der Dateien, die der Skill selbst ausliefert. Der Guard aus dem Eintrag oben prüft weiterhin nur die READMEs — `SKILL.md` ist pro Repo verschieden aufgebaut und trägt bewusst eine repo-eigene dritte Spalte.
+
 ### Geändert — «Die Skill-Familie» heisst jetzt «Die MCP-Qualitätskette»
 
 Die Tabelle nannte vier Skills plus `mcp-builder` und liess `mcp-continuous-auditor` weg. Der ist kein Skill, gehört aber in die Kette: Er ist das einzige Glied, das nach dem Audit weiterprüft, und `OPS-005` stammt aus ihm. Die Tabelle führt jetzt fünf Repos entlang des Lebenszyklus — vor dem Bau, im Bau, nach dem Bau, im Betrieb. `mcp-builder` steht daneben statt darin, weil es ein fremdes Repo ist und das gemeinsame Topic nicht tragen kann.
