@@ -3,7 +3,6 @@ id: DRIFT-006
 title: "Der CHANGELOG darf dem Code nicht widersprechen"
 category: DRIFT
 severity: medium
-adoption: advisory
 applies_when: 'always'
 pdf_ref: "Custom (Portfolio-Fundstück swiss-energy-mcp, 2026-08-01)"
 evidence_required: 2
