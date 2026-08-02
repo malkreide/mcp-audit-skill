@@ -6,6 +6,36 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Ergänzt — `OBS-007`: maskiert nach aussen, aussagekräftig nach innen
+
+`OBS-002` verlangt, dass Fehler-Details das LLM nicht erreichen, und verweist sie ins Server-Log. Was dort ankommt, prüfte der Katalog nicht. Der neue Check schliesst die Gegenrichtung: Der Text, den der Server für sich behält, muss etwas sagen.
+
+Der Fundort ist `swiss-efv-mcp` ([#16](https://github.com/malkreide/swiss-efv-mcp/pull/16)). Die nächtliche Live-Suite scheiterte an einer Netzstörung, viermal mit derselben Meldung:
+
+```
+RuntimeError: Upstream unreachable after retries:
+```
+
+Satzende. Ursache: `httpx.ConnectTimeout`, `ReadTimeout` und `ConnectError` tragen ein leeres `str()`, und `f"...: {last_error}"` expandiert entsprechend zu nichts. Weder Fehlermodus noch Ziel noch Anzahl Versuche — also keine der drei Angaben, wegen derer man die Meldung liest. Der Server erfüllte `OBS-002` mustergültig; die Maske sass, dahinter stand nichts.
+
+Bemerkenswert ist weniger der Einzelfall als die Klasse: Ein Text, der nach aussen maskiert wird, hat im Normalbetrieb keinen Leser. Er wird genau einmal gebraucht, im Störungsfall, und bis dahin bemerkt niemand, dass er leer ist. Das ist die Nebenwirkung des eigenen Rats, und `f"...: {exc}"` ist dabei die naheliegende Schreibweise, kein Ausrutscher.
+
+Der Check verlangt Exception-Typ, benanntes Ziel (ohne Query-String und Credentials, `SEC-013`), Anzahl Versuche, `raise ... from` — und einen Test auf den Fall `str(exc) == ""`, ohne den der Text beim nächsten Refactoring wieder verfällt.
+
+`medium`, `adoption: advisory`, `applies_when: tools_make_external_requests == true`. Advisory, weil das beanstandete Muster mutmasslich breite Teile des Portfolios trifft: Der Check meldet, blockiert aber nicht, bis ein Portfolio-Durchlauf zeigt, ob er richtig geschnitten ist. Damit stehen zwei Checks auf der Brücke (`OBS-007`, `OPS-005`).
+
+Katalog: 93 → 94 Checks, `OBS` 6 → 7.
+
+### Ergänzt — `OPS-001`: was die Live-Suite kostet, wenn die Quelle schweigt
+
+Derselbe Vorfall, zweiter Befund. `OPS-001` begründet die Trennung von Unit- und Live-Tests unter anderem damit, dass Live-Tests bei Outages scheitern. Was sie dabei **kosten**, stand nirgends — `timeout-minutes` kam in keinem der 93 Checks vor, und das Nightly-Beispiel des Checks hatte selbst keins.
+
+Bei `swiss-efv-mcp` legte jeder Live-Test einen eigenen Client an. Damit war der Cache wirkungslos, und die Retry-Leiter (4 Versuche × 60 s plus Backoff, rund 254 s) lief pro Test erneut: vier Tests, 17 Minuten, für die Information «Host nicht erreichbar». Nach der Umstellung auf einen geteilten Client 10 Sekunden.
+
+Neu in `OPS-001`: Modus 5 mit zwei greps, drei Pass-Kriterien (`timeout-minutes` im Live-Workflow, geteilter Client samt Teardown, Test-Timeouts enger als die Prod-Defaults), drei Zeilen in *Common Failures* und ein Remediation-Schritt. Der Nebeneffekt ist nicht nur Laufzeit: Ohne geteilten Client lädt jeder Test denselben Dump erneut — vermeidbare Last auf fremder, meist unfinanzierter Open-Data-Infrastruktur.
+
+Keine Änderung an Severity oder Reichweite von `OPS-001`; die neuen Kriterien erweitern das Prüfkriterium und lösen damit Re-Audit-Fall (c) aus.
+
 ### Ergänzt — §5 kennt jetzt den Promotionsfall (`d`)
 
 Punkt 5 der Katalog-Versionierung nannte drei Re-Audit-Auslöser: Severity angehoben (a), `applies_when` erweitert (b), Prüfkriterium korrigiert (c). Bei der Promotion von `DEP-001` auf `enforced` in v1.5.0 traf **keiner** davon zu — Severity blieb `high`, Reichweite blieb `always`, das Kriterium blieb Wort für Wort. Nach dem Buchstaben der Regel wäre die Re-Audit-Liste leer gewesen, während in Wahrheit jeder Server mit einer ungedeckelten Range in diesem Moment seine Production-Readiness verlor.
