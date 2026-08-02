@@ -6,6 +6,25 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben — `tools/check_ruff_pin.py` war selbst nicht breitenunabhängig
+
+Nachgereichter Eintrag zu [#73](https://github.com/malkreide/mcp-audit-skill/pull/73). Der Guard, der Pin-Drift zwischen `lint.yml` und `.pre-commit-config.yaml` verhindert, verstiess selbst gegen die Regel, die `OPS-005` mit [#72](https://github.com/malkreide/mcp-audit-skill/pull/72) als fünfte Ausprägung aufgenommen hat.
+
+Er entstand in [#70](https://github.com/malkreide/mcp-audit-skill/pull/70) und ist ausdrücklich zum Kopieren gedacht. Die Gegenprobe über die vier Portfolio-Breiten fiel jedoch nie:
+
+| `line-length` | `ruff format --check` |
+| --- | --- |
+| 88 (dieses Repo, ruff-Default) | unverändert |
+| 100 | unverändert |
+| **110** | würde umformatieren |
+| **120** | würde umformatieren |
+
+Ab Breite 110 zieht `ruff format` zwei Ausdrücke in `compare()` zusammen, die bei 88 mehrzeilig bleiben. Hier war die Datei grün — in einem der zwei 110er- oder fünf 120er-Repos wäre die Kopie beim ersten `ruff format --check` rot gewesen. Genau der Fall, den `OPS-005` beschreibt, im Werkzeug, das gegen dieselbe Klasse von Drift antritt.
+
+Behoben nach den zwei Regeln der kanonischen `check_version_sync.py`, die jetzt auch im Docstring dieser Datei stehen: keine Zeile über 88 Zeichen, keine impliziten String-Verkettungen über mehrere Zeilen ausser in Aufrufen mit Magic Trailing Comma. `LINT_WORKFLOW.as_posix()` und `PRECOMMIT_CONFIG.as_posix()` stehen dafür einmal als lokale Variablen am Anfang von `compare()`.
+
+Der Eintrag fehlte in #73, weil #72 zeitgleich in dieselbe `[Unreleased]`-Sektion schrieb und ein zweiter Eintrag dort einen Konflikt erzeugt hätte — ausgerechnet in dem PR, der die Regel formuliert.
+
 ### Ergänzt — Qualitätsketten-Guard: die fünf Repos als Gruppe erkennbar
 
 Die fünf Repos verweisen in ihren READMEs seit je aufeinander. Auf GitHub taten sie es nicht: Die Schnittmenge der Topics über alle fünf war **leer**. `mcp-continuous-auditor` trug überhaupt keine Topics, die vier Skills benutzten zwei Vokabulare (`claude-skill` gegen `claude-skills`), und eine Homepage hatte eines von fünf. Damit war die Zusammengehörigkeit genau dort unsichtbar, wo sie jemand findet, der nicht schon eines der Repos offen hat — in der Suche.
