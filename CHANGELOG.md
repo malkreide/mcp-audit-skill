@@ -50,6 +50,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **3.5 trennt Ausfall und Abweisung.** Der Abschnitt schlug für die ganze
+  Fehlerklasse denselben Satz vor — «Bitte in 10 Minuten erneut versuchen».
+  Für den Ausfall ist das richtig; für eine Abweisung ist es ein nächster
+  Schritt, der per Konstruktion nicht terminiert. `401`, `403` und
+  `421 Invalid Host header` heissen, dass die Quelle antwortet und den Aufruf
+  nicht annimmt: Warten behebt davon nichts, und 3.1 retried 4xx aus genau
+  diesem Grund nicht — `429` ist die Ausnahme, dort ist Warten tatsächlich der
+  richtige Schritt.
+
+  Die Unterscheidung selbst stand schon im Skill, an drei Stellen: 3.1 wirft
+  bei 4xx statt zu schlucken, 3.5 verlangt «nie einfach leere Records», und 3.6
+  grenzt sich im ersten Satz gegen 3.5 ab. Was fehlte, war die Folge daraus für
+  den Text, den der Aufrufer zu lesen bekommt. Es ist derselbe Fehler wie ein
+  Leermengen-Hinweis, der zur Wildcard rät, während die Abfrage nie angekommen
+  ist — nur eine Klasse weiter oben. Dazu die Forderung, die Klasse
+  maschinenlesbar in den Status zu legen: Wer bloss einen Satz bekommt, kann
+  «später nochmal» nicht von «so nie» unterscheiden.
+
+  Anlass ist die Gegenprüfung nach der Regel-3-Ergänzung in
+  [`mcp-data-fidelity` v1.2.0](https://github.com/malkreide/mcp-data-fidelity-skill/releases/tag/v1.2.0)
+  und `FID-003` in `mcp-audit` v1.5.0. Dort ging es darum, dass ein Fehlschlag
+  nicht als Leermenge formatiert werden darf; hier bleibt er ein Fehler und
+  trägt nur den falschen nächsten Schritt.
+
 - **Der Transport steht jetzt in 2.3, bei den Konsequenzen des
   Architektur-Entscheids** — nicht mehr nur als Zeile in der Schnellreferenz.
   Der Grund ist die Cache-Semantik: Bei ARCH B und C trifft die Transport-Wahl
