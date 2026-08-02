@@ -5,7 +5,7 @@ description: Reproduzierbares Audit von MCP-Servern gegen einen versionierten Be
 
 # MCP Audit — Standardisiertes Audit-Vorgehen
 
-Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer, 95 Checks in zwölf Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
+Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer, 96 Checks in zwölf Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
 
 **Das Mantra in drei Zeilen:**
 
@@ -189,12 +189,12 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 | `OBS` | PDF Sec 6 + Anhang B10 — Logging, Errors, SIEM, Tracing | 5–8 | 7 / 7 ✅ |
 | `HITL` | PDF Sec 7 — Sampling, Human-in-the-Loop | 4–5 | 5 / 5 ✅ |
 | `CH` | Custom — DSG/EDÖB, Schweiz-Compliance | 5–8 | 8 / 8 ✅ |
-| `OPS` | Anhang C + Custom — Test-Strategie, Doku, Phasenarchitektur, Audit-Redlichkeit, Pipeline-Ehrlichkeit | 3–6 | 5 / 5 ✅ |
+| `OPS` | Anhang C + Custom — Test-Strategie, Doku, Phasenarchitektur, Audit-Redlichkeit, Pipeline-Ehrlichkeit, reproduzierbare Urteile | 3–6 | 6 / 6 ✅ |
 | `FID` | Custom — Datentreue: Scope, Recall, Leermengen | 4–6 | 5 / 5 ✅ |
 | `IDENT` | Custom — Identität: User-Agent, `__version__`, Manifest, Doku-Version, Release-Gap, Gesundheit des Artefakts | 5–8 | 7 / 7 ✅ |
 | `DRIFT` | Custom — Upstream-Vertrag und Repo-Prosa: Endpoint-Drift, Fallback-Semantik, Testgüte, CHANGELOG gegen Code | 4–7 | 6 / 6 ✅ |
 | `DEP` | Custom — Auflösungsraum des publizierten Artefakts: Obergrenzen, Major-Wechsel | 1–3 | 1 / 1 ✅ |
-| **Total** | | **~85** | **95 / 95 ✅** |
+| **Total** | | **~85** | **96 / 96 ✅** |
 
 ### 2.2 Severity-Stufen
 
@@ -759,6 +759,42 @@ Alle vier müssen still bleiben. Bleibt eine übrig, ist der Patch noch nicht po
 **Eselsbrücke:** *«Der schmalste Wert im Portfolio schreibt den Code.»*
 
 **Und die Regel braucht einen Ort, an dem sie rot wird.** Diese Sektion ist Anleitung für den, der ausrollt — sie wirkt nur, solange sie jemand liest. Derselbe Bruch kam prompt zurück, diesmal aus der Gegenrichtung: eine 99 Zeichen lange Zeile, in einem 100er-Repo geschrieben, formatgerecht dort und nicht im 88er-Repo. Erzwungen wird die Regel erst durch einen Pipeline-Schritt, der die Prüfschleife oben ausführt — als Kriterium ist das `OPS-005`, fünfte Ausprägung.
+
+### Ein mechanischer Eingriff braucht einen mechanischen Nachweis
+
+Wer 200 Dateien über 30 Repos umformatiert oder umbenennt, kann das Ergebnis nicht lesen. Die übliche Antwort — «es ist ja nur Formatierung» — ist eine Behauptung, keine Prüfung, und sie ist bei Umbenennungen schlicht falsch. Für diese Klasse von Eingriffen gibt es billige, harte Nachweise; einer je Eingriffsart.
+
+**Formatierung: der Syntaxbaum muss identisch bleiben.** Ein Formatter darf Zeilenumbrüche und Klammern ändern, nichts sonst. Das lässt sich vollständig prüfen, Datei für Datei:
+
+```python
+import ast
+vorher = {p: ast.dump(ast.parse(p.read_text(encoding="utf-8"))) for p in dateien}
+# ... ruff format ...
+abweichend = [p for p in dateien
+              if ast.dump(ast.parse(p.read_text(encoding="utf-8"))) != vorher[p]]
+```
+
+Über 205 umformatierte Dateien meldete das genau zwei Abweichungen — beide Docstrings, die mit vier Anführungszeichen begannen (`""""…`), wo der Formatter ein trennendes Leerzeichen einfügt und damit den Stringinhalt ändert. Ohne die Prüfung wäre das unbemerkt geblieben; mit ihr steht es im Pull Request.
+
+**Umbenennung: die Menge der String-Literale muss identisch bleiben.** Eine Umbenennung per Textsuche greift in Strings und Kommentare hinein. Die Gegenprobe kostet vier Zeilen:
+
+```python
+lits = lambda code: sorted(n.value for n in ast.walk(ast.parse(code))
+                           if isinstance(n, ast.Constant) and isinstance(n.value, str))
+assert lits(alt) == lits(neu), "String-Literal verändert — Abbruch"
+```
+
+Bei der Umbenennung eines einbuchstabigen `S` in einer Testdatei hat genau diese Zusicherung angeschlagen: Ein Literal `'[S'` hätte die naive Ersetzung verfälscht. Der saubere Weg führt danach über den Tokenizer für Bezeichner plus eine gezielte Ersetzung in den `{…}`-Platzhaltern der f-Strings — je nach Python-Version tokenisiert `tokenize` deren Inhalt nicht, dann bleiben Referenzen stehen und erzeugen `F821`.
+
+**Und danach trotzdem die Testsuite.** Beide Nachweise decken die Sprache ab, nicht das Verhalten unter Laufzeitannahmen. Sie ersetzen den Testlauf nicht, sie machen ihn nur aussagekräftig: Wenn AST und Literale gleich sind und die Tests durchlaufen, ist der Eingriff belegt verhaltensgleich.
+
+### Ein Gate zu setzen ist ein Rollout, kein Commit
+
+Drei Eigenschaften, die erst beim Ausrollen über viele Repos sichtbar werden:
+
+1. **Die Werkzeugversion gehört zum Gate.** Ohne Pin urteilt es jeden Tag anders — Kriterium und Begründung stehen in `OPS-006`.
+2. **Formatieren und Gate gehören in getrennte Commits.** Sonst besteht der Diff aus tausend Zeilen Umbruch, in denen die vier Zeilen Workflow-Änderung verschwinden. Getrennt überspringt der Review den ersten Commit und liest den zweiten.
+3. **Danach hängen offene Pull Requests am Zielbranch.** Die CI prüft den Merge-Commit. Nimmt der Zielbranch unformatierten Code auf, wird ein offener Pull Request rot, ohne dass sich an ihm etwas geändert hat. Beim Rollout über 32 Repos traf das zwei von 27 offenen Pull Requests. Wer mehrere Tage lang Pull Requests offen hält, plant den Abgleich mit der Basis als wiederkehrenden Schritt ein — nicht als Störung.
 
 ---
 

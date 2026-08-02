@@ -6,6 +6,24 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Ergänzt — `OPS-006`, und was ein Rollout über 32 Repos über Gates lehrt
+
+**Ein neuer Check** (`OPS-006`) — der Katalog wächst von 95 auf **96 in zwölf Kategorien**. Dazu zwei Erweiterungen an `OPS-005` und ein neuer Abschnitt in `SKILL.md`. Alles stammt aus einem einzigen Vorgang: dem Ausrollen eines Formatgates über 32 Portfolio-Repos, das nebenbei 112 angesammelte Lint-Verstösse und 205 unformatierte Dateien sichtbar machte.
+
+**`OPS-006` — das Urteil eines Gates ist reproduzierbar.** `OPS-005` fragt, ob ein Check gelaufen ist; `OPS-006` fragt, ob sein Urteil morgen dasselbe wäre. Drei Ausprägungen, zwei davon eigene Fehler beim Ausrollen:
+
+- 29 der 32 Repos deklarierten `ruff>=0.4.0` ohne obere Grenze. Solange nur `check` lief, war das erträglich — ein `format --check` ohne Pin hätte beim nächsten Upstream-Release **portfolioweit gleichzeitig** den Merge-Pfad blockiert, an unberührtem Code.
+- Zwei ruff-Binaries im `PATH`: Das ältere verdeckte das, welches die CI installiert. Derselbe Befehl im selben Klon zählte je nach Binary 17 oder 56 Dateien; eine lokal grüne Prüfung belegte nichts.
+- Eine Zählung per `grep -c "^Would reformat"` traf unter der neueren Version nie mehr zu und meldete überall sauber `0`. Die daraus abgeleitete Aussage «alle 32 Repos sind bereits formatgerecht» war falsch — es waren 205 Dateien. Ein Zählfehler, der Null meldet, sieht nicht nach einem Fehler aus.
+
+Startet `advisory`. Damit sind drei Checks `advisory`: `ARCH-014`, `OPS-005` und `OPS-006`.
+
+**`OPS-005` bekommt eine sechste Ausprägung** — der Geltungsbereich der geprüften *Pfade*, als Gegenstück zur fünften, die den Geltungsbereich der *Konfiguration* betrifft. Fast alle Repos linteten nur `src/`. Bei der Ausweitung kamen in fünf Repos 112 Verstösse hoch, die nie jemand gemeldet hatte. Unangenehm daran ist vor allem `scripts/`: Dort liegen die Prüfskripte, die in der CI der übrigen Gates laufen — die Durchsetzer waren selbst ungeprüft. Zwei Sonderformen kamen dazu: ein Repo mit vollständigem Regelsatz in `pyproject.toml`, den kein Workflow aufrief, und eines, das seinen Formatcheck als Kommentar stillgelegt hatte («vorerst deaktiviert, Refactoring ausstehend») — eine bekannte Lücke ohne Termin und ohne Eintrag.
+
+**`SKILL.md`, Portfolio-Hygiene: ein mechanischer Eingriff braucht einen mechanischen Nachweis.** Wer 205 Dateien umformatiert, kann das Ergebnis nicht lesen. Der Abschnitt beschreibt zwei billige, harte Prüfungen — AST-Vergleich für Formatierung, Vergleich der String-Literale für Umbenennungen — und wann sie anschlagen. Beide haben es in diesem Rollout getan: Der AST-Vergleich fand zwei Docstrings, bei denen `ruff format` den Stringinhalt ändert (vier Anführungszeichen am Anfang), und die Literal-Prüfung verhinderte, dass eine Umbenennung von `S` ein Literal `'[S'` verfälscht. Dazu drei Eigenschaften, die erst beim Ausrollen sichtbar werden, darunter: Sobald ein Formatgate steht, prüft die CI den Merge-Commit — ein offener Pull Request kann rot werden, ohne dass sich an ihm etwas ändert. Das traf zwei von 27 offenen Pull Requests.
+
+**Korrektur an v1.6.0.** Der Eintrag zur fünften Ausprägung von `OPS-005` behauptete, die auslösende Fehlermeldung habe eine Datei genannt, in der das Symbol nicht vorkam. Das war falsch und ist mit [#77](https://github.com/malkreide/mcp-audit-skill/pull/77) entfernt: Der Lauf stammte aus `lobbywatch-mcp` selbst und benannte Datei, Zeile und Symbol korrekt. Beide Belege für die gegenteilige Annahme trugen nicht — eine Dateizählung, die eine ältere ruff-Version widerspiegelte, und eine `git log --all -S`-Suche, die überschriebene Historie eines gelöschten Branches nicht sehen kann. Ursache, Mechanismus und die abgeleitete Regel sind vom Irrtum nicht berührt.
+
 ## [v1.6.0] — 2026-08-02 — Zwei Befunde aus dem Durchlauf, und eine Kette die man findet
 
 **Zwei neue Checks** (`ARCH-014`, `OBS-007`) — der Katalog wächst von 93 auf **95 in zwölf Kategorien**, 469 Tests. Beide stammen nicht aus einem einzelnen Vorfall, sondern aus dem Blick über zehn Server gleichzeitig: Acht von ihnen retryen, keiner liest `Retry-After` oder streut seinen Backoff (`ARCH-014`); und zwei von acht packen die ursprüngliche Exception so ein, dass nach aussen sauber maskiert und nach innen nichts mehr übrig ist (`OBS-007`). Was ein Review pro Repo nicht sieht, weil in jedem einzelnen nichts falsch aussieht.
