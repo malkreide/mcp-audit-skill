@@ -269,17 +269,21 @@ Usable side by side — none of these replaces the others.
 
 ## Related repositories
 
-### The skill family
+### The MCP quality chain
 
-Five skills, one build. Each answers a different question, in the order they come up — this one comes last:
+Five repositories, one lifecycle. Each answers a different question, in the order they come up — this one comes second to last. The shared GitHub topic is [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain), which lists all five on one page.
 
-| Skill | Role | Its rules in this catalogue |
+| Stage | Repository | Its rules in this catalogue |
 |---|---|---|
-| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generic build guidance — Anthropic's skill | — |
-| [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | The procedure *before* the build | supplies the ground truth `FID-002` measures against |
-| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Does it return what the source actually holds? | [`FID-001`–`FID-005`](./checks/) |
-| [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Does it come up, and does it turn away the right callers? | [`SDK-006`](./checks/SDK-006.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md) |
-| **`mcp-audit-skill`** | **This skill:** auditing *after* the build | — |
+| before the build | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | supplies the ground truth `FID-002` measures against |
+| in the build | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | [`FID-001`–`FID-005`](./checks/) |
+| in the build | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | [`SDK-006`](./checks/SDK-006.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md) |
+| after the build | **`mcp-audit-skill`** | **This skill** — the catalogue itself |
+| in operation | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | the incident behind [`OPS-005`](./checks/OPS-005.md) — a test suite no workflow ever ran ([#29](https://github.com/malkreide/mcp-continuous-auditor/pull/29)) |
+
+Alongside, not part of the chain: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — Anthropic's generic build guidance, complemented rather than replaced. It is someone else's repository and cannot carry the topic.
+
+Membership is declared once, in [`docs/quality-chain.json`](./docs/quality-chain.json). [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) verifies weekly that all five actually carry the topic on GitHub — that is metadata no working copy can test, which is exactly why the five had no topic in common until someone looked.
 
 Two of the transport-hardening rules have no counterpart here: the one about a
 bind reaching the app, and the three on how a control is proven (negative tests,
