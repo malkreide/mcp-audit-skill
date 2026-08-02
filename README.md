@@ -318,6 +318,26 @@ Particularly welcome are compliance layers for other jurisdictions (GDPR specifi
 
 Please open an issue before a large pull request, so the shape can be settled first.
 
+### Local setup
+
+The Python helpers are linted and formatted with [Ruff](https://docs.astral.sh/ruff/). One-off step per clone:
+
+```bash
+pip install pre-commit && pre-commit install
+```
+
+The hooks in `.pre-commit-config.yaml` mirror the `lint` workflow, so what passes locally passes in CI. Two details worth knowing:
+
+- The hook runs Ruff at the version pinned in `.pre-commit-config.yaml`, in its own isolated environment — not whatever Ruff you happen to have installed. That pin and the `ruff==…` pin in `.github/workflows/lint.yml` must stay in sync; `tools/check_ruff_pin.py` enforces this, in the hook and in CI.
+- `ruff format` rewrites your files and then fails the commit. Stage the reformatted files and commit again; `ruff check` only reports.
+
+Run everything over the whole tree without committing:
+
+```bash
+pre-commit run --all-files
+pytest tests/ -q
+```
+
 ## Security
 
 This repository ships a methodology, check definitions and helper scripts — no running server, no installable package. Three things matter in operation:

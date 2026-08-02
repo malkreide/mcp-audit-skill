@@ -6,6 +6,20 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Ergänzt — Ruff, ein `lint`-Workflow und ein Guard auf die eigenen Pins
+
+Das Repo war ungelintet und unformatiert: 37 Python-Dateien, kein Ruff, kein Lint-Job. Neu gibt es `ruff.toml`, `.github/workflows/lint.yml` und Pre-Commit-Hooks, die diesen Job lokal vorziehen.
+
+Der Regelsatz ist bewusst schmal — exakt der, den Ruff heute per Default aktiviert (`E4`, `E7`, `E9`, `F`). Er steht trotzdem explizit in der Konfiguration, weil ein `select` die eingebauten Defaults vollständig ersetzt und der erzwungene Satz damit stabil bleibt, auch wenn eine spätere Ruff-Version ihre Defaults ändert. Der strengere Satz aus dem übrigen Portfolio (`I`, `UP`, `B`, `C4`, `SIM`, `RUF`) hätte 101 Befunde gekostet statt 12; ihn nachzuziehen bleibt ein eigener Commit.
+
+Die Formatierung liegt getrennt in einem reinen `style:`-Commit — 36 von 37 Dateien, ohne jede inhaltliche Änderung. Belegt ist das nicht durch Zusicherung, sondern durch einen AST-Vergleich vor und nach dem Lauf: 35 Dateien exakt identisch, bei `tools/agent_run_log.py` normalisiert Ruff die Einrückung eines Docstrings, und ein zweiter Vergleich mit whitespace-normalisierten String-Konstanten zeigt, dass das der einzige Unterschied ist.
+
+`tools/check_ruff_pin.py` schliesst die Lücke, die der Hook selbst aufmacht. Ruff ist jetzt an zwei Orten gepinnt — `rev:` im Hook und `ruff==` im Workflow. Laufen sie auseinander, formatiert der Hook nach der einen und die CI prüft nach der anderen Version: der Hook meldet grün, die CI wird rot. Abgesichert wäre das sonst nur durch einen Kommentar, der darum bittet, beide zusammen zu bumpen — dieselbe Bauart von Lücke, gegen die `DRIFT-003` steht.
+
+Der Guard folgt der Hausform von `check_repo_description.py`: `compare()` ist eine reine Funktion über zwei Strings, ohne Dateisystem testbar, und ein fehlender Pin ist ein Befund statt eines stillen Bestehens. Zehn Tests decken das ab, darunter der Fall, dass die `rev` eines *anderen* pre-commit-Repos nicht mit Ruffs verwechselt wird, und ein Test gegen die echten Repo-Dateien — sonst wäre der Guard grün, ohne auf das Format zu passen, das er prüfen soll.
+
+Die Testsuite bleibt unverändert bei 431 bestandenen Tests, dazu die 10 neuen.
+
 ### Ergänzt — `OBS-007`: maskiert nach aussen, aussagekräftig nach innen
 
 `OBS-002` verlangt, dass Fehler-Details das LLM nicht erreichen, und verweist sie ins Server-Log. Was dort ankommt, prüfte der Katalog nicht. Der neue Check schliesst die Gegenrichtung: Der Text, den der Server für sich behält, muss etwas sagen.
