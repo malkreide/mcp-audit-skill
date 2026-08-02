@@ -376,7 +376,11 @@ Plus `@pytest.mark.live`-Tests gegen die echte Quelle, via `pytest -m "not live"
 
 Wenn die Datenquelle trotz Retries nicht erreichbar ist, muss die Response sprechen können: *«Die Quelle ist aktuell nicht erreichbar. Zuletzt erfolgreicher Abruf: TIMESTAMP. Bitte in 10 Minuten erneut versuchen.»*
 
-Implementation: `dump_status()`-Tool gibt immer einen auswertbaren Status zurück — nie einfach leere Records.
+**Zwei Fehlerklassen, zwei nächste Schritte.** Der Satz oben gilt für den **Ausfall** — Timeout, Verbindungsabbruch, 5xx. Eine **Abweisung** ist etwas anderes: Bei `401`, `403` oder `421 Invalid Host header` antwortet die Quelle und nimmt den Aufruf nicht an. Warten behebt das nie, und 3.1 retried 4xx aus genau diesem Grund nicht — `429` ist die Ausnahme, dort ist Warten tatsächlich der richtige Schritt. Für die übrigen muss die Meldung auf die Konfiguration zeigen: *«Die Quelle hat den Abruf abgewiesen (HTTP 421). Endpoint, Host-Header und Credentials prüfen — ein erneuter Versuch ändert daran nichts.»*
+
+Ein nächster Schritt, der nicht zum Fehler passt, ist derselbe Fehler wie ein Leermengen-Hinweis, der zur Wildcard rät, während die Abfrage nie angekommen ist (3.6). «In 10 Minuten nochmal» auf einen falschen Host-Header schickt den Aufrufer in eine Schleife, die per Konstruktion nicht terminiert.
+
+Implementation: `dump_status()`-Tool gibt immer einen auswertbaren Status zurück — nie einfach leere Records. Die Klasse gehört maschinenlesbar in den Status, nicht nur in den Meldungstext: Wer bloss einen Satz bekommt, kann «später nochmal» nicht von «so nie» unterscheiden.
 
 ### 3.6 Leermenge ≠ Abwesenheit
 
