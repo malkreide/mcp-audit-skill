@@ -8,6 +8,18 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 > **Zur Lesart der Zahlen in diesem Abschnitt:** Jeder Eintrag nennt den Katalogstand *zum Zeitpunkt seiner Änderung*. Die Einträge weiter unten sagen deshalb «90 Checks in 11 Kategorien», und das war dort richtig. Der Stand, den dieses Release ausliefert, steht hier oben: **93 Checks in zwölf Kategorien, 431 Tests.**
 
+### Geändert — `DEP-001` und `DRIFT-006` sind `enforced`
+
+Beide gingen den Weg aus §2.3: als `advisory` gemergt, jetzt promoviert. Die Advisory-Liste steht damit wieder bei einem Eintrag (`OPS-005`) — so sieht eine leere Brücke aus, nicht eine abgeschaltete.
+
+**Was sich dadurch tatsächlich ändert, ist nur bei einem der beiden etwas.** `DRIFT-006` trägt `medium`; blockierend sind nur `critical` und `high`, das Finding wurde also schon vorher gezählt und geführt und ändert an keinem Verdikt etwas. `DEP-001` trägt `high` und `applies_when: always`: **Ab jetzt verliert jeder Server mit einer ungedeckelten Range auf einer Abhängigkeit, aus der er importiert, seine Production-Readiness.** Nach dem Befund, der den Check ausgelöst hat, ist das kein Randfall, sondern der Normalzustand im Portfolio.
+
+**Offen gesagt, welcher Schritt übersprungen wurde.** §2.3 sieht zwischen Merge und Promotion einen Portfolio-Durchlauf vor, dessen Advisory-Findings zeigen, ob der Check richtig geschnitten ist. Dieser Durchlauf hat nicht stattgefunden — zwischen dem Merge beider Checks und dieser Promotion liegt keiner. Die Promotion stützt sich deshalb nicht auf ausgewertete Advisory-Findings, sondern auf den zweiten in §2.3 genannten Grund: **der Rückstand ist bewusst akzeptiert.** Das ist zulässig und die Entscheidung der Maintainerin; unausgesprochen zu lassen, worauf sie sich stützt, wäre der Fehler, den `OPS-004` beschreibt.
+
+**Re-Audit-Folge.** §5 nennt drei Auslöser — Severity angehoben, `applies_when` erweitert, Prüfkriterium korrigiert. Eine Promotion ist keiner davon *wörtlich*, für die betroffenen Server aber von 5a nicht zu unterscheiden: Ein blockierender Check greift, wo vorher keiner griff. Für `DEP-001` (`high`) gilt deshalb ausdrücklich, was 5a anordnet — bestehende Audit-Ergebnisse sind insoweit nicht mehr gültig. Für `DRIFT-006` (`medium`) nicht, weil dort nie etwas blockierte. Dass §5 den Fall nicht selbst benennt, ist eine Lücke in der Regel und kein Grund, die Folge hier auszulassen.
+
+Nachgezogen: der Pin in `tests/test_adoption_stage.py` und der Advisory-Satz in beiden READMEs. Keine Katalog-Änderung im Übrigen: 93 Checks in zwölf Kategorien, alle `applies_when` und `severity` unverändert, 431 Tests.
+
 ### Ergänzt — `FID-003` gilt in beide Richtungen: ein Fehlschlag ist keine Leermenge
 
 `FID-003` führte «Leermenge als `isError` maskiert» seit dem ersten Tag als Anti-Pattern. Die Gegenrichtung stand nirgends, und sie ist die häufigere: **Ein Transport- oder Autorisierungsfehler kommt bei der aufrufenden Schicht als Fehlschlag ohne Daten an — also wie eine Leermenge**, und wer nur prüft, ob Datensätze da sind, reicht ihn als solche durch.

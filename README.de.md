@@ -232,7 +232,7 @@ Severity sagt, **wie schlimm** ein Verstoss ist. Die Adoptionsstufe sagt, **ob d
 | `enforced` | Der Katalog hält das Portfolio daran fest | Ein `fail` auf `critical`/`high` blockiert Production-Readiness |
 | `advisory` | Der Check meldet, urteilt aber noch nicht | Finding wird erzeugt, gezählt und mit voller Severity geführt — blockiert aber nicht |
 
-Das Feld ist optional; fehlt es, gilt `enforced`. Von 93 Checks sind drei `advisory`: `OPS-005`, der erste, der den dokumentierten Promotionsweg ging, dazu `DEP-001` und `DRIFT-006`, die auf ihm ankamen.
+Das Feld ist optional; fehlt es, gilt `enforced`. Von 93 Checks ist genau einer `advisory`: `OPS-005`. `DEP-001` und `DRIFT-006` gingen denselben Weg und sind inzwischen auf `enforced` promoviert — die Brücke soll die meiste Zeit leer sein.
 
 **Advisory versteckt nichts.** Nur das Veto entfällt. Ein Advisory-Finding auf blockierender Severity wird auch bei grünem Verdikt namentlich genannt, damit eine spätere Promotion eine Entscheidung ist und keine Überraschung.
 
