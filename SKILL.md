@@ -81,6 +81,8 @@ class SearchResult(BaseModel):
 
 Der Hinweis muss **konkret** sein. «Versuchen Sie eine andere Suche» ist kein nächster Schritt. Und er gehört ins Tool-Result, nicht ins README — das wird nicht an das Modell weitergereicht.
 
+**Abgrenzung:** Ein Transport- oder Autorisierungsfehler ist keine Leermenge und darf nie als solche formatiert werden. Ein abgewiesener Request — HTTP 421 auf einen fremden Host-Header, 401, 403, ein Verbindungsabbruch — erreicht die Quelle nie und kommt bei der aufrufenden Schicht trotzdem als «Fehlschlag ohne Daten» an; wer nur auf «keine Datensätze» prüft, reicht ihn als Leermenge durch. Er trägt aber einen anderen nächsten Schritt: **Konfiguration prüfen, nicht Suche verbreitern.** Ein Hinweis, der zur Wildcard rät, während die Abfrage gar nicht angekommen ist, schickt das Modell in die falsche Richtung — und ein Konfigurationsfehler unterläuft genau die Regel, die das Raten verhindern soll. Solche Fälle gehören mit `isError` in den Fehlerkanal, wie die Strukturabweichung in Regel 6.
+
 ## Regel 4 — Die Tool-Description ist eine Halluzinations-Oberfläche
 
 Die schwerste der fünf Regeln, weil sie kontraintuitiv ist: **Eine Formulierung, die eine Leermenge erklärt, erzeugt Konfabulation zuverlässiger als gar keine Formulierung.**
@@ -177,6 +179,7 @@ Der Unterschied liegt in der Behandlung des **unerwarteten** Falls: `.get(x, [])
 - [ ] Recall-Delta gemessen (weggelassen vs. explizit maximal), Delta ≠ 0 behoben
 - [ ] Boolesche Parameter-Gruppen vollständig gesendet, Verengung nachgewiesen
 - [ ] Leeres Result trägt ein `hint`-Feld mit konkretem nächstem Schritt
+- [ ] Transport- und Autorisierungsfehler enden im Fehlerkanal, nie als Leermenge mit Such-Hinweis (Regel 3)
 - [ ] Keine Tool-Description erklärt oder entschuldigt eine Leermenge
 - [ ] Query-Syntax samt Matching-Granularität in der Description
 - [ ] Recall-Canary als Live-Test mit Untergrenzen

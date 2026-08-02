@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Rule 3 now draws the line against transport and authorization failures.** The
+  rule listed four causes for zero hits, all of them query-level — absent term,
+  too narrow a query, restricted scope, wrong syntax. A rejected request is none
+  of them: measured case, a request carrying a foreign Host header comes back as
+  HTTP 421 with the body `Invalid Host header`, and a layer that only asks "any
+  records?" passes that through as an empty set. The hint it then attaches — try
+  a wildcard, widen the fields — points away from the actual fix, so a
+  configuration error undercuts the very rule that exists to prevent guessing.
+  Rule 6 already made this distinction for schema drift, but a request turned away
+  at the transport never reaches the parsing layer. One paragraph and one
+  checklist item, no new rule.
+
 - **Rule 5 now names the mock-free variant of the same failure.** A regression
   test in `mcp-transport-hardening` set the environment variable whose *absence*
   was the actual subject under test, so it passed with a deliberately introduced
