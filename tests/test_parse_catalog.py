@@ -62,7 +62,7 @@ class TestRealCatalog:
             "FID": 5,
             "HITL": 5,
             "IDENT": 7,
-            "OBS": 6,
+            "OBS": 7,
             "OPS": 5,
             "SCALE": 7,
             "SDK": 6,
