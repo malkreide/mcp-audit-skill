@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-02
+
+Nothing about the procedure itself changes — five steps, four disciplines, and
+step 3 still has six points. What changes is that the neighbouring repositories
+are now named as a chain rather than as a list: five repositories along the
+lifecycle, this one first, with a shared GitHub topic so they can be found as a
+group from outside.
+
+The same table now stands in `SKILL.md` as its closing section. It was only in
+the READMEs, and the README is not the file the model receives — the same
+argument that made the companion directory a pointer in 1.1.0. `validate.sh`
+gains an eighth check so the table cannot quietly lose a member.
+
 ### Added
 
 - **`SKILL.md` gains the quality chain as its closing section.** The change below
