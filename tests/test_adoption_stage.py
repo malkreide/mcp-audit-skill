@@ -90,11 +90,18 @@ class TestRealCatalogUnchanged:
         # DEP-001 and DRIFT-006 entered advisory and were promoted to enforced
         # by a maintainer decision recorded in the CHANGELOG.
         #
-        # OBS-007 is the next to take the same route. The `f"...: {exc}"`
-        # pattern it rejects is the obvious way to write that line, so the
-        # check plausibly fires across much of the portfolio on the day it
-        # lands — exactly the situation the bridge exists for.
-        assert advisory_ids(parse_catalog(CHECKS_DIR)) == ["OBS-007", "OPS-005"]
+        # OBS-007 crossed the bridge and was promoted. It entered advisory on
+        # the assumption that the `f"...: {exc}"` pattern was everywhere; a run
+        # over ten servers said otherwise — two of the eight with a retry path
+        # fail it, because `raise last_exc` passes and only *wrapping* fails.
+        # A check that is narrow and has no false positives has nothing left to
+        # prove by not blocking.
+        #
+        # ARCH-014 takes the bridge next, and this time the numbers argue for
+        # it: of ten servers, none reads `Retry-After` and none spreads its
+        # backoff. Enforced on day one would be a red portfolio, which is how
+        # checks get reverted rather than adopted.
+        assert advisory_ids(parse_catalog(CHECKS_DIR)) == ["ARCH-014", "OPS-005"]
 
     def test_the_mechanism_is_not_a_blanket_demotion(self):
         # An advisory stage is a bridge for a specific new check, not a way to
