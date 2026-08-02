@@ -72,15 +72,19 @@ Regel 6 kam nach einem zweiten Fall dazu: Eine Abfrage der MCP Registry lieferte
 
 ## Verwandte Repos
 
-Fünf Skills, ein Bau. Jeder beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt:
+### Die MCP-Qualitätskette
 
-| Repo | Rolle |
-|---|---|
-| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generische Bauanleitung — fremder Skill von Anthropic, wird ergänzt und nicht ersetzt |
-| [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Das Vorgehen *vor* dem Bau: Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6). Hat diesen Skill unter `companion/` ausgeliefert, bis dieses Repo sein Zuhause wurde. |
-| **`mcp-data-fidelity-skill`** | **Dieser Skill:** liefert er, was die Quelle hat? |
-| [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
-| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Prüfung *nach* dem Bau. Die Regeln 1–5 erscheinen dort als Checks `FID-001`–`FID-005`. |
+Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt. Das gemeinsame GitHub-Topic ist [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain) und listet alle fünf auf einer Seite.
+
+| Phase | Repo | Frage, die es beantwortet |
+|---|---|---|
+| vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6). Hat diesen Skill unter `companion/` ausgeliefert, bis dieses Repo sein Zuhause wurde. |
+| im Bau | **`mcp-data-fidelity-skill`** | **Dieser Skill:** liefert er, was die Quelle hat? |
+| im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
+| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–5 erscheinen dort als Checks `FID-001`–`FID-005`. |
+| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Seine Recall-Floors sind Regel 5, laufend gegen die echte Quelle gemessen. |
+
+Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
 Dazu der Server, aus dem dieser Skill stammt: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die Regeln 1–5 hervorgebracht hat.
 

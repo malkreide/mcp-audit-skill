@@ -112,6 +112,45 @@ jobs:
           done
           echo "ok — all referenced files present"
 
+      # The five repositories of the chain are named together in exactly one
+      # place per language. Nothing outside this repo can be tested from here —
+      # the GitHub topic itself is checked by the guard in mcp-audit-skill,
+      # which is the only repo carrying the manifest. What CAN be tested is
+      # that the table has not quietly lost a member.
+      - name: The quality-chain table names all five members
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          python - <<'PY'
+          import pathlib, re, sys
+
+          MEMBERS = [
+              "mcp-data-source-probe-skill",
+              "mcp-data-fidelity-skill",
+              "mcp-transport-hardening-skill",
+              "mcp-audit-skill",
+              "mcp-continuous-auditor",
+          ]
+          TOPIC_URL = "https://github.com/topics/mcp-quality-chain"
+
+          for path, heading in [("README.md", "The MCP quality chain"),
+                                ("README.de.md", "Die MCP-Qualitätskette")]:
+              text = pathlib.Path(path).read_text(encoding="utf-8")
+              m = re.search(rf"^### {re.escape(heading)}\n(.*?)(?=^#{{2,3}} |\Z)",
+                            text, re.M | re.S)
+              if not m:
+                  sys.exit(f"{path}: section '### {heading}' not found — anchor gone "
+                           "or reworded, so this check would silently stop checking")
+              body = m.group(1)
+              missing = [r for r in MEMBERS if r not in body]
+              if missing:
+                  sys.exit(f"{path}: the chain table does not name {missing}")
+              if TOPIC_URL not in body:
+                  sys.exit(f"{path}: the shared topic page {TOPIC_URL} is not linked — "
+                           "without it the table is a list nobody outside can find")
+              print(f"ok — {path}: all {len(MEMBERS)} members named, topic page linked")
+          PY
+
       - name: No compiled Python is tracked
         run: |
           if git ls-files | grep -E '(__pycache__/|\.py[cod]$)'; then
