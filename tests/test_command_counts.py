@@ -16,6 +16,7 @@ Von allen Doku-Zahlen im Repo ist diese die einzige, deren Fehler das
 **Verhalten** ändert statt nur eine Anzeige. Deshalb prüft der Test die
 Liste elementweise gegen den Katalog, nicht bloss ihre Länge.
 """
+
 from __future__ import annotations
 
 import re

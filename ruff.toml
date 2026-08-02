@@ -1,0 +1,24 @@
+# Ruff-Konfiguration.
+#
+# Kein `pyproject.toml` im Repo — der Skill ist kein Python-Paket, sondern eine
+# Sammlung aus Markdown-Katalog und Werkzeugen. Deshalb steht die Konfiguration
+# in einer eigenen `ruff.toml`.
+
+# Die Test-Matrix in .github/workflows/test.yml faehrt 3.11 und 3.13.
+target-version = "py311"
+
+[lint]
+# Genau der Regelsatz, den ruff heute per Default aktiviert — hier explizit
+# hingeschrieben. Ein `select` in der Konfiguration ersetzt die eingebauten
+# Defaults vollstaendig; damit ist der erzwungene Satz exakt diese Liste,
+# unabhaengig davon, ob eine spaetere ruff-Version ihre Defaults aendert.
+#
+#   E4 — pycodestyle: Importe (u.a. E402, Import nicht am Dateianfang)
+#   E7 — pycodestyle: Anweisungen (Vergleiche, mehrere Statements pro Zeile)
+#   E9 — pycodestyle: Syntax- und IO-Fehler
+#   F  — Pyflakes (ungenutzte Importe und Variablen, f-String-Fehler, …)
+#
+# Bewusst schmal gehalten: der Bestand war vorher ungelintet, und dieser Satz
+# kostet 12 Befunde statt 101. Erweitern (I, UP, B, SIM, RUF) ist jederzeit
+# moeglich — dann aber als eigener Commit, dessen Diff nur das ist.
+select = ["E4", "E7", "E9", "F"]

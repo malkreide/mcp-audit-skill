@@ -20,6 +20,7 @@ geprüft:
   bestünde eine Description, die gar keine Zahlen nennt, immer;
 * eine nicht erreichbare API endet mit Exit 1, nie mit «stimmt».
 """
+
 from __future__ import annotations
 
 import sys

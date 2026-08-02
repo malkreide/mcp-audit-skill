@@ -41,7 +41,6 @@ from __future__ import annotations
 import argparse
 import io
 import json
-import os
 import re
 import sys
 from dataclasses import dataclass
@@ -52,6 +51,7 @@ from typing import Any
 # ---------------------------------------------------------------------------
 # Errors
 # ---------------------------------------------------------------------------
+
 
 class ApplicabilityError(Exception):
     """Base class for all evaluator errors."""
@@ -73,9 +73,10 @@ class TypeMismatchError(ApplicabilityError):
 # Tokenizer
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Token:
-    kind: str   # IDENT, STRING, BOOL, ALWAYS, EQ, NE, AND, OR, LP, RP, DOT
+    kind: str  # IDENT, STRING, BOOL, ALWAYS, EQ, NE, AND, OR, LP, RP, DOT
     value: Any
     pos: int
 
@@ -145,6 +146,7 @@ def tokenize(expr: str) -> list[Token]:
 # ---------------------------------------------------------------------------
 # Parser + Evaluator (combined for compactness; AST built on the fly)
 # ---------------------------------------------------------------------------
+
 
 class Parser:
     def __init__(self, tokens: list[Token], expr: str, profile: dict[str, Any]) -> None:
@@ -342,6 +344,7 @@ class Parser:
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def evaluate(expression: str, profile: dict[str, Any]) -> bool:
     """Evaluate an applies_when expression against a profile.
 
@@ -433,6 +436,7 @@ def evaluate_catalog(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def _force_utf8_stdout() -> None:
     enc = (sys.stdout.encoding or "").lower()
     if enc != "utf-8":
@@ -477,8 +481,9 @@ def _load_profile(path: Path, server_name: str | None = None) -> dict[str, Any]:
                     break
             else:
                 names = ", ".join(s.get("name", "<unnamed>") for s in servers)
-                sys.exit(f"Server {server_name!r} not found in {path}. "
-                         f"Available: {names}")
+                sys.exit(
+                    f"Server {server_name!r} not found in {path}. Available: {names}"
+                )
         if "profile" not in entry:
             sys.exit(f"Server {entry.get('name')!r} has no profile section.")
         return entry["profile"]

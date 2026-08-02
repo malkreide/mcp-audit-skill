@@ -33,7 +33,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -60,6 +59,7 @@ class ReleaseError(Exception):
 # ---------------------------------------------------------------------------
 # Summary inspection
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AuditSummary:
@@ -112,6 +112,7 @@ class AuditSummary:
 # Version detection
 # ---------------------------------------------------------------------------
 
+
 def detect_current_version(target_repo: Path) -> tuple[str, str]:
     """Returns (version, source). Source is one of pyproject/package/git/none.
 
@@ -151,7 +152,9 @@ def detect_current_version(target_repo: Path) -> tuple[str, str]:
     try:
         out = subprocess.run(
             ["git", "-C", str(target_repo), "tag", "--list", "--sort=-v:refname"],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         )
         for tag in out.stdout.splitlines():
             tag = tag.strip()
@@ -185,6 +188,7 @@ def bump_version(current: str, bump: str) -> str:
 # CHANGELOG generation
 # ---------------------------------------------------------------------------
 
+
 def render_changelog_entry(
     version: str,
     summary: AuditSummary,
@@ -202,8 +206,7 @@ def render_changelog_entry(
     lines.append("### Audit verification")
     lines.append("")
     lines.append(
-        f"- **Production-ready:** "
-        f"{'✅ yes' if summary.production_ready else '❌ no'}"
+        f"- **Production-ready:** {'✅ yes' if summary.production_ready else '❌ no'}"
     )
     if summary.run_id:
         lines.append(f"- **Audit run-id:** `{summary.run_id}`")
@@ -252,7 +255,9 @@ def insert_changelog_entry(
 
     original = changelog_path.read_text(encoding="utf-8")
     unreleased = re.search(
-        r"^## \[Unreleased\][^\n]*\n", original, re.MULTILINE,
+        r"^## \[Unreleased\][^\n]*\n",
+        original,
+        re.MULTILINE,
     )
     if unreleased:
         # Insert before the next `## [` heading.
@@ -274,7 +279,7 @@ def insert_changelog_entry(
     # No Unreleased: prepend after the H1, if any.
     h1 = re.match(r"^# [^\n]*\n+", original)
     if h1:
-        return original[: h1.end()] + entry_md + "\n" + original[h1.end():], original
+        return original[: h1.end()] + entry_md + "\n" + original[h1.end() :], original
     return entry_md + "\n" + original, original
 
 
@@ -282,9 +287,11 @@ def insert_changelog_entry(
 # Apply mode — git + gh
 # ---------------------------------------------------------------------------
 
+
 def run(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True,
-                          capture_output=True, text=True)
+    return subprocess.run(
+        cmd, cwd=str(cwd) if cwd else None, check=True, capture_output=True, text=True
+    )
 
 
 def has_gh_cli() -> bool:
@@ -332,12 +339,20 @@ def apply_release(
     if create_github_release:
         if has_gh_cli():
             release_notes = notes or f"Audit-verified release. Run-ID: {summary.run_id}"
-            run([
-                "gh", "release", "create", tag,
-                "--title", f"Release {tag}",
-                "--notes", release_notes,
-                "--draft",
-            ], cwd=target_repo)
+            run(
+                [
+                    "gh",
+                    "release",
+                    "create",
+                    tag,
+                    "--title",
+                    f"Release {tag}",
+                    "--notes",
+                    release_notes,
+                    "--draft",
+                ],
+                cwd=target_repo,
+            )
             actions["github_release"] = "draft"
         else:
             actions["github_release"] = "skipped (gh CLI not available)"
@@ -354,6 +369,7 @@ def apply_release(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def cmd_propose(args: argparse.Namespace) -> int:
     audit_dir = Path(args.audit_dir).resolve()
     target_repo = Path(args.target_repo).resolve()
@@ -361,21 +377,24 @@ def cmd_propose(args: argparse.Namespace) -> int:
     summary = AuditSummary.from_dir(audit_dir)
 
     if not summary.production_ready and not args.force:
-        print(json.dumps({
-            "ok": False,
-            "reason": "not_production_ready",
-            "blocking_findings": summary.blocking_findings,
-            "by_status": summary.by_status,
-            "hint": "Fix the blocking findings or pass --force to override.",
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "reason": "not_production_ready",
+                    "blocking_findings": summary.blocking_findings,
+                    "by_status": summary.by_status,
+                    "hint": "Fix the blocking findings or pass --force to override.",
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
         return 2
 
     current_version, source = detect_current_version(target_repo)
     next_version = args.next_version or bump_version(current_version, args.bump)
-    today = (
-        args.today
-        or datetime.now(timezone.utc).date().isoformat()
-    )
+    today = args.today or datetime.now(timezone.utc).date().isoformat()
 
     entry = render_changelog_entry(next_version, summary, args.notes, today)
     changelog = target_repo / args.changelog
@@ -390,9 +409,9 @@ def cmd_propose(args: argparse.Namespace) -> int:
         "bump": args.bump if not args.next_version else "explicit",
         "changelog_path": str(changelog),
         "changelog_entry": entry,
-        "tag_command": f"git tag -a v{next_version} -m \"Release v{next_version}\"",
+        "tag_command": f'git tag -a v{next_version} -m "Release v{next_version}"',
         "release_command": (
-            f"gh release create v{next_version} --title \"Release v{next_version}\" "
+            f'gh release create v{next_version} --title "Release v{next_version}" '
             f"--notes-file <path> --draft"
         ),
         "audit": {
@@ -426,19 +445,22 @@ def cmd_apply(args: argparse.Namespace) -> int:
 
     summary = AuditSummary.from_dir(audit_dir)
     if not summary.production_ready and not args.force:
-        print(json.dumps({
-            "ok": False,
-            "reason": "not_production_ready",
-            "blocking_findings": summary.blocking_findings,
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "reason": "not_production_ready",
+                    "blocking_findings": summary.blocking_findings,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
         return 2
 
     current_version, source = detect_current_version(target_repo)
     next_version = args.next_version or bump_version(current_version, args.bump)
-    today = (
-        args.today
-        or datetime.now(timezone.utc).date().isoformat()
-    )
+    today = args.today or datetime.now(timezone.utc).date().isoformat()
 
     entry = render_changelog_entry(next_version, summary, args.notes, today)
     changelog = target_repo / args.changelog
@@ -453,12 +475,18 @@ def cmd_apply(args: argparse.Namespace) -> int:
         notes=args.notes,
         create_github_release=args.gh_release,
     )
-    print(json.dumps({
-        "ok": True,
-        "version": next_version,
-        "current_version": current_version,
-        "actions": actions,
-    }, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "version": next_version,
+                "current_version": current_version,
+                "actions": actions,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 
@@ -474,17 +502,29 @@ def main() -> None:
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     def _common(p: argparse.ArgumentParser) -> None:
-        p.add_argument("audit_dir", help="Path to the audit run dir (contains summary.json).")
+        p.add_argument(
+            "audit_dir", help="Path to the audit run dir (contains summary.json)."
+        )
         p.add_argument("target_repo", help="Path to the audited server's git repo.")
-        p.add_argument("--bump", choices=VALID_BUMPS, default="patch",
-                       help="Semver bump (default: patch).")
+        p.add_argument(
+            "--bump",
+            choices=VALID_BUMPS,
+            default="patch",
+            help="Semver bump (default: patch).",
+        )
         p.add_argument("--next-version", help="Explicit version, overrides --bump.")
-        p.add_argument("--changelog", default="CHANGELOG.md",
-                       help="CHANGELOG file relative to target_repo.")
+        p.add_argument(
+            "--changelog",
+            default="CHANGELOG.md",
+            help="CHANGELOG file relative to target_repo.",
+        )
         p.add_argument("--notes", help="Free-form release notes (markdown).")
         p.add_argument("--today", help="Override release date (YYYY-MM-DD); for tests.")
-        p.add_argument("--force", action="store_true",
-                       help="Allow release even if not production_ready.")
+        p.add_argument(
+            "--force",
+            action="store_true",
+            help="Allow release even if not production_ready.",
+        )
 
     sp = sub.add_parser("propose", help="Print proposal, do not modify anything.")
     _common(sp)
@@ -493,8 +533,11 @@ def main() -> None:
 
     sp = sub.add_parser("apply", help="Write CHANGELOG, commit, tag, draft GH release.")
     _common(sp)
-    sp.add_argument("--gh-release", action="store_true",
-                    help="Also create a draft GitHub release via gh CLI.")
+    sp.add_argument(
+        "--gh-release",
+        action="store_true",
+        help="Also create a draft GitHub release via gh CLI.",
+    )
     sp.set_defaults(func=cmd_apply)
 
     args = parser.parse_args()

@@ -17,6 +17,7 @@ Ebenso ausgenommen ist die Gesamt-Schätzung `~75` in der Total-Zeile:
 Sie summiert die Bereichs-Spalte, nicht den Bestand. Geprüft wird
 deshalb nur, dass sie innerhalb der Summe aller Bereiche liegt.
 """
+
 from __future__ import annotations
 
 import re
@@ -33,9 +34,18 @@ SKILL = REPO_ROOT / "SKILL.md"
 
 # SKILL.md schreibt die Anzahl Kategorien aus.
 NUMBER_WORDS = {
-    1: "eine", 2: "zwei", 3: "drei", 4: "vier", 5: "fünf",
-    6: "sechs", 7: "sieben", 8: "acht", 9: "neun", 10: "zehn",
-    11: "elf", 12: "zwölf",
+    1: "eine",
+    2: "zwei",
+    3: "drei",
+    4: "vier",
+    5: "fünf",
+    6: "sechs",
+    7: "sieben",
+    8: "acht",
+    9: "neun",
+    10: "zehn",
+    11: "elf",
+    12: "zwölf",
 }
 
 # | `IDENT` | Custom — … | 4–6 | 5 / 5 ✅ |
@@ -101,7 +111,9 @@ class TestSkillMatchesCatalog:
             if not line.lstrip().startswith("|")
             for m in INTRO_SIZE.finditer(line)
         ]
-        assert found, "Keine Angabe «NN Checks in <wort> Kategorien» in SKILL.md gefunden"
+        assert found, (
+            "Keine Angabe «NN Checks in <wort> Kategorien» in SKILL.md gefunden"
+        )
         for lineno, m in found:
             assert int(m.group("count")) == total, (
                 f"SKILL.md:{lineno} nennt {m.group('count')} Checks, Katalog hat {total}"

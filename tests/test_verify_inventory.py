@@ -12,6 +12,7 @@ Alle anderen Tests halten die Ränder fest, an denen ein Gate dieser Art
 üblicherweise scheitert: entweder es meldet zu viel und wird abgeschaltet,
 oder es meldet zu wenig und ist Dekoration.
 """
+
 from __future__ import annotations
 
 import json
@@ -57,6 +58,7 @@ def checkout(tmp_path: Path) -> Path:
 # Der Fall, für den das Gate existiert
 # ---------------------------------------------------------------------------
 
+
 class TestNestedServer:
     def test_nested_unlisted_server_is_a_hard_failure(self, portfolio, checkout):
         """openparldata-mcp, nachgebaut.
@@ -70,11 +72,13 @@ class TestNestedServer:
         report = verify_inventory(portfolio, checkout)
 
         assert report["consistent"] is False
-        assert report["unlisted"] == [{
-            "server": "parlament-mcp",
-            "path": "openparldata-mcp",
-            "manifest": "openparldata-mcp/pyproject.toml",
-        }]
+        assert report["unlisted"] == [
+            {
+                "server": "parlament-mcp",
+                "path": "openparldata-mcp",
+                "manifest": "openparldata-mcp/pyproject.toml",
+            }
+        ]
 
     def test_listing_it_with_a_path_resolves_the_finding(self, portfolio, checkout):
         """Der vorgesehene Weg: eigener Eintrag mit `path:`.
@@ -83,12 +87,14 @@ class TestNestedServer:
         liegt im selben Checkout, nur woanders.
         """
         _manifest(checkout / "parlament-mcp" / "openparldata-mcp")
-        portfolio["servers"].append({
-            "name": "openparldata-mcp",
-            "repo": REPO_URL,
-            "path": "openparldata-mcp",
-            "profile": {},
-        })
+        portfolio["servers"].append(
+            {
+                "name": "openparldata-mcp",
+                "repo": REPO_URL,
+                "path": "openparldata-mcp",
+                "profile": {},
+            }
+        )
 
         report = verify_inventory(portfolio, checkout, skip_missing=True)
 
@@ -106,12 +112,14 @@ class TestNestedServer:
         verschachtelte Manifeste stillschweigend legitimieren.
         """
         _manifest(checkout / "parlament-mcp" / "openparldata-mcp")
-        portfolio["servers"].append({
-            "name": "openparldata-mcp",
-            "repo": REPO_URL,
-            "path": "something-else",
-            "profile": {},
-        })
+        portfolio["servers"].append(
+            {
+                "name": "openparldata-mcp",
+                "repo": REPO_URL,
+                "path": "something-else",
+                "profile": {},
+            }
+        )
 
         assert verify_inventory(portfolio, checkout, skip_missing=True)["unlisted"]
 
@@ -119,6 +127,7 @@ class TestNestedServer:
 # ---------------------------------------------------------------------------
 # Falsch-Positive: was ohne Deklaration übersprungen wird — und was nicht
 # ---------------------------------------------------------------------------
+
 
 class TestFalsePositives:
     @pytest.mark.parametrize("vendor", ["node_modules", ".venv", "__pycache__", ".tox"])
@@ -185,6 +194,7 @@ class TestFalsePositives:
 # Nicht geprüft ist nicht bestanden
 # ---------------------------------------------------------------------------
 
+
 class TestMissingCheckout:
     def test_missing_checkout_fails_by_default(self, portfolio, tmp_path):
         report = verify_inventory(portfolio, tmp_path / "empty")
@@ -203,12 +213,16 @@ class TestMissingCheckout:
         portfolio["servers"].append(
             {"name": "not-cloned", "repo": "https://example.com/x", "profile": {}}
         )
-        assert verify_inventory(portfolio, checkout, skip_missing=True)["consistent"] is False
+        assert (
+            verify_inventory(portfolio, checkout, skip_missing=True)["consistent"]
+            is False
+        )
 
 
 # ---------------------------------------------------------------------------
 # Manifest-Suche
 # ---------------------------------------------------------------------------
+
 
 class TestFindManifests:
     def test_finds_both_manifest_kinds(self, tmp_path):
@@ -232,9 +246,11 @@ class TestFindManifests:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 class TestCli:
     def _write(self, tmp_path: Path, portfolio: dict) -> Path:
         import yaml
+
         path = tmp_path / "portfolio.yaml"
         path.write_text(yaml.safe_dump(portfolio), encoding="utf-8")
         return path
@@ -245,7 +261,9 @@ class TestCli:
         assert rc == 0
         assert "✓" in capsys.readouterr().out
 
-    def test_drift_returns_one_and_names_the_file(self, tmp_path, portfolio, checkout, capsys):
+    def test_drift_returns_one_and_names_the_file(
+        self, tmp_path, portfolio, checkout, capsys
+    ):
         _manifest(checkout / "parlament-mcp" / "openparldata-mcp")
         path = self._write(tmp_path, portfolio)
         rc = main(["--portfolio", str(path), "--work-dir", str(checkout)])
@@ -259,9 +277,16 @@ class TestCli:
     def test_json_format(self, tmp_path, portfolio, checkout, capsys):
         _manifest(checkout / "parlament-mcp" / "openparldata-mcp")
         path = self._write(tmp_path, portfolio)
-        rc = main([
-            "--portfolio", str(path), "--work-dir", str(checkout), "--format", "json",
-        ])
+        rc = main(
+            [
+                "--portfolio",
+                str(path),
+                "--work-dir",
+                str(checkout),
+                "--format",
+                "json",
+            ]
+        )
         assert rc == 1
         data = json.loads(capsys.readouterr().out)
         assert data["consistent"] is False
@@ -273,10 +298,18 @@ class TestCli:
     def test_writes_out_file(self, tmp_path, portfolio, checkout):
         path = self._write(tmp_path, portfolio)
         out = tmp_path / "report.json"
-        rc = main([
-            "--portfolio", str(path), "--work-dir", str(checkout),
-            "--format", "json", "--out", str(out),
-        ])
+        rc = main(
+            [
+                "--portfolio",
+                str(path),
+                "--work-dir",
+                str(checkout),
+                "--format",
+                "json",
+                "--out",
+                str(out),
+            ]
+        )
         assert rc == 0
         assert json.loads(out.read_text(encoding="utf-8"))["consistent"] is True
 
@@ -285,6 +318,7 @@ class TestCli:
 # Das mitgelieferte Beispielprofil muss durchlaufen
 # ---------------------------------------------------------------------------
 
+
 def test_example_portfolio_has_no_checkouts_and_says_so(tmp_path):
     """`portfolio.example.yaml` ohne Checkouts ist «nicht geprüft», nicht «ok».
 
@@ -292,8 +326,11 @@ def test_example_portfolio_has_no_checkouts_and_says_so(tmp_path):
     Umgebung als sauberes Portfolio zu melden.
     """
     import yaml
+
     repo_root = Path(__file__).resolve().parent.parent
-    example = yaml.safe_load((repo_root / "portfolio.example.yaml").read_text(encoding="utf-8"))
+    example = yaml.safe_load(
+        (repo_root / "portfolio.example.yaml").read_text(encoding="utf-8")
+    )
 
     report = verify_inventory(example, tmp_path / "nothing-here")
 
@@ -321,8 +358,12 @@ def test_real_run_shape_two_checkouts_same_repo(tmp_path):
     portfolio = {
         "servers": [
             {"name": "parlament-mcp", "repo": REPO_URL, "profile": {}},
-            {"name": "openparldata-mcp", "repo": REPO_URL,
-             "path": "openparldata-mcp", "profile": {}},
+            {
+                "name": "openparldata-mcp",
+                "repo": REPO_URL,
+                "path": "openparldata-mcp",
+                "profile": {},
+            },
         ]
     }
 

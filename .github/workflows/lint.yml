@@ -1,0 +1,38 @@
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Ruff gepinnt, damit ein Upstream-Release nicht den Regelsatz oder den
+      # Formatter aendert und die CI an unberuehrtem Code rot wird. Bewusst
+      # anheben.
+      #
+      # ACHTUNG: Diese Version und die `rev` in .pre-commit-config.yaml muessen
+      # uebereinstimmen. Der Schritt am Ende dieses Jobs prueft das.
+      - run: pip install ruff==0.15.8
+
+      - run: ruff check .
+
+      - run: ruff format --check .
+
+      # Der Ruff-Pin steht zweimal: oben und als `rev` in
+      # .pre-commit-config.yaml. Laufen sie auseinander, formatiert der Hook
+      # nach der einen und dieser Job prueft nach der anderen Version — der
+      # Hook meldet gruen und die CI wird rot. Reine Standardbibliothek,
+      # deshalb ohne Installationsschritt.
+      - name: Ruff-Pin-Sync (lint.yml ↔ .pre-commit-config.yaml)
+        env:
+          PYTHONUTF8: "1"
+        run: python tools/check_ruff_pin.py

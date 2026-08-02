@@ -38,6 +38,7 @@ Exit codes:
     1 — placeholder or schema error
     2 — usage error (missing file, etc.)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -106,9 +107,9 @@ ALLOWED_VALUES: dict[str, tuple[str, ...]] = {
 
 # A field whose value matches one of these patterns is a placeholder.
 _PLACEHOLDER_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"^\s*$"),                  # empty / whitespace
-    re.compile(r"^\s*\.\.\.\s*$"),         # bare "..."
-    re.compile(r"^\s*<.*>\s*$"),           # "<placeholder>", "<TODO>"
+    re.compile(r"^\s*$"),  # empty / whitespace
+    re.compile(r"^\s*\.\.\.\s*$"),  # bare "..."
+    re.compile(r"^\s*<.*>\s*$"),  # "<placeholder>", "<TODO>"
     re.compile(r"^\s*TODO\s*$", re.IGNORECASE),
     re.compile(r"^\s*FIXME\s*$", re.IGNORECASE),
     re.compile(r"^\s*XXX\s*$"),
@@ -148,9 +149,7 @@ def validate_profile(
             "placeholder": [],
             "type_mismatch": [],
             "enum_mismatch": [],
-            "error": (
-                f"profile is {type(profile).__name__}, not an object"
-            ),
+            "error": (f"profile is {type(profile).__name__}, not an object"),
         }
 
     missing: list[str] = []
@@ -169,11 +168,13 @@ def validate_profile(
         if not isinstance(value, expected_type):
             # bool is a subclass of int in Python; treat them strictly.
             if expected_type is bool and not isinstance(value, bool):
-                type_mismatch.append({
-                    "field": field,
-                    "expected": "bool",
-                    "got": type(value).__name__,
-                })
+                type_mismatch.append(
+                    {
+                        "field": field,
+                        "expected": "bool",
+                        "got": type(value).__name__,
+                    }
+                )
                 continue
             if not isinstance(value, expected_type):
                 expected_name = (
@@ -181,11 +182,13 @@ def validate_profile(
                     if isinstance(expected_type, type)
                     else str(expected_type)
                 )
-                type_mismatch.append({
-                    "field": field,
-                    "expected": expected_name,
-                    "got": type(value).__name__,
-                })
+                type_mismatch.append(
+                    {
+                        "field": field,
+                        "expected": expected_name,
+                        "got": type(value).__name__,
+                    }
+                )
 
     # Closed vocabularies. Deliberately checked only for fields that got
     # this far clean: a missing or placeholder `transport` is already
@@ -198,11 +201,13 @@ def validate_profile(
             continue
         value = profile.get(field)
         if value not in choices:
-            enum_mismatch.append({
-                "field": field,
-                "allowed": list(choices),
-                "got": value,
-            })
+            enum_mismatch.append(
+                {
+                    "field": field,
+                    "allowed": list(choices),
+                    "got": value,
+                }
+            )
 
     # data_source has a known nested field
     ds = profile.get("data_source")
@@ -212,11 +217,13 @@ def validate_profile(
         elif _is_placeholder_value(ds["is_swiss_open_data"]):
             placeholder.append("data_source.is_swiss_open_data")
         elif not isinstance(ds["is_swiss_open_data"], bool):
-            type_mismatch.append({
-                "field": "data_source.is_swiss_open_data",
-                "expected": "bool",
-                "got": type(ds["is_swiss_open_data"]).__name__,
-            })
+            type_mismatch.append(
+                {
+                    "field": "data_source.is_swiss_open_data",
+                    "expected": "bool",
+                    "got": type(ds["is_swiss_open_data"]).__name__,
+                }
+            )
 
     consistent = not (missing or placeholder or type_mismatch or enum_mismatch)
     return {
@@ -241,7 +248,11 @@ def _load_profile(path: Path) -> dict[str, Any]:
         )
     data = yaml.safe_load(text)
     # Unwrap common shapes.
-    if isinstance(data, dict) and isinstance(data.get("servers"), list) and data["servers"]:
+    if (
+        isinstance(data, dict)
+        and isinstance(data.get("servers"), list)
+        and data["servers"]
+    ):
         first = data["servers"][0]
         return first.get("profile", first) if isinstance(first, dict) else {}
     if isinstance(data, dict) and "profile" in data and len(data) <= 3:

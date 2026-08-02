@@ -1,0 +1,34 @@
+# Pre-Commit-Hooks — spiegeln den ruff-Job aus .github/workflows/lint.yml.
+#
+# Zweck: Was hier durchlaeuft, laeuft auch in der CI durch. Der Hook installiert
+# Ruff in einer eigenen, isolierten Umgebung; die hier gepinnte `rev`
+# entscheidet, nicht das lokal installierte Ruff. Damit kann eine abweichende
+# lokale Ruff-Version keine Formatierung erzeugen, die der lint-Job ablehnt.
+#
+# Einmalig pro Clone aktivieren:
+#     pip install pre-commit && pre-commit install
+#
+# ACHTUNG: `rev` unten und `pip install ruff==…` in lint.yml muessen dieselbe
+# Version nennen. Beim Anheben beide Stellen aendern — tools/check_ruff_pin.py
+# prueft es, im Hook wie in der CI.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.8
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      # Dritter Schritt des lint-Jobs. Reine Standardbibliothek, deshalb
+      # `language: system` ohne eigene Umgebung.
+      #
+      # `always_run`, weil die Abweichung aus jeder der beiden beteiligten
+      # Dateien entstehen kann und der Check billig ist.
+      - id: ruff-pin-sync
+        name: Ruff-Pin-Sync (lint.yml ↔ .pre-commit-config.yaml)
+        entry: python3 tools/check_ruff_pin.py
+        language: system
+        pass_filenames: false
+        always_run: true

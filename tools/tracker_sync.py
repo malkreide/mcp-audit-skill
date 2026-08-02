@@ -82,6 +82,7 @@ class TrackerRecord:
 # Backend interface
 # ---------------------------------------------------------------------------
 
+
 class TrackerBackend:
     name: str = "abstract"
 
@@ -98,6 +99,7 @@ class TrackerBackend:
 # ---------------------------------------------------------------------------
 # CSV backend — zero-deps, perfect for users without any cloud DB.
 # ---------------------------------------------------------------------------
+
 
 class CsvBackend(TrackerBackend):
     name = "csv"
@@ -123,8 +125,12 @@ class CsvBackend(TrackerBackend):
             w.writeheader()
             for row in rows:
                 # Coerce all values to strings so CSV stays valid.
-                w.writerow({k: ("" if row.get(k) is None else str(row.get(k)))
-                            for k in CANONICAL_FIELDS})
+                w.writerow(
+                    {
+                        k: ("" if row.get(k) is None else str(row.get(k)))
+                        for k in CANONICAL_FIELDS
+                    }
+                )
 
     @staticmethod
     def _row_to_record(row: dict[str, str]) -> TrackerRecord:
@@ -164,9 +170,7 @@ class CsvBackend(TrackerBackend):
 
         for k, v in fields.items():
             if k not in CANONICAL_FIELDS:
-                raise TrackerError(
-                    f"Unknown field {k!r}; valid: {CANONICAL_FIELDS}"
-                )
+                raise TrackerError(f"Unknown field {k!r}; valid: {CANONICAL_FIELDS}")
             merged[k] = v
 
         if found_index is None:
@@ -176,8 +180,10 @@ class CsvBackend(TrackerBackend):
 
         self._write_rows(rows)
         return self._row_to_record(
-            {k: ("" if merged.get(k) is None else str(merged.get(k)))
-             for k in CANONICAL_FIELDS}
+            {
+                k: ("" if merged.get(k) is None else str(merged.get(k)))
+                for k in CANONICAL_FIELDS
+            }
         )
 
     def list_all(self) -> list[TrackerRecord]:
@@ -221,7 +227,9 @@ class NotionBackend(TrackerBackend):
         db_id = os.environ.get("NOTION_AUDIT_DB_ID", NOTION_DEFAULT_DB_ID)
         return cls(token=token, db_id=db_id)
 
-    def _request(self, method: str, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _request(
+        self, method: str, path: str, body: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         url = f"{NOTION_API}{path}"
         data = json.dumps(body).encode("utf-8") if body is not None else None
         req = Request(url, data=data, method=method)
@@ -269,9 +277,7 @@ class NotionBackend(TrackerBackend):
         if notion_type == "checkbox":
             return {"checkbox": bool(value)}
         if notion_type == "rich_text":
-            return {
-                "rich_text": [{"type": "text", "text": {"content": str(value)}}]
-            }
+            return {"rich_text": [{"type": "text", "text": {"content": str(value)}}]}
         raise TrackerError(f"Unsupported Notion property type {notion_type!r}")
 
     def update(self, server_name: str, fields: dict[str, Any]) -> TrackerRecord:
@@ -347,6 +353,7 @@ class NotionBackend(TrackerBackend):
 # Backend resolver
 # ---------------------------------------------------------------------------
 
+
 def get_backend(name: str | None, csv_path: str | None = None) -> TrackerBackend:
     backend = (name or os.environ.get("MCP_AUDIT_TRACKER_BACKEND") or "csv").lower()
     if backend == "csv":
@@ -354,14 +361,13 @@ def get_backend(name: str | None, csv_path: str | None = None) -> TrackerBackend
         return CsvBackend(Path(path))
     if backend == "notion":
         return NotionBackend.from_env()
-    raise TrackerError(
-        f"Unknown tracker backend {backend!r}; valid: csv, notion"
-    )
+    raise TrackerError(f"Unknown tracker backend {backend!r}; valid: csv, notion")
 
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def _parse_kv(items: list[str]) -> dict[str, Any]:
     """Parse `key=value` flags into a typed dict."""
@@ -407,12 +413,18 @@ def cmd_update(args: argparse.Namespace) -> int:
         raise TrackerError("Nothing to update; pass --set key=value or --from-summary.")
 
     record = backend.update(args.server, fields)
-    print(json.dumps({
-        "ok": True,
-        "backend": backend.name,
-        "server_name": record.server_name,
-        "updated": record.to_dict_nonnull(),
-    }, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "backend": backend.name,
+                "server_name": record.server_name,
+                "updated": record.to_dict_nonnull(),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 
@@ -420,24 +432,37 @@ def cmd_get(args: argparse.Namespace) -> int:
     backend = get_backend(args.backend, args.csv_path)
     record = backend.get(args.server)
     if record is None:
-        print(json.dumps({"ok": False, "reason": "not_found",
-                          "backend": backend.name}, indent=2))
+        print(
+            json.dumps(
+                {"ok": False, "reason": "not_found", "backend": backend.name}, indent=2
+            )
+        )
         return 2
-    print(json.dumps({"ok": True, "backend": backend.name,
-                      "record": record.to_dict_nonnull()},
-                     indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {"ok": True, "backend": backend.name, "record": record.to_dict_nonnull()},
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 
 def cmd_list(args: argparse.Namespace) -> int:
     backend = get_backend(args.backend, args.csv_path)
     records = backend.list_all()
-    print(json.dumps({
-        "ok": True,
-        "backend": backend.name,
-        "count": len(records),
-        "records": [r.to_dict_nonnull() for r in records],
-    }, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "backend": backend.name,
+                "count": len(records),
+                "records": [r.to_dict_nonnull() for r in records],
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 
@@ -448,7 +473,8 @@ def main() -> None:
         description="Update an audit-tracker record across pluggable backends.",
     )
     parser.add_argument(
-        "--backend", choices=("csv", "notion"),
+        "--backend",
+        choices=("csv", "notion"),
         help="Override $MCP_AUDIT_TRACKER_BACKEND. Default: csv.",
     )
     parser.add_argument(
@@ -459,8 +485,12 @@ def main() -> None:
 
     sp = sub.add_parser("update", help="Set fields on a server's row.")
     sp.add_argument("server", help="Server name (primary key).")
-    sp.add_argument("--set", action="append", metavar="key=value",
-                    help="Repeatable. Valid keys: " + ", ".join(CANONICAL_FIELDS))
+    sp.add_argument(
+        "--set",
+        action="append",
+        metavar="key=value",
+        help="Repeatable. Valid keys: " + ", ".join(CANONICAL_FIELDS),
+    )
     sp.add_argument("--from-summary", help="Pull defaults from a summary.json.")
     sp.set_defaults(func=cmd_update)
 

@@ -11,6 +11,7 @@ anmahnen — und wer ihn danach «grün macht», beschädigt sie.
 Aktuell zu halten ist genau eine Zeile: die mit `Stand:` beginnende
 Kopfzeile. Nur sie wird geprüft.
 """
+
 from __future__ import annotations
 
 import re

@@ -3,6 +3,7 @@
 
 Covers every DSL construct used in the v0.5.0 catalog plus negative cases.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,7 +11,6 @@ from pathlib import Path
 import pytest
 
 from tools.eval_applicability import (
-    ApplicabilityError,
     ParseError,
     TypeMismatchError,
     UnknownFieldError,
@@ -104,6 +104,7 @@ def cloud_oauth_profile() -> dict:
 # DSL primitives
 # ---------------------------------------------------------------------------
 
+
 class TestAlways:
     def test_always_is_true(self, srgssr_profile):
         assert evaluate("always", srgssr_profile) is True
@@ -150,31 +151,42 @@ class TestBooleanEquality:
 
 class TestLogicalOperators:
     def test_or_left_true(self, srgssr_profile):
-        assert evaluate(
-            'transport == "stdio-only" or transport == "dual"', srgssr_profile
-        ) is True
+        assert (
+            evaluate('transport == "stdio-only" or transport == "dual"', srgssr_profile)
+            is True
+        )
 
     def test_or_right_true(self, srgssr_profile):
-        assert evaluate(
-            'transport == "HTTP/SSE" or transport == "stdio-only"', srgssr_profile
-        ) is True
+        assert (
+            evaluate(
+                'transport == "HTTP/SSE" or transport == "stdio-only"', srgssr_profile
+            )
+            is True
+        )
 
     def test_or_both_false(self, srgssr_profile):
-        assert evaluate(
-            'transport == "HTTP/SSE" or transport == "dual"', srgssr_profile
-        ) is False
+        assert (
+            evaluate('transport == "HTTP/SSE" or transport == "dual"', srgssr_profile)
+            is False
+        )
 
     def test_and_both_true(self, zh_education_profile):
-        assert evaluate(
-            'auth_model == "API-Key" and tools_make_external_requests == true',
-            zh_education_profile,
-        ) is True
+        assert (
+            evaluate(
+                'auth_model == "API-Key" and tools_make_external_requests == true',
+                zh_education_profile,
+            )
+            is True
+        )
 
     def test_and_one_false(self, zh_education_profile):
-        assert evaluate(
-            'auth_model == "API-Key" and write_capable == true',
-            zh_education_profile,
-        ) is False
+        assert (
+            evaluate(
+                'auth_model == "API-Key" and write_capable == true',
+                zh_education_profile,
+            )
+            is False
+        )
 
     def test_precedence_and_binds_tighter_than_or(self, srgssr_profile):
         # (true and false) or true == true
@@ -184,17 +196,23 @@ class TestLogicalOperators:
         # (false or true) and false -> false
         # use: true or (false and X) -> true regardless
         # better: false and X or true should be (false and X) or true -> true
-        assert evaluate(
-            'transport == "HTTP/SSE" and uses_sampling == true or always',
-            srgssr_profile,
-        ) is True
+        assert (
+            evaluate(
+                'transport == "HTTP/SSE" and uses_sampling == true or always',
+                srgssr_profile,
+            )
+            is True
+        )
 
     def test_parenthesized_or_with_and(self, srgssr_profile):
         # Force: (false or false) and true -> false
-        assert evaluate(
-            '(transport == "HTTP/SSE" or transport == "dual") and tools_make_external_requests == true',
-            srgssr_profile,
-        ) is False
+        assert (
+            evaluate(
+                '(transport == "HTTP/SSE" or transport == "dual") and tools_make_external_requests == true',
+                srgssr_profile,
+            )
+            is False
+        )
 
 
 class TestIncludes:
@@ -205,33 +223,41 @@ class TestIncludes:
         assert evaluate('deployment.includes("Railway")', srgssr_profile) is False
 
     def test_includes_chained_or(self, srgssr_profile):
-        assert evaluate(
-            'deployment.includes("Railway") or deployment.includes("Render") or deployment.includes("local-stdio")',
-            srgssr_profile,
-        ) is True
+        assert (
+            evaluate(
+                'deployment.includes("Railway") or deployment.includes("Render") or deployment.includes("local-stdio")',
+                srgssr_profile,
+            )
+            is True
+        )
 
     def test_includes_with_grouping(self, cloud_oauth_profile):
-        assert evaluate(
-            '(deployment.includes("Railway") or deployment.includes("Render")) and write_capable == true',
-            cloud_oauth_profile,
-        ) is True
+        assert (
+            evaluate(
+                '(deployment.includes("Railway") or deployment.includes("Render")) and write_capable == true',
+                cloud_oauth_profile,
+            )
+            is True
+        )
 
 
 class TestDottedPaths:
     def test_dotted_field_access(self, srgssr_profile):
-        assert evaluate(
-            "data_source.is_swiss_open_data == true", srgssr_profile
-        ) is True
+        assert (
+            evaluate("data_source.is_swiss_open_data == true", srgssr_profile) is True
+        )
 
     def test_dotted_field_false(self, zh_education_profile):
-        assert evaluate(
-            "data_source.is_swiss_open_data == true", zh_education_profile
-        ) is False
+        assert (
+            evaluate("data_source.is_swiss_open_data == true", zh_education_profile)
+            is False
+        )
 
 
 # ---------------------------------------------------------------------------
 # Error cases
 # ---------------------------------------------------------------------------
+
 
 class TestErrors:
     def test_empty_expression(self, srgssr_profile):
@@ -288,6 +314,7 @@ class TestErrors:
 # Real catalog regression tests
 # ---------------------------------------------------------------------------
 
+
 class TestRealCatalog:
     """Lock the applicability counts for known profiles so future evaluator
     changes can't silently shift the numbers (the bug that motivated this
@@ -327,8 +354,7 @@ class TestRealCatalog:
         # vorbeikommen muss; die Untergrenze bleibt, sie ist die Seite, die
         # echten Grammatik-Ausfall fangen würde.
         assert 25 <= len(applicable) <= 62, (
-            f"Applicable count drifted: got {len(applicable)} "
-            f"({applicable})"
+            f"Applicable count drifted: got {len(applicable)} ({applicable})"
         )
 
     # The 9 checks that previously had `deployment != "local-stdio"` were
@@ -365,16 +391,18 @@ class TestRealCatalog:
         `is_cloud_deployed == true` instead.
         """
         from tools.parse_catalog import parse_catalog
+
         catalog = parse_catalog(CHECKS_DIR)
         offenders = [
-            cid for cid, fm in catalog.items()
-            if 'deployment !=' in fm.get("applies_when", "")
-            or 'deployment ==' in fm.get("applies_when", "")
+            cid
+            for cid, fm in catalog.items()
+            if "deployment !=" in fm.get("applies_when", "")
+            or "deployment ==" in fm.get("applies_when", "")
         ]
         assert offenders == [], (
             f"These checks compare `deployment` to a string literal "
             f"(issue #16): {offenders}. Use `is_cloud_deployed == true` "
-            f"or `deployment.includes(\"...\")` instead."
+            f'or `deployment.includes("...")` instead.'
         )
 
     def test_previously_buggy_checks_now_evaluate_clean(self, srgssr_profile):
@@ -486,9 +514,11 @@ class TestWriteCapableSchemaMigration:
 
     def test_no_check_uses_legacy_write_access_field(self):
         from tools.parse_catalog import parse_catalog
+
         catalog = parse_catalog(CHECKS_DIR)
         offenders = [
-            cid for cid, fm in catalog.items()
+            cid
+            for cid, fm in catalog.items()
             if "write_access" in fm.get("applies_when", "")
         ]
         assert offenders == [], (
@@ -498,6 +528,7 @@ class TestWriteCapableSchemaMigration:
 
     def test_hitl_005_uses_canonical_field(self):
         from tools.eval_applicability import parse_check_frontmatter
+
         fm = parse_check_frontmatter(CHECKS_DIR / "HITL-005.md")
         assert fm["applies_when"] == "write_capable == true"
 
@@ -582,14 +613,7 @@ class TestFrontmatterParser:
         """Windows checkouts with autocrlf=true emit CRLF; the parser must
         tolerate that without breaking the regex.
         """
-        content = (
-            "---\r\n"
-            "id: TEST-001\r\n"
-            'applies_when: \'always\'\r\n'
-            "---\r\n"
-            "\r\n"
-            "body\r\n"
-        )
+        content = "---\r\nid: TEST-001\r\napplies_when: 'always'\r\n---\r\n\r\nbody\r\n"
         p = tmp_path / "TEST-001.md"
         p.write_bytes(content.encode("utf-8"))
         fm = parse_check_frontmatter(p)
@@ -652,6 +676,7 @@ class TestSsrfScope:
     @staticmethod
     def _clause(check_id: str) -> str:
         from tools.parse_catalog import parse_catalog
+
         return parse_catalog(CHECKS_DIR)[check_id]["applies_when"]
 
     @pytest.mark.parametrize("check_id", SSRF_FAMILY)
@@ -694,8 +719,12 @@ class TestSsrfScope:
         DNS-Rebinding von einem Server, dem er die SSRF-Basisprüfung erlässt.
         """
         from tools.parse_catalog import parse_catalog
+
         catalog = parse_catalog(CHECKS_DIR)
-        ssrf, rebinding = catalog["SEC-004"]["applies_when"], catalog["SEC-005"]["applies_when"]
+        ssrf, rebinding = (
+            catalog["SEC-004"]["applies_when"],
+            catalog["SEC-005"]["applies_when"],
+        )
         for transport in ("stdio-only", "dual", "HTTP/SSE"):
             for external in (True, False):
                 profile = self._profile(transport, external)

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """Tests for tools/verify_raw_outputs.py."""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-import pytest
 
 from tools.verify_raw_outputs import main, verify_raw_outputs
 
@@ -13,6 +13,7 @@ from tools.verify_raw_outputs import main, verify_raw_outputs
 # ---------------------------------------------------------------------------
 # Pure verification function
 # ---------------------------------------------------------------------------
+
 
 class TestVerify:
     def _write(self, dir: Path, name: str, content: str = "ok") -> Path:
@@ -55,11 +56,9 @@ class TestVerify:
 
     def test_mixed_outcomes(self, tmp_path):
         self._write(tmp_path, "ARCH-001.txt", "good")  # satisfied
-        self._write(tmp_path, "SEC-021.txt", "")       # empty
+        self._write(tmp_path, "SEC-021.txt", "")  # empty
         # ARCH-002 not written → missing
-        report = verify_raw_outputs(
-            tmp_path, ["ARCH-001", "ARCH-002", "SEC-021"]
-        )
+        report = verify_raw_outputs(tmp_path, ["ARCH-001", "ARCH-002", "SEC-021"])
         assert report["satisfied"] == ["ARCH-001"]
         assert report["missing"] == ["ARCH-002"]
         assert report["empty"] == ["SEC-021"]
@@ -67,18 +66,14 @@ class TestVerify:
         assert report["consistent"] is False
 
     def test_nonexistent_dir(self, tmp_path):
-        report = verify_raw_outputs(
-            tmp_path / "missing", ["ARCH-001"]
-        )
+        report = verify_raw_outputs(tmp_path / "missing", ["ARCH-001"])
         assert report["consistent"] is False
         assert "error" in report
         assert report["incomplete_ids"] == ["ARCH-001"]
 
     def test_custom_suffix(self, tmp_path):
         self._write(tmp_path, "ARCH-001.json", '{"x": 1}')
-        report = verify_raw_outputs(
-            tmp_path, ["ARCH-001"], suffix=".json"
-        )
+        report = verify_raw_outputs(tmp_path, ["ARCH-001"], suffix=".json")
         assert report["consistent"] is True
 
     def test_empty_expected_list(self, tmp_path):
@@ -91,6 +86,7 @@ class TestVerify:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 class TestCli:
     def _setup(self, tmp_path: Path, ids_present: list[str]) -> Path:
         raw = tmp_path / "raw"
@@ -101,20 +97,26 @@ class TestCli:
 
     def test_cli_all_satisfied_returns_zero(self, tmp_path, capsys):
         raw = self._setup(tmp_path, ["ARCH-001", "SEC-021"])
-        rc = main([
-            str(raw),
-            "--expected-ids", "ARCH-001,SEC-021",
-        ])
+        rc = main(
+            [
+                str(raw),
+                "--expected-ids",
+                "ARCH-001,SEC-021",
+            ]
+        )
         assert rc == 0
         out = json.loads(capsys.readouterr().out)
         assert out["consistent"] is True
 
     def test_cli_incomplete_returns_one(self, tmp_path, capsys):
         raw = self._setup(tmp_path, ["ARCH-001"])
-        rc = main([
-            str(raw),
-            "--expected-ids", "ARCH-001,MISSING-001",
-        ])
+        rc = main(
+            [
+                str(raw),
+                "--expected-ids",
+                "ARCH-001,MISSING-001",
+            ]
+        )
         assert rc == 1
         out = json.loads(capsys.readouterr().out)
         assert out["incomplete_ids"] == ["MISSING-001"]
@@ -126,20 +128,27 @@ class TestCli:
             "# expected ids\nARCH-001\nSEC-021\n# trailing comment\n",
             encoding="utf-8",
         )
-        rc = main([
-            str(raw),
-            "--expected-ids-file", str(ids_file),
-        ])
+        rc = main(
+            [
+                str(raw),
+                "--expected-ids-file",
+                str(ids_file),
+            ]
+        )
         assert rc == 0
 
     def test_cli_writes_out_file(self, tmp_path):
         raw = self._setup(tmp_path, ["ARCH-001"])
         out_path = tmp_path / "report.json"
-        rc = main([
-            str(raw),
-            "--expected-ids", "ARCH-001",
-            "--out", str(out_path),
-        ])
+        rc = main(
+            [
+                str(raw),
+                "--expected-ids",
+                "ARCH-001",
+                "--out",
+                str(out_path),
+            ]
+        )
         assert rc == 0
         data = json.loads(out_path.read_text(encoding="utf-8"))
         assert data["consistent"] is True
@@ -149,18 +158,25 @@ class TestCli:
         raw.mkdir()
         (raw / "ARCH-001.txt").write_text("xx", encoding="utf-8")
         # 2 bytes, threshold 10 → empty
-        rc = main([
-            str(raw),
-            "--expected-ids", "ARCH-001",
-            "--min-bytes", "10",
-        ])
+        rc = main(
+            [
+                str(raw),
+                "--expected-ids",
+                "ARCH-001",
+                "--min-bytes",
+                "10",
+            ]
+        )
         assert rc == 1
 
     def test_cli_missing_ids_file_returns_two(self, tmp_path):
         raw = tmp_path / "raw"
         raw.mkdir()
-        rc = main([
-            str(raw),
-            "--expected-ids-file", str(tmp_path / "nope.txt"),
-        ])
+        rc = main(
+            [
+                str(raw),
+                "--expected-ids-file",
+                str(tmp_path / "nope.txt"),
+            ]
+        )
         assert rc == 2

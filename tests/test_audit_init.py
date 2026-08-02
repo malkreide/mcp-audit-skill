@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for tools/audit_init.py — run-id + audit-meta initialization."""
+
 from __future__ import annotations
 
 import json
@@ -22,6 +23,7 @@ from tools.audit_init import (
 # ---------------------------------------------------------------------------
 # Run-ID format
 # ---------------------------------------------------------------------------
+
 
 class TestMakeRunId:
     def test_utc_uses_z_suffix(self):
@@ -73,6 +75,7 @@ class TestFormatOffset:
 # Collision avoidance
 # ---------------------------------------------------------------------------
 
+
 class TestResolveOutputDir:
     def test_first_run_no_suffix(self, tmp_path):
         now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=timezone.utc)
@@ -101,6 +104,7 @@ class TestResolveOutputDir:
 # Catalog hashing
 # ---------------------------------------------------------------------------
 
+
 class TestHashCatalog:
     def test_deterministic(self, tmp_path):
         (tmp_path / "ARCH-001.md").write_text("a\n", encoding="utf-8")
@@ -128,6 +132,7 @@ class TestHashCatalog:
 # ---------------------------------------------------------------------------
 # Initial meta
 # ---------------------------------------------------------------------------
+
 
 class TestBuildInitialMeta:
     def test_required_fields_set(self, tmp_path):
@@ -167,6 +172,7 @@ class TestBuildInitialMeta:
 # init_audit end-to-end
 # ---------------------------------------------------------------------------
 
+
 class TestInitAudit:
     def test_creates_dir_and_meta(self, tmp_path):
         now = datetime(2026, 5, 2, 9, 0, 0, tzinfo=timezone.utc)
@@ -197,6 +203,7 @@ class TestInitAudit:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 class TestCli:
     def test_make_run_id_returns_zero(self, capsys):
         rc = main(["make-run-id", "srgssr-mcp", "--now", "2026-05-02T09:00:00+00:00"])
@@ -208,12 +215,18 @@ class TestCli:
         assert rc == 2
 
     def test_init_creates_dir_and_emits_json(self, tmp_path, capsys):
-        rc = main([
-            "init", "srgssr-mcp",
-            "--base-dir", str(tmp_path),
-            "--skill-version", "0.9",
-            "--now", "2026-05-02T09:00:00+00:00",
-        ])
+        rc = main(
+            [
+                "init",
+                "srgssr-mcp",
+                "--base-dir",
+                str(tmp_path),
+                "--skill-version",
+                "0.9",
+                "--now",
+                "2026-05-02T09:00:00+00:00",
+            ]
+        )
         assert rc == 0
         out = json.loads(capsys.readouterr().out)
         assert out["run_id"] == "2026-05-02T090000-Z-srgssr-mcp"
@@ -221,11 +234,16 @@ class TestCli:
 
     def test_init_naive_datetime_treated_as_utc(self, tmp_path, capsys):
         # Naive datetime input is upgraded to UTC for predictability.
-        rc = main([
-            "init", "x",
-            "--base-dir", str(tmp_path),
-            "--now", "2026-05-02T09:00:00",
-        ])
+        rc = main(
+            [
+                "init",
+                "x",
+                "--base-dir",
+                str(tmp_path),
+                "--now",
+                "2026-05-02T09:00:00",
+            ]
+        )
         assert rc == 0
         out = json.loads(capsys.readouterr().out)
         assert "Z" in out["run_id"]
