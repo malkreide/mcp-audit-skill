@@ -82,15 +82,19 @@ What generalises:
 
 ## Related repositories
 
-Five skills, one build. Each answers a different question, in the order they come up:
+### The MCP quality chain
 
-| Repository | Role |
-|---|---|
-| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generic build guidance — Anthropic's skill, complemented rather than replaced |
-| [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | The procedure *before* the build |
-| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Does it return what the source actually holds? |
-| **`mcp-transport-hardening-skill`** | **This skill:** does it come up, and does it turn away the right callers? |
-| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Auditing *after* the build |
+Five repositories, one lifecycle. Each answers a different question, in the order they come up. The shared GitHub topic is [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain), which lists all five on one page.
+
+| Stage | Repository | Question it answers |
+|---|---|---|
+| before the build | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Is the source usable, and what does it hold? |
+| in the build | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Does it return what the source actually holds? |
+| in the build | **`mcp-transport-hardening-skill`** | **This skill:** does it come up, and does it turn away the right callers? |
+| after the build | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Does it hold up against the catalogue? |
+| in operation | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Does it still hold up tomorrow? |
+
+Alongside, not part of the chain: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — Anthropic's generic build guidance, complemented rather than replaced. It is someone else's repository and cannot carry the topic.
 
 The audit catalogue covers four of the seven rules: rule 1 is `SDK-006`, rule 3 is
 `ARCH-013`, rule 4 is `SEC-024` (with `SEC-005` as its outbound counterpart).

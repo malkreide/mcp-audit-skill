@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The related-repositories table is now the MCP quality chain, and it names all
+  five members.** The table listed four skills plus `mcp-builder` and left
+  `mcp-continuous-auditor` out. It is not a skill, but it is the fifth link:
+  the only one that keeps checking after the audit has passed. The table now runs
+  along the lifecycle — before the build, in the build, after the build, in
+  operation — and `mcp-builder` sits beside it rather than in it, because it is
+  someone else's repository and cannot carry the shared topic.
+
+- **The five now share a GitHub topic,
+  [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain).** They
+  referenced each other in prose already; on GitHub the intersection of their
+  topics was empty, so nothing tied them together for anyone who had not already
+  found one of them. The topic is verified weekly by
+  `tools/check_quality_chain.py` in `mcp-audit-skill`, which carries the manifest
+  — that metadata lives outside every working copy and is unreachable from here.
+
+### Added
+
+- **A CI step asserting the chain table names all five members** — the chain table is the only place the five are named together,
+  so a check makes sure it has not quietly lost a member, in both language
+  versions, and that it links the topic page.
+
 ## [1.2.0] - 2026-08-02
 
 Two documentation changes, no rule added, changed or removed — seven rules, as

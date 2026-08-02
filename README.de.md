@@ -82,15 +82,19 @@ Was daran übertragbar ist:
 
 ## Verwandte Repos
 
-Fünf Skills, ein Bau. Jeder beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt:
+### Die MCP-Qualitätskette
 
-| Repo | Rolle |
-|---|---|
-| [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) | Generische Bauanleitung — fremder Skill von Anthropic, wird ergänzt und nicht ersetzt |
-| [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Vorgehen *vor* dem Bau |
-| [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? |
-| **`mcp-transport-hardening-skill`** | **Dieser Skill:** kommt er hoch, weist er richtig ab? |
-| [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Prüfung *nach* dem Bau |
+Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt. Das gemeinsame GitHub-Topic ist [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain) und listet alle fünf auf einer Seite.
+
+| Phase | Repo | Frage, die es beantwortet |
+|---|---|---|
+| vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? |
+| im Bau | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? |
+| im Bau | **`mcp-transport-hardening-skill`** | **Dieser Skill:** kommt er hoch, weist er richtig ab? |
+| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? |
+| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? |
+
+Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
 Der Audit-Katalog deckt vier der sieben Regeln ab: Regel 1 ist `SDK-006`, Regel 3
 ist `ARCH-013`, Regel 4 ist `SEC-024` (mit `SEC-005` als ausgehender
