@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-02
+
+Seven rules, unchanged — nothing here touches what the skill teaches. The
+related-repositories table becomes the MCP quality chain, five repositories
+along the lifecycle with a shared GitHub topic, and the same table now stands in
+`SKILL.md` rather than only in the READMEs.
+
+One figure was wrong: the rule-to-check mapping claimed four of seven rules
+where it covers three. Four is the count of the rules the catalogue does *not*
+see — the sentence directly below the table said so all along.
+
 ### Changed
 
 - **The related-repositories table is now the MCP quality chain, and it names all
