@@ -9,6 +9,8 @@ Companion zu `mcp-builder`. Dessen Best Practices decken ab, ob ein Server **kor
 
 Das ist eine eigene Fehlerklasse, weil sie ebenfalls still ist — nur anders still als bei `mcp-data-fidelity`. Dort liefert der Server eine plausible Antwort, die inhaltlich falsch ist. Hier liefert er gar keine: grüne Unit-Tests, sauberer Linter, und in Produktion startet der Prozess nicht oder beantwortet jede Anfrage unter einem echten Hostnamen mit HTTP 421. Der Transport-Pfad ist genau der Teil, den eine Testsuite über stdio nie berührt.
 
+Eine Schicht höher fallen die beiden Klassen allerdings zusammen: Wer das 421 nur daran misst, dass keine Datensätze zurückkommen, reicht es als Leermenge weiter — und dann ist es doch wieder eine plausible, inhaltlich falsche Antwort ([`mcp-data-fidelity`](https://github.com/malkreide/mcp-data-fidelity-skill) Regel 3, `FID-003`). Verlass dich also nicht darauf, dass ein 421 auffällt; sichtbar wird es nur dort, wo der Transport-Pfad selbst geprüft wird.
+
 **Die Leitfrage bei jedem Server mit Netz-Transport:** *Wenn ich den Bind ändere — folgt die eingehende Allow-List mit, auf jedem Pfad, der eine App baut, und wird ein Test rot, wenn sie es nicht tut?* Ist die Antwort nein, greift eine der sieben Regeln unten.
 
 Die Regeln 1–4 betreffen den Server, die Regeln 5–7 den Beweis. Der zweite Teil ist der teurere: Transportregeln kann man nachschlagen, die Beweisführung nicht.

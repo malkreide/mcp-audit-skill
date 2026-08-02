@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The introduction no longer promises that a 421 is noticed.** It distinguished
+  this skill's silence from the one in `mcp-data-fidelity` — there a plausible
+  but wrong answer, here no answer at all. One layer up the two classes
+  converge: a caller that measures the 421 only by "no records came back" passes
+  it on as an empty set, and then it *is* a plausible, substantively wrong
+  answer after all. Measured case: a request with a foreign Host header returns
+  HTTP 421 with the body `Invalid Host header`, and nobody upstream saw it as
+  anything but zero hits.
+
+  This sharpens the skill's own thesis rather than importing a neighbour's rule.
+  The reason the transport path needs a test of its own was stated as "a stdio
+  suite never touches it"; the stronger reason is that the failure can be
+  swallowed above, so the transport test is the only place it reliably becomes
+  visible. Counterpart to rule 3 in
+  [`mcp-data-fidelity`](https://github.com/malkreide/mcp-data-fidelity-skill)
+  v1.2.0 and `FID-003` in `mcp-audit` v1.5.0, cited from this side. Two
+  sentences, no new rule — seven rules, unchanged.
+
 - **Rule 6 now names the mock as the same failure outside the transport.** The
   first of the three findings — a test that set the environment variable whose
   absence was the subject under test, and passed with the mutation applied —
