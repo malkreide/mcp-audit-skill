@@ -6,6 +6,33 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Ergänzt — `ARCH-014`: Retry-Politik gegenüber der Quelle
+
+Beim Formulieren von `OBS-007` fiel auf, dass der Katalog zwar regelt, was in der Meldung steht, wenn alle Versuche verbraucht sind, aber nirgends, **was, wie schnell und wie lange** überhaupt wiederholt wird. `Retry-After` kam in keinem der 94 Checks vor, `429` nur als Beispiel für einen Execution-Error in `OBS-001`.
+
+Der neue Check verlangt: keine Wiederholung bei 4xx ausser 429; gestreuten Backoff; `Retry-After` gelesen und der eigenen Kurve vorgezogen; ein Gesamtbudget in Sekunden, das **unter** dem Timeout des aufrufenden MCP-Clients liegt; Wiederholung auf genau einer Ebene (Transport-Retries stapeln sich multiplikativ); und eine gekennzeichnete Degradation statt stiller alter Zahlen.
+
+Der Portfolio-Durchlauf über zehn Server begründet die Adoptionsstufe: Acht haben einen Retry-Pfad, **keiner** liest `Retry-After`, **keiner** streut seinen Backoff. Drei Server sahen zunächst nach Jitter aus — zweimal war es das Wort «uniform» in einem Prosa-Kommentar, einmal ein eigener Rate-Limiter, der 429 *aussendet*, statt ihn zu lesen. `enforced` am Tag des Merges wäre ein rotes Portfolio, und das ist der Weg, auf dem Checks zurückgenommen statt übernommen werden.
+
+`high`, `adoption: advisory`, `applies_when: tools_make_external_requests == true`. Einordnung unter `ARCH` neben `ARCH-010` (ist eine Wiederholung *sicher*) und `ARCH-013` (derselbe ausgehende Pfad); dieser Check fragt, ob sie *angemessen* ist.
+
+Katalog: 94 → 95 Checks, `ARCH` 13 → 14.
+
+### Geändert — `OBS-007` auf `enforced` promoviert
+
+Derselbe Durchlauf hat die Annahme widerlegt, mit der `OBS-007` advisory startete. Acht der zehn Server haben einen Retry-Pfad; **zwei** davon verletzen den Check:
+
+| Server | Befund |
+|---|---|
+| `lindas-mcp` | `f"Last error: {last_error}."` — bei `ConnectError` leer, und darunter folgt «this often means the query was too broad», eine Ursachenbehauptung, die dann nachweislich nicht zutrifft |
+| `termdat-mcp` | `log.error("termdat.unreachable", attempts=…, error=str(last_error))` ohne `error_type`; die Retry-Zeile eine Ebene darüber verwendet `error=type(exc).__name__` korrekt |
+
+Die übrigen sechs bestehen, und zwar aus einem Grund, der den Check schärft: `raise last_exc` reicht die ursprüngliche Exception samt Typ und Traceback weiter und erfüllt ihn automatisch. Verletzt wird er nur beim **Einpacken** in eine neue Meldung. Der Check ist damit eng geschnitten und hatte im Sample keine falschen Positive — ein Check, der weder breit streut noch daneben trifft, gewinnt durch Nichtblockieren nichts mehr.
+
+Beide Fail-Muster sind jetzt in `OBS-007` aufgenommen. Der `log.error(..., error=str(exc))`-Fall fehlte, weil ein strukturiertes Event mit gefülltem `attempts`-Feld vollständig aussieht: ein leeres `error`-Feld fällt in JSON weniger auf als in einem Satz.
+
+Advisory-Brücke danach: `ARCH-014` und `OPS-005`.
+
 ### Ergänzt — Ruff, ein `lint`-Workflow und ein Guard auf die eigenen Pins
 
 Das Repo war ungelintet und unformatiert: 37 Python-Dateien, kein Ruff, kein Lint-Job. Neu gibt es `ruff.toml`, `.github/workflows/lint.yml` und Pre-Commit-Hooks, die diesen Job lokal vorziehen.
@@ -19,7 +46,6 @@ Die Formatierung liegt getrennt in einem reinen `style:`-Commit — 36 von 37 Da
 Der Guard folgt der Hausform von `check_repo_description.py`: `compare()` ist eine reine Funktion über zwei Strings, ohne Dateisystem testbar, und ein fehlender Pin ist ein Befund statt eines stillen Bestehens. Zehn Tests decken das ab, darunter der Fall, dass die `rev` eines *anderen* pre-commit-Repos nicht mit Ruffs verwechselt wird, und ein Test gegen die echten Repo-Dateien — sonst wäre der Guard grün, ohne auf das Format zu passen, das er prüfen soll.
 
 Die Testsuite bleibt unverändert bei 431 bestandenen Tests, dazu die 10 neuen.
-
 ### Ergänzt — `OBS-007`: maskiert nach aussen, aussagekräftig nach innen
 
 `OBS-002` verlangt, dass Fehler-Details das LLM nicht erreichen, und verweist sie ins Server-Log. Was dort ankommt, prüfte der Katalog nicht. Der neue Check schliesst die Gegenrichtung: Der Text, den der Server für sich behält, muss etwas sagen.

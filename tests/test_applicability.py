@@ -329,8 +329,8 @@ class TestRealCatalog:
         # CHANGELOG entry.
         # Note: total count of checks (79 → 85 mit DRIFT und IDENT-006,
         # 86 mit OPS-005, 87 mit SCALE-007, 93 mit IDENT-007, DEP-001 und
-        # DRIFT-006, 94 mit OBS-007)
-        assert len(results) == 94
+        # DRIFT-006, 94 mit OBS-007, 95 mit ARCH-014)
+        assert len(results) == 95
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
         # test fails loudly only on grammar drift.
@@ -347,7 +347,13 @@ class TestRealCatalog:
         # keine ist; damit prüfte sie die Katalog-Grösse statt der Grammatik,
         # also das Gegenteil ihres Zwecks (siehe Kommentar oben). Die absolute
         # Grösse ist ohnehin eine Zeile höher festgenagelt.
-        assert 25 <= len(applicable) <= 55, (
+        # 55 → 62: `OBS-007` und `ARCH-014` greifen beide bei
+        # `tools_make_external_requests`, was für srgssr zutrifft — 56 von 55,
+        # die Grenze war nach zwei gewöhnlichen Checks wieder erreicht. Diesmal
+        # mit spürbarer Luft, damit nicht jeder zweite neue Check hier
+        # vorbeikommen muss; die Untergrenze bleibt, sie ist die Seite, die
+        # echten Grammatik-Ausfall fangen würde.
+        assert 25 <= len(applicable) <= 62, (
             f"Applicable count drifted: got {len(applicable)} ({applicable})"
         )
 
