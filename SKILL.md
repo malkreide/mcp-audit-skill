@@ -75,6 +75,7 @@ Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig du
 | `applies_when` evaluieren | `python tools/eval_applicability.py catalog profile.yaml` |
 | Verification-Results aggregieren | `python tools/aggregate_results.py aggregate results.json --checks-dir checks/ --out summary.json` |
 | Findings-Set vs. Disk validieren (inkl. Leer-Prüfung) | `python tools/aggregate_results.py validate <audit_dir>` |
+| Unveränderte Findings aus früheren Läufen übernehmen | `python tools/carry_forward.py <audit_dir> --from <vorheriger_lauf>` |
 | Audit-Report generieren | `python tools/build_report.py <audit_dir>` |
 | Task-Agent-Output verifizieren | `python tools/verify_raw_outputs.py raw/ --expected-ids ID1,ID2` |
 | Task-Agent-Run loggen | `python tools/agent_run_log.py log --meta-path audit-meta.json ...` |
@@ -536,6 +537,12 @@ Die dritte Prüfung gibt es, weil ihr Fehlen einen echten False-Pass verursacht 
 
 **Ein leeres Finding-Dokument ist schlimmer als ein fehlendes.** Ein fehlendes fällt durchs Gate; ein leeres kam durch und sagte einem Leser nichts über eine Findung, die offen ist — und die `SECURITY.md` der auditierten Repos verweisen auf genau diese Verzeichnisse als Beleg für die offene Menge.
 
+**Der Übertrag aus dem Vorlauf gehört ebenfalls in ein Skript.** Bei einem Re-Audit bleiben die meisten Findings unverändert, und sie aus dem vorherigen Lauf zu kopieren ist richtig — aber genau dieser Schritt ist zweimal von Hand gemacht und zweimal falsch gemacht worden. Beim ersten Mal suchte er `findings/<ID>.md`, während der Quell-Lauf `<ID>-<slug>.md` benannt hatte; er fand nichts, schrieb einen leeren Platzhalter und füllte ihn nie. Beim zweiten Mal war der Quell-Lauf falsch gewählt, mit demselben Ergebnis.
+
+`tools/carry_forward.py` löst beide Namensformen auf, überspringt leere Quellen statt sie weiterzureichen, überschreibt handgeschriebene Findings des laufenden Audits **nicht**, ersetzt leere Stubs an Ort und Stelle (statt eine zweite Datei danebenzulegen) und exitet 1 mit den IDs, für die es keine Quelle gab. Was danach fehlt, schreibt der Auditor von Hand — sichtbar, statt als Null-Byte-Datei.
+
+**Die allgemeine Regel dahinter:** Was du zweimal von Hand gemacht hast, wird ein Skript. §0.3 verbietet Inline-Heredocs wegen der Quoting-Fallen; der tiefere Grund ist dieser hier — alle vier realen Fehler dieser Methodik lagen nicht in der Prüflogik, sondern im Transport von Zustand zwischen Läufen.
+
 `--min-substance` zählt Nicht-Whitespace-Zeichen und steht auf 1, fängt per Default also nur den eindeutigen Fall. Höher setzen, wenn ein Lauf auch Stubs ablehnen soll — bewusst nicht höher vorbelegt, weil ein knappes Finding legitim ist und ein Guard, der Fehlalarm schlägt, umgangen wird.
 
 ```bash
@@ -551,7 +558,11 @@ python tools/aggregate_results.py aggregate \
 python tools/aggregate_results.py expected-findings \
     audits/<run>/verification-results.json --policy fail-or-partial
 
-# 4. Nach dem Schreiben: Validation-Gate (hard fail bei Mismatch ODER leeren Dateien)
+# 4. Unveränderte Findings aus dem Vorlauf übernehmen — NIE von Hand kopieren
+python tools/carry_forward.py audits/<run>/ --from audits/<vorlauf>/
+#    Übrig bleibt, was der Helfer nicht finden konnte: genau das von Hand schreiben.
+
+# 5. Nach dem Schreiben: Validation-Gate (hard fail bei Mismatch ODER leeren Dateien)
 python tools/aggregate_results.py validate audits/<run>/
 
 # Strenger, wenn auch Stubs unerwünscht sind:
