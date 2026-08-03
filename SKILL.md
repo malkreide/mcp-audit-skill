@@ -98,7 +98,7 @@ Niemals `date +%Y-%m-%d` für den Output-Verzeichnisnamen — das hat im ersten 
 # initiale audit-meta.json mit Skill-Version, Catalog-Hash und Ziel-SHA.
 python "$SKILL_BASE/tools/audit_init.py" init "$SERVER_NAME" \
     --base-dir "$TARGET/audits/" \
-    --skill-version "1.6.0" \
+    --skill-version "1.7.0" \
     --catalog-dir "$SKILL_BASE/checks/" \
     --target-repo "$TARGET"
 # Output (JSON): { "run_id": "2026-05-02T091245-Z-srgssr-mcp", "output_dir": "...", "meta_path": "..." }

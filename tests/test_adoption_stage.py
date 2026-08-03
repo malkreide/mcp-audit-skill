@@ -140,6 +140,73 @@ class TestRealCatalogUnchanged:
 
 
 # ---------------------------------------------------------------------------
+# The advisory set as the READMEs state it
+# ---------------------------------------------------------------------------
+
+
+class TestReadmesNameTheAdvisorySet:
+    """Both READMEs spell the advisory set out by name. Nothing enforced it.
+
+    `advisory_ids` was pinned in the test above and the catalogue counts are
+    guarded in `test_readme_counts.py`, but the sentence naming *which* checks
+    are advisory sat between the two and belonged to neither. It drifted the
+    first time it could: `OPS-007` joined the set, both count lines were pulled
+    to 97, and both READMEs went on saying «exactly three … `ARCH-014`,
+    `OPS-005` and `OPS-006`».
+
+    That is the one adoption fact a reader takes away without opening a check
+    file, and it is the one that decides whether a red finding blocks a
+    release. A value nothing enforces drifts — so this enforces it, by name and
+    by count, in every language fassung on disk.
+    """
+
+    READMES: ClassVar[list[Path]] = sorted(REPO_ROOT.glob("README*.md"))
+
+    def test_readmes_exist(self):
+        # Without this, the parametrisation below could run over an empty list
+        # — and a test with no cases is green.
+        assert self.READMES, "no README*.md found"
+
+    @pytest.mark.parametrize("readme", READMES, ids=lambda p: p.name)
+    def test_every_advisory_check_is_named(self, readme: Path):
+        expected = advisory_ids(parse_catalog(CHECKS_DIR))
+        # The paragraph, not the whole file: `ARCH-014` is mentioned elsewhere
+        # for unrelated reasons, and matching the file would pass on that.
+        text = readme.read_text(encoding="utf-8")
+        marker = "`advisory`:"
+        assert marker in text, f"{readme.name}: advisory sentence not found"
+        start = text.index(marker)
+        paragraph = text[start : text.index("\n", start)]
+        missing = [cid for cid in expected if f"`{cid}`" not in paragraph]
+        assert not missing, (
+            f"{readme.name} does not name {missing} as advisory. "
+            f"The catalogue says: {expected}"
+        )
+
+    @pytest.mark.parametrize("readme", READMES, ids=lambda p: p.name)
+    def test_the_stated_count_matches(self, readme: Path):
+        expected = len(advisory_ids(parse_catalog(CHECKS_DIR)))
+        words = {
+            1: ("one", "ein"),
+            2: ("two", "zwei"),
+            3: ("three", "drei"),
+            4: ("four", "vier"),
+            5: ("five", "fünf"),
+        }
+        assert expected in words, (
+            f"{expected} advisory checks — extend the number words in this test"
+        )
+        text = readme.read_text(encoding="utf-8")
+        start = text.index("`advisory`:")
+        # Look back far enough to catch «exactly four are» / «genau vier sind».
+        window = text[max(0, start - 200) : start]
+        assert any(w in window for w in words[expected]), (
+            f"{readme.name}: the advisory sentence does not say "
+            f"{words[expected]} — the catalogue has {expected}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Catalogue parsing
 # ---------------------------------------------------------------------------
 

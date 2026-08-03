@@ -234,7 +234,7 @@ Severity sagt, **wie schlimm** ein Verstoss ist. Die Adoptionsstufe sagt, **ob d
 | `enforced` | Der Katalog hält das Portfolio daran fest | Ein `fail` auf `critical`/`high` blockiert Production-Readiness |
 | `advisory` | Der Check meldet, urteilt aber noch nicht | Finding wird erzeugt, gezählt und mit voller Severity geführt — blockiert aber nicht |
 
-Das Feld ist optional; fehlt es, gilt `enforced`. Von 97 Checks sind genau drei `advisory`: `ARCH-014`, `OPS-005` und `OPS-006`. `DEP-001`, `DRIFT-006` und `OBS-007` gingen denselben Weg und sind inzwischen auf `enforced` promoviert — die Brücke soll eine Handvoll neuer Checks tragen, nicht volllaufen.
+Das Feld ist optional; fehlt es, gilt `enforced`. Von 97 Checks sind genau vier `advisory`: `ARCH-014`, `OPS-005`, `OPS-006` und `OPS-007`. `DEP-001`, `DRIFT-006` und `OBS-007` gingen denselben Weg und sind inzwischen auf `enforced` promoviert — die Brücke soll eine Handvoll neuer Checks tragen, nicht volllaufen.
 
 **Advisory versteckt nichts.** Nur das Veto entfällt. Ein Advisory-Finding auf blockierender Severity wird auch bei grünem Verdikt namentlich genannt, damit eine spätere Promotion eine Entscheidung ist und keine Überraschung.
 
@@ -324,7 +324,7 @@ ihr Nachweis trägt.
 
 ## Status
 
-**Version:** v1.6.0 — Zwei Befunde aus dem Durchlauf, und eine Kette die man findet. CI auf Ubuntu + Windows × py3.11 + py3.13. Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
+**Version:** v1.7.0 — Woran ein Lauf hängt, und was ein Report nicht behaupten darf. CI auf Ubuntu + Windows × py3.11 + py3.13. Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
 
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`) und Templates (Finding, Audit-Report)
