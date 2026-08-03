@@ -296,7 +296,7 @@ Daneben, nicht Teil der Kette: `mcp-builder` — generische Bauanleitung von Ant
 
 ### Welche Regel welcher Check ist
 
-Der Katalog von [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) deckt drei der sieben Regeln ab. Die Lücken sind hier benannt, statt sie durch eine ungefähre Zuordnung zu verdecken:
+Stand des Katalogs: [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) v1.7.0, 97 Checks in zwölf Kategorien. Er deckt drei der sieben Regeln ab, fängt bei einer vierten die Fehlerklasse und liegt bei zwei weiteren nur daneben. Die Lücken sind hier benannt, statt sie durch eine ungefähre Zuordnung zu verdecken:
 
 | Regel | Check |
 |---|---|
@@ -304,6 +304,10 @@ Der Katalog von [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) deck
 | 2 — `host` als Saat der Allow-List | **kein Check.** [`SEC-016`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-016.md) liegt daneben, adressiert aber den umgekehrten Fall: `0.0.0.0` als *unbeabsichtigten* Bind (NeighborJack). Regel 2 setzt ein gewolltes `0.0.0.0`-Deployment voraus und fragt, ob der Bind die App erreicht |
 | 3 — jeder Pfad identisch verdrahtet | [`ARCH-013`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-013.md) — «Alle Netz-Transportpfade identisch verdrahtet» |
 | 4 — eingehende Host-Allow-List | [`SEC-024`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-024.md); [`SEC-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-005.md) ist die ausgehende Gegenrichtung |
-| 5–7 — die Beweisführung | **kein Check.** Der Katalog prüft, ob eine Kontrolle vorhanden ist — nicht, ob ihr Nachweis trägt |
+| 5 — der Negativtest muss aus dem eigenen Grund rot werden | **teilweise.** [`DRIFT-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/DRIFT-003.md) — «Kein Test-Assert wird vom Degradationspfad erfüllt» — ist dieselbe Klasse: ein Test, der aus dem falschen Grund besteht. Die dort geführten Ausprägungen sind andere (Degradationsantwort, zu weite Koordinaten-Box, `match=` als Regex statt als Literal); der Transportfall — `evil.example.com` wird auch von einer Loopback-Fallback-Policy abgewiesen — steht nicht darin |
+| 6 — der Mutationstest ist das Abnahmekriterium | **kein Check.** Der Katalog kennt keinen Check, der einen Mutationstest verlangt; er prüft, ob eine Kontrolle vorhanden ist, nicht ob ihr Nachweis trägt |
+| 7 — die Testharness als eigene Fehlerquelle | **kein Check**, aber ein benachbarter: [`OPS-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-005.md) — «Pipeline unterscheidet ‹bestanden› von ‹nicht gelaufen›» — teilt die Frage, wie viel ein grüner Lauf belegt, und führt unter anderem den Skip wegen fehlender Abhängigkeit. Die Harness-Fälle dieser Regel sind aber andere: `ASGITransport` ohne Lifespan liefert überall 500, ein instanzweiter `monkeypatch` überschattet `mcp.run` dauerhaft, und ein Branch-Test ohne Assertion auf seinen Branch hängt statt zu scheitern — keiner davon steht in `OPS-005` |
 
-Wer nach den Regeln 1, 3 und 4 baut, besteht `SDK-006`, `ARCH-013` und `SEC-024`. Wer sie beim Audit reisst, findet hier die Behebung. Für die Regeln 2 und 5–7 gilt das nicht: Sie beschreiben Fehler, die dieser Katalog derzeit nicht sieht.
+Wer nach den Regeln 1, 3 und 4 baut, besteht `SDK-006`, `ARCH-013` und `SEC-024`. Wer sie beim Audit reisst, findet hier die Behebung. Für die Regeln 2, 6 und 7 gilt das nicht: Sie beschreiben Fehler, die dieser Katalog derzeit nicht sieht. Bei Regel 5 fängt `DRIFT-003` die Klasse, aber nicht den Transportfall — ein bestandenes Audit ist auch dort kein Beleg, dass der Nachweis trägt.
+
+Die Zuordnung ist durch Lesen der Check-Dateien belegt, nicht aus den Titeln geschlossen. Sie war zuvor zu grob: Die Regeln 5–7 standen in einer Zeile als «kein Check», obwohl `DRIFT-003` (Katalog v1.2.0) und `OPS-005` (v1.3.0) schon existierten, als die Tabelle geschrieben wurde. Eine zusammengefasste Zeile verdeckt genau das, was diese Tabelle sichtbar machen soll — die drei Regeln stehen deshalb jetzt einzeln, auch wenn zwei davon leer bleiben.

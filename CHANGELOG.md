@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Die Regel-zu-Check-Zuordnung führt die Regeln 5, 6 und 7 einzeln,
+  nachgeführt gegen `mcp-audit` v1.7.0.** Sie standen in einer Zeile als
+  «5–7 — die Beweisführung: kein Check». Für Regel 6 stimmt das weiterhin, für
+  Regel 5 nicht: [`DRIFT-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/DRIFT-003.md)
+  — «Kein Test-Assert wird vom Degradationspfad erfüllt» — ist dieselbe Klasse,
+  ein Test, der aus dem falschen Grund besteht. Seine Ausprägungen sind andere
+  (Degradationsantwort, zu weite Koordinaten-Box, `match=` als Regex statt als
+  Literal), und der Transportfall steht nicht darin — der Negativtest, den auch
+  eine Loopback-Fallback-Policy grün macht. Bei Regel 7 liegt `OPS-005`
+  benachbart, ohne die Harness-Fälle zu treffen.
+
+  Der Fehler war keine Veralterung: `DRIFT-003` (Katalog v1.2.0) und `OPS-005`
+  (v1.3.0) existierten bereits, als die Tabelle geschrieben wurde. Eine
+  zusammengefasste Zeile verdeckt genau das, was die Tabelle sichtbar machen
+  soll — deshalb stehen die drei Regeln jetzt einzeln da, auch wenn zwei davon
+  leer bleiben.
+
+  Dazu der Katalogstand im Text (v1.7.0, 97 Checks in zwölf Kategorien), damit
+  beim nächsten Wachstum erkennbar ist, wogegen zuletzt geprüft wurde.
+
 ## [1.3.0] - 2026-08-02
 
 Seven rules, unchanged — nothing here touches what the skill teaches. The
