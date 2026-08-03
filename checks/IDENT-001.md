@@ -63,7 +63,7 @@ norm("Mozilla")            == norm("swisstopo-mcp")        # False — bleibt ei
 
 **Der Gegenfehler wäre, weiter zu normalisieren.** Ziffern oder Wortbestandteile wegzuwerfen, bis irgendetwas passt, macht die Prüfung wertlos: Ein fremder User-Agent muss fremd bleiben. Trennzeichen und Gross-/Kleinschreibung sind genau die beiden Freiheiten, die der Autor beim Schreiben desselben Namens hat — mehr nicht.
 
-Und wenn der Token nach der Normalisierung immer noch nicht passt, ist das **kein** Pass und auch nicht automatisch ein fremder UA: Ein Server darf sich `swisstopo/…` nennen, ein Kürzel wählen oder den Namen eines Vorgängerprojekts tragen. Dann ist die Zuordnung ungeklärt — `unverified`, von Hand nachzusehen. Siehe den `unverified`-Absatz in Modus 3.
+Und wenn der Token nach der Normalisierung immer noch nicht passt, ist das **kein** Pass und auch nicht automatisch ein fremder UA: Ein Server darf sich `swisstopo/…` nennen, ein Kürzel wählen oder den Namen eines Vorgängerprojekts tragen. Dann ist die Zuordnung ungeklärt — `not_verified`, von Hand nachzusehen. Siehe den `not_verified`-Absatz in Modus 3.
 
 ## Verification
 
@@ -157,13 +157,15 @@ python scripts/published_probe.py --constraint 'mcp<2' <dist>    # bei kaputter 
 
 Die Probe fährt deshalb **alle drei** und schreibt zu jedem Befund, welche ihn erzeugt hat. Die beiden Modi oben bleiben nützlich — sie sind billig und für einen einzelnen Server oft ausreichend —, aber keiner von ihnen trägt allein ein Portfolio.
 
-**Der Teil, auf den es am meisten ankommt:** Eine Probe, die keinen User-Agent findet, darf nicht melden, dass es keinen gibt. Das sind zwei verschiedene Aussagen — «dieser Server sendet keinen eigenen UA» ist ein Ergebnis, «ich habe die Form nicht erkannt» ist ein Versagen der Probe. Die Probe meldet das als `unverified` und **beendet sich mit einem Fehlercode**; sie tut es, weil ihre erste Fassung 24 Pakete für unauffällig erklärte, von denen 16 drifteten. Schweigen ist hier kein Freispruch.
+**Der Teil, auf den es am meisten ankommt:** Eine Probe, die keinen User-Agent findet, darf nicht melden, dass es keinen gibt. Das sind zwei verschiedene Aussagen — «dieser Server sendet keinen eigenen UA» ist ein Ergebnis, «ich habe die Form nicht erkannt» ist ein Versagen der Probe. Die Probe meldet das als `not_verified` und **beendet sich mit einem Fehlercode**; sie tut es, weil ihre erste Fassung 24 Pakete für unauffällig erklärte, von denen 16 drifteten. Schweigen ist hier kein Freispruch.
 
 | Exit | Bedeutung | Status für `IDENT-001` |
 |---|---|---|
 | `0` | Jeder aufgelöste UA passt zur installierten Version — oder das Paket setzt gar keinen | pass |
-| `1` | Drift, ein **fremder** User-Agent, oder `unverified` | `fail` bei Drift/fremd; `todo` bei `unverified` |
-| `2` | Die Distribution liess sich nicht installieren | `todo` — und ein Befund gegen `IDENT-006` |
+| `1` | Drift, ein **fremder** User-Agent, oder `not_verified` | `fail` bei Drift/fremd; `not_verified` bei `not_verified` |
+| `2` | Die Distribution liess sich nicht installieren | `not_verified` — und ein Befund gegen `IDENT-006` |
+
+> Bis `not_verified` ein Status des Schemas wurde, stand in beiden Zeilen `todo`. Das war die falsche Ablage: `todo` heisst *noch nicht angeschaut*, hier wurde aber angeschaut und kein Ergebnis erzielt. Siehe `OPS-004`.
 
 > Die Exit-Codes sind **nicht** die von `shipped_probe.py` (dort ist `2` ein Befund und `127` ein Harness-Fehler). Wer beide in einem Skript aufruft, muss sie getrennt auswerten.
 
@@ -180,9 +182,9 @@ Die Probe fährt deshalb **alle drei** und schreibt zu jedem Befund, welche ihn 
 - [ ] Beide Schreibweisen geprüft: Header `User-Agent` und Konstante `USER_AGENT`
 - [ ] Der User-Agent wurde am **aus dem Index installierten** Paket aufgelöst, nicht nur am Checkout — ein sauberes Repository ist kein Nachweis
 - [ ] Die Auflösung lief über **mehr als eine** Strategie (Modul-Namespace, Quelltext-Literale, f-String-Muster); keine davon trägt allein
-- [ ] Ein nicht aufgelöster User-Agent wurde als `unverified` geführt, **nicht als «sendet keinen»** — das sind zwei Aussagen, und nur eine davon ist ein Pass
+- [ ] Ein nicht aufgelöster User-Agent wurde als `not_verified` geführt, **nicht als «sendet keinen»** — das sind zwei Aussagen, und nur eine davon ist ein Pass
 - [ ] Der Produkt-Token wurde **normalisiert** gegen den Dist-Namen gehalten (`casefold`, Trennzeichen entfernt) — ein `SwisstopoMCP` gilt als derselbe Server wie `swisstopo-mcp`
-- [ ] Ein Token, der auch normalisiert nicht passt, ist `unverified` und von Hand zugeordnet — weder Pass noch automatisch «fremd»
+- [ ] Ein Token, der auch normalisiert nicht passt, ist `not_verified` und von Hand zugeordnet — weder Pass noch automatisch «fremd»
 - [ ] Ein **fremder** User-Agent (Browser-Kennung o. Ä.) ist als eigener Befund geführt, nicht als Versionsdrift
 - [ ] Bei mehreren HTTP-Clients im Server: **alle** verwenden dieselbe Konstante
 

@@ -21,6 +21,9 @@ methodology whose *checks* were fine. Hence this script. Its guarantees:
   same finding; the source may use either and so may the target.
 - **An empty source is never a source.** A zero-byte file in an earlier run —
   the residue of exactly this bug — is skipped, not propagated.
+- **An empty *set* of sources is an error, not a result.** If no run given
+  yields a single usable document, the wrong run was almost certainly named;
+  "0 carried" is not reported as success.
 - **Nothing empty is ever written.** The failure mode being fixed cannot be
   reintroduced by the tool that fixes it.
 - **A hand-written target is never overwritten.** Findings edited for this run
@@ -64,6 +67,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from tools.compare_guard import EmptyComparisonError, require_non_empty  # noqa: E402
 from tools.path_utils import force_utf8_stdio  # noqa: E402
 
 DEFAULT_MIN_SUBSTANCE = 1
@@ -131,12 +135,21 @@ def carry_forward(
     min_substance: int = DEFAULT_MIN_SUBSTANCE,
     dry_run: bool = False,
     summary_path: Path | None = None,
+    allow_empty_sources: bool = False,
 ) -> dict[str, Any]:
     """Fill the target run's findings/ from earlier runs.
 
     Sources are tried in the order given; the first one holding a substantial
     document for an id wins. Returns a structured report and writes nothing
     when `dry_run` is set.
+
+    Raises `EmptyComparisonError` when no source yields a single usable
+    document. That is the second of the two failures this script exists to
+    prevent: the source run was picked wrong, so there was nothing to carry,
+    and the step reported a clean "0 carried" while every finding stayed
+    undocumented. A directory that is a valid path but the wrong run looks
+    exactly like a run with nothing left to carry — so it has to be said out
+    loud rather than counted as zero.
     """
     expected = _expected_ids(target_run, summary_path)
     if only:
@@ -169,6 +182,17 @@ def carry_forward(
     indexed_sources = [
         index_findings(_findings_dir(src), min_substance) for src in sources
     ]
+    require_non_empty(
+        "the given source runs (" + ", ".join(str(s) for s in sources) + ")",
+        [cid for index in indexed_sources for cid in index],
+        hint=(
+            "No substantial findings/*.md in any of them. Usually the wrong run "
+            "was named, or the source run holds only the empty stubs this "
+            "script refuses to propagate. Pass --allow-empty-sources if the "
+            "emptiness is the answer you expected."
+        ),
+        allow_empty=allow_empty_sources,
+    )
 
     carried: list[dict[str, str]] = []
     kept: list[str] = []
@@ -265,6 +289,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--dry-run", action="store_true", help="Report without writing")
+    parser.add_argument(
+        "--allow-empty-sources",
+        action="store_true",
+        help=(
+            "Proceed when no source run holds a usable finding. Off by default: "
+            "an empty source is what a wrongly-named run looks like"
+        ),
+    )
     parser.add_argument("--summary", default=None, help="Override summary.json path")
     parser.add_argument("--format", choices=["text", "json"], default="text")
     return parser
@@ -303,11 +335,15 @@ def main(argv: list[str] | None = None) -> int:
             min_substance=args.min_substance,
             dry_run=args.dry_run,
             summary_path=summary_path,
+            allow_empty_sources=args.allow_empty_sources,
         )
     except (KeyError, json.JSONDecodeError) as e:
         print(
             f"Error: cannot read expected_ids from {summary_path}: {e}", file=sys.stderr
         )
+        return 2
+    except EmptyComparisonError as e:
+        print(f"Error: {e}", file=sys.stderr)
         return 2
 
     if args.format == "json":

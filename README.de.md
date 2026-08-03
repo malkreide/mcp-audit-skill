@@ -256,6 +256,31 @@ python tools/aggregate_results.py aggregate verification-results.json \
 
 Details siehe [`SKILL.md`](./SKILL.md).
 
+## Woran ein Lauf verankert ist
+
+Ein Ergebnis ist nur dann reproduzierbar, wenn beides festgehalten ist: der Massstab und das Gemessene.
+
+| Anker | Wo | Was ohne ihn kaputtgeht |
+|---|---|---|
+| `catalog_hash` | `audit-meta.json` | Niemand kann sagen, welcher Katalog das Urteil erzeugt hat |
+| `target_sha` | `audit-meta.json`, via `audit_init.py init --target-repo` | Ein Commit mitten im Lauf teilt den Report: Die früheren Checks beschreiben einen Baum, die späteren einen anderen, und die Mischung wird als ein Urteil präsentiert |
+
+Beide werden vor dem Report erneut geprüft. `audit_init.py verify-target <run>` und das Pflicht-Gate `aggregate_results.py validate <run>` schlagen bei bewegtem Ziel fehl; `aggregate ... --previous <vorlauf>` hält fest, ob beide Läufe überhaupt denselben Katalog-Stand hatten.
+
+**Wo sie abweichen, wird die Trendlinie verweigert statt korrigiert.** Zwei Audits desselben Servers sind nur dann ein Trend, wenn sie mit demselben Massstab gemessen wurden. Sonst ist «30 pass / 4 fail / 2 partial → x/y/z» nicht eine Differenz, sondern zwei verschiedene Messungen mit einem Pfeil dazwischen — im Lauf, aus dem diese Regel stammt, hätte der Pfeil einen Katalog von 36 gegen einen von 54 gespannt. Es gibt keine richtige Art, eine über einen Katalog gezählte Zahl von einer über einen anderen gezählten abzuziehen, und eine Fussnote überlebt das erste Zitieren nicht.
+
+## Status-Werte
+
+`pass`, `fail`, `partial`, `not_verified`, `todo`, `n/a` — siehe [`docs/verification-results-schema.md`](./docs/verification-results-schema.md).
+
+`not_verified` ist der eine, der hier eine Erwähnung verdient. `OPS-004` verlangt ihn, seit der Check geschrieben wurde — ein `pass` beruht auf einem positiven Beleg, nicht auf der Abwesenheit eines Negativbelegs —, während das Schema den Wert nicht kannte: Wer die Regel befolgen wollte, bekam einen Schema-Fehler und trug am Ende `pass` ein, genau das Ergebnis, das der Check verbietet. Er hat jetzt einen eigenen Zähler und wird nirgends zu den bestandenen Checks addiert. Er blockiert kein Release, steht aber neben dem Urteil: Ein grünes Ergebnis über eine grosse unverifizierte Menge ist eine andere Behauptung als ein grünes Ergebnis über keine.
+
+## Vergleiche verweigern leere Eingaben
+
+Jeder Vergleichs-Helfer läuft über [`tools/compare_guard.py`](./tools/compare_guard.py) und wirft, statt zwei leere Mengen zu vergleichen. Ein Applicability-Diff meldete einmal «0 == 0, identisch» — beide Seiten hatten wegen eines falschen Pfads nichts geparst. Die Arithmetik stimmte, alles übrige nicht.
+
+Das ist schlimmer als kein Vergleich. Ohne einen bleibt die Frage offen und wird irgendwann beantwortet; mit einem schliesst eine grüne Zeile sie mit Belegen, die nie erhoben wurden. Wo eine leere Seite tatsächlich die erwartete Antwort ist, sagt `--allow-empty` das ausdrücklich.
+
 ## Positionierung gegenüber verwandten Tools
 
 | Tool | Kategorie | Fokus |

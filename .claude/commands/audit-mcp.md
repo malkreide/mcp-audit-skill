@@ -39,11 +39,14 @@ Arbeite die folgenden sechs Schritte sequenziell ab. Nach jedem Schritt fasst du
    python "$SKILL_BASE/tools/audit_init.py" init "$SERVER_NAME" \
        --base-dir "$TARGET/audits/" \
        --skill-version "1.6.0" \
-       --catalog-dir "$SKILL_BASE/checks/"
+       --catalog-dir "$SKILL_BASE/checks/" \
+       --target-repo "$TARGET"
    # → JSON mit run_id, output_dir, meta_path
    ```
 
    Setze `OUTPUT_DIR=<output_dir aus dem JSON>`.
+
+   `--target-repo` hält den HEAD-SHA des auditierten Repos fest. `catalog_hash` sagt, **womit** gemessen wurde, `target_sha` **woran** — ohne die zweite Zahl teilt ein Commit mitten im Lauf den Report unbemerkt in zwei Bäume. Am Ende des Audits wird erneut geprüft (Schritt 6).
 
 **Output Schritt 0:** Werte von `SKILL_BASE`, `SKILL_MODE`, `TARGET`, `SERVER_NAME`, `OUTPUT_DIR`. Dann weiter zu Schritt 1.
 
@@ -215,7 +218,9 @@ python "$SKILL_BASE/tools/agent_run_log.py" log \
 
 **Retry-Policy:** Bei `incomplete_ids` oder `empty`-Status (0 Tokens) wiederhole nur die fehlenden IDs, max. 2 Retries (`--retry-of <run_index>` mitgeben). Nach 2 Retries: harter Abbruch mit Liste der unfertigen IDs.
 
-**Output Schritt 4:** Tabelle aller anwendbaren Checks mit Status (Pass/Fail/Partial/TODO). Plus Anzahl-Aufschlüsselung. Plus `agent_run_log.py summary` zur Bestätigung dass `overall_status == "ok"`.
+**Output Schritt 4:** Tabelle aller anwendbaren Checks mit Status (Pass/Fail/Partial/Not_verified/TODO). Plus Anzahl-Aufschlüsselung. Plus `agent_run_log.py summary` zur Bestätigung dass `overall_status == "ok"`.
+
+**`not_verified` statt `pass`, wenn sich nichts feststellen liess.** Ein `pass` braucht einen positiven Beleg — ein leerer `grep` ist nur dann einer, wenn das Suchmuster nachweislich greifen *würde*. Liess sich das nicht zeigen, war das Werkzeug nicht erreichbar oder ist das Verhalten nur produktiv reproduzierbar, lautet der Status `not_verified` (`OPS-004`). Abgrenzung zu `todo`: `todo` heisst *noch nicht angeschaut*, `not_verified` heisst *angeschaut und ohne Ergebnis geblieben*. `not_verified` blockiert kein Release, wird aber neben dem Urteil genannt und nie zu den bestandenen Checks addiert.
 
 ---
 
@@ -246,13 +251,28 @@ Pro Finding ein File: `$OUTPUT_DIR/findings/<check-id>-<short-slug>.md` mit:
 **Bevorzugt: Helper-Script aufrufen, niemals Inline-Python-Heredocs.** Letztere sind in der Vergangenheit auf Windows Git Bash an Quoting-Bugs gecrasht. Der Generator liest `summary.json` (Single-Source-of-Truth aus Step 5) und alle Files in `findings/` und produziert deterministisch denselben Report.
 
 ```bash
-# 1. Vor Step 6: Validation-Gate sicherstellen (siehe Step 5)
+# 1. Vor Step 6: Validation-Gate sicherstellen (siehe Step 5).
+#    Prüft zugleich, ob das auditierte Repo noch auf der Revision steht,
+#    die in Schritt 0 aufgezeichnet wurde — ein Ziel, das sich während des
+#    Laufs bewegt hat, ist ein hard fail.
 python "$SKILL_BASE/tools/aggregate_results.py" validate "$OUTPUT_DIR"
 
 # 2. Report aus summary.json + findings/ rendern
 python "$SKILL_BASE/tools/build_report.py" "$OUTPUT_DIR" \
     --profile path/to/profile.yaml
 ```
+
+**Bei einem Re-Audit** wird beim Aggregieren zusätzlich der Vorlauf angegeben, damit der Report weiss, ob er überhaupt vergleichen darf:
+
+```bash
+python "$SKILL_BASE/tools/aggregate_results.py" aggregate \
+    "$OUTPUT_DIR/verification-results.json" \
+    --checks-dir "$SKILL_BASE/checks/" \
+    --previous "$TARGET/audits/<vorlauf>/" \
+    --out "$OUTPUT_DIR/summary.json"
+```
+
+Hat sich der Katalog-Stand zwischen den Läufen geändert, druckt `build_report.py` **keine** gegenübergestellten Status-Zahlen, sondern beide Katalog-Hashes, beide Check-Anzahlen und den Grund. Zwei Läufe über verschiedene Kataloge sind keine Trendlinie — «30/4/2 → x/y/z» über 36 gegen 54 Checks liest sich als Bewegung im Server, ist aber eine im Massstab. Diese Verweigerung NICHT von Hand überschreiben.
 
 Der Output landet als `$OUTPUT_DIR/audit-report.md`. Sektionen werden aus `summary.json` gelesen — wenn dort etwas fehlt, ist `tools/aggregate_results.py` falsch aufgerufen worden, NICHT manuell den Report patchen.
 

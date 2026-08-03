@@ -36,7 +36,7 @@ import re
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -72,6 +72,11 @@ class AuditSummary:
     catalog_hash: str
     started_at: str
     findings_count: int
+    # Defaulted so a summary.json written before `not_verified` existed still
+    # loads — an old run genuinely had no unverified set, and refusing to read
+    # it would make the field's introduction a breaking change for archived
+    # audits rather than an addition.
+    not_verified_findings: list[str] = field(default_factory=list)
 
     @classmethod
     def from_dir(cls, audit_dir: Path) -> AuditSummary:
@@ -94,6 +99,7 @@ class AuditSummary:
         return cls(
             production_ready=bool(summary.get("production_ready", False)),
             blocking_findings=list(summary.get("blocking_findings", [])),
+            not_verified_findings=list(summary.get("not_verified_findings", [])),
             by_status=dict(summary.get("totals", {}).get("by_status", {})),
             by_severity=dict(
                 summary.get("totals", {}).get("by_severity_among_findings", {})
@@ -220,10 +226,17 @@ def render_changelog_entry(
     fail_n = by_status.get("fail", 0)
     partial_n = by_status.get("partial", 0)
     todo_n = by_status.get("todo", 0)
+    unverified_n = by_status.get("not_verified", 0)
     lines.append(
         f"- **Check results:** {pass_n} pass · {fail_n} fail · "
-        f"{partial_n} partial · {todo_n} todo"
+        f"{partial_n} partial · {unverified_n} not verified · {todo_n} todo"
     )
+    if unverified_n:
+        # A release note that lists only passes and failures implies the two
+        # partition the catalogue. They do not, and this is the line that says
+        # so before the tag is cut.
+        joined = ", ".join(summary.not_verified_findings)
+        lines.append(f"- **Not verified (neither pass nor fail):** {joined}")
     if summary.blocking_findings:
         joined = ", ".join(summary.blocking_findings)
         lines.append(f"- **Open blocking findings:** {joined}")

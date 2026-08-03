@@ -256,6 +256,31 @@ python tools/aggregate_results.py aggregate verification-results.json \
 
 For details see [`SKILL.md`](./SKILL.md).
 
+## What a run is pinned to
+
+A result is reproducible only if both the ruler and the thing measured are recorded.
+
+| Anchor | Where | What breaks without it |
+|---|---|---|
+| `catalog_hash` | `audit-meta.json` | Nobody can tell which catalogue produced the verdict |
+| `target_sha` | `audit-meta.json`, via `audit_init.py init --target-repo` | A commit landing mid-run splits the report: earlier checks describe one tree, later ones another, and the mixture is presented as one verdict |
+
+Both are re-checked before the report is written. `audit_init.py verify-target <run>` and the mandatory `aggregate_results.py validate <run>` fail on a target that moved; `aggregate ... --previous <previous-run>` records whether the two runs even share a catalogue.
+
+**Where they differ, the trend line is refused rather than adjusted.** Two audits of the same server are a trend only if measured with the same ruler. Otherwise «30 pass / 4 fail / 2 partial → x/y/z» is two different measurements with an arrow drawn between them — in the run this rule comes from, that arrow would have spanned a catalogue of 36 against one of 54. There is no correct way to subtract a count taken over one catalogue from a count taken over another, and a footnote does not survive being quoted.
+
+## Statuses
+
+`pass`, `fail`, `partial`, `not_verified`, `todo`, `n/a` — see [`docs/verification-results-schema.md`](./docs/verification-results-schema.md).
+
+`not_verified` is the one worth naming here. `OPS-004` has required it since it was written — a `pass` rests on positive evidence, not on the absence of negative evidence — while the schema did not know the value, so an auditor who followed the rule got a validation error and wrote `pass` instead: the exact outcome the check forbids. It now has its own counter and is never summed into the passes. It does not block a release; it is listed beside the verdict, because a green result over a large unverified set is a narrower claim than the same result over none.
+
+## Comparisons refuse empty inputs
+
+Every comparison helper routes through [`tools/compare_guard.py`](./tools/compare_guard.py) and raises rather than compare two empty sets. An applicability diff once reported `0 == 0, identical` — both sides had parsed to nothing because a path was wrong. It was right about the arithmetic and wrong about everything else.
+
+That is worse than having no comparison. Without one the question stays open and gets answered eventually; with one, a green line closes it using evidence never gathered. Where an empty side is genuinely the expected answer, `--allow-empty` says so explicitly.
+
 ## Positioning against related tools
 
 | Tool | Category | Focus |

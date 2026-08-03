@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from tools.carry_forward import (
+    EmptyComparisonError,
     carry_forward,
     check_id_from_path,
     index_findings,
@@ -250,6 +251,60 @@ class TestSourcesAndSelection:
 
 
 # --- CLI -------------------------------------------------------------------
+
+
+class TestWrongSourceRun:
+    """The second of the two real failures: a valid path, but the wrong run.
+
+    A source directory that exists and holds nothing is indistinguishable from
+    a run with nothing left to carry. Reporting "0 carried" for it turned a
+    mis-typed path into a clean-looking step, and every finding stayed
+    undocumented behind that zero.
+    """
+
+    def test_a_source_run_with_no_findings_is_an_error_not_a_zero(self, tmp_path):
+        src = _make_run(tmp_path, "wrong-run")
+        target = _make_run(tmp_path, "new")
+        with pytest.raises(EmptyComparisonError):
+            carry_forward(target, [src])
+
+    def test_a_source_holding_only_empty_stubs_is_also_an_error(self, tmp_path):
+        # The residue of the *first* failure must not become the input that
+        # makes the second one look fine.
+        src = _make_run(tmp_path, "stub-run")
+        for cid in EXPECTED:
+            _write(src, f"{cid}.md", body="")
+        target = _make_run(tmp_path, "new")
+        with pytest.raises(EmptyComparisonError):
+            carry_forward(target, [src])
+
+    def test_one_usable_source_among_several_is_enough(self, tmp_path):
+        empty = _make_run(tmp_path, "empty")
+        good = _make_run(tmp_path, "good")
+        _write(good, "OBS-001-slug.md")
+        target = _make_run(tmp_path, "new")
+        report = carry_forward(target, [empty, good])
+        assert [c["check_id"] for c in report["carried"]] == ["OBS-001"]
+
+    def test_the_error_names_the_directories_that_were_searched(self, tmp_path):
+        src = _make_run(tmp_path, "wrong-run")
+        target = _make_run(tmp_path, "new")
+        with pytest.raises(EmptyComparisonError) as exc:
+            carry_forward(target, [src])
+        assert "wrong-run" in str(exc.value)
+
+    def test_allow_empty_sources_is_an_explicit_opt_in(self, tmp_path):
+        src = _make_run(tmp_path, "wrong-run")
+        target = _make_run(tmp_path, "new")
+        report = carry_forward(target, [src], allow_empty_sources=True)
+        assert report["carried"] == []
+        assert report["missing"] == sorted(EXPECTED)
+
+    def test_cli_exits_two_on_an_empty_source_set(self, tmp_path, capsys):
+        src = _make_run(tmp_path, "wrong-run")
+        target = _make_run(tmp_path, "new")
+        assert main([str(target), "--from", str(src)]) == 2
+        assert "refusing to compare" in capsys.readouterr().err
 
 
 class TestCLI:
