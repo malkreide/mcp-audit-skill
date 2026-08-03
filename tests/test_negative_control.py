@@ -91,14 +91,14 @@ class TestDieBelegeStehenNamentlichDrin:
             assert muster in section, f"{muster} nicht mehr genannt"
 
     def test_der_ausgangswert_der_katalogabdeckung_steht_drin(self, section):
-        """11 von 97 — gemessen, nicht geschätzt, und als Ausgangswert markiert.
+        """12 von 98 — gemessen, nicht geschätzt, und als Ausgangswert markiert.
 
         Bewusst kein Gate: Ein Guard, der bei 86 von 97 Checks anschlägt, wird
         abgeschaltet, und die Zahl misst die Erwähnung, nicht die Praxis. Der
         Wert steht als Richtungsanzeige da, und der Test hält fest, dass er
         überhaupt beziffert ist.
         """
-        assert re.search(r"11\s*von\s*97", section)
+        assert re.search(r"12\s*von\s*98", section)
 
 
 class TestDieChecklistFordertEsEin:

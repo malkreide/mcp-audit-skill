@@ -329,8 +329,8 @@ class TestRealCatalog:
         # Note: total count of checks (79 → 85 mit DRIFT und IDENT-006,
         # 86 mit OPS-005, 87 mit SCALE-007, 93 mit IDENT-007, DEP-001 und
         # DRIFT-006, 94 mit OBS-007, 95 mit ARCH-014, 96 mit OPS-006,
-        # 97 mit OPS-007)
-        assert len(results) == 97
+        # 98 mit OPS-008)
+        assert len(results) == 98
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
         # test fails loudly only on grammar drift.

@@ -6,6 +6,29 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `OPS-008`: Prüflogik in Workflow-Heredocs ist nicht nachweisbar
+
+`OPS-005` fragt, ob ein Gate gelaufen ist. `OPS-006`, ob sein Urteil über die Zeit hält. `OPS-008` fragt das Vorgelagerte: **Lässt sich das Urteil überhaupt prüfen?** Ein `run: |` mit `python - <<'PY' … PY` ist ausführbarer Code an der einzigen Stelle im Repo, an der Code keine Tests haben kann — nicht importierbar, nicht mit Grenzfällen aufrufbar, nicht mutationstestbar.
+
+Der Fundort ist dieses Repo. `render_description_issue.py` war zuerst ein Heredoc. Als Skript mit Tests fiel sofort auf, dass die naheliegende Zwei-Zustands-Logik ein offenes Issue geschlossen hätte, obwohl der Vergleich nie stattfand — in vier verschiedenen Eingaben. Im Heredoc wäre der Fehler ausgeliefert worden.
+
+Die Grenze verläuft nicht bei der Zeilenzahl, sondern beim Urteilen: `echo` und ein Werkzeugaufruf dürfen bleiben, ein `if`, das über rot oder grün entscheidet, nicht. Der Check ist `advisory` und verlangt ausdrücklich die Gegenprobe in beide Richtungen — dass ein gefundener Guard sich nicht rot bekommen lässt, **und** dass reine `echo`-Schritte keinen Befund erzeugen.
+
+`SKILL.md` §0.3 gilt damit auch für CI-Guards. Katalog: 97 → 98 Checks, `OPS` 7 → 8, `advisory` 3 → 4.
+
+### Hinzugefügt — `tools/check_reported_numbers.py`: Herkunft von Zahlen
+
+`build_report.py` zieht jede Zahl aus `summary.json`; der erzeugte Report kann nicht driften. Driften können die **handgeschriebenen** Zahlen — `SECURITY.md` des auditierten Repos, PR-Body, Tracker-Karte.
+
+**Der Fall, der das erzwungen hat, ist nicht «Summe falsch».** Über diese Sitzung: vier Vorhersagen, zwei exakt, zwei falsch — eine davon in der *Zusammensetzung* falsch bei stimmender Summe. `30 pass / 4 partial / 2 fail` gegen ein gemessenes `30 / 5 / 1`; beides ergibt 36, der Satz las sich bestätigt, und das eine Finding, das von `fail` nach `partial` gewandert war, verschwand. Eine Prüfung, die nur das Total vergleicht, lässt das durch — dieses Werkzeug vergleicht je Status.
+
+Findet es in einer Datei gar keine Angabe, ist das der Ausgang `ungeprüft` und kein Bestehen: meist hat sich ein Wortlaut geändert und das Muster greift ins Leere.
+
+Dazu die Herkunftsregel in §4.1 — `gemessen` / `abgeleitet` / `übernommen`, und eine abgeleitete Zahl speist kein Gate — sowie zwei Zeilen in der Qualitätschecklist und die Anti-Patterns 13 und 14.
+
+23 Tests. Fünf Mutationen gegengeprüft; **eine überlebte zunächst**: Das Entfernen der Whitespace-Normalisierung brach keinen Test, weil `\s+` den Umbruch zwischen Zahl und Wort ohnehin abdeckt. Wirksam wird sie erst innerhalb eines mehrwortigen Statusworts (`nicht verifiziert` trägt ein Literal-Leerzeichen). Der fehlende Fall ist nachgetragen, danach beisst auch diese Mutation. Ausserdem hat der Falschtreffer-Test einen echten Fehler gefunden: `Version 5 partial-release` las sich als «5 partial», weil ein Bindestrich die Wortgrenze erfüllt.
+
+
 ### Hinzugefügt — `SKILL.md` §4.1: negative Kontrolle für Ad-hoc-Messungen
 
 §2.6 behandelt den Fall, dass ein Werkzeug **nichts** meldet: Hat es gesucht? Der neue Abschnitt behandelt den gefährlicheren Fall — das Werkzeug meldet **etwas**, das Ergebnis ist plausibel, und es misst trotzdem etwas anderes. Ein leeres Ergebnis macht misstrauisch, ein gefülltes nicht.
