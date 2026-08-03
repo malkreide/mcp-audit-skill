@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-03
+
+Sieben Regeln, unverändert — dieses Release ändert nichts an dem, was der Skill
+lehrt. Es ändert eine Zeile in der Zuordnung Regel → Audit-Check: Die drei
+Beweisregeln standen zusammengefasst als «kein Check», obwohl für Regel 5 einer
+danebenliegt, der dieselbe Fehlerklasse fängt. Eine Sammelzeile ist bequem und
+selten falsch genug, um aufzufallen — genau die Eigenschaft, gegen die diese
+Tabelle geschrieben wurde.
+
 ### Changed
 
 - **Die Regel-zu-Check-Zuordnung führt die Regeln 5, 6 und 7 einzeln,
