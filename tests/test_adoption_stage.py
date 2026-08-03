@@ -114,10 +114,17 @@ class TestRealCatalogUnchanged:
         # tool version at all — enforced on day one would fail almost the
         # whole portfolio for a property none of them was ever asked to
         # have. Advisory until a run shows the check is cut correctly.
+        #
+        # OPS-007 likewise. Every repo documents commands and almost none has
+        # ever been asked whether they run on the platforms it claims; the one
+        # finding behind the check surfaced only because a user said which
+        # shell they use. Enforced on day one would fail the portfolio for a
+        # property nobody has measured yet — advisory until a run does.
         assert advisory_ids(parse_catalog(CHECKS_DIR)) == [
             "ARCH-014",
             "OPS-005",
             "OPS-006",
+            "OPS-007",
         ]
 
     def test_the_mechanism_is_not_a_blanket_demotion(self):

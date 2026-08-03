@@ -6,6 +6,61 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Ergänzt — `OPS-007`, und zwei Ausprägungen, die kein neuer Check sein durften
+
+**Ein neuer Check** (`OPS-007`) — der Katalog wächst von 96 auf **97 in zwölf Kategorien**. Dazu je eine neue Ausprägung in `OPS-006` und `DRIFT-003`.
+
+Der Anlass war eine Liste von vier Kandidaten, abgeleitet aus einem Arbeitstag an sechs Repos. Nach der Prüfung nach §2.5 («Reichweite vor neuer Regel») blieb genau **einer** davon ein neuer Check:
+
+| Kandidat | Ausgang |
+| --- | --- |
+| Dokumentierte Befehle vs. behauptete Plattformen | **neuer Check** `OPS-007` — kein bestehender Check stellt die Frage |
+| Toolchain-Version an zwei Orten | **Ausprägung von `OPS-006`** — der Check deckte das Pinnen ab, nicht den zweiten Pin |
+| Prüfmuster schwächer als sein Wortlaut | **Ausprägung von `DRIFT-003`** — dieselbe Klasse, anderer Mechanismus |
+| Unterbrochene Fehlerkette (`raise … from`) | **verworfen** — `OBS-007` verlangt es bereits, in Verification und Pass-Kriterien |
+
+Der vierte Fall ist der lehrreichste: Der Befund war real (eine `TrackerError` in `tools/tracker_sync.py`, die ihre Ursache verdeckte), aber er war die **Verletzung eines bestehenden Checks**, nicht seine Lücke. Ein Katalog, der per Reflex wächst, hätte hier einen zweiten Check bekommen, der dasselbe misst — genau der Fall, vor dem §2.5 warnt.
+
+#### `OPS-007` — eine Anleitung, die niemand ausführt, ist ungetesteter Code
+
+`OPS-005` fragt, ob ein Check gelaufen ist. `OPS-006` fragt, ob sein Urteil hält. `OPS-007` fragt nach dem Teil des Repos, den **überhaupt nichts ausführt**: die Befehle in README und `CONTRIBUTING`.
+
+Der Fundort ist dieses Repo. `#70` führte in beide READMEs ein:
+
+```bash
+pip install pre-commit && pre-commit install
+```
+
+Die Testmatrix in `test.yml` fährt `windows-latest`, der Quickstart trägt einen eigenen `powershell`-Block — die Windows-Zusage ist also ausgesprochen. In PowerShell 5.1 ist `&&` ein Syntaxfehler. Die CI blieb grün, weil sie den Befehl nie ausführt, auch nicht im Windows-Feld. Aufgefallen ist es erst, als jemand beiläufig sagte, er arbeite in PowerShell; behoben in `#71`.
+
+`swiss-snb-mcp` bekam denselben Hook am selben Tag und war unauffällig — seine Anleitung stand von Anfang an auf zwei Zeilen. Nicht aus Absicht: Es hat keine Windows-Matrix, niemand hatte die Frage gestellt. Plattformtauglichkeit war dort Zufall, und ein Zufall besteht den Check nur, solange er anhält.
+
+`medium`, `adoption: advisory`, `applies_when: always`. Advisory, weil absehbar viele Repos eine Plattform beiläufig behaupten; der Check meldet, bis ein Portfolio-Durchlauf zeigt, ob er richtig geschnitten ist. Damit stehen vier Checks auf der Brücke (`ARCH-014`, `OPS-005`, `OPS-006`, `OPS-007`).
+
+Gegengeprüft mit der eigenen Verification: Die Suche aus Modus 2, gegen den realen Vorzustand von `#70` gehalten, findet die Zeile; gegen den heutigen Stand gehalten, findet sie nichts.
+
+#### `OPS-006`, vierte Ausprägung — der zweite Pin
+
+`OPS-006` verlangt, die Werkzeugversion dort zu pinnen, wo die CI sie installiert. Das löst die erste Ausprägung und erzeugt beim nächsten Schritt eine neue: Wer den Formatcheck lokal vorzieht, legt einen Pre-Commit-Hook an, und der pinnt dasselbe Werkzeug ein zweites Mal.
+
+Laufen die beiden auseinander, formatiert der Hook nach der einen und die CI prüft nach der anderen Version — der Hook meldet grün, die CI wird rot. Abgesichert war das in beiden betroffenen Repos durch einen Kommentar, der darum bittet, sie zusammen zu bumpen. Bitten ist keine Prüfung; dieselbe Bauart wie `OPS-005`.
+
+Neu: `Modus 3` (beide Pins gegeneinander halten, mit Gegenprobe), drei Pass-Kriterien, zwei Anti-Patterns. Die Verallgemeinerung gilt über Ruff hinaus — CI und Devcontainer, CI und `Makefile`.
+
+#### `DRIFT-003`, dritte Ausprägung — das Prüfmuster ist schwächer als sein Wortlaut
+
+Die bisherigen zwei Ausprägungen sitzen im Inhalt der Assertion. Die dritte sitzt in ihrer Sprache:
+
+```python
+with pytest.raises(ReleaseError, match="summary.json not found"):
+```
+
+Der Punkt ist ein Metazeichen. Das Muster passt auch auf `summaryXjson not found`. Wer die Zeile liest, liest einen Dateinamen; ausgeführt wird eine Zeichenklasse. Gefunden wurde der Fall in diesem Repo beim Anheben des Lint-Regelsatzes (`RUF043`) — nicht bei einer Testdurchsicht, weil er sich nicht schwach liest.
+
+Neu: `Modus 3` (Regex-Argumente mit unmaskierten Metazeichen, mit Gegenprobe gegen die Zeichenkette, die abgelehnt werden soll), zwei Pass-Kriterien, ein Anti-Pattern, ein Remediation-Schritt.
+
+**Kein Re-Audit-Auslöser nach §5** für die beiden Erweiterungen: keine Severity angehoben, keine `applies_when` erweitert. `OPS-007` ist als neuer Check der übliche Fall — bestehende Audits bleiben gültig, beim nächsten Audit gilt der neue Katalog.
+
 ### Hinzugefügt — die Anker, an denen ein Lauf hängt: Ziel-Revision und Katalog-Epoche
 
 Zwei Zahlen machen ein Audit reproduzierbar, und bisher stand nur eine davon fest. `catalog_hash` hielt fest, **womit** gemessen wurde; **woran** gemessen wurde, hielt nichts fest.
