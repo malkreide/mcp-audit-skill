@@ -54,6 +54,22 @@ Das Kriterium verlangte, Abweichungen vom Standard-Layout seien «im README begr
 
 Jetzt steht dort, dass `README.md` oder `README.de.md` zählen und `SECURITY.md`, `CONTRIBUTING.md`, `docs/`, ein Issue oder eine Commit-Message nicht — auch dann nicht, wenn die Begründung dort inhaltlich vollständig ist. Der Grund ist der Zweck des Kriteriums: Wer die Struktur nicht wiedererkennt, schaut ins README, dorthin, wo die Abweichung ihm begegnet. Eine Begründung in `SECURITY.md` erreicht nur, wer ohnehin nach Sicherheitsthemen sucht.
 
+### Hinzugefügt — der Description-Guard bekommt einen Adressaten
+
+`repo-description` war über **sechs aufeinanderfolgende Merges rot** (seit PR #68) und wurde nie beantwortet. Der Check war dabei die ganze Zeit korrekt: Der Katalog hat 96 Checks, die Repo-Description nennt 93. Gefehlt hat nicht die Prüfung, sondern der Empfänger — ein Guard, der auf `push: main` läuft, meldet an niemanden, weil ein roter Push-Lauf in keinem Pull Request auftaucht und die Job-Summary nur sieht, wer den Lauf öffnet.
+
+Der Workflow legt bei Drift jetzt ein Issue an oder aktualisiert es und **schliesst es selbst**, sobald die Description wieder stimmt. Ohne das Schliessen wäre es Dauergemecker und nach zwei Wochen abgeschaltet.
+
+`tools/render_description_issue.py` trennt drei Zustände statt zwei. Die naheliegende Form — «Body geschrieben → Issue auf, kein Body → Issue zu» — ist falsch, und das hat erst die Messung gezeigt: `result.json` kann fehlen, leer, kaputt oder `description: null` sein, wenn der Abruf scheiterte. Alle vier erzeugen keinen Body und hätten ein offenes Issue geschlossen, gestützt auf einen Vergleich, der nie stattgefunden hat. Ein Check, der nicht gelaufen ist, ist kein Bestehen (§2.6) — `unchecked` fasst deshalb nichts an. 18 Tests, drei Mutationen gegengeprüft, alle drei schlagen an.
+
+### Hinzugefügt — `SKILL.md` §0.5: Platzhalter in spitzen Klammern
+
+Ein PR-Body mit «suchte `findings/<ID>.md`, während der Lauf `<ID>-<slug>.md` benannt hatte» kommt als «suchte `findings/.md`, während der Lauf `-.md` benannt hatte» an. Backticks schützen nicht. In PR #79 zweimal reproduziert — beim Anlegen und beim Korrekturversuch mit denselben Klammern.
+
+Bösartig ist der Fall, weil das Ergebnis plausibel bleibt: `findings/.md` sieht nach einem Dateinamen aus, nicht nach einem Fehler. Ein Text über den Unterschied zweier Schreibweisen wurde zu einem Text, der beide gleich nennt — ohne Meldung, ohne rotes Gate. Dieselbe Mechanik trifft die Template-Überschrift `## Finding: <CHECK-ID> — <CHECK-TITLE>`.
+
+Wo die Umwandlung passiert, ist **nicht** belegt und steht deshalb als Vermutung im Text, nicht als Regel: Der gespeicherte Body escaped auch Apostrophe zu `&#39;`, was GitHub in Bodies nicht tut — der Verlust entsteht also vermutlich in der Werkzeugschicht des Agenten, nicht bei GitHub. Die Regel gilt darum für den Agentenpfad, für den sie gemessen ist.
+
 ### Hinzugefügt — `tools/carry_forward.py`
 
 Übernimmt unveränderte Finding-Dokumente aus früheren Audit-Läufen. Bisher war das ein Handgriff, und er ist zweimal schiefgegangen.
