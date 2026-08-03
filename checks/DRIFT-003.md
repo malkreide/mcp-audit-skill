@@ -26,6 +26,18 @@ Graceful Degradation ist Pflicht (`ARCH-003`, Probe-Skill 3.5): Fällt die Quell
 
 Der zweite ist der lehrreichste: Die Assertion war nicht zu schwach für einen Ausfall, sondern zu schwach für einen **Fehlgriff**. Sie hätte auch dann bestanden, wenn der Server Wetter aus der Nachbargemeinde geliefert hätte.
 
+**Die dritte Ausprägung sitzt eine Ebene tiefer: nicht im Inhalt der Assertion, sondern in ihrer Sprache.** Ein Prüfmuster wird als Text gelesen und als Regex ausgewertet:
+
+```python
+with pytest.raises(ReleaseError, match="summary.json not found"):
+```
+
+Der Punkt ist ein Metazeichen. Das Muster passt auf `summary.json not found` — und ebenso auf `summaryXjson not found`, auf `summary/json not found`, auf jede Meldung, die an dieser Stelle irgendein Zeichen trägt. Wer die Zeile liest, liest einen Dateinamen; was ausgeführt wird, ist eine Zeichenklasse.
+
+Der Schaden ist derselbe wie bei den beiden Ausprägungen oben: Der Test besteht in Fällen, die er ausschliessen sollte, und sein Wortlaut sagt das Gegenteil. Er ist nur schwerer zu sehen, weil kein Ausfall nötig ist — die Lücke steht in der Assertion selbst. Aufgefallen ist der Fall nicht bei einer Testdurchsicht, sondern beim Anheben eines Lint-Regelsatzes (`RUF043`); vorher hatte ihn niemand als schwach gelesen, weil er sich nicht schwach liest.
+
+Dieselbe Klasse trifft jede Prüfung, deren Argument eine eigene Sprache spricht und als Literal gelesen wird: `match=` in `pytest.raises` und `pytest.warns`, `assertRaisesRegex`, `re.search` auf einer Fehlermeldung, Glob-Muster in Dateizusicherungen. Die Frage ist immer dieselbe — **was von diesem Text ist Zeichen, und was ist Anweisung?**
+
 ## Verification
 
 ### Modus 1: code_review
@@ -86,6 +98,37 @@ async def test_success_assertions_fail_on_the_degradation_path(monkeypatch):
     assert "21.8" not in result   # … und trägt keine Messwerte
 ```
 
+### Modus 3: code_review (Prüfmuster, die als Literal gelesen werden)
+
+```bash
+# Regex-Argumente, die unmaskierte Metazeichen tragen
+grep -rnE 'match=|assertRaisesRegex|assertWarnsRegex' tests/ \
+  | grep -E '\.|\+|\*|\?|\[|\(|\||\$|\^'
+```
+
+Jeder Treffer ist zu prüfen, nicht automatisch ein Befund: Ein `.` in einer Meldung, die ohnehin nur einmal vorkommt,
+ist harmlos. Der Befund ist die Stelle, an der der Wortlaut mehr verspricht als das Muster hält — typischerweise ein
+Dateiname, eine Version, ein Pfad.
+
+**Pass-Pattern** — Raw-String mit maskiertem Metazeichen, oder gleich `re.escape`:
+
+```python
+with pytest.raises(ReleaseError, match=r"summary\.json not found"):
+with pytest.raises(ReleaseError, match=re.escape("summary.json not found")):
+```
+
+**Fail-Pattern:**
+
+```python
+with pytest.raises(ReleaseError, match="summary.json not found"):   # Punkt = jedes Zeichen
+```
+
+**Gegenprobe:** Das Muster gegen die Zeichenkette halten, die es *nicht* akzeptieren soll — hier
+`summaryXjson not found`. Passt es, prüft die Assertion eine Zeichenklasse und keinen Dateinamen.
+
+Ein Linter nimmt einem den Durchgang ab: `RUF043` meldet genau diese Stelle. Das ersetzt die Frage nicht, es
+beantwortet sie nur schneller.
+
 ## Pass Criteria
 
 - [ ] Der Degradationspfad ist maschinell erkennbar (Statusfeld, oder ein dokumentierter, eindeutiger Marker)
@@ -93,6 +136,9 @@ async def test_success_assertions_fail_on_the_degradation_path(monkeypatch):
 - [ ] Assertions prüfen Werte, die nur im Erfolgsfall vorkommen — keine Stichworte, die auch in der Fehlermeldung stehen
 - [ ] Bereichs-Assertions (Koordinaten, Zeitfenster, Grössenordnungen) sind eng genug, dass ein plausibler Fehlgriff sie reisst
 - [ ] Für jedes Tool existiert mindestens ein Test des **Erfolgspfads**, nicht nur der Fehlerpfade
+- [ ] Prüfmuster, die als Regex ausgewertet werden (`match=`, `assertRaisesRegex`) und **wörtlich gemeint** sind, maskieren ihre Metazeichen — oder benutzen `re.escape`
+- [ ] Wo ein Metazeichen **beabsichtigt** ist (Alternative, Gruppe, Quantor), ist die Absicht erkennbar — der Treffer ist dann kein Befund
+- [ ] Jedes solche Muster ist einmal gegen eine Zeichenkette gehalten worden, die es ablehnen soll
 
 ## Common Failures
 
@@ -103,6 +149,8 @@ async def test_success_assertions_fail_on_the_degradation_path(monkeypatch):
 | Nur Fehlerpfade getestet | Der Erfolgspfad kann jederzeit brechen, ohne dass es auffällt |
 | Degradation nur als Prosa (`⚠️ …`) | Tests müssen auf Strings prüfen; jede Textänderung entwertet sie stillschweigend |
 | `assert result` / `assert len(result) > 0` | Die Fehlermeldung ist auch nicht leer |
+| `match="datei.json …"` — Punkt als Metazeichen gelesen | Der Test besteht auch bei `dateiXjson`; der Wortlaut verspricht mehr als das Muster hält |
+| `re.escape` pauschal über ein absichtlich gemeintes Muster gelegt | Aus `timeout\|unavailable` wird eine Zeichenkette; die Assertion prüft ab da etwas anderes als gemeint |
 
 ## Remediation
 
@@ -124,11 +172,19 @@ Erst ausschliessen, dann prüfen. Der Ausschluss gehört in die **erste** Zeile 
 
 Einmal pro Tool die Gegenprobe aus Modus 2 schreiben. Sie ist der einzige Beleg, dass die Erfolgstests etwas prüfen — und sie kostet je fünf Zeilen.
 
+### Schritt 4: Prüfmuster gegen ihre eigene Sprache halten
+
+Jede Assertion durchgehen, deren Argument als Regex ausgewertet wird, und die Frage stellen, was davon Zeichen ist
+und was Anweisung. Maskieren oder `re.escape` benutzen — und das Ergebnis einmal gegen eine Zeichenkette halten, die
+es ablehnen soll. `RUF043` im Lint-Regelsatz nimmt den Durchgang künftig ab.
+
 ## Effort
 
 S–M — pro Server ein halber Tag. Der Aufwand steckt im Durchgehen der bestehenden Assertions, nicht im Schreiben der neuen.
 
 ## References
+
+- Dritte Ausprägung: [malkreide/mcp-audit-skill#71](https://github.com/malkreide/mcp-audit-skill/pull/71) — `pytest.raises(match="summary.json not found")`; der Punkt passte auf jedes Zeichen. Gefunden beim Anheben des Lint-Regelsatzes (`RUF043`), nicht bei einer Testdurchsicht
 
 - Portfolio-Fundstück `meteoswiss-mcp#33` — drei Tools tot, Suite grün
 - `ARCH-003` — «Not Found»-Anti-Pattern (die Degradation, die dieser Check testbar hält)

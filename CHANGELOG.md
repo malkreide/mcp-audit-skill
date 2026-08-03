@@ -20,7 +20,91 @@ Die Bedingung, unter der die Stufe zurückgestellt wurde, ist eingelöst: **Alle
 
 - **Netzwerkfehler sind der Fall, für den man den Retry baut.** Ein Server wiederholte nur Status-Codes: 503 bekam drei Versuche, eine abgelehnte Verbindung aus demselben Ausfall keinen. Der Retry sah vorhanden aus und liess den häufigsten Fall ungedeckt — die Asymmetrie hinter dem Vorfall, der diesen Check ausgelöst hat. Modus 1 hat dafür jetzt einen eigenen Griff.
 
-Damit sind zwei Checks `advisory` (`OPS-005`, `OPS-006`) und `ARCH-014` reiht sich bei `DEP-001`, `DRIFT-006` und `OBS-007` ein, die dieselbe Brücke überquert haben.
+Damit sind drei Checks `advisory` (`OPS-005`, `OPS-006`, `OPS-007`) und `ARCH-014` reiht sich bei `DEP-001`, `DRIFT-006` und `OBS-007` ein, die dieselbe Brücke überquert haben.
+### Behoben — ein zu breites Pass-Kriterium in `DRIFT-003`, und die Gegenrichtung des Advisory-Wächters
+
+**Das mit v1.7.0 hinzugekommene Pass-Kriterium in `DRIFT-003` war unbedingt formuliert.** Es verlangte, dass Regex-Prüfmuster ihre Metazeichen maskieren — ohne Ausnahme. Ein Test mit `match=r"timeout|unavailable"` meint das Metazeichen aber absichtlich; nach dem Wortlaut wäre er ein Verstoss, und weil `DRIFT-003` `enforced`, `high` und `always` ist, ein blockierender.
+
+Das Kriterium gilt jetzt für Muster, die **wörtlich gemeint** sind. Ein beabsichtigtes Metazeichen ist ausdrücklich kein Befund — es muss aber als Absicht erkennbar sein und nicht bloss übrig geblieben. Der Prosa-Teil von Modus 3 sagte das bereits («Jeder Treffer ist zu prüfen, nicht automatisch ein Befund»); die Pass-Kriterien, die das Verdikt tragen, sagten es nicht, und sie tragen es. Neu dazu ein Anti-Pattern für die Gegenrichtung: `re.escape` pauschal über ein absichtlich gemeintes Muster gelegt, womit aus `timeout|unavailable` eine Zeichenkette wird.
+
+**`TestReadmesNameTheAdvisorySet` prüfte nur eine Richtung.** Der mit v1.7.0 eingezogene Wächter stellt sicher, dass jeder Check, den der Katalog als `advisory` führt, im README-Satz genannt wird — und dass das Zahlwort stimmt. Was er nicht prüfte: ob der Satz einen Check nennt, den der Katalog **nicht mehr** auf der Brücke führt. Eine Promotion auf `enforced` ist genau der Vorgang, bei dem dieser Satz zu lang wird, und das Zahlwort fängt es nur, solange auch die Länge auffällt.
+
+Neu `test_no_promoted_check_is_still_listed`. Der Satz nennt hinter dem Punkt bewusst auch die bereits promovierten Checks — geprüft wird deshalb nur der Teil davor.
+
+Beide Punkte stammen aus dem automatisierten Review zu `#80`; der dritte Befund von dort (der Advisory-Satz nannte drei Checks statt vier) war bei v1.7.0 bereits behoben.
+
+## [v1.7.0] — 2026-08-03 — Woran ein Lauf hängt, und was ein Report nicht behaupten darf
+
+**Ein neuer Check** (`OPS-007`) — der Katalog wächst von 96 auf **97 in zwölf Kategorien**, 700 Tests. Dazu je eine neue Ausprägung in `OPS-006` und `DRIFT-003`, und eine Präzisierung an `ARCH-011`.
+
+Der Rest dieses Release stammt nicht aus dem Katalog, sondern aus dem Werkzeug darunter — und alle Punkte teilen eine Form. Die Prüflogik war jedes Mal in Ordnung. Falsch war, **was zwischen zwei Läufen transportiert wurde und was ein Report zu behaupten bereit war, ohne es gemessen zu haben.**
+
+**Woran ein Lauf hängt.** `catalog_hash` hielt bisher fest, *womit* gemessen wurde; *woran*, hielt nichts fest. `audit_init.py init --target-repo` schreibt jetzt die HEAD-Revision des auditierten Repos, und das Pflicht-Gate prüft sie am Ende erneut. Ein Commit, der mitten im Lauf landet, teilt den Report sonst unbemerkt: Die Checks davor beschreiben einen Baum, die danach einen anderen, und die Mischung wird als ein Urteil präsentiert.
+
+**Was ein Report nicht behaupten darf.** Drei Verweigerungen, dieselbe Regel:
+
+- Weicht der Katalog-Stand vom Vorlauf ab, wird der Verlaufsvergleich **verweigert** statt korrigiert. «30 pass / 4 fail / 2 partial → x/y/z» wäre über 36 gegen 54 Checks geschrieben worden, und jede Zahl wäre als Bewegung im Server gelesen worden.
+- Ein Vergleich, dessen beide Seiten leer parsen, meldet nicht mehr «identisch». Er hat recht in der Arithmetik und unrecht in allem übrigen.
+- Ein Check, der sich nicht feststellen liess, hat mit `not_verified` endlich einen Status. `OPS-004` verlangte ihn, seit der Check geschrieben wurde, während das Schema den Wert zurückwies — wer die Regel befolgen wollte, bekam einen Fehler und trug `pass` ein. Eine Regel, deren Einhaltung das Werkzeug unmöglich macht, ist keine strenge Regel; sie ist eine Regel, die sich in ihr Gegenteil auflöst.
+
+**Kein Re-Audit-Auslöser nach §5.** `OPS-007` startet `advisory`; damit sind vier Checks advisory: `ARCH-014`, `OPS-005`, `OPS-006`, `OPS-007`. Die Erweiterungen an `OPS-006` und `DRIFT-003` heben keine Severity an und dehnen kein `applies_when`. Die Präzisierung an `ARCH-011` ist enger als der bisherige Wortlaut — ein Audit, das eine Abweichung allein wegen einer Begründung in `SECURITY.md` bestanden hat, würde heute anders ausfallen; wer `ARCH-011` in einem laufenden Audit auf `pass` stehen hat, sieht dort noch einmal nach.
+
+**Nicht dabei:** `not_verified` blockiert keine Freigabe. Ein unbeantwortbarer Check ist kein fehlgeschlagener — er steht neben dem Urteil, nicht darin.
+
+### Ergänzt — `OPS-007`, und zwei Ausprägungen, die kein neuer Check sein durften
+
+**Ein neuer Check** (`OPS-007`) — der Katalog wächst von 96 auf **97 in zwölf Kategorien**. Dazu je eine neue Ausprägung in `OPS-006` und `DRIFT-003`.
+
+Der Anlass war eine Liste von vier Kandidaten, abgeleitet aus einem Arbeitstag an sechs Repos. Nach der Prüfung nach §2.5 («Reichweite vor neuer Regel») blieb genau **einer** davon ein neuer Check:
+
+| Kandidat | Ausgang |
+| --- | --- |
+| Dokumentierte Befehle vs. behauptete Plattformen | **neuer Check** `OPS-007` — kein bestehender Check stellt die Frage |
+| Toolchain-Version an zwei Orten | **Ausprägung von `OPS-006`** — der Check deckte das Pinnen ab, nicht den zweiten Pin |
+| Prüfmuster schwächer als sein Wortlaut | **Ausprägung von `DRIFT-003`** — dieselbe Klasse, anderer Mechanismus |
+| Unterbrochene Fehlerkette (`raise … from`) | **verworfen** — `OBS-007` verlangt es bereits, in Verification und Pass-Kriterien |
+
+Der vierte Fall ist der lehrreichste: Der Befund war real (eine `TrackerError` in `tools/tracker_sync.py`, die ihre Ursache verdeckte), aber er war die **Verletzung eines bestehenden Checks**, nicht seine Lücke. Ein Katalog, der per Reflex wächst, hätte hier einen zweiten Check bekommen, der dasselbe misst — genau der Fall, vor dem §2.5 warnt.
+
+#### `OPS-007` — eine Anleitung, die niemand ausführt, ist ungetesteter Code
+
+`OPS-005` fragt, ob ein Check gelaufen ist. `OPS-006` fragt, ob sein Urteil hält. `OPS-007` fragt nach dem Teil des Repos, den **überhaupt nichts ausführt**: die Befehle in README und `CONTRIBUTING`.
+
+Der Fundort ist dieses Repo. `#70` führte in beide READMEs ein:
+
+```bash
+pip install pre-commit && pre-commit install
+```
+
+Die Testmatrix in `test.yml` fährt `windows-latest`, der Quickstart trägt einen eigenen `powershell`-Block — die Windows-Zusage ist also ausgesprochen. In PowerShell 5.1 ist `&&` ein Syntaxfehler. Die CI blieb grün, weil sie den Befehl nie ausführt, auch nicht im Windows-Feld. Aufgefallen ist es erst, als jemand beiläufig sagte, er arbeite in PowerShell; behoben in `#71`.
+
+`swiss-snb-mcp` bekam denselben Hook am selben Tag und war unauffällig — seine Anleitung stand von Anfang an auf zwei Zeilen. Nicht aus Absicht: Es hat keine Windows-Matrix, niemand hatte die Frage gestellt. Plattformtauglichkeit war dort Zufall, und ein Zufall besteht den Check nur, solange er anhält.
+
+`medium`, `adoption: advisory`, `applies_when: always`. Advisory, weil absehbar viele Repos eine Plattform beiläufig behaupten; der Check meldet, bis ein Portfolio-Durchlauf zeigt, ob er richtig geschnitten ist. Damit stehen vier Checks auf der Brücke (`ARCH-014`, `OPS-005`, `OPS-006`, `OPS-007`).
+
+Gegengeprüft mit der eigenen Verification: Die Suche aus Modus 2, gegen den realen Vorzustand von `#70` gehalten, findet die Zeile; gegen den heutigen Stand gehalten, findet sie nichts.
+
+#### `OPS-006`, vierte Ausprägung — der zweite Pin
+
+`OPS-006` verlangt, die Werkzeugversion dort zu pinnen, wo die CI sie installiert. Das löst die erste Ausprägung und erzeugt beim nächsten Schritt eine neue: Wer den Formatcheck lokal vorzieht, legt einen Pre-Commit-Hook an, und der pinnt dasselbe Werkzeug ein zweites Mal.
+
+Laufen die beiden auseinander, formatiert der Hook nach der einen und die CI prüft nach der anderen Version — der Hook meldet grün, die CI wird rot. Abgesichert war das in beiden betroffenen Repos durch einen Kommentar, der darum bittet, sie zusammen zu bumpen. Bitten ist keine Prüfung; dieselbe Bauart wie `OPS-005`.
+
+Neu: `Modus 3` (beide Pins gegeneinander halten, mit Gegenprobe), drei Pass-Kriterien, zwei Anti-Patterns. Die Verallgemeinerung gilt über Ruff hinaus — CI und Devcontainer, CI und `Makefile`.
+
+#### `DRIFT-003`, dritte Ausprägung — das Prüfmuster ist schwächer als sein Wortlaut
+
+Die bisherigen zwei Ausprägungen sitzen im Inhalt der Assertion. Die dritte sitzt in ihrer Sprache:
+
+```python
+with pytest.raises(ReleaseError, match="summary.json not found"):
+```
+
+Der Punkt ist ein Metazeichen. Das Muster passt auch auf `summaryXjson not found`. Wer die Zeile liest, liest einen Dateinamen; ausgeführt wird eine Zeichenklasse. Gefunden wurde der Fall in diesem Repo beim Anheben des Lint-Regelsatzes (`RUF043`) — nicht bei einer Testdurchsicht, weil er sich nicht schwach liest.
+
+Neu: `Modus 3` (Regex-Argumente mit unmaskierten Metazeichen, mit Gegenprobe gegen die Zeichenkette, die abgelehnt werden soll), zwei Pass-Kriterien, ein Anti-Pattern, ein Remediation-Schritt.
+
+**Kein Re-Audit-Auslöser nach §5** für die beiden Erweiterungen: keine Severity angehoben, keine `applies_when` erweitert. `OPS-007` ist als neuer Check der übliche Fall — bestehende Audits bleiben gültig, beim nächsten Audit gilt der neue Katalog.
 
 ### Hinzugefügt — die Anker, an denen ein Lauf hängt: Ziel-Revision und Katalog-Epoche
 

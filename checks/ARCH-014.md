@@ -48,11 +48,14 @@ Der Durchlauf hat den Check zugleich geschärft. Drei Dinge sind erst dabei aufg
 grep -rnE 'for attempt|while .*attempt|@retry|tenacity|backoff' src/
 grep -rnE 'except Exception|except:' src/ | head        # pauschaler Catch im Retry-Pfad?
 grep -rnE 'status_code|raise_for_status' src/
-grep -rnE 'RequestError|ConnectError|TimeoutException' src/ \
-  || echo "BEFUND: nur Status-Codes werden wiederholt, keine Netzwerkfehler"
+# Netzwerkfehler im Retry-Pfad — bewusst breit, weil der Check fuer jede
+# Client-Bibliothek gilt und nicht nur fuer httpx:
+grep -rnE 'RequestError|TransportError|ConnectError|ConnectionError|TimeoutError|TimeoutException|ClientError|Timeout\b|retry_if_exception' src/
 ```
 
 Der letzte Griff ist der wichtigste und der am leichtesten übersehene. Eine Schleife, die nur `status_code` prüft, wiederholt ein 503 aus einem Ausfall dreimal und eine abgelehnte Verbindung aus **demselben** Ausfall kein einziges Mal — sie sieht vorhanden aus und lässt den häufigsten Fall ungedeckt. Genau diese Asymmetrie stand hinter dem Vorfall, der diesen Check ausgelöst hat.
+
+**Ein leeres Ergebnis ist hier kein Befund, sondern eine Leseaufforderung.** Der Check gilt für *jede* Art, externe Requests zu stellen; ein korrekter Retry kann `aiohttp`, `requests`, einen Alias, eine Oberklasse wie `httpx.TransportError` oder ein `tenacity`-Prädikat benutzen, und keiner dieser Namen steht zwangsläufig in der Liste oben. Ein Grep, der Namen kennt statt Verhalten, darf einen Namensunterschied nicht in ein blockierendes Verdikt verwandeln. Findet er nichts, ist die Retry-Schleife **von Hand** zu lesen: Fängt sie ausschliesslich Status-Codes, ist das der Befund — und erst dann.
 
 **Pass-Pattern** — 4xx ausser 429 bricht sofort ab:
 
@@ -103,7 +106,7 @@ await asyncio.sleep(2 ** attempt)   # deterministisch, ignoriert Retry-After
 
 ```python
 capped = min(BASE * 2**attempt, MAX_DELAY)
-return capped * (0.5 + random.random() * 2)   # MAX_DELAY=20 -> bis 30 s
+return capped * (0.5 + random.random())       # MAX_DELAY=20 -> bis 30 s
 ```
 
 Diese Reihenfolge steckte in **sechs** Servern des Portfolios, weil sie sich beim Lesen richtig anfühlt: erst begrenzen, dann streuen. Sie multipliziert den gedeckelten Wert anschliessend mit bis zu 1.5 — die Konstante behauptet eine Schranke, die sie nicht einhält. Rechne beim Audit nach, statt den Namen der Konstante zu glauben: `MAX_DELAY * (1 + jitter_spread)` ist die tatsächliche Obergrenze.
@@ -203,10 +206,24 @@ async def test_a_slow_response_is_cut_by_the_wall_clock_deadline(real_sleep):
 +             if time.monotonic() + delay > deadline:
 +                 break        # der nächste Versuch käme zu spät, um noch zu zählen
 +             await asyncio.sleep(delay)
++         remaining = deadline - time.monotonic()
++         if remaining <= 0:
++             break
           try:
-              resp = await http.get(url)
-              resp.raise_for_status()
-              return resp
+-             resp = await http.get(url)
+-             resp.raise_for_status()
+-             return resp
++             # Wanduhr-Deadline um den Request: Das httpx-Timeout greift pro
++             # Operation und beginnt mit jedem Chunk von vorn, begrenzt also
++             # nicht den Aufruf. Ohne diese Zeile ist TOTAL_BUDGET eine
++             # Behauptung, keine Grenze.
++             async with asyncio.timeout(remaining):      # 3.11+; sonst wait_for
++                 resp = await http.get(url, timeout=min(PER_OP_TIMEOUT, remaining))
++                 resp.raise_for_status()
++                 return resp
++         except TimeoutError as exc:   # Budget weg, nicht bloss dieser Versuch
++             last_error = exc
++             break
           except (httpx.HTTPStatusError, httpx.RequestError) as exc:
               last_error = exc
               status = getattr(getattr(exc, "response", None), "status_code", None)
