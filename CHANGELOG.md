@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Zwei Messungen kommen in Schritt 1 dazu. Beide sind billig, solange man ohnehin
+an der API hängt, und beide werden sonst später aus dem Gedächtnis nachgeliefert
+— einmal als Scope-Begründung, einmal als Zahl in einer Fallback-Staffel.
+
+### Added
+
+- **1.3b Abdeckungs-Matrix — welcher Teil des Bestands unerreichbar bleibt.** Die
+  Befund-Tabelle hielt fest, was die geprobten Endpoints liefern. Sie hielt nicht
+  fest, welche Bestandsteile **kein geplantes Tool** anfasst: Die erzeugen kein
+  Delta, keinen Fehler und keine Zeile, sind aus der Probe also per Konstruktion
+  unsichtbar. Das ist der Unterschied zu 1.2b, wo ein befragter Endpoint zu wenig
+  liefert und ein Delta es beweist.
+
+  Der Anlass ist ein Audit-Befund (`ARCH-003`): Die nachgelieferte Begründung des
+  Architektur-Entscheids erklärte Konkurse und Baugesuche für ausserhalb der
+  Quelle, während sie in der Quelle liegen und nur ausserhalb der geplanten
+  Tools. Der Scope war richtig, die Begründung falsch — und falsch auf die teure
+  Art, weil sie die Quelle kleiner macht, als sie ist. Wer Monate später
+  begründet, rekonstruiert, und Rekonstruktion liefert plausible Gründe statt
+  gemessener.
+
+  Der Abschnitt verlangt, die Bestandsachse **aus der Quelle** zu enumerieren
+  (Rubriken, Typen, Register, Themen — meist selbst ein Endpoint oder eine
+  Facette) und die geplanten Tools hineinzumarkieren. Der umgekehrte Weg, die
+  Liste aus dem Tool-Entwurf zu bilden, kann nichts finden, was der Entwurf
+  übersieht. Jede nicht erreichbare Zeile trägt einen von drei zulässigen
+  Gründen — bewusst ausserhalb des Scopes, technisch nicht erreichbar, noch
+  offen. Die vierte Möglichkeit, in der Praxis die häufigste, ist damit
+  ausgeschlossen: gar nicht erwähnt.
+
+- **1.5 Widening-Schedule gegen die Live-API messen.** Kürzt ein Tool bei null
+  Treffern den Suchbegriff, ist die Staffel eine Annahme über die Quelle. Die
+  Quelle beantwortet sie in einer Handvoll Calls: ab welcher Präfixlänge liefert
+  sie Treffer?
+
+  Belegfall: Eine Staffel in Schritten von 30 % mit unterster Stufe bei acht
+  Zeichen endete für `Betonsanierungsarbeiten` bei `Betonsan`; Treffer beginnen
+  bei `Beton`. Drei Zeichen, und die Antwort lautete «nichts gefunden» für einen
+  Bestand, der die Einträge hatte. Der Prozentsatz war nicht ungenau, sondern die
+  falsche Grösse: Deutsche Komposita brechen an Morphemgrenzen, die eine relative
+  Staffel nur zufällig trifft.
+
+  Die Messung liefert drei Werte, die vorher geschätzt wurden — die unterste
+  Stufe, die Stelle, ab der die Präzision in Rauschen kippt, und die Antwort auf
+  die Frage, ob eine Präfix-Wildcard dasselbe in einem Aufruf tut. Tut sie es,
+  ist die Staffel ein Workaround für eine vorhandene Funktion.
+
+- **Zwei Anti-Patterns (11, 12)** und die zugehörigen Checklistenpunkte in
+  Schritt 1, 2 und 3, plus das Fundstück «die geratene Staffel».
+
+- **`reference/probe_template.sh`: `widening_probe()` und ein Coverage-Block.**
+  Beide Messungen sind ausführbar statt nur beschrieben — der Coverage-Block
+  enumeriert die Kategorienachse und markiert die geplanten Tools hinein, mit
+  Fallback-Hinweis, wenn die Quelle keinen Kategorien-Endpoint hat.
+  `reference/befund_tabelle_template.md` bekommt für beide je einen Abschnitt.
+
+### Changed
+
+- **2.3 verlangt einen Scope-Absatz im Architektur-Entscheid.** Der Entscheid
+  sagte, *wie* die Daten geholt werden, nicht *welche*. Die Zeilen dafür stehen
+  nach 1.3b bereits im Probe-Protokoll und müssen nur übernommen werden — genau
+  darum wird die Matrix beim Proben angelegt und nicht hier. Das Beispiel-README
+  im Abschnitt zeigt den Absatz mit Zahlen.
+
+- **Das bisherige 1.5 (Dump-Verfügbarkeit) ist jetzt 1.6.** Die Widening-Messung
+  gehört neben die Recall-Ground-Truth aus 1.4: Beide messen Suchverhalten, und
+  beide sind nach der Befund-Tabelle fällig, bevor der Bulk-Weg geprüft wird.
+
 ## [1.4.0] - 2026-08-02
 
 Nothing about the procedure itself changes — five steps, four disciplines, and

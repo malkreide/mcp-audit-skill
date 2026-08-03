@@ -18,7 +18,7 @@ Die vierte Disziplin — **Ground Truth vor Selbstvertrauen** — kam nach einem
 
 ## Funktionen
 
-- **Schritt 1 — Live-Probe vor dem Design.** Fünf Probe-Calls pro Endpoint, Default-Matrix für jeden optionalen Parameter, Recall-Ground-Truth gegen das Web-UI der Quelle, Dump-Verfügbarkeit.
+- **Schritt 1 — Live-Probe vor dem Design.** Fünf Probe-Calls pro Endpoint, Default-Matrix für jeden optionalen Parameter, Abdeckungs-Matrix mit dem Teil des Bestands, den kein geplantes Tool erreicht, Recall-Ground-Truth gegen das Web-UI der Quelle, gemessene Widening-Staffel, Dump-Verfügbarkeit.
 - **Schritt 2 — Architektur-Entscheid.** Entscheidungsbaum von den Probe-Befunden zu Live-API / Hybrid / Dump-only, plus Portfolio-Synergie-Check (neuer Server oder Tool-Erweiterung?).
 - **Schritt 3 — Nicht verhandelbare Resilienz-Defaults.** Retry mit Backoff, Provenance und Attribution in jeder Response, Anchor Demo Query, Tests gegen Fehlerzustände, Graceful Degradation — und Leermengen, die einen nächsten Schritt tragen statt einer Ausrede.
 - **Schritte 4–5 — Übergabe.** Eingaben für die Repo-Erstellung und die Portfolio-Karte.

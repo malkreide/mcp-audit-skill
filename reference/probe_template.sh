@@ -104,6 +104,88 @@ scope_probe() {
 #     "SearchTerm=Testbegriff&ClassificationIds=1&ClassificationIds=2"
 
 # ----------------------------------------------------------------------
+# Coverage axis (skill section 1.3b) — what the planned tools will NOT reach.
+#
+# The findings table records what the probed endpoints return. It does not
+# record which part of the holdings no planned tool touches at all: that
+# produces no error, no delta, no row — it is invisible from the probe unless
+# someone asks on purpose.
+#
+# Enumerate the source's own axis (rubrics, types, registers, themes), then
+# mark the planned tools INTO it. Deriving the list from the tool design can
+# not, by construction, find what the design overlooks.
+#
+# Cost of skipping it: the scope gets justified months later from memory, in a
+# README or an audit, and memory produces plausible reasons rather than
+# measured ones.
+# ----------------------------------------------------------------------
+
+echo ""
+echo "=== Coverage axis ==="
+CATEGORIES_PATH="${CATEGORIES_PATH:-categories}"
+curl -sL "${BASE}/${CATEGORIES_PATH}" -o "${OUTDIR}/categories.json"
+COVERED="${COVERED:-}"   # space-separated ids the planned tools will query
+COVERED="$COVERED" python3 - "${OUTDIR}/categories.json" <<'PY'
+import json, os, sys
+try:
+    cats = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception as exc:
+    print(f"    no category endpoint here ({exc}) — fall back to facets of an "
+          "empty search, the dump's type column, or the rubric list of the "
+          "official UI. The axis has to come from the source either way.")
+    raise SystemExit(0)
+if isinstance(cats, dict):
+    cats = cats.get("data") or cats.get("categories") or []
+covered = set(os.environ.get("COVERED", "").split())
+for c in cats:
+    key = str(c.get("id") or c.get("name") or c)
+    count = c.get("count", "?") if isinstance(c, dict) else "?"
+    mark = "erreichbar" if key in covered else "NICHT erreichbar  <- needs a reason"
+    print(f"    {key:<24} {count:>9}  {mark}")
+print("\n    Every 'NICHT erreichbar' row needs one of three reasons in the")
+print("    findings table: out of scope by decision (with the reason), out of")
+print("    technical reach (no endpoint / auth / licence), or still open.")
+PY
+
+# ----------------------------------------------------------------------
+# Widening schedule (skill section 1.5)
+#
+# If a tool shortens the search term after zero hits, the ladder is an
+# assumption about the source's matching granularity. The source answers it
+# in a handful of calls: from which prefix length does it return hits?
+#
+# A ladder that shortened in 30% steps and bottomed out at eight characters
+# ended at "Betonsan" for "Betonsanierungsarbeiten"; the source starts
+# answering at "Beton". Three characters short, reported as "nothing found".
+# German compounds break at morpheme boundaries — a percentage hits one only
+# by accident.
+# ----------------------------------------------------------------------
+
+widening_probe() {
+    # $1 = test term, $2 = search path (default: search), $3 = query key
+    local term="$1" path="${2:-search}" key="${3:-q}"
+    local n p hits
+    echo ""
+    echo "=== WIDENING ${term} ==="
+    echo "    len  prefix                        hits"
+    for (( n=${#term}; n>=3; n-- )); do
+        p="${term:0:n}"
+        curl -sL --get --data-urlencode "${key}=${p}" \
+            "${BASE}/${path}" -o "${OUTDIR}/widen.json"
+        hits=$(count_of "${OUTDIR}/widen.json")
+        printf "    %2d   %-28s %s\n" "$n" "$p" "$hits"
+    done
+    echo "    -> shortest prefix WITH hits is the ladder's floor. Record it in"
+    echo "       the findings table and as a code comment, with term and date."
+    echo "    -> also try '${term:0:5}*': if the wildcard returns the same in one"
+    echo "       call, the ladder is a workaround for a feature you already have."
+}
+
+# 3-5 terms, chosen deliberately: a long compound, one with a hyphen, one with
+# an umlaut, one from another language region. NOT the anchor demo query.
+# widening_probe "Betonsanierungsarbeiten"
+
+# ----------------------------------------------------------------------
 # Recall ground truth (skill section 1.4b)
 #
 # Open the source's official web UI, search the SAME terms, note the hit

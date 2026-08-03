@@ -18,7 +18,7 @@ The fourth discipline — **ground truth before self-confidence** — was added 
 
 ## Features
 
-- **Step 1 — Live probe before design.** Five probe calls per endpoint, a default matrix for every optional parameter, recall ground truth against the source's own web UI, dump availability.
+- **Step 1 — Live probe before design.** Five probe calls per endpoint, a default matrix for every optional parameter, a coverage matrix recording which part of the holdings no planned tool reaches, recall ground truth against the source's own web UI, a measured widening schedule, dump availability.
 - **Step 2 — Architecture decision.** A decision tree that picks live-API / hybrid / dump-only from the probe findings, plus a portfolio-synergy check (new server or tool extension?).
 - **Step 3 — Non-negotiable resilience defaults.** Retry with backoff, provenance and attribution in every response, anchor demo query, error-state tests, graceful degradation, and empty results that carry a next step instead of an excuse.
 - **Steps 4–5 — Handover.** Inputs for repository creation and the portfolio card.
