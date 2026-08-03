@@ -81,7 +81,7 @@ Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihe
 | vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6). Hat diesen Skill unter `companion/` ausgeliefert, bis dieses Repo sein Zuhause wurde. |
 | im Bau | **`mcp-data-fidelity-skill`** | **Dieser Skill:** liefert er, was die Quelle hat? |
 | im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
-| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–5 erscheinen dort als Checks `FID-001`–`FID-005`. |
+| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–5 liegen auf den fünf `FID`-Checks — nicht eins zu eins: Regeln 3 und 4 teilen sich `FID-003`, Regel 5 braucht `FID-005` und `FID-002`. Regel 6 hat keinen Check. Vollständige Tabelle in `SKILL.md`. |
 | im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Seine Recall-Floors sind Regel 5, laufend gegen die echte Quelle gemessen. |
 
 Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.

@@ -81,7 +81,7 @@ Five repositories, one lifecycle. Each answers a different question, in the orde
 | before the build | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Is the source usable, and what does it hold? Default matrix (1.2b), recall ground truth (1.4), empty results (3.6). Distributed this skill under `companion/` until this repository became its home. |
 | in the build | **`mcp-data-fidelity-skill`** | **This skill:** does it return what the source actually holds? |
 | in the build | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Does it come up, and does it turn away the right callers? The same silent class one layer down — not what the answer contains, but whether one arrives at all |
-| after the build | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Does it hold up against the catalogue? Rules 1–5 appear there as checks `FID-001`–`FID-005`. |
+| after the build | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Does it hold up against the catalogue? Rules 1–5 map onto the five `FID` checks — not one to one: rules 3 and 4 share `FID-003`, rule 5 needs `FID-005` and `FID-002`. Rule 6 has no check. Full table in `SKILL.md`. |
 | in operation | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Does it still hold up tomorrow? Its recall floors are rule 5 kept running against the live source. |
 
 Alongside, not part of the chain: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — Anthropic's generic build guidance, complemented rather than replaced. It is someone else's repository and cannot carry the topic.

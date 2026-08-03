@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Die Regel-zu-Check-Zuordnung ist eine Tabelle statt einer Bereichsangabe,
+  geprüft gegen `mcp-audit` v1.7.0.** Es hiess: «Die Regeln 1–5 erscheinen dort
+  als Checks `FID-001`–`FID-005`». Zwei aufsteigende Bereiche nebeneinander
+  lesen sich als eins zu eins, und so ist die Zuordnung nicht: Regel 2 ist
+  `FID-004`, nicht `FID-002`; die Regeln 3 und 4 teilen sich `FID-003`, weil der
+  Check beide Hälften trägt — den fehlenden nächsten Schritt und die
+  vorformulierte Ausrede; und Regel 5 braucht zwei Checks, `FID-005` für die
+  Syntax und `FID-002` für den Recall.
+
+  Wer die alte Zeile beim Beheben eines Findings gelesen hat, landete für drei
+  von sechs Regeln beim falschen Check. Die neue Tabelle steht in `SKILL.md`
+  neben der Kettentabelle, an derselben Stelle wie im Schwester-Skill
+  `mcp-transport-hardening`, und nennt den Katalogstand, gegen den sie geprüft
+  wurde.
+
+  Am Ergebnis für Regel 6 ändert das nichts: Ein `FID-006` existiert nicht, und
+  kein anderer Check des Katalogs fragt, ob eine Strukturabweichung upstream im
+  Fehlerkanal endet statt in einer leeren Liste. Das steht jetzt als eigene
+  Zeile da statt als Nachsatz.
+
 ## [1.3.0] - 2026-08-02
 
 Six rules, unchanged — nothing in this release touches what the skill teaches.
