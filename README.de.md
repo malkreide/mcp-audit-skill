@@ -324,7 +324,7 @@ ihr Nachweis trägt.
 
 ## Status
 
-**Version:** v1.6.0 — Zwei Befunde aus dem Durchlauf, und eine Kette die man findet. CI auf Ubuntu + Windows × py3.11 + py3.13. Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
+**Version:** v1.7.0 — Woran ein Lauf hängt, und was ein Report nicht behaupten darf. CI auf Ubuntu + Windows × py3.11 + py3.13. Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
 
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`) und Templates (Finding, Audit-Report)

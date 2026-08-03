@@ -6,17 +6,35 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
-### Behoben — zwei Nachträge aus dem Review von `#80`
+### Behoben — ein zu breites Pass-Kriterium in `DRIFT-003`, und die Gegenrichtung des Advisory-Wächters
 
-**Die Advisory-Liste in beiden READMEs nannte drei Checks, der Katalog hatte vier.** `OPS-007` kam als `advisory` dazu; die Gesamtzahl zwei Absätze weiter oben wurde von 96 auf 97 nachgezogen, der Satz «genau drei `advisory`: …» nicht. Die Stelle las sich stimmig, weil die Zahl darüber stimmte — und der CHANGELOG-Eintrag desselben Commits schrieb bereits «vier Checks auf der Brücke». Der Widerspruch sass innerhalb einer einzigen Änderung.
+**Das mit v1.7.0 hinzugekommene Pass-Kriterium in `DRIFT-003` war unbedingt formuliert.** Es verlangte, dass Regex-Prüfmuster ihre Metazeichen maskieren — ohne Ausnahme. Ein Test mit `match=r"timeout|unavailable"` meint das Metazeichen aber absichtlich; nach dem Wortlaut wäre er ein Verstoss, und weil `DRIFT-003` `enforced`, `high` und `always` ist, ein blockierender.
 
-Warum es durchging: `test_readme_counts.py` prüft die Zahl `N` in «Von N Checks …» — die stimmte. Was niemand prüfte, war das Zahlwort dahinter («drei») und die Liste der IDs. Ein Satz, dessen einzige geprüfte Zahl richtig ist, liest sich richtig.
+Das Kriterium gilt jetzt für Muster, die **wörtlich gemeint** sind. Ein beabsichtigtes Metazeichen ist ausdrücklich kein Befund — es muss aber als Absicht erkennbar sein und nicht bloss übrig geblieben. Der Prosa-Teil von Modus 3 sagte das bereits («Jeder Treffer ist zu prüfen, nicht automatisch ein Befund»); die Pass-Kriterien, die das Verdikt tragen, sagten es nicht, und sie tragen es. Neu dazu ein Anti-Pattern für die Gegenrichtung: `re.escape` pauschal über ein absichtlich gemeintes Muster gelegt, womit aus `timeout|unavailable` eine Zeichenkette wird.
 
-Jetzt prüft es `test_advisory_sentence_names_the_catalog_set`, im selben Modul und über dieselbe `readme`-Fixture — damit greift es automatisch auch für eine dritte Sprachfassung, was ein eigener Test mit fest verdrahteten Dateinamen nicht getan hätte. Verglichen werden die **IDs** gegen `advisory_ids(parse_catalog(...))`, nicht das Zahlwort: Eine reine Zählprüfung bestünde auch bei einem Satz, der drei falsche Checks nennt. Gegengeprüft in beide Richtungen — gegen den alten Wortlaut rot, und rot auch, wenn ein bereits promovierter Check versehentlich auf der Brücke mitgelistet wird.
+**`TestReadmesNameTheAdvisorySet` prüfte nur eine Richtung.** Der mit v1.7.0 eingezogene Wächter stellt sicher, dass jeder Check, den der Katalog als `advisory` führt, im README-Satz genannt wird — und dass das Zahlwort stimmt. Was er nicht prüfte: ob der Satz einen Check nennt, den der Katalog **nicht mehr** auf der Brücke führt. Eine Promotion auf `enforced` ist genau der Vorgang, bei dem dieser Satz zu lang wird, und das Zahlwort fängt es nur, solange auch die Länge auffällt.
 
-**Das neue Pass-Kriterium in `DRIFT-003` war zu breit formuliert.** Es verlangte unbedingt, dass Regex-Prüfmuster ihre Metazeichen maskieren. Ein Test mit `match=r"timeout|unavailable"` meint das Metazeichen aber absichtlich — nach dem Wortlaut wäre er ein Verstoss, und weil `DRIFT-003` `enforced`, `high` und `always` ist, ein blockierender. Das Kriterium gilt jetzt für Muster, die **wörtlich gemeint** sind; ein absichtliches Metazeichen ist ausdrücklich kein Befund, muss aber als Absicht erkennbar sein. Der Prosa-Teil von Modus 3 sagte das bereits («Jeder Treffer ist zu prüfen, nicht automatisch ein Befund») — die Pass-Kriterien, die das Verdikt tragen, sagten es nicht. Neu dazu ein Anti-Pattern für die Gegenrichtung: `re.escape` pauschal über ein absichtlich gemeintes Muster gelegt.
+Neu `test_no_promoted_check_is_still_listed`. Der Satz nennt hinter dem Punkt bewusst auch die bereits promovierten Checks — geprüft wird deshalb nur der Teil davor.
 
-Beide Befunde stammen aus dem automatisierten Review zu `#80` und wurden gegen den Katalog nachgeprüft, bevor sie behoben wurden.
+Beide Punkte stammen aus dem automatisierten Review zu `#80`; der dritte Befund von dort (der Advisory-Satz nannte drei Checks statt vier) war bei v1.7.0 bereits behoben.
+
+## [v1.7.0] — 2026-08-03 — Woran ein Lauf hängt, und was ein Report nicht behaupten darf
+
+**Ein neuer Check** (`OPS-007`) — der Katalog wächst von 96 auf **97 in zwölf Kategorien**, 700 Tests. Dazu je eine neue Ausprägung in `OPS-006` und `DRIFT-003`, und eine Präzisierung an `ARCH-011`.
+
+Der Rest dieses Release stammt nicht aus dem Katalog, sondern aus dem Werkzeug darunter — und alle Punkte teilen eine Form. Die Prüflogik war jedes Mal in Ordnung. Falsch war, **was zwischen zwei Läufen transportiert wurde und was ein Report zu behaupten bereit war, ohne es gemessen zu haben.**
+
+**Woran ein Lauf hängt.** `catalog_hash` hielt bisher fest, *womit* gemessen wurde; *woran*, hielt nichts fest. `audit_init.py init --target-repo` schreibt jetzt die HEAD-Revision des auditierten Repos, und das Pflicht-Gate prüft sie am Ende erneut. Ein Commit, der mitten im Lauf landet, teilt den Report sonst unbemerkt: Die Checks davor beschreiben einen Baum, die danach einen anderen, und die Mischung wird als ein Urteil präsentiert.
+
+**Was ein Report nicht behaupten darf.** Drei Verweigerungen, dieselbe Regel:
+
+- Weicht der Katalog-Stand vom Vorlauf ab, wird der Verlaufsvergleich **verweigert** statt korrigiert. «30 pass / 4 fail / 2 partial → x/y/z» wäre über 36 gegen 54 Checks geschrieben worden, und jede Zahl wäre als Bewegung im Server gelesen worden.
+- Ein Vergleich, dessen beide Seiten leer parsen, meldet nicht mehr «identisch». Er hat recht in der Arithmetik und unrecht in allem übrigen.
+- Ein Check, der sich nicht feststellen liess, hat mit `not_verified` endlich einen Status. `OPS-004` verlangte ihn, seit der Check geschrieben wurde, während das Schema den Wert zurückwies — wer die Regel befolgen wollte, bekam einen Fehler und trug `pass` ein. Eine Regel, deren Einhaltung das Werkzeug unmöglich macht, ist keine strenge Regel; sie ist eine Regel, die sich in ihr Gegenteil auflöst.
+
+**Kein Re-Audit-Auslöser nach §5.** `OPS-007` startet `advisory`; damit sind vier Checks advisory: `ARCH-014`, `OPS-005`, `OPS-006`, `OPS-007`. Die Erweiterungen an `OPS-006` und `DRIFT-003` heben keine Severity an und dehnen kein `applies_when`. Die Präzisierung an `ARCH-011` ist enger als der bisherige Wortlaut — ein Audit, das eine Abweichung allein wegen einer Begründung in `SECURITY.md` bestanden hat, würde heute anders ausfallen; wer `ARCH-011` in einem laufenden Audit auf `pass` stehen hat, sieht dort noch einmal nach.
+
+**Nicht dabei:** `not_verified` blockiert keine Freigabe. Ein unbeantwortbarer Check ist kein fehlgeschlagener — er steht neben dem Urteil, nicht darin.
 
 ### Ergänzt — `OPS-007`, und zwei Ausprägungen, die kein neuer Check sein durften
 
