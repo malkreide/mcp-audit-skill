@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-03
+
+Sechs Regeln, unverändert — dieses Release ändert nichts an dem, was der Skill
+lehrt. Es ändert, wohin er zeigt: Die Zuordnung Regel → Audit-Check stand als
+Bereichsangabe da und war für drei von sechs Regeln falsch. Wer nach einem
+Finding hierher kam, um die Behebung zu finden, landete beim falschen Check —
+der teuerste Ort für eine Ungenauigkeit, weil er genau dann gelesen wird, wenn
+jemand etwas reparieren will.
+
 ### Changed
 
 - **Die Regel-zu-Check-Zuordnung ist eine Tabelle statt einer Bereichsangabe,
