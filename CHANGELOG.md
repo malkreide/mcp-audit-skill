@@ -61,6 +61,26 @@ Neu: `Modus 3` (Regex-Argumente mit unmaskierten Metazeichen, mit Gegenprobe geg
 
 **Kein Re-Audit-Auslöser nach §5** für die beiden Erweiterungen: keine Severity angehoben, keine `applies_when` erweitert. `OPS-007` ist als neuer Check der übliche Fall — bestehende Audits bleiben gültig, beim nächsten Audit gilt der neue Katalog.
 
+### Hinzugefügt — `tools/carry_forward.py`
+
+Übernimmt unveränderte Finding-Dokumente aus früheren Audit-Läufen. Bisher war das ein Handgriff, und er ist zweimal schiefgegangen.
+
+Beim ersten Mal suchte der handgeschriebene Übertrag `findings/<ID>.md`, während der Quell-Lauf `<ID>-<slug>.md` benannt hatte. Er fand nichts, schrieb einen leeren Platzhalter, füllte ihn nie — 16 Findings über zwei Läufe als Null-Byte-Dateien, vom Validation-Gate durchgewinkt. Beim zweiten Mal war der Quell-Lauf falsch gewählt, mit demselben Ergebnis.
+
+Der Helfer garantiert fünf Dinge:
+
+- **Beide Namensformen lösen auf.** `<ID>.md` und `<ID>-<slug>.md` sind dieselbe Findung.
+- **Eine leere Quelle ist keine Quelle.** Der Rückstand genau dieses Bugs wird übersprungen, nicht weitergereicht.
+- **Es wird nie etwas Leeres geschrieben.** Der Fehlermodus lässt sich vom Werkzeug, das ihn behebt, nicht wieder einführen.
+- **Handgeschriebenes im Ziel gewinnt.** Nur leere Stubs werden ersetzt — und zwar an Ort und Stelle, nicht durch eine zweite Datei daneben.
+- **Eine fehlende Quelle ist laut.** Exit 1 mit den betroffenen IDs.
+
+Beim Gegenprüfen an dem real kaputten Lauf fiel eine zweite Ebene auf: die erste Fassung reparierte die Abdeckung und liess zwölf Null-Byte-Dateien neben den befüllten liegen. Das Gate war zufrieden, weil es je ID die substantiellste Datei nimmt — der Müll war für es unsichtbar. Ein Werkzeug, das ein Artefakt repariert, darf es nicht schmutzig hinterlassen; der Stub wird jetzt überschrieben statt ergänzt.
+
+21 Tests, davon zwei nach den realen Fehlern benannt.
+
+**Die allgemeine Regel dahinter**, jetzt auch in `SKILL.md` §5.0: Was zweimal von Hand gemacht wurde, wird ein Skript. Alle vier realen Fehler dieser Methodik lagen nicht in der Prüflogik, sondern im Transport von Zustand zwischen Läufen.
+
 ### Ergänzt — `OPS-006`, und was ein Rollout über 32 Repos über Gates lehrt
 
 **Ein neuer Check** (`OPS-006`) — der Katalog wächst von 95 auf **96 in zwölf Kategorien**. Dazu zwei Erweiterungen an `OPS-005` und ein neuer Abschnitt in `SKILL.md`. Alles stammt aus einem einzigen Vorgang: dem Ausrollen eines Formatgates über 32 Portfolio-Repos, das nebenbei 112 angesammelte Lint-Verstösse und 205 unformatierte Dateien sichtbar machte.
