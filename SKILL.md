@@ -109,6 +109,20 @@ Die initiale `audit-meta.json` enthält:
 
 Der `catalog_hash` ist der Reproduzierbarkeits-Anker: jeder Re-Audit kann verifizieren, dass derselbe Katalog-Stand verwendet wurde.
 
+### 0.5 Platzhalter in spitzen Klammern überleben den Weg nach draussen nicht
+
+Diese Datei, `templates/finding.md` und die Finding-Dokumente schreiben Platzhalter als `<ID>`, `<slug>`, `<CHECK-ID>`. Im Repository ist das richtig und bleibt so — Git transportiert Text, nicht HTML.
+
+**Wird derselbe Text von einem Agenten über die GitHub-Werkzeugschicht abgeschickt, ist er weg.** Ein Pull-Request-Body mit dem Satz «suchte `findings/<ID>.md`, während der Lauf `<ID>-<slug>.md` benannt hatte» kommt als «suchte `findings/.md`, während der Lauf `-.md` benannt hatte» an: `<ID>` und `<slug>` werden als unbekannte Tags verworfen. **Backticks schützen nicht** — die Umwandlung läuft vor dem Markdown-Parser.
+
+Gemessen, nicht angenommen: In PR #79 zweimal reproduziert — beim Anlegen und beim Korrekturversuch mit denselben Klammern. Am selben Ort wurde `>` am Zeilenanfang zu `&gt;` escaped, das Blockquote also gleich mit zerstört.
+
+**Wo genau das passiert, ist nicht belegt, und die Vermutung gehört nicht in die Regel.** Der gespeicherte Body enthält `&#39;` für Apostrophe; GitHub escaped die in Issue- und PR-Bodies nicht. Der Verlust entsteht also mit hoher Wahrscheinlichkeit in der Werkzeug- oder Proxy-Schicht des Agenten und **nicht** bei GitHub — ein Mensch, der denselben Text im Web-UI einfügt, dürfte nichts verlieren. Wer das braucht, misst es: Text mit `<ID>` von Hand einfügen, speichern, zurücklesen. Bis dahin gilt die Regel für den Agentenpfad, für den sie gemessen ist.
+
+Bösartig ist der Fall, weil das Ergebnis **plausibel bleibt**. `findings/.md` sieht nicht nach einem Fehler aus, sondern nach einem Dateinamen. Ein Satz über den Unterschied zweier Schreibweisen wurde so zu einem Satz, der beide gleich nennt — ohne Fehlermeldung, ohne rotes Gate. Dieselbe Mechanik trifft das Finding-Template aus §5.1: dessen Überschrift `## Finding: <CHECK-ID> — <CHECK-TITLE>` wird beim Einfügen in ein Issue zu `## Finding:  — `.
+
+**Regel:** Text, den ein Agent in einen PR-Body, ein Issue, einen Review-Kommentar oder den Tracker schreibt, schreibt Platzhalter als `{ID}`, `{slug}`, `{CHECK-ID}` und sagt einmal dazu, dass die geschweifte Form für die spitze steht. Danach **den gespeicherten Body zurücklesen und vergleichen** — die Umwandlung ist still, also ist die Gegenprobe der einzige Beleg. Derselbe Reflex wie beim Gegen-Test einer Mutation: ein Schritt ohne Rückmessung ist kein belegter Schritt.
+
 ---
 
 ## Schritt 1: Profil laden
@@ -821,6 +835,8 @@ Drei Eigenschaften, die erst beim Ausrollen über viele Repos sichtbar werden:
 8. **«`grep` findet den Satz nicht, also fehlt die Doku»** — `grep` ist zeilenweise. Ein Satz, der umbricht, wird nie gefunden. Vor dem Vergleich normalisieren, siehe [§4.1](#whitespace-normalisieren-bevor-auf-text-geprüft-wird).
 9. **«Das Werkzeug hat nichts gemeldet, also ist der Check bestanden»** — nur wenn das Werkzeug gelaufen ist *und* gefunden hätte. Sonst ist es `todo`, nicht `pass`. Siehe [§2.6](#26-ein-check-der-nichts-findet-muss-sagen-können-ob-er-gesucht-hat).
 10. **«Der Patch läuft in meinem Repo grün, also überall»** — bei portfolio-weiten Fixes entscheidet die schmalste konfigurierte Zeilenbreite, nicht die eigene. Siehe [Portfolio-Hygiene](#portfolio-hygiene-ein-commit-33-repos).
+11. **«Ich habe den Text abgeschickt, also steht er da»** — Platzhalter in spitzen Klammern verschwinden auf dem Weg in PR-Body, Issue oder Tracker, lautlos und plausibel. Body zurücklesen, nicht annehmen. Siehe [§0.5](#05-platzhalter-in-spitzen-klammern-überleben-den-weg-nach-draussen-nicht).
+12. **«Der Guard ist rot, also weiss es jemand»** — ein Guard, der auf `main` läuft, meldet an niemanden. `repo-description` war über sechs Merges rot und wurde nie beantwortet. Ein Befund braucht einen Adressaten, sonst ist er Dekoration.
 
 ---
 
