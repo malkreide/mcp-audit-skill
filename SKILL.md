@@ -14,13 +14,13 @@ Dieser Skill kodiert vier Disziplinen, die das Swiss Public Data MCP Portfolio v
 3. Retry **vor** Defaitismus
 4. Ground Truth **vor** Selbstvertrauen
 
-Jeder neue `*-mcp`-Server durchläuft die drei Schritte unten in dieser Reihenfolge; die vierte Disziplin ist kein eigener Schritt, sondern verläuft quer durch Schritt 1 (1.2b, 1.4) und Schritt 3 (3.6). Abweichungen erfordern eine explizite Begründung, die im README unter «Architektur-Entscheid» dokumentiert wird.
+Jeder neue `*-mcp`-Server durchläuft die drei Schritte unten in dieser Reihenfolge; die vierte Disziplin ist kein eigener Schritt, sondern verläuft quer durch Schritt 1 (1.2b, 1.3b, 1.4, 1.5) und Schritt 3 (3.6). Abweichungen erfordern eine explizite Begründung, die im README unter «Architektur-Entscheid» dokumentiert wird.
 
 ---
 
 ## Schritt 1: Live-Probe (vor dem Coden)
 
-**Ziel:** Empirisch feststellen, was die Datenquelle tatsächlich liefert — nicht was die Dokumentation verspricht.
+**Ziel:** Empirisch feststellen, was die Datenquelle tatsächlich liefert — nicht was die Dokumentation verspricht. Und zweitens: festhalten, was sie hat, das der geplante Server nicht anfassen wird. Beides ist hier billig und später teuer.
 
 ### 1.1 Dokumentation vollständig lesen
 
@@ -167,6 +167,49 @@ Ausgabe von Schritt 1 ist **immer** eine Tabelle in diesem Format:
 | `/table/Z/id/1` | 404 | ❌ existiert nicht | – | Doku veraltet |
 | `/search/default/Foo` | 200 | ✅ funktioniert | ~5 | |
 
+### 1.3b Abdeckungs-Matrix — welcher Teil des Bestands bleibt unerreichbar
+
+**Ziel:** Die Befund-Tabelle hält fest, was die geprobten Endpoints liefern. Sie hält damit noch nicht fest, welcher Teil des Bestands über die **geplanten Tools** gar nicht erreichbar ist. Genau diese Zeile fehlt später, wenn jemand den Scope begründen muss.
+
+Der Unterschied zu 1.2b: Dort liefert ein befragter Endpoint weniger als erwartet, und ein Delta beweist es. Hier gibt es kein Delta, weil niemand gefragt hat — Bestandsteile, die kein geplanter Endpoint anfasst, erzeugen keinen Fehler, keine Auffälligkeit und keine Zeile. Aus der Probe heraus sind sie per Konstruktion unsichtbar.
+
+**Warum das in Schritt 1 gehört und nicht in Schritt 2.** Der Scope wird später begründet: im README, im Audit, gegenüber einem User, der etwas vermisst. Wer erst dann begründet, rekonstruiert — und Rekonstruktion liefert plausible Gründe, nicht gemessene. Portfolio-Fall: Ein Audit-Befund (`ARCH-003`) verlangte die Begründung des Architektur-Entscheids. Die nachgelieferte Begründung erklärte Konkurse und Baugesuche für ausserhalb der Quelle. Tatsächlich liegen sie in der Quelle und nur ausserhalb der geplanten Tools. Der Scope war richtig, die Begründung falsch — und falsch auf die teure Art, weil sie die Quelle kleiner macht, als sie ist. Zwei Zeilen im Probe-Protokoll hätten den Fehler unmöglich gemacht: Wer den Scope begründet, zitiert dann Gemessenes.
+
+**Die Achse kommt aus der Quelle, nicht aus dem Plan.** Fast jede Quelle trägt eine explizite Bestandsachse — Rubriken, Publikationstypen, Registerarten, Themen, Datasets — und diese Liste ist meist selbst ein Endpoint (`/categories`, `/types`) oder eine Facetten-Aggregation. Sie wird vollständig enumeriert, danach werden die geplanten Tools **hineinmarkiert**. Der umgekehrte Weg — die Liste aus dem Tool-Entwurf bilden — kann nichts finden, was der Entwurf übersieht.
+
+```bash
+# Bestandsachse der Quelle enumerieren, vollständig, vor der Tool-Planung
+curl -s "$BASE/categories" -o cats.json
+python3 - cats.json <<'PY'
+import json, sys
+cats = json.load(open(sys.argv[1], encoding="utf-8"))
+COVERED = {"hr", "sh"}          # von Hand: was die geplanten Tools abfragen
+for c in cats:
+    key = c["id"]
+    mark = "erreichbar" if key in COVERED else "NICHT erreichbar"
+    print(f"{key:<20} {c.get('count', '?'):>9}  {mark}")
+PY
+```
+
+Ohne Kategorien-Endpoint: Facetten einer leeren Suche, das Typ-Feld des Bulk-Dumps auszählen, oder die Rubrikenliste der offiziellen Oberfläche — dieselbe Ground Truth wie in 1.4, eine Frage früher gestellt.
+
+| Bestandsteil | in der Quelle | über geplante Tools | Beleg | Grund |
+|---|---:|---|---|---|
+| Handelsregister-Meldungen | 812'000 | ✅ | `/search?rubric=HR`, 200 | Kern der Anchor-Query |
+| Konkurse | 96'000 | ❌ | Rubrik enumeriert, kein Tool | bewusst ausserhalb Scope (Phase 1) |
+| Baugesuche | 41'000 | ❌ | Rubrik enumeriert, kein Tool | bewusst ausserhalb Scope (kantonal uneinheitlich) |
+| Betreibungen | ? | ❌ | Auth nötig (401) | technisch nicht erreichbar |
+
+**Drei zulässige Gründe für ein ❌, mehr nicht:**
+
+1. **bewusst ausserhalb des Scopes** — mit dem Grund, nicht nur mit dem Wort
+2. **technisch nicht erreichbar** — kein Endpoint, Auth, Lizenz, Rate-Limit
+3. **noch offen** — nicht geprüft; ein offener Befund, kein Freibrief
+
+Nicht zulässig ist die vierte Möglichkeit, die in der Praxis die häufigste ist: gar nicht erwähnt. Eine Zeile ohne Grund ist ein offener Befund und gehört ins README, nicht in den Papierkorb — dieselbe Regel wie beim unerklärten Delta in 1.4b.
+
+**Wohin das Ergebnis geht:** in die Rationale des Architektur-Entscheids (2.3) und ins README unter «Known limitations» / «Scope». Ein Server, der ein Viertel des Bestands abdeckt, ist völlig in Ordnung; ein Server, der nicht sagen kann, welches Viertel, ist es nicht.
+
 ### 1.4 Reality-Check gegen die offizielle Oberfläche
 
 **Gilt für Listen- UND für Such-Endpoints.** Diese Erweiterung ist die Lehre aus `termdat-mcp`: Dort wurde der Reality-Check korrekt auf die Listen-Endpoints angewandt — 140 Collections, 23 Classifications, beide Zahlen stimmten — und nie auf den Such-Endpoint. Nicht die Regel fehlte, sondern ihre Reichweite. Recall entsteht in der Suche, also muss er dort gemessen werden.
@@ -203,7 +246,51 @@ Keine exakten Zahlen als Assertion: Der Test soll einen Kollaps von 21 auf 1 fan
 
 Bei Quellen **ohne** offizielles Web-UI: Ersatz-Ground-Truth dokumentieren — Zeilenzahl des Bulk-Dumps, veröffentlichte Bestandszahlen, Angaben im Katalogeintrag.
 
-### 1.5 Dump-Verfügbarkeit prüfen
+### 1.5 Widening-Schedule gegen die Live-API messen
+
+**Ziel:** Wenn ein Tool bei null Treffern den Suchbegriff verkürzt und erneut fragt, ist diese Staffel eine Annahme über die Quelle — über ihre Matching-Granularität, ihre Stemming-Regeln, ihre Mindestlänge. Die Quelle beantwortet die Frage selbst, in einer Handvoll Calls: **ab welcher Präfixlänge liefert sie Treffer?** Das ist billig zu messen, solange man ohnehin an der API hängt, und teuer zu raten, weil eine zu früh abgebrochene Staffel wie ein sauberer Nullbefund aussieht (3.6).
+
+**Belegfall.** Eine Staffel kürzte den Suchbegriff in Schritten von 30 % und hatte ihre unterste Stufe bei acht Zeichen. Für `Betonsanierungsarbeiten` endete sie damit bei `Betonsan`; Treffer lieferte die Quelle erst ab `Beton`. Drei Zeichen Abstand, und die Antwort lautete «nichts gefunden» für einen Bestand, der die Einträge hatte. Der Prozentsatz war nicht knapp daneben — er war die falsche Grösse. Deutsche Komposita brechen an Morphemgrenzen (`Beton|sanierungs|arbeiten`), und eine Prozentstaffel trifft eine Morphemgrenze nur zufällig. Die brauchbare Zahl steht nicht in der Formel, sondern in der Quelle.
+
+**Die Messung** — pro Testbegriff jede Präfixlänge einmal abfragen:
+
+```bash
+widening_probe() {
+    # $1 = Testbegriff. Eine Zeile pro Präfixlänge: ab wo liefert die Quelle?
+    local term="$1" n p hits
+    for (( n=${#term}; n>=3; n-- )); do
+        p="${term:0:n}"
+        hits=$(curl -s --get --data-urlencode "q=$p" "$BASE/search" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d.get('data') or []))")
+        printf "  %2d  %-28s %s\n" "$n" "$p" "$hits"
+    done
+}
+widening_probe "Betonsanierungsarbeiten"
+```
+
+3–5 Begriffe, bewusst gewählt: ein langes Kompositum, einer mit Bindestrich (bricht die Staffel am Trennzeichen?), einer mit Umlaut (Encoding über die Kürzung hinweg), einer aus einer anderen Sprachregion. **Nicht** die Anchor-Demo-Query — sie funktioniert immer, aus demselben Grund wie in 1.4b.
+
+Das sind rund zwanzig Aufrufe pro Begriff. Bei engen Rate-Limits in Zweierschritten laufen und die Grenze danach binär einkreisen — die gesuchte Zahl ist ein einzelner Übergang von 0 auf n, keine Kurve.
+
+| Testbegriff | Länge | kürzestes Präfix mit Treffern | Treffer | Morphemgrenze | Wildcard-Alternative |
+|---|---:|---|---:|---|---|
+| `Betonsanierungsarbeiten` | 23 | `Beton` (5) | 143 | ✅ | `Beton*` → 143 |
+| `Gebäudeversicherung` | 19 | `Gebäude` (7) | 88 | ✅ | `Gebäude*` → 88 |
+| `Baubewilligung` | 14 | `Baubewilligung` (14) | 12 | – | `Baubewilligung*` → 19 |
+
+Die dritte Zeile ist der Fall, den eine Staffel nicht lösen kann: Kürzen hilft nicht, weil kein Präfix ein ganzes Wort ist — Treffer bringt hier nur die Wildcard. Wer nur die Staffel baut, hat für diese Begriffsklasse gar keinen zweiten Versuch.
+
+**Drei Dinge entscheidet diese Messung, die vorher geschätzt wurden:**
+
+1. **Die unterste Stufe.** Sie kommt aus der Spalte «kürzestes Präfix», nicht aus einem Prozentsatz. Eine Staffel, die diesen Wert nicht erreicht, meldet Abwesenheit für vorhandene Daten — und zwar leise.
+2. **Ob die Staffel überhaupt das richtige Mittel ist.** Beherrscht die Quelle Präfix-Wildcards, liefert `Beton*` dasselbe in einem einzigen Aufruf. Dann ist die Staffel ein Workaround für eine vorhandene Funktion, mit N-fachem Verkehr und N-facher Latenz. Die Wildcard-Spalte gehört deshalb in dieselbe Messung: Steht sie, ist der Entscheid schon getroffen.
+3. **Wo die Präzision kippt.** Nach unten hin trifft jedes Präfix irgendwann alles — `Be` fängt die halbe Quelle. Die Messung zeigt beide Enden. Eine Staffel braucht nicht nur einen Boden, sondern auch die Stufe, ab der sie besser abbricht und einen `hint` zurückgibt (3.6), statt 4'000 unspezifische Treffer als Erfolg auszugeben.
+
+**Was ins Protokoll geht:** die Tabelle oben, und die gemessene unterste Stufe zusätzlich als Kommentar an die Staffel im Code — mit Begriff und Datum. Ohne diesen Kommentar wird die Zahl beim nächsten Refactoring auf einen runden Wert «vereinfacht», und die Messung war umsonst. Analog zum Recall-Canary aus 1.4c lohnt ein Live-Test, der den gemessenen Begriff über die Staffel schickt und Treffer verlangt: Er fängt sowohl eine gekürzte Staffel als auch eine Upstream-Änderung an der Matching-Granularität.
+
+Führt der Server das Widening automatisch aus, gilt zusätzlich 3.6: Die Antwort muss sagen, **welche** Begriffe versucht wurden. Sonst ist die Leermenge nach fünf stillen Versuchen von der Leermenge nach einem nicht unterscheidbar.
+
+### 1.6 Dump-Verfügbarkeit prüfen
 
 Parallel zu den API-Probes **immer** prüfen, ob die Quelle einen Bulk-Download anbietet:
 
@@ -267,6 +354,12 @@ Rationale (verified live on YYYY-MM-DD):
 - The ABC endpoint works reliably for lookups, so it is used for single-entity
   calls.
 
+Scope (measured, see coverage matrix in step 1.3b):
+- Reachable: rubrics HR and SH — 812'000 of roughly 950'000 records.
+- Out of scope by decision: bankruptcies, building permits — present in the
+  source, not covered by any tool of this server.
+- Out of reach: debt-enforcement records — the endpoint requires authentication.
+
 Consequences:
 - Transports: stdio and streamable-http.
 - Dump is cached on disk with Z hours TTL — one cache per process under stdio,
@@ -283,6 +376,12 @@ Cache lebt genau eine Sitzung und der Dump wird pro Sitzung neu geladen. Unter
 lange wie die Instanz und wird geteilt. Dieselbe TTL bedeutet also zwei
 verschiedene Dinge — bei einem 17-MB-Dump die Frage, ob jede Sitzung ihn zieht
 oder keine.
+
+**Der Scope gehört in dieselbe Begründung, mit Zahlen.** Ein Architektur-Entscheid
+sagt, *wie* die Daten geholt werden; ohne den Scope-Absatz sagt er nicht, *welche*.
+Die Zeilen dafür stehen bereits in der Abdeckungs-Matrix aus 1.3b und müssen nur
+übernommen werden — genau darum wurde sie beim Proben angelegt und nicht hier.
+Wer sie erst hier schreibt, schreibt sie aus dem Gedächtnis.
 
 Das ändert auch, was `provenance: cached` aus 3.2 aussagt: unter `stdio` «in
 dieser Sitzung schon geholt», unter `streamable-http` «womöglich Stunden alt und
@@ -426,8 +525,9 @@ Nach Abschluss der Probe (Schritt 1-3) erfolgt die Repo-Erstellung via [`github-
    - Template: `MCP server for the {Quelle}.{xyz} — {Domäne in einem Satz}`
 3. **Topics/Tags** (5–8): immer `mcp`, `model-context-protocol`, `llm`, `python`, `swiss-open-data` + domänenspezifische
 4. **Befund-Tabelle** aus Schritt 1.3 → gehört ins README unter «Known limitations» falls nicht alle Endpoints funktionieren
-5. **Architektur-Entscheid** aus Schritt 2.3 → ins README
-6. **Anchor Demo Query** aus Schritt 3.3 → prominent ins README
+5. **Abdeckungs-Matrix** aus Schritt 1.3b → ins README unter «Scope» bzw. «Known limitations»; sie ist die Quelle für jede spätere Scope-Begründung
+6. **Architektur-Entscheid** aus Schritt 2.3 → ins README
+7. **Anchor Demo Query** aus Schritt 3.3 → prominent ins README
 
 ---
 
@@ -460,6 +560,8 @@ Nach Release (Tag `v0.1.0`) wird die Karte in der Notion-Datenbank `aa6b672a-e5e
 - Bool-Felder mit inkonsistenten Werten (`0/1` vs. `"Y"/"N"` vs. `true/false`) → Probe fängt das ab
 - Ein weggelassener Filter-Parameter schränkt still auf einen Teilausschnitt ein → nur 1.2b fängt das ab
 - Der Suchindex matcht auf ganzen Wörtern, Komposita bleiben unauffindbar → nur 1.4b fängt das ab
+- Ein ganzer Bestandsteil wird von keinem geplanten Tool berührt und fällt deshalb nirgends auf → nur 1.3b fängt das ab
+- Die Quelle liefert erst ab einer kürzeren Präfixlänge Treffer, als jede geschätzte Staffel erreicht → nur 1.5 fängt das ab
 
 **Eselsbrücke:** *«Dokumentation ist ein Foto, Live-Probe ist der aktuelle Zustand. Wir bauen auf dem aktuellen Zustand.»*
 
@@ -494,6 +596,8 @@ Nach Release (Tag `v0.1.0`) wird die Karte in der Notion-Datenbank `aa6b672a-e5e
 8. **«Null Treffer heisst, es gibt nichts»** — nicht ohne Wildcard-Retry und geprüften Scope. Und die Tool-Description darf diese Schlussfolgerung dem Modell nie nahelegen. Siehe 3.6.
 9. **«Meine Probe fand nichts, also hat die Quelle nichts»** — erst wenn die Antwortstruktur bestätigt ist. Eine falsch gelesene Verschachtelung liefert dieselbe leere Liste wie ein echter Nullbefund, nur ohne Fehler. Siehe 1.2c.
 10. **«Ein Endpoint reicht»** — aggregierte Endpoints hinken hinter den autoritativen her. Welcher befragt wurde, gehört ins Protokoll. Siehe 1.2c.
+11. **«Was wir nicht abdecken, ist offensichtlich»** — beim Bauen ja, beim Begründen nicht mehr. Wer den Scope erst im Audit begründet, rekonstruiert ihn und erfindet dabei Gründe, die die Quelle kleiner machen, als sie ist. Die Abdeckungs-Matrix wird geprobt, nicht erinnert. Siehe 1.3b.
+12. **«Die Staffel ist eine Formel»** — 30 % pro Schritt ist eine Annahme über die Matching-Granularität der Quelle, kein Messwert. Ab welcher Präfixlänge Treffer kommen, sagt nur die Quelle, und sie sagt es für ein paar Calls. Siehe 1.5.
 
 ---
 
@@ -507,14 +611,17 @@ Vor `v0.1.0`-Tag alle folgenden Punkte abhaken:
 - [ ] **Default-Matrix**: jeder optionale Parameter geprüft, Recall-Delta gemessen (1.2b)
 - [ ] **Struktur-Assertion**: jede Null in der Befund-Tabelle ist als echter Nullbefund bestätigt, nicht als ungeprüfte Leermenge (1.2c)
 - [ ] Bei mehreren Wegen zur selben Information: der befragte Endpoint ist protokolliert und autoritativ (1.2c)
+- [ ] **Abdeckungs-Matrix**: Bestandsachse aus der Quelle enumeriert, jede nicht erreichbare Zeile trägt einen der drei zulässigen Gründe (1.3b)
 - [ ] Homepage-Zahlen vs. API-Zahlen verglichen
 - [ ] **Recall-Ground-Truth**: 3–5 Referenzbegriffe gegen das offizielle Web-UI, jedes Delta erklärt (1.4b)
+- [ ] **Widening-Schedule**: kürzestes Treffer-Präfix pro Testbegriff gemessen, Wildcard-Alternative geprüft (1.5)
 - [ ] Dump-Verfügbarkeit geprüft
 
 **Schritt 2 – Architektur**
 - [ ] Architektur-Entscheid (A/B/C) explizit getroffen
 - [ ] Portfolio-Synergie-Check durchgeführt
 - [ ] Entscheid im README dokumentiert
+- [ ] **Scope-Absatz** im Entscheid, mit den Zahlen aus der Abdeckungs-Matrix statt aus dem Gedächtnis (2.3)
 - [ ] **Transport**: beide unterstützt, und bei ARCH B/C die Cache-Lebensdauer pro Transport im Entscheid benannt (2.3)
 
 **Schritt 3 – Resilienz**
@@ -523,6 +630,7 @@ Vor `v0.1.0`-Tag alle folgenden Punkte abhaken:
 - [ ] Anchor Demo Query im README prominent
 - [ ] Tests für Happy / Retry / Timeout
 - [ ] **Recall-Canary** als `@pytest.mark.live`-Test mit Untergrenzen (1.4c)
+- [ ] **Widening-Boden**: gemessene unterste Stufe als Kommentar am Code und als Live-Test, nicht als runde Zahl (1.5)
 - [ ] Graceful-Degradation-Pfad
 - [ ] **Leermenge trägt `hint`**, keine Tool-Description erklärt oder entschuldigt ein leeres Resultat (3.6)
 - [ ] **Query-Syntax** (Lucene/CQL/SQL) samt Matching-Granularität in der Tool-Description, nicht nur im README
@@ -562,6 +670,19 @@ Was der Fall über das Vorgehen gezeigt hat, in absteigender Unbequemlichkeit:
 4. **Die eigene Doku hat das Modell zum Konfabulieren gebracht.** Der Satz «an empty result usually means the term is out of scope» war als Ehrlichkeit gemeint und wirkte als Freibrief.
 
 **Metapher:** *«Ein optionaler Filter ist wie ein Museumswärter, der ungefragt entscheidet, welchen Flügel du zu sehen bekommst — und dich freundlich versichert, du habest alles gesehen.»*
+
+### Fundstück: die geratene Staffel (2026-08)
+
+Ein Tool kürzte bei null Treffern den Suchbegriff um jeweils 30 % und gab bei acht Zeichen auf. Für `Betonsanierungsarbeiten` war die letzte Stufe `Betonsan`, Treffer begannen bei `Beton`. Die Staffel stoppte drei Zeichen vor dem ersten Begriff, der funktioniert hätte, und meldete «nichts gefunden».
+
+Zwei Dinge daran sind übertragbar:
+
+1. **Der Prozentsatz war nicht ungenau, sondern die falsche Grösse.** Was die Quelle findet, hängt an Morphemgrenzen und Index-Granularität, nicht an der Länge der Eingabe. Eine relative Staffel trifft eine Morphemgrenze nur zufällig — und bei längeren Komposita immer seltener, weil ihre Schritte mitwachsen.
+2. **Die Messung kostete weniger als die Annahme.** Zwanzig Präfixe eines Begriffs sind zwanzig Calls an einer API, an der man ohnehin hängt. Der geratene Wert kostete einen stillen Recall-Verlust, der wie eine Eigenschaft des Bestands aussah.
+
+**Metapher:** *«Eine Prozentstaffel ist ein Dietrich, der nach Gefühl gefeilt wurde — er passt in jedes Schloss ausser in das, vor dem man steht.»*
+
+Kodifiziert in 1.5.
 
 **Querverweis:** Als Audit-Checks kodifiziert in `mcp-audit` unter `FID-001` bis `FID-005`. Wer diesen Skill korrekt anwendet, besteht sie; wer sie beim Audit reisst, findet hier das Vorgehen zur Behebung.
 

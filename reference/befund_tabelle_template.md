@@ -25,6 +25,27 @@
 | `/search/default/Foo` | 200 | ✅ | ~5 | |
 | Bulk-Dump (JSON) | 200 | ✅ | 17 MB | wöchentlich Montag früh |
 
+## Abdeckungs-Matrix — was bleibt unerreichbar? (Schritt 1.3b)
+
+Zeilen aus der **Bestandsachse der Quelle** (Rubriken / Typen / Register / Themen),
+vollständig enumeriert — nicht aus der geplanten Tool-Liste abgeleitet. Die Tools
+werden hineinmarkiert, nicht umgekehrt.
+
+| Bestandsteil | in der Quelle | über geplante Tools | Beleg | Grund |
+|---|---:|---|---|---|
+| z. B. Handelsregister-Meldungen | 812'000 | ✅ | `/search?rubric=HR`, 200 | Kern der Anchor-Query |
+| z. B. Konkurse | 96'000 | ❌ | Rubrik enumeriert, kein Tool | bewusst ausserhalb Scope (Phase 1) |
+| z. B. Baugesuche | 41'000 | ❌ | Rubrik enumeriert, kein Tool | bewusst ausserhalb Scope |
+| z. B. Betreibungen | ? | ❌ | Auth nötig (401) | technisch nicht erreichbar |
+| | | | | |
+
+Zulässige Gründe für ein ❌: **bewusst ausserhalb des Scopes** (mit Grund) /
+**technisch nicht erreichbar** (kein Endpoint, Auth, Lizenz) / **noch offen**
+(= offener Befund). Eine Zeile ohne Grund ist keine Zeile.
+
+Diese Tabelle ist die Quelle für den Scope-Absatz im Architektur-Entscheid (2.3).
+Wer den Scope später begründet, zitiert von hier — nicht aus dem Gedächtnis.
+
 ## Default-Matrix — was bedeutet Weglassen? (Schritt 1.2b)
 
 Eine Zeile pro **optionalem** Parameter jedes genutzten Endpoints. Quelle ist die
@@ -57,6 +78,25 @@ gehört unter «Blocker / Escalation», nicht in den Papierkorb.
 
 Recall-Canary als `@pytest.mark.live`-Test mit Untergrenzen angelegt? ☐
 
+## Widening-Messung (Schritt 1.5)
+
+Nur nötig, wenn ein Tool bei null Treffern den Suchbegriff verkürzen soll. Pro
+Testbegriff jede Präfixlänge einmal abfragen (`widening_probe` im
+`probe_template.sh`) und das kürzeste Präfix mit Treffern eintragen. Die unterste
+Stufe der Staffel kommt aus dieser Spalte, nicht aus einem Prozentsatz.
+
+| Testbegriff | Länge | kürzestes Präfix mit Treffern | Treffer | Morphemgrenze | Wildcard-Alternative | Präzision kippt ab |
+|---|---:|---|---:|---|---|---|
+| z. B. `Betonsanierungsarbeiten` | 23 | `Beton` (5) | 143 | ✅ | `Beton*` → 143 | `Bet` (3) → 4'100 |
+| z. B. `Gebäudeversicherung` | 19 | `Gebäude` (7) | 88 | ✅ | `Gebäude*` → 88 | |
+| | | | | | | |
+
+Liefert die Wildcard-Spalte dasselbe Ergebnis in einem Aufruf, ist die Staffel ein
+Workaround für eine vorhandene Funktion — dann Wildcard statt Widening.
+
+Gemessene unterste Stufe als Kommentar am Code (mit Begriff und Datum)? ☐
+Live-Test, der den gemessenen Begriff über die Staffel schickt? ☐
+
 ## Datenstruktur-Findings
 
 **Feld-Überraschungen** (z. B. Bool-Kodierung, Timestamp-Format, Nested-vs-Flat):
@@ -83,7 +123,8 @@ Begründung:
 
 - [ ] Scaffold via `github-repo`-Skill bauen
 - [ ] Anchor Demo Query definieren: *"..."*
-- [ ] README-Abschnitt «Architecture decision» schreiben
-- [ ] Default-Matrix und Recall-Ground-Truth ins README unter «Known Limitations»
+- [ ] README-Abschnitt «Architecture decision» schreiben, inkl. Scope-Absatz aus der Abdeckungs-Matrix
+- [ ] Default-Matrix, Abdeckungs-Matrix und Recall-Ground-Truth ins README unter «Known Limitations»
 - [ ] Recall-Canary als Live-Test festschreiben
+- [ ] Widening-Staffel auf die gemessene unterste Stufe setzen (falls Widening gebaut wird)
 - [ ] Notion-Portfolio-Karte anlegen
