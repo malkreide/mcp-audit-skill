@@ -6,6 +6,21 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `ARCH-014` blockiert jetzt: von `advisory` auf `enforced`
+
+Der Check startete auf der Brücke, und die Zahlen gaben dem recht. Bei der Erhebung las **keiner von elf** Servern `Retry-After`, **keiner** streute seinen Backoff, und drei hatten überhaupt keine Retry-Schleife. Enforced am ersten Tag wäre ein rotes Portfolio gewesen — so werden Checks zurückgenommen statt übernommen.
+
+Die Bedingung, unter der die Stufe zurückgestellt wurde, ist eingelöst: **Alle elf Server erfüllen den Check.** Damit hat er nichts mehr zu beweisen, indem er nicht blockiert. Der teure Fall ist ab jetzt nicht mehr der Rückstand, sondern der zwölfte Server, der ohne Politik dazukommt.
+
+**Der Durchlauf hat den Check geschärft, nicht nur bestätigt.** Drei Befunde sind erst beim Übernehmen aufgefallen, und alle drei stehen jetzt in den Pass-Pattern:
+
+- **Der Deckel muss *nach* dem Jittern greifen.** Das Pass-Pattern dieses Checks deckelte selbst davor — der Katalog hätte den Fehler gelehrt, den er prüfen soll. `min(hint, MAX)` und danach `* (0.5 + random())` lässt eine 20-s-Decke auf 30 s wachsen. Sechs Server hatten die Reihenfolge falsch, weil sie sich beim Lesen richtig anfühlt: erst begrenzen, dann streuen. Neu mit Ziehungstest, denn bei Zufall beweist ein einzelner Blick nichts.
+
+- **Ein Gesamtbudget aus einem httpx-Timeout ist keines.** `httpx` begrenzt pro Operation, und sein Read-Timeout beginnt mit jedem Chunk von vorn — eine langsam tröpfelnde Antwort überdauert das Budget, ohne dass ein einzelner Read abläuft. Neu verlangt der Check eine Wanduhr-Deadline (`asyncio.timeout` / `asyncio.wait_for`) **und** einen Test ohne Fake-Uhr: Eine Uhr, die nur beim Schlafen vorrückt, kann eine Zusicherung über echte Zeit nicht widerlegen. Genau dieser blinde Fleck liess den Fehler durch sechs Server reisen.
+
+- **Netzwerkfehler sind der Fall, für den man den Retry baut.** Ein Server wiederholte nur Status-Codes: 503 bekam drei Versuche, eine abgelehnte Verbindung aus demselben Ausfall keinen. Der Retry sah vorhanden aus und liess den häufigsten Fall ungedeckt — die Asymmetrie hinter dem Vorfall, der diesen Check ausgelöst hat. Modus 1 hat dafür jetzt einen eigenen Griff.
+
+Damit sind drei Checks `advisory` (`OPS-005`, `OPS-006`, `OPS-007`) und `ARCH-014` reiht sich bei `DEP-001`, `DRIFT-006` und `OBS-007` ein, die dieselbe Brücke überquert haben.
 ### Behoben — ein zu breites Pass-Kriterium in `DRIFT-003`, und die Gegenrichtung des Advisory-Wächters
 
 **Das mit v1.7.0 hinzugekommene Pass-Kriterium in `DRIFT-003` war unbedingt formuliert.** Es verlangte, dass Regex-Prüfmuster ihre Metazeichen maskieren — ohne Ausnahme. Ein Test mit `match=r"timeout|unavailable"` meint das Metazeichen aber absichtlich; nach dem Wortlaut wäre er ein Verstoss, und weil `DRIFT-003` `enforced`, `high` und `always` ist, ein blockierender.

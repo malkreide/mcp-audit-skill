@@ -105,10 +105,18 @@ class TestRealCatalogUnchanged:
         # A check that is narrow and has no false positives has nothing left to
         # prove by not blocking.
         #
-        # ARCH-014 takes the bridge next, and this time the numbers argue for
-        # it: of ten servers, none reads `Retry-After` and none spreads its
-        # backoff. Enforced on day one would be a red portfolio, which is how
-        # checks get reverted rather than adopted.
+        # ARCH-014 took the bridge and was promoted on 2026-08-03. The
+        # numbers that put it on advisory were real: of eleven servers, none
+        # read `Retry-After`, none spread its backoff, and three had no retry
+        # loop at all. Enforced on day one would have been a red portfolio,
+        # which is how checks get reverted rather than adopted.
+        #
+        # The condition it was parked under is now met — all eleven pass. The
+        # crossing also sharpened the check: capping *before* jitter (six
+        # servers), a "total budget" made of per-operation httpx timeouts (six
+        # servers), and a retry that covered status codes but not network
+        # errors (one server) are all findings from the adoption run, and all
+        # three are now pass-patterns.
         #
         # OPS-006 takes the same bridge. Of 32 portfolio repos, 29 pin no
         # tool version at all — enforced on day one would fail almost the
@@ -121,7 +129,6 @@ class TestRealCatalogUnchanged:
         # shell they use. Enforced on day one would fail the portfolio for a
         # property nobody has measured yet — advisory until a run does.
         assert advisory_ids(parse_catalog(CHECKS_DIR)) == [
-            "ARCH-014",
             "OPS-005",
             "OPS-006",
             "OPS-007",
