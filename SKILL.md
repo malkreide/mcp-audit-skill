@@ -207,9 +207,22 @@ Fünf Repos, ein Lebenszyklus — gemeinsames GitHub-Topic [`mcp-quality-chain`]
 | vor dem Bau | [`mcp-data-source-probe`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6) |
 | im Bau | **`mcp-data-fidelity`** | **Dieser Skill:** liefert er, was die Quelle hat? |
 | im Bau | [`mcp-transport-hardening`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
-| nach dem Bau | [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–5 erscheinen dort als Checks `FID-001`–`FID-005`; Regel 6 hat keinen Check |
+| nach dem Bau | [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Zuordnung Regel → Check steht unten |
 | im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Seine Recall-Floors sind Regel 5, laufend gegen die echte Quelle gemessen |
 
 Daneben, nicht Teil der Kette: `mcp-builder` — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
-Wer nach diesem Skill baut, besteht die FID-Checks. Wer sie beim Audit reisst, findet hier die Behebung.
+### Welche Regel welcher Check ist
+
+Stand des Katalogs: `mcp-audit` v1.7.0, 97 Checks in zwölf Kategorien, davon fünf in der Kategorie `FID`. Die Zuordnung ist nicht eins zu eins — zwei Regeln teilen sich einen Check, eine Regel braucht zwei, und eine hat keinen:
+
+| Regel | Check |
+|---|---|
+| 1 — Scope-Parameter explizit senden | [`FID-001`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-001.md) — «Scope-Defaults: Filter-Parameter explizit senden, nie erben» |
+| 2 — Parameter-Gruppen vollständig senden | [`FID-004`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-004.md) — «Teilmengen erben Server-Defaults», im Check als die feinere Ausprägung von `FID-001` geführt |
+| 3 — Leermenge trägt einen nächsten Schritt | [`FID-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-003.md). Die Abgrenzung gegen Transport- und Autorisierungsfehler steht dort ausdrücklich, mit `HTTP 421` als gemessenem Fall und Querverweis auf `SEC-016`/`SEC-024` |
+| 4 — Tool-Description als Halluzinations-Oberfläche | ebenfalls [`FID-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-003.md) — der Check trägt beide Hälften: den fehlenden nächsten Schritt und die vorformulierte Ausrede |
+| 5 — Syntax in der Description, Recall in den Tests | [`FID-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-005.md) für die Syntax, [`FID-002`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-002.md) für den Recall gegen die offizielle Oberfläche |
+| 6 — Antwortstruktur bestätigen, bevor gezählt wird | **kein Check.** Ein `FID-006` existiert nicht; kein Check des Katalogs fragt, ob eine Strukturabweichung upstream im Fehlerkanal endet statt in einer leeren Liste |
+
+Wer nach den Regeln 1–5 baut, besteht die FID-Checks. Für Regel 6 gilt das nicht: Sie beschreibt einen Fehler, den dieser Katalog derzeit nicht sieht — ein Audit ohne Befund ist hier kein Beleg.
