@@ -49,6 +49,36 @@ REQUIRED_FIELDS = ("id", "title", "category", "severity", "applies_when")
 VALID_ADOPTIONS = ("advisory", "enforced")
 DEFAULT_ADOPTION = "enforced"
 
+# How many observations a result for this check must carry before it counts as
+# verified — for `pass` just as much as for `fail`.
+#
+# The field has been in every check's frontmatter from the start, and SKILL.md
+# states the rule ("at least `evidence_required` points observed"). Nothing
+# under `tools/` ever read it, so a `pass` carrying an empty evidence list went
+# through the gate untouched. That is the same defect as an empty finding
+# document, pointing the way that ends the conversation: a `fail` gets worked
+# on, a `pass` closes the subject.
+#
+# Normalised to an int here so no consumer has to guess whether the frontmatter
+# said "2" or 2. A missing field defaults to 1 — the least that still means
+# somebody looked — and a non-integer is a hard error, because a typo must not
+# quietly drop the requirement to nothing.
+DEFAULT_EVIDENCE_REQUIRED = 1
+
+
+def _coerce_evidence_required(raw: Any, source: str) -> int:
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return DEFAULT_EVIDENCE_REQUIRED
+    try:
+        value = int(str(raw).strip())
+    except ValueError:
+        raise ValueError(
+            f"{source}: invalid evidence_required {raw!r}; expected a whole number"
+        ) from None
+    if value < 0:
+        raise ValueError(f"{source}: evidence_required must not be negative ({value})")
+    return value
+
 
 def _default_checks_dir() -> Path:
     return Path(__file__).resolve().parent.parent / "checks"
@@ -84,6 +114,9 @@ def parse_catalog(checks_dir: Path) -> dict[str, dict[str, Any]]:
                 f"expected one of {VALID_ADOPTIONS}"
             )
         fm["adoption"] = adoption
+        fm["evidence_required"] = _coerce_evidence_required(
+            fm.get("evidence_required"), path.name
+        )
         if cid in catalog:
             raise ValueError(
                 f"Duplicate check id {cid!r} in {path.name} "

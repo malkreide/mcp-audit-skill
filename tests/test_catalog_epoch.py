@@ -131,6 +131,14 @@ class TestAggregateCli:
                             "status": "pass",
                             "category": "ARCH",
                             "severity": "medium",
+                            # Ein `pass` ohne Beobachtung kommt seit
+                            # `check_evidence_requirement` nicht mehr durch das
+                            # Gate — und soll es nicht. Die Fixture traegt
+                            # deshalb echte Belege, statt das Gate zu umgehen.
+                            "evidence": [
+                                "src/server.py:12 — tool decorator with name=…",
+                                "tests/test_tools.py:40 — asserts the same name",
+                            ],
                         }
                     },
                 }

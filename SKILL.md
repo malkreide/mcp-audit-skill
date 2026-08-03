@@ -615,6 +615,20 @@ Ein Check besteht **nur dann** als `pass`, wenn:
 
 Sonst: `partial` (wenn 50%+ erfüllt) oder `fail`.
 
+**Der zweite Punkt wird erzwungen, nicht nur gefordert.** `aggregate --checks-dir`
+hält jedes beurteilte Ergebnis an das `evidence_required` seines Checks und
+schreibt keine `summary.json`, wenn eines darunter liegt. Das war lange nicht so:
+das Feld stand in der Frontmatter aller 90 Checks und diese Regel hier im Text,
+gelesen hat es kein Werkzeug — ein `pass` mit leerer `evidence`-Liste kam
+unbehelligt durch. Die Asymmetrie ist der Grund, warum das zählt: an einem
+unbelegten `fail` arbeitet jemand weiter, ein unbelegtes `pass` **beendet die
+Beschäftigung** mit dem Check, und nichts widerspricht ihm je.
+
+`not_verified` schuldet einen Punkt statt der vollen Zahl — es hat
+definitionsgemäss keinen Beleg in *keine* Richtung, kann aber immer benennen, was
+versucht wurde. `todo` und `n/a` behaupten nichts und schulden nichts. Details in
+[`docs/verification-results-schema.md`](docs/verification-results-schema.md).
+
 **Und wenn sich gar nichts feststellen liess: `not_verified`.** Das ist ein eigener Status mit eigenem Zähler, kein Prosa-Begriff. Bis er in `VALID_STATUSES` aufgenommen wurde, stand die Regel in `OPS-004` («ein `pass` beruht auf einem positiven Beleg … sonst `not_verified`»), während `tools/aggregate_results.py` den Wert zurückwies — wer die Regel befolgen wollte, bekam einen Schema-Fehler und trug am Ende `pass` ein. Genau das Ergebnis, das `OPS-004` verbietet. Eine Regel, deren Einhaltung das Werkzeug unmöglich macht, ist keine strenge Regel; sie ist eine Regel, die sich in ihr Gegenteil auflöst.
 
 | Status | Bedeutung | Abgrenzung |
