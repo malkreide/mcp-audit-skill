@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Tests for the evidence gate — `check_evidence_requirement`.
 
 `evidence_required` sat in the frontmatter of all 90 checks and in SKILL.md as
@@ -10,6 +9,7 @@ pointing the direction that ends the conversation: an unevidenced `fail` gets
 worked on, an unevidenced `pass` closes the subject and nothing downstream ever
 disagrees with it.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,6 +20,8 @@ import pytest
 from tools.aggregate_results import (
     VerificationResults,
     check_evidence_requirement,
+)
+from tools.aggregate_results import (
     main as aggregate_main,
 )
 from tools.parse_catalog import DEFAULT_EVIDENCE_REQUIRED, parse_catalog
@@ -132,9 +134,7 @@ class TestWhichStatusesMustShowSomething:
         _check(tmp_path, "ARCH-002")
         assert (
             check_evidence_requirement(
-                _results(
-                    **{"ARCH-001": _result("todo"), "ARCH-002": _result("n/a")}
-                ),
+                _results(**{"ARCH-001": _result("todo"), "ARCH-002": _result("n/a")}),
                 tmp_path,
             )
             == []
@@ -231,7 +231,7 @@ class TestTheCli:
     def test_without_checks_dir_the_summary_admits_the_gate_did_not_run(
         self, tmp_path, capsys
     ):
-        """"Not measured" is not "clean" — the summary has to carry which one."""
+        """ "Not measured" is not "clean" — the summary has to carry which one."""
         rc = aggregate_main(["aggregate", str(self._results_file(tmp_path))])
         captured = capsys.readouterr()
         assert rc == 0
@@ -249,7 +249,9 @@ class TestTheCli:
         rc = aggregate_main(
             [
                 "aggregate",
-                str(self._results_file(tmp_path, ["src/a.py:1 — x", "tests/b.py:2 — y"])),
+                str(
+                    self._results_file(tmp_path, ["src/a.py:1 — x", "tests/b.py:2 — y"])
+                ),
                 "--checks-dir",
                 str(checks),
             ]
