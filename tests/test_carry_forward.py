@@ -28,12 +28,16 @@ EXPECTED = ["OBS-001", "SEC-009", "SDK-003"]
 def _make_run(root: Path, name: str, expected: list[str] | None = None) -> Path:
     run = root / name
     (run / "findings").mkdir(parents=True)
-    summary = {"findings": {"expected_ids": list(EXPECTED if expected is None else expected)}}
+    summary = {
+        "findings": {"expected_ids": list(EXPECTED if expected is None else expected)}
+    }
     (run / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
     return run
 
 
-def _write(run: Path, filename: str, body: str = "## Finding\n\nreal content\n") -> Path:
+def _write(
+    run: Path, filename: str, body: str = "## Finding\n\nreal content\n"
+) -> Path:
     path = run / "findings" / filename
     path.write_text(body, encoding="utf-8")
     return path
@@ -149,7 +153,9 @@ class TestTargetPrecedence:
 
         assert report["kept"] == ["OBS-001"]
         assert report["carried"] == []
-        assert "rewritten for this run" in (target / "findings" / "OBS-001.md").read_text()
+        assert (
+            "rewritten for this run" in (target / "findings" / "OBS-001.md").read_text()
+        )
 
     def test_a_stub_is_overwritten_in_place_leaving_no_residue(self, tmp_path):
         """Found by running the helper against the real broken run.
@@ -221,7 +227,9 @@ class TestSourcesAndSelection:
 
         assert [c["check_id"] for c in report["carried"]] == ["OBS-001"]
         assert report["unknown_ids"] == ["NOPE-999"]
-        assert report["complete"] is False, "an id that does not exist must not read as success"
+        assert report["complete"] is False, (
+            "an id that does not exist must not read as success"
+        )
 
     def test_dry_run_writes_nothing(self, tmp_path):
         src = _make_run(tmp_path, "old")

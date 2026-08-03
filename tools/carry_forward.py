@@ -158,11 +158,17 @@ def carry_forward(
     if target_dir.is_dir():
         for path in sorted(target_dir.glob("*.md")):
             cid = check_id_from_path(path)
-            if cid is not None and cid not in existing and substance(path) < min_substance:
+            if (
+                cid is not None
+                and cid not in existing
+                and substance(path) < min_substance
+            ):
                 stubs.setdefault(cid, path)
     # Only the indexes are needed downstream; each hit already carries its
     # full source path, so the directory itself is not threaded through.
-    indexed_sources = [index_findings(_findings_dir(src), min_substance) for src in sources]
+    indexed_sources = [
+        index_findings(_findings_dir(src), min_substance) for src in sources
+    ]
 
     carried: list[dict[str, str]] = []
     kept: list[str] = []
@@ -218,7 +224,9 @@ def _render(report: dict[str, Any]) -> str:
     lines: list[str] = []
     prefix = "would carry" if report["dry_run"] else "carried"
     for item in report["carried"]:
-        lines.append(f"  {prefix} {item['check_id']:<12} <- {item['from']} ({item['substance']} chars)")
+        lines.append(
+            f"  {prefix} {item['check_id']:<12} <- {item['from']} ({item['substance']} chars)"
+        )
     for cid in report["kept"]:
         lines.append(f"  kept    {cid:<12} (already documented in this run)")
     for cid in report["missing"]:
@@ -297,7 +305,9 @@ def main(argv: list[str] | None = None) -> int:
             summary_path=summary_path,
         )
     except (KeyError, json.JSONDecodeError) as e:
-        print(f"Error: cannot read expected_ids from {summary_path}: {e}", file=sys.stderr)
+        print(
+            f"Error: cannot read expected_ids from {summary_path}: {e}", file=sys.stderr
+        )
         return 2
 
     if args.format == "json":
