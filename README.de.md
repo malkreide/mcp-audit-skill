@@ -1,6 +1,6 @@
 # mcp-data-source-probe-skill
 
-![Version](https://img.shields.io/badge/version-1.4.0-blue)
+![Version](https://img.shields.io/badge/version-1.5.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
@@ -159,8 +159,8 @@ bash scripts/validate.sh
 ```
 
 Es ist dieselbe Datei, die die CI aufruft — es gibt also keine zweite Kopie, die
-auseinanderlaufen könnte. Alle sieben Checks laufen auch nach einem Fehlschlag
-weiter, ein roter Durchlauf benennt damit alle Probleme auf einmal. Vor einer
+auseinanderlaufen könnte. Jeder Check läuft auch nach einem Fehlschlag weiter,
+ein roter Durchlauf benennt damit alle Probleme auf einmal. Vor einer
 Änderung an der Frontmatter zu wissen: Das Limit für `description` liegt bei 1024
 Zeichen, und die aktuelle lässt einstelligen Spielraum — das Skript gibt aus,
 wie viel übrig ist.

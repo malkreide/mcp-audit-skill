@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-08-03
+
 Zwei Messungen kommen in Schritt 1 dazu. Beide sind billig, solange man ohnehin
 an der API hängt, und beide werden sonst später aus dem Gedächtnis nachgeliefert
 — einmal als Scope-Begründung, einmal als Zahl in einer Fallback-Staffel.
@@ -74,6 +76,15 @@ an der API hängt, und beide werden sonst später aus dem Gedächtnis nachgelief
 - **Das bisherige 1.5 (Dump-Verfügbarkeit) ist jetzt 1.6.** Die Widening-Messung
   gehört neben die Recall-Ground-Truth aus 1.4: Beide messen Suchverhalten, und
   beide sind nach der Befund-Tabelle fällig, bevor der Bulk-Weg geprüft wird.
+
+### Fixed
+
+- **Beide READMEs nannten «sieben Checks», seit 1.4.0 sind es acht.** Die Zahl
+  steht jetzt nicht mehr da: Sie war der einzige Ort im Repo, an dem die Anzahl
+  der Prüfungen von Hand gepflegt wurde, und sie ist beim Hinzufügen von Check 8
+  prompt liegengeblieben. Die Aussage — jeder Check läuft auch nach einem
+  Fehlschlag weiter — hängt nicht an ihr, und `validate.sh` gibt die aktuelle
+  Zahl bei jedem Durchlauf selbst aus.
 
 ## [1.4.0] - 2026-08-02
 

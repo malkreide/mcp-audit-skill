@@ -1,6 +1,6 @@
 # mcp-data-source-probe-skill
 
-![Version](https://img.shields.io/badge/version-1.4.0-blue)
+![Version](https://img.shields.io/badge/version-1.5.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
@@ -158,7 +158,7 @@ bash scripts/validate.sh
 ```
 
 It is the same file CI invokes, so there is no second copy to drift out of step.
-All seven checks run even after one fails, so a red run names every problem at
+Every check runs even after one fails, so a red run names every problem at
 once. Worth knowing before editing the frontmatter: the `description` limit is
 1024 characters and the current one leaves single digits of headroom — the
 script prints what is left.
