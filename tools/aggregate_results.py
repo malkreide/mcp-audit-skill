@@ -60,6 +60,7 @@ from tools.compare_guard import (  # noqa: E402
 )
 from tools.parse_catalog import (  # noqa: E402
     DEFAULT_ADOPTION,
+    DEFAULT_EVIDENCE_REQUIRED,
     VALID_ADOPTIONS,
     parse_catalog,
 )
@@ -179,6 +180,73 @@ def apply_catalog_adoption(vr: VerificationResults, checks_dir: Path) -> list[st
             continue
         result.adoption = fm.get("adoption", DEFAULT_ADOPTION)
     return sorted(unknown)
+
+
+# What each status has to be able to show.
+#
+#   pass / fail / partial   the catalogue's full `evidence_required`
+#   not_verified            one item: what was attempted. By definition it has
+#                           no evidence *either way*, so the full count would
+#                           contradict the status — but "work done that
+#                           produced no answer" can always name the work.
+#   todo / n/a              nothing. `todo` is work not started and `n/a` does
+#                           not apply; demanding observations there would push
+#                           an auditor to invent some, which is the opposite of
+#                           what this gate is for.
+JUDGED_STATUSES = ("pass", "fail", "partial")
+ATTEMPTED_STATUSES = ("not_verified",)
+
+
+def check_evidence_requirement(vr: VerificationResults, checks_dir: Path) -> list[str]:
+    """Hold every judged result to the catalogue's ``evidence_required``.
+
+    Applies to ``pass`` as much as to ``fail``, and that is the point. An
+    unevidenced ``fail`` gets worked on; an unevidenced ``pass`` **ends the
+    conversation** about that check, and nothing downstream ever disagrees with
+    it. Of the two, the silent one is the dangerous one — the same asymmetry
+    ``validate_findings_persistence`` records for empty finding documents.
+
+    The rule is as old as the catalogue. ``evidence_required`` sits in the
+    frontmatter of all 90 checks, ``SKILL.md`` states it in prose, and
+    ``OPS-004`` has demanded since it was written that "a ``pass`` rests on
+    positive evidence, not on the absence of negative evidence; otherwise the
+    status is ``not_verified``". Nothing under ``tools/`` ever read the field.
+
+    A rule nobody enforces holds right up until somebody is in a hurry — which
+    is when it is needed. It has already failed that way once: a confirmed
+    circular import in ``bag-health-mcp`` was closed as an import-order
+    artefact, on reasoning rather than a second measurement. The reasoning was
+    wrong and the probe was right.
+
+    Returns one message per violation, empty when every result is covered.
+    """
+    catalog = parse_catalog(checks_dir)
+    problems: list[str] = []
+    for cid, result in sorted(vr.results.items()):
+        if result.status in JUDGED_STATUSES:
+            fm = catalog.get(cid)
+            if fm is None:
+                # Unknown id: `apply_catalog_adoption` already reports these,
+                # and there is no requirement to hold it to. Not silently a
+                # pass — just not this function's finding.
+                continue
+            need = int(fm.get("evidence_required", DEFAULT_EVIDENCE_REQUIRED))
+        elif result.status in ATTEMPTED_STATUSES:
+            need = 1
+        else:
+            continue
+        have = len([e for e in result.evidence if str(e).strip()])
+        if have < need:
+            hint = (
+                " — a pass on no positive evidence is `not_verified` (OPS-004)"
+                if result.status == "pass" and have == 0
+                else ""
+            )
+            problems.append(
+                f"{cid}: status {result.status!r} carries {have} evidence item(s), "
+                f"catalogue requires {need}{hint}"
+            )
+    return problems
 
 
 def aggregate(
@@ -572,9 +640,20 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Take each check's adoption stage from this catalogue rather than "
-            "from the results file. Recommended: the catalogue is authoritative, "
+            "from the results file, and hold every judged result to its "
+            "evidence_required. Recommended: the catalogue is authoritative, "
             "and a results file that omits the field silently gets the enforced "
             "default"
+        ),
+    )
+    p_agg.add_argument(
+        "--allow-unevidenced",
+        action="store_true",
+        help=(
+            "Report results that carry too little evidence as warnings instead "
+            "of refusing to aggregate. For migrating an older results file — "
+            "the summary then records evidence_gate.enforced = false, so a "
+            "downstream reader can tell the gate did not run"
         ),
     )
     p_agg.add_argument(
@@ -658,6 +737,27 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "aggregate":
         vr = VerificationResults.from_path(Path(args.results))
         if args.checks_dir:
+            violations = check_evidence_requirement(vr, Path(args.checks_dir))
+            if violations and not args.allow_unevidenced:
+                # Fatal, unlike the unknown-id warning below: an unknown id
+                # keeps the safe default, an unevidenced result does not. No
+                # summary is written, because a summary that failed this gate
+                # would be read by everything downstream as if it had passed.
+                print(
+                    f"Error: {len(violations)} result(s) do not carry the evidence "
+                    "the catalogue requires:",
+                    file=sys.stderr,
+                )
+                for msg in violations:
+                    print(f"  {msg}", file=sys.stderr)
+                print(
+                    "Add the observations, or record the check as `not_verified` "
+                    "(--allow-unevidenced downgrades this to a warning).",
+                    file=sys.stderr,
+                )
+                return 1
+            for msg in violations:
+                print(f"Warning: {msg}", file=sys.stderr)
             unknown = apply_catalog_adoption(vr, Path(args.checks_dir))
             if unknown:
                 # Loud, not fatal: an unknown id keeps the enforced default, so
@@ -669,6 +769,20 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
         summary = aggregate(vr, policy=args.policy)
+
+        # Say whether the gate ran at all. Without `--checks-dir` there is no
+        # catalogue to hold the results to, and a summary that stays silent
+        # about that reads exactly like one that passed the check.
+        summary["evidence_gate"] = {
+            "enforced": bool(args.checks_dir) and not args.allow_unevidenced,
+            "checked_against": args.checks_dir or None,
+        }
+        if not args.checks_dir:
+            print(
+                "Warning: evidence requirement not enforced (no --checks-dir). "
+                "'not measured' is not 'clean'.",
+                file=sys.stderr,
+            )
 
         if args.checks_dir:
             # The catalogue on disk is what this run was actually measured

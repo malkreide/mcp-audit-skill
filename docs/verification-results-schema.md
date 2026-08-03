@@ -80,8 +80,52 @@ It does not veto a release: an unanswerable check is not a failed one. It is lis
   behaves exactly as it did. Prefer `aggregate --checks-dir` over setting it
   here: the catalogue is authoritative, and a stage that depends on whoever
   wrote the results file is a stage that silently does not apply.
-- `evidence` (list of strings, may be empty)
+- `evidence` (list of strings) — **enforced against the catalogue.**
+  `aggregate --checks-dir` holds every judged result to that check's
+  `evidence_required` and refuses to write a summary if one falls short.
 - `gaps` (list of strings, may be empty)
+
+#### Why the evidence count is enforced, and enforced on `pass` too
+
+This line used to read "may be empty", and that was the hole.
+`evidence_required` has sat in the frontmatter of all 90 checks from the
+beginning and `SKILL.md` states the rule in prose — but nothing under `tools/`
+ever read the field, so a `pass` carrying an empty evidence list went through
+the gate untouched.
+
+The asymmetry is what makes it matter. An unevidenced `fail` gets worked on:
+somebody opens the finding document and looks. An unevidenced `pass` **ends the
+conversation** about that check, and nothing downstream ever disagrees with it.
+It is the same defect as an empty finding document — which this schema already
+rejects — pointing the direction where it is invisible.
+
+A rule nobody enforces holds right up until somebody is in a hurry, which is
+when it is needed. It has already failed that way: a *confirmed* circular import
+in `bag-health-mcp` was closed as an import-order artefact, on reasoning rather
+than a second measurement. The reasoning was wrong and the probe was right. An
+explanation that names no measurement has not closed anything.
+
+What each status owes:
+
+| Status | Evidence required |
+|---|---|
+| `pass`, `fail`, `partial` | the catalogue's full `evidence_required` |
+| `not_verified` | one item — what was attempted |
+| `todo`, `n/a` | none |
+
+`not_verified` owes one rather than the full count because by definition it has
+no evidence *either way*: requiring the full count would contradict the status,
+and requiring nothing would make it the way around the gate. `todo` and `n/a`
+claim nothing, and demanding observations for them would push an auditor to
+invent some — the opposite of the point.
+
+Whitespace-only entries do not count. Two spaces are exactly as informative as
+no entry, and the failure this guards against produces both.
+
+`--allow-unevidenced` downgrades the refusal to warnings, for migrating an older
+results file. The summary then records `evidence_gate.enforced = false`, as it
+does when `--checks-dir` is omitted entirely — because a summary that stays
+silent about a gate that did not run reads exactly like one that passed it.
 
 ## Findings-Persistence Policies
 

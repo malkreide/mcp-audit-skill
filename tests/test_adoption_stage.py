@@ -413,6 +413,11 @@ class TestCatalogIsAuthoritative:
                             "status": "fail",
                             "category": "ARCH",
                             "severity": "high",
+                            # Ein Befund ohne seine Beobachtung ist eine
+                            # Meinung — `check_evidence_requirement` weist ihn
+                            # seit Neuem zurueck. Die Fixture traegt deshalb
+                            # einen Beleg, statt das Gate abzuschalten.
+                            "evidence": ["src/server.py:12 — tool name is camelCase"],
                         }
                     },
                 }
