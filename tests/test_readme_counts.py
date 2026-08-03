@@ -37,7 +37,12 @@ from pathlib import Path
 
 import pytest
 
-from tools.parse_catalog import category_counts, parse_catalog, severity_counts
+from tools.parse_catalog import (
+    advisory_ids,
+    category_counts,
+    parse_catalog,
+    severity_counts,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKS_DIR = REPO_ROOT / "checks"
@@ -262,3 +267,40 @@ class TestReadmeMatchesCatalog:
         assert custom <= seen, (
             f"{name}: Provenance-Tabelle nennt keine Zeile für: {sorted(custom - seen)}"
         )
+
+    def test_advisory_sentence_names_the_catalog_set(self, readme, catalog):
+        """Der Satz, der die Advisory-Brücke namentlich aufzählt.
+
+        Beide READMEs schreiben «Von N Checks sind genau drei `advisory`:
+        …» und listen die IDs. Die Zahl `N` prüft
+        `test_prose_mentions_match_catalog` mit; das Zahlwort («drei»,
+        «four») und die Liste dahinter prüfte bis hierher nichts — und
+        genau die sind mit `OPS-007` stehen geblieben, während `N` von 96
+        auf 97 nachgezogen wurde. Ein Satz, dessen einzige geprüfte Zahl
+        stimmt, liest sich richtig.
+
+        Geprüft werden die **IDs**, nicht das Zahlwort: Eine reine
+        Zählprüfung bestünde auch bei einem Satz, der drei falsche Checks
+        nennt.
+        """
+        name, lines = readme
+        expected = advisory_ids(catalog)
+        hits = [line for line in lines if "`advisory`: `" in line]
+        assert len(hits) == 1, (
+            f"{name}: genau eine Zeile erwartet, die die Advisory-Menge "
+            f"aufzählt — gefunden: {len(hits)}"
+        )
+        # Der Satz nennt hinter dem Punkt auch die bereits promovierten
+        # Checks. Nur der Teil davor ist die Brücke.
+        listed = hits[0].split("`advisory`: ", 1)[1].split(".", 1)[0]
+        for cid in expected:
+            assert f"`{cid}`" in listed, (
+                f"{name}: Advisory-Satz nennt `{cid}` nicht, der Katalog führt "
+                f"ihn als advisory"
+            )
+        for cid in catalog:
+            if cid not in expected:
+                assert f"`{cid}`" not in listed, (
+                    f"{name}: Advisory-Satz nennt `{cid}`, der Katalog führt ihn "
+                    f"als {catalog[cid]['adoption']}"
+                )

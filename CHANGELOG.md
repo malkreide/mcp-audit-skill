@@ -6,6 +6,18 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben — zwei Nachträge aus dem Review von `#80`
+
+**Die Advisory-Liste in beiden READMEs nannte drei Checks, der Katalog hatte vier.** `OPS-007` kam als `advisory` dazu; die Gesamtzahl zwei Absätze weiter oben wurde von 96 auf 97 nachgezogen, der Satz «genau drei `advisory`: …» nicht. Die Stelle las sich stimmig, weil die Zahl darüber stimmte — und der CHANGELOG-Eintrag desselben Commits schrieb bereits «vier Checks auf der Brücke». Der Widerspruch sass innerhalb einer einzigen Änderung.
+
+Warum es durchging: `test_readme_counts.py` prüft die Zahl `N` in «Von N Checks …» — die stimmte. Was niemand prüfte, war das Zahlwort dahinter («drei») und die Liste der IDs. Ein Satz, dessen einzige geprüfte Zahl richtig ist, liest sich richtig.
+
+Jetzt prüft es `test_advisory_sentence_names_the_catalog_set`, im selben Modul und über dieselbe `readme`-Fixture — damit greift es automatisch auch für eine dritte Sprachfassung, was ein eigener Test mit fest verdrahteten Dateinamen nicht getan hätte. Verglichen werden die **IDs** gegen `advisory_ids(parse_catalog(...))`, nicht das Zahlwort: Eine reine Zählprüfung bestünde auch bei einem Satz, der drei falsche Checks nennt. Gegengeprüft in beide Richtungen — gegen den alten Wortlaut rot, und rot auch, wenn ein bereits promovierter Check versehentlich auf der Brücke mitgelistet wird.
+
+**Das neue Pass-Kriterium in `DRIFT-003` war zu breit formuliert.** Es verlangte unbedingt, dass Regex-Prüfmuster ihre Metazeichen maskieren. Ein Test mit `match=r"timeout|unavailable"` meint das Metazeichen aber absichtlich — nach dem Wortlaut wäre er ein Verstoss, und weil `DRIFT-003` `enforced`, `high` und `always` ist, ein blockierender. Das Kriterium gilt jetzt für Muster, die **wörtlich gemeint** sind; ein absichtliches Metazeichen ist ausdrücklich kein Befund, muss aber als Absicht erkennbar sein. Der Prosa-Teil von Modus 3 sagte das bereits («Jeder Treffer ist zu prüfen, nicht automatisch ein Befund») — die Pass-Kriterien, die das Verdikt tragen, sagten es nicht. Neu dazu ein Anti-Pattern für die Gegenrichtung: `re.escape` pauschal über ein absichtlich gemeintes Muster gelegt.
+
+Beide Befunde stammen aus dem automatisierten Review zu `#80` und wurden gegen den Katalog nachgeprüft, bevor sie behoben wurden.
+
 ### Ergänzt — `OPS-007`, und zwei Ausprägungen, die kein neuer Check sein durften
 
 **Ein neuer Check** (`OPS-007`) — der Katalog wächst von 96 auf **97 in zwölf Kategorien**. Dazu je eine neue Ausprägung in `OPS-006` und `DRIFT-003`.

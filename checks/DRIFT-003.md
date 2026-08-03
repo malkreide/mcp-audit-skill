@@ -136,7 +136,8 @@ beantwortet sie nur schneller.
 - [ ] Assertions prüfen Werte, die nur im Erfolgsfall vorkommen — keine Stichworte, die auch in der Fehlermeldung stehen
 - [ ] Bereichs-Assertions (Koordinaten, Zeitfenster, Grössenordnungen) sind eng genug, dass ein plausibler Fehlgriff sie reisst
 - [ ] Für jedes Tool existiert mindestens ein Test des **Erfolgspfads**, nicht nur der Fehlerpfade
-- [ ] Prüfmuster, die als Regex ausgewertet werden (`match=`, `assertRaisesRegex`), maskieren ihre Metazeichen — oder benutzen `re.escape`
+- [ ] Prüfmuster, die als Regex ausgewertet werden (`match=`, `assertRaisesRegex`) und **wörtlich gemeint** sind, maskieren ihre Metazeichen — oder benutzen `re.escape`
+- [ ] Wo ein Metazeichen **beabsichtigt** ist (Alternative, Gruppe, Quantor), ist die Absicht erkennbar — der Treffer ist dann kein Befund
 - [ ] Jedes solche Muster ist einmal gegen eine Zeichenkette gehalten worden, die es ablehnen soll
 
 ## Common Failures
@@ -149,6 +150,7 @@ beantwortet sie nur schneller.
 | Degradation nur als Prosa (`⚠️ …`) | Tests müssen auf Strings prüfen; jede Textänderung entwertet sie stillschweigend |
 | `assert result` / `assert len(result) > 0` | Die Fehlermeldung ist auch nicht leer |
 | `match="datei.json …"` — Punkt als Metazeichen gelesen | Der Test besteht auch bei `dateiXjson`; der Wortlaut verspricht mehr als das Muster hält |
+| `re.escape` pauschal über ein absichtlich gemeintes Muster gelegt | Aus `timeout\|unavailable` wird eine Zeichenkette; die Assertion prüft ab da etwas anderes als gemeint |
 
 ## Remediation
 

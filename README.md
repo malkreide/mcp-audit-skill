@@ -234,7 +234,7 @@ Severity says **how bad** a violation is. The adoption level says **whether the 
 | `enforced` | The catalogue holds the portfolio to it | A `fail` on `critical`/`high` blocks production readiness |
 | `advisory` | The check reports but does not yet judge | The finding is created, counted and carried at full severity — but does not block |
 
-The field is optional; when absent, `enforced` applies. Of 97 checks exactly three are `advisory`: `ARCH-014`, `OPS-005` and `OPS-006`. `DEP-001`, `DRIFT-006` and `OBS-007` took the same path and have since been promoted to `enforced` — the bridge is meant to carry a handful of new checks, not to fill up.
+The field is optional; when absent, `enforced` applies. Of 97 checks exactly four are `advisory`: `ARCH-014`, `OPS-005`, `OPS-006` and `OPS-007`. `DEP-001`, `DRIFT-006` and `OBS-007` took the same path and have since been promoted to `enforced` — the bridge is meant to carry a handful of new checks, not to fill up.
 
 **Advisory hides nothing.** Only the veto is dropped. An advisory finding at blocking severity is still named explicitly even when the verdict is green, so that a later promotion is a decision rather than a surprise.
 
