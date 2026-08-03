@@ -66,7 +66,7 @@ grep -rniE '(noch nicht|not yet|derzeit nicht|currently (does not|not)|separate.
   CHANGELOG.md README*.md docs/ src/ --include='*.md' --include='*.py'
 ```
 
-Jede Fundstelle ist eine Behauptung über den Zustand des Codes und wird nach Modus 1 einzeln beantwortet. **Eine leere Trefferliste ist kein Pass** — das Muster kennt nur die Formulierungen, die sein Autor bedacht hat, und ein Absichtssatz kommt ohne jedes Schlüsselwort aus. Ohne Modus 1 ist dieser Check `unverified`.
+Jede Fundstelle ist eine Behauptung über den Zustand des Codes und wird nach Modus 1 einzeln beantwortet. **Eine leere Trefferliste ist kein Pass** — das Muster kennt nur die Formulierungen, die sein Autor bedacht hat, und ein Absichtssatz kommt ohne jedes Schlüsselwort aus. Ohne Modus 1 ist dieser Check `not_verified`.
 
 ### Modus 3: config_check — hält der Prozess die Prosa nach?
 
@@ -78,7 +78,7 @@ Beim Release wandern `[Unreleased]`-Einträge in den Versionsabschnitt. Wer das 
 - [ ] Kein Satz in CHANGELOG, README oder Doku bezeichnet als ausstehend, geplant oder ausserhalb des Scopes, was bereits gemergt ist
 - [ ] Keine dokumentierte Einschränkung, die der Code nicht mehr hat
 - [ ] Keine Docstrings oder Kommentare mit «noch nicht», die der umgebende Code widerlegt
-- [ ] Widersprüche wurden **gefunden, indem jede Behauptung geprüft wurde** (Modus 1) — eine leere `grep`-Trefferliste allein ist `unverified`, nicht Pass
+- [ ] Widersprüche wurden **gefunden, indem jede Behauptung geprüft wurde** (Modus 1) — eine leere `grep`-Trefferliste allein ist `not_verified`, nicht Pass
 - [ ] Der PR, der eine Absicht ausführt, korrigiert im selben Diff den Satz, der sie als Absicht führt
 
 ## Common Failures

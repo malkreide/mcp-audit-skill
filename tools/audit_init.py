@@ -15,9 +15,19 @@ hash so reproducibility is documented from the start.
 Run-ID format: `YYYY-MM-DDTHHMMSS-<offset>-<server>` (ISO-ish, filesystem
 safe). Example: `2026-05-02T091245-Z-srgssr-mcp` (Z = UTC).
 
+The audited repo's HEAD SHA is recorded here too, and re-checked at the end
+of the run. `catalog_hash` pins what the audit was measured *with*;
+`target_sha` pins what it was measured *against*, and only both together make
+a run reproducible. Without it, a commit landing mid-audit silently splits the
+report: the checks that ran before it describe one tree, the ones after
+another, and the report presents the mixture as a single verdict. An audit
+whose target moves during the run is not an audit — it is a statement about no
+particular revision.
+
 Usage:
     python tools/audit_init.py make-run-id srgssr-mcp [--base-dir audits/] [--now 2026-05-02T09:12:45+00:00]
-    python tools/audit_init.py init srgssr-mcp [--base-dir audits/] [--skill-version 1.6.0] [--catalog-dir checks/]
+    python tools/audit_init.py init srgssr-mcp [--base-dir audits/] [--skill-version 1.6.0] [--catalog-dir checks/] [--target-repo ../srgssr-mcp]
+    python tools/audit_init.py verify-target audits/<run>/
 """
 
 from __future__ import annotations
@@ -26,6 +36,7 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -121,6 +132,51 @@ def hash_catalog(catalog_dir: Path) -> str:
     return h.hexdigest()
 
 
+class TargetRepoError(Exception):
+    """Raised when the audited repo cannot be interrogated for its revision."""
+
+
+def _git(repo: Path, *args: str) -> str:
+    """Run a read-only git command in `repo`, returning stripped stdout."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(repo), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (OSError, ValueError) as e:  # pragma: no cover - environment-specific
+        raise TargetRepoError(f"cannot run git in {repo}: {e}") from e
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout).strip()
+        raise TargetRepoError(f"git {' '.join(args)} failed in {repo}: {detail}")
+    return proc.stdout.strip()
+
+
+def target_revision(repo: Path) -> dict[str, Any]:
+    """The audited repo's current revision, as recorded in audit-meta.json.
+
+    `dirty` is carried alongside the SHA because a clean SHA over a dirty
+    worktree describes a tree that exists nowhere but this machine. The audit
+    is still valid — auditing uncommitted work is a legitimate thing to do —
+    but the report must not imply it examined the commit it names.
+    """
+    if not repo.is_dir():
+        raise TargetRepoError(f"target repo {repo} is not a directory")
+    sha = _git(repo, "rev-parse", "HEAD")
+    dirty = bool(_git(repo, "status", "--porcelain"))
+    try:
+        branch = _git(repo, "rev-parse", "--abbrev-ref", "HEAD")
+    except TargetRepoError:  # pragma: no cover - detached HEAD edge case
+        branch = ""
+    return {
+        "target_repo": str(repo),
+        "target_sha": sha,
+        "target_dirty": dirty,
+        "target_branch": branch,
+    }
+
+
 def build_initial_meta(
     *,
     server: str,
@@ -129,6 +185,7 @@ def build_initial_meta(
     now: datetime,
     skill_version: str,
     catalog_dir: Path | None = None,
+    target_repo: Path | None = None,
 ) -> dict[str, Any]:
     meta: dict[str, Any] = {
         "audit_meta": {
@@ -144,7 +201,79 @@ def build_initial_meta(
     if catalog_dir is not None and catalog_dir.exists():
         meta["audit_meta"]["catalog_hash"] = hash_catalog(catalog_dir)
         meta["audit_meta"]["catalog_dir"] = str(catalog_dir)
+    if target_repo is not None:
+        meta["audit_meta"].update(target_revision(target_repo))
     return meta
+
+
+def verify_target(
+    meta: dict[str, Any],
+    repo_override: Path | None = None,
+) -> dict[str, Any]:
+    """Re-read the audited repo's HEAD and compare it with what was recorded.
+
+    Returns a structured report. `unchanged` is only ever true when a SHA was
+    recorded at init *and* still matches — an unrecorded target reports
+    `recorded: false` and never `unchanged: true`, because "we never looked"
+    must not read the same as "it did not move" (`OPS-005`).
+
+    A worktree that was clean at init and is dirty now counts as moved. The
+    audit measured committed state and would now be describing something else.
+    """
+    audit_meta = meta.get("audit_meta", meta) or {}
+    recorded_sha = audit_meta.get("target_sha")
+    recorded_repo = audit_meta.get("target_repo")
+    repo = repo_override or (Path(recorded_repo) if recorded_repo else None)
+
+    report: dict[str, Any] = {
+        "recorded": bool(recorded_sha),
+        "recorded_sha": recorded_sha or "",
+        "recorded_dirty": bool(audit_meta.get("target_dirty", False)),
+        "target_repo": str(repo) if repo else "",
+        "current_sha": "",
+        "current_dirty": False,
+        "unchanged": False,
+        "reason": "",
+    }
+
+    if not recorded_sha:
+        report["reason"] = (
+            "no target_sha in audit-meta.json — the run never recorded which "
+            "revision it audited, so nothing can be verified. Re-run "
+            "`audit_init.py init` with --target-repo for future audits."
+        )
+        return report
+    if repo is None:
+        report["reason"] = (
+            "target_sha recorded but no target_repo; pass --target-repo to say "
+            "where to look"
+        )
+        return report
+
+    current = target_revision(repo)
+    report["current_sha"] = current["target_sha"]
+    report["current_dirty"] = current["target_dirty"]
+
+    if current["target_sha"] != recorded_sha:
+        report["reason"] = (
+            f"HEAD moved during the audit: {recorded_sha[:12]} at init, "
+            f"{current['target_sha'][:12]} now. The report mixes findings from "
+            "two different trees."
+        )
+        return report
+    if current["target_dirty"] and not report["recorded_dirty"]:
+        report["reason"] = (
+            "HEAD is unchanged but the worktree is now dirty; it was clean at "
+            "init. Some checks looked at committed state, later ones at edits "
+            "that exist only here."
+        )
+        return report
+
+    report["unchanged"] = True
+    report["reason"] = "target unchanged" + (
+        " (dirty at init and still dirty)" if report["recorded_dirty"] else ""
+    )
+    return report
 
 
 def init_audit(
@@ -153,12 +282,16 @@ def init_audit(
     base_dir: Path,
     skill_version: str = "unspecified",
     catalog_dir: Path | None = None,
+    target_repo: Path | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
     """Create the audit dir, write the initial audit-meta.json, return
     the metadata that was written.
     """
     now = now or datetime.now(UTC)
+    # Interrogate the target before creating anything: a bad --target-repo
+    # should not leave an empty run directory behind for someone to wonder at.
+    target = target_revision(target_repo) if target_repo is not None else None
     run_id, output_dir = resolve_output_dir(server, base_dir, now=now)
     output_dir.mkdir(parents=True, exist_ok=False)
     meta = build_initial_meta(
@@ -169,6 +302,8 @@ def init_audit(
         skill_version=skill_version,
         catalog_dir=catalog_dir,
     )
+    if target is not None:
+        meta["audit_meta"].update(target)
     meta_path = output_dir / "audit-meta.json"
     meta_path.write_text(
         json.dumps(meta, indent=2, ensure_ascii=False) + "\n",
@@ -237,9 +372,41 @@ def main(argv: list[str] | None = None) -> int:
         help="Optional catalog dir to hash into audit-meta.json",
     )
     p_init.add_argument(
+        "--target-repo",
+        default=None,
+        help=(
+            "Checkout of the server being audited. Its HEAD SHA is recorded so "
+            "the end of the run can verify the target did not move"
+        ),
+    )
+    p_init.add_argument(
         "--now",
         default=None,
         help="ISO-8601 datetime override (testing)",
+    )
+
+    p_verify = sub.add_parser(
+        "verify-target",
+        help="Re-check that the audited repo is still at the recorded revision",
+    )
+    p_verify.add_argument("audit_dir", help="Audit run dir holding audit-meta.json")
+    p_verify.add_argument(
+        "--meta-path",
+        default=None,
+        help="Override audit-meta.json path (default: <audit_dir>/audit-meta.json)",
+    )
+    p_verify.add_argument(
+        "--target-repo",
+        default=None,
+        help="Where the audited repo lives now, if it moved since init",
+    )
+    p_verify.add_argument(
+        "--allow-unrecorded",
+        action="store_true",
+        help=(
+            "Exit 0 when the run recorded no target_sha. Off by default: an "
+            "unverifiable run must not read as a verified one"
+        ),
     )
 
     args = parser.parse_args(argv)
@@ -260,13 +427,49 @@ def main(argv: list[str] | None = None) -> int:
                 base_dir=Path(args.base_dir),
                 skill_version=args.skill_version,
                 catalog_dir=Path(args.catalog_dir) if args.catalog_dir else None,
+                target_repo=Path(args.target_repo) if args.target_repo else None,
                 now=_parse_now(args.now),
             )
-        except ValueError as e:
+        except (ValueError, TargetRepoError) as e:
             print(f"Error: {e}", file=sys.stderr)
             return 2
         print(json.dumps(result, indent=2, ensure_ascii=False))
+        if result["audit_meta"].get("target_dirty"):
+            print(
+                "Warning: the audited worktree has uncommitted changes; "
+                f"{result['audit_meta']['target_sha'][:12]} names a commit this "
+                "audit is not purely about.",
+                file=sys.stderr,
+            )
         return 0
+
+    if args.cmd == "verify-target":
+        audit_dir = Path(args.audit_dir)
+        meta_path = (
+            Path(args.meta_path) if args.meta_path else audit_dir / "audit-meta.json"
+        )
+        if not meta_path.exists():
+            print(f"Error: {meta_path} not found", file=sys.stderr)
+            return 2
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            print(f"Error: cannot read {meta_path}: {e}", file=sys.stderr)
+            return 2
+        try:
+            report = verify_target(
+                meta,
+                repo_override=Path(args.target_repo) if args.target_repo else None,
+            )
+        except TargetRepoError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 2
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        if report["unchanged"]:
+            return 0
+        if not report["recorded"] and args.allow_unrecorded:
+            return 0
+        return 1
 
     return 2
 

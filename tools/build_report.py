@@ -104,6 +104,7 @@ def render_executive_summary(summary: dict[str, Any]) -> str:
         f"{by_sev.get('low', 0)} low)."
     )
     advisory = summary.get("advisory_findings") or []
+    unverified = summary.get("not_verified_findings") or []
     if summary.get("production_ready"):
         sentence_3 = "Production-Readiness: erreicht."
         if advisory:
@@ -129,11 +130,25 @@ def render_executive_summary(summary: dict[str, Any]) -> str:
                 f"blockierender Severity: {', '.join(advisory)}."
             )
 
+    # Never part of the pass count, and never silent. A verdict over a set with
+    # unverified checks in it is a narrower claim than the same verdict over
+    # none, and `OPS-004` requires the difference to be legible — it is the
+    # sentence that keeps «nicht geprüft» from reading as «bestanden».
+    sentence_4 = ""
+    if unverified:
+        sentence_4 = (
+            f" {len(unverified)} Check(s) konnten nicht verifiziert werden und "
+            f"zählen weder als bestanden noch als fehlgeschlagen: "
+            f"{', '.join(unverified)}. Sie gehören unter «Offen»."
+        )
+
     return (
         "## 1. Executive Summary\n\n"
-        f"{sentence_1} {sentence_2} {sentence_3}\n\n"
+        f"{sentence_1} {sentence_2} {sentence_3}{sentence_4}\n\n"
         f"**Production-Readiness:** "
-        f"{'YES' if summary.get('production_ready') else 'NO'}\n"
+        f"{'YES' if summary.get('production_ready') else 'NO'}"
+        + (f" (über {len(unverified)} nicht verifizierte Checks)" if unverified else "")
+        + "\n"
     )
 
 
@@ -177,20 +192,84 @@ def render_applicability(summary: dict[str, Any]) -> str:
     by_cat = totals.get("by_category", {})
     out = ["## 3. Applicability\n"]
     out.append("### Status pro Kategorie\n")
-    out.append("| Kategorie | Pass | Fail | Partial | Todo | N/A |")
-    out.append("|---|---|---|---|---|---|")
+    out.append("| Kategorie | Pass | Fail | Partial | Not verified | Todo | N/A |")
+    out.append("|---|---|---|---|---|---|---|")
     for cat in sorted(by_cat):
         c = by_cat[cat]
         out.append(
             f"| {cat} | {c.get('pass', 0)} | {c.get('fail', 0)} | "
-            f"{c.get('partial', 0)} | {c.get('todo', 0)} | {c.get('n/a', 0)} |"
+            f"{c.get('partial', 0)} | {c.get('not_verified', 0)} | "
+            f"{c.get('todo', 0)} | {c.get('n/a', 0)} |"
         )
     bs = totals.get("by_status", {})
     out.append(
         f"| **Total** | **{bs.get('pass', 0)}** | **{bs.get('fail', 0)}** | "
-        f"**{bs.get('partial', 0)}** | **{bs.get('todo', 0)}** | "
-        f"**{bs.get('n/a', 0)}** |"
+        f"**{bs.get('partial', 0)}** | **{bs.get('not_verified', 0)}** | "
+        f"**{bs.get('todo', 0)}** | **{bs.get('n/a', 0)}** |"
     )
+    out.append("")
+    trend = render_trend(summary)
+    if trend:
+        out.append(trend)
+    return "\n".join(out)
+
+
+STATUS_LABELS = (
+    ("pass", "bestanden"),
+    ("fail", "fehlgeschlagen"),
+    ("partial", "teilweise"),
+    ("not_verified", "nicht verifiziert"),
+    ("todo", "offen"),
+)
+
+
+def render_trend(summary: dict[str, Any]) -> str:
+    """The comparison against the previous run — or the refusal to draw one.
+
+    When the catalogue changed between the runs, no numbers appear here at all.
+    Writing them with a caveat was the alternative and it is worse: the caveat
+    is what gets dropped when a line is quoted into a status mail, and what
+    survives is «30/4/2 → 34/6/4», read as movement in a server that may not
+    have moved at all. The refusal has to be the visible artefact.
+    """
+    epoch = summary.get("catalog_epoch")
+    if not epoch:
+        return ""
+
+    out = ["### Vergleich zum Vorlauf\n"]
+    prev_id = epoch.get("previous_run_id") or epoch.get("previous_summary", "?")
+
+    if not epoch.get("comparable"):
+        out.append(f"**Trendlinie gebrochen — kein Vergleich mit `{prev_id}`.**\n")
+        out.append(f"{epoch.get('reason', '')}\n")
+        out.append(
+            "| | Vorlauf | Dieser Lauf |\n|---|---|---|\n"
+            f"| Katalog-Hash | `{(epoch.get('previous_catalog_hash') or '?')[:12]}` | "
+            f"`{(epoch.get('catalog_hash') or '?')[:12]}` |\n"
+            f"| Geprüfte Checks | {epoch.get('previous_checks_evaluated', '?')} | "
+            f"{epoch.get('checks_evaluated', '?')} |\n"
+        )
+        out.append(
+            "Die Status-Zahlen beider Läufe stehen in den jeweiligen Reports. "
+            "Sie werden hier **bewusst nicht** gegenübergestellt: über zwei "
+            "verschiedene Katalog-Stände ist eine Differenz keine Veränderung "
+            "am Server, sondern eine am Massstab. Für eine echte Trendlinie den "
+            "Vorlauf gegen denselben Katalog-Stand neu auswerten.\n"
+        )
+        return "\n".join(out)
+
+    delta = epoch.get("delta_by_status", {})
+    out.append(
+        f"Gleicher Katalog-Stand (`{(epoch.get('catalog_hash') or '?')[:12]}`) "
+        f"wie `{prev_id}` — die Zahlen sind vergleichbar.\n"
+    )
+    out.append("| Status | Vorlauf | Dieser Lauf | Δ |")
+    out.append("|---|---|---|---|")
+    by_status = summary.get("totals", {}).get("by_status", {})
+    for key, label in STATUS_LABELS:
+        now = int(by_status.get(key, 0))
+        d = int(delta.get(key, 0))
+        out.append(f"| {label} | {now - d} | {now} | {d:+d} |")
     out.append("")
     return "\n".join(out)
 

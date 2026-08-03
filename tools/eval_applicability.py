@@ -46,6 +46,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+# Bootstrap so tools.* imports work when invoked as a script.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from tools.compare_guard import (  # noqa: E402
+    EmptyComparisonError,
+    diff_sets,
+    require_non_empty,
+)
+
 # ---------------------------------------------------------------------------
 # Errors
 # ---------------------------------------------------------------------------
@@ -430,6 +441,103 @@ def evaluate_catalog(
     return results
 
 
+def applicable_ids(results: dict[str, dict[str, Any]]) -> list[str]:
+    """The check ids an evaluation marked applicable, sorted."""
+    return sorted(cid for cid, r in results.items() if r.get("applicable"))
+
+
+def diff_applicability(
+    left_label: str,
+    left: dict[str, dict[str, Any]],
+    right_label: str,
+    right: dict[str, dict[str, Any]],
+    allow_empty: bool = False,
+) -> dict[str, Any]:
+    """Compare two catalog evaluations, refusing empty sides.
+
+    Two things are compared, not one: which checks each side *evaluated* and
+    which it found *applicable*. Keeping them apart is the point — a check
+    that vanished because the catalogue shrank and a check that vanished
+    because the profile changed are different events with different fixes,
+    and a single applicable-set diff renders them identically.
+
+    Both evaluations must be non-empty. An applicability diff over two empty
+    parses reports `identical` while having compared nothing; see
+    `tools/compare_guard.py` for the run where that happened.
+    """
+    hint = "Check the --checks-dir path: a directory with no *.md parses to nothing."
+    require_non_empty(
+        f"{left_label} (evaluated checks)", left, hint=hint, allow_empty=allow_empty
+    )
+    require_non_empty(
+        f"{right_label} (evaluated checks)", right, hint=hint, allow_empty=allow_empty
+    )
+
+    evaluated = diff_sets(
+        left_label, left.keys(), right_label, right.keys(), allow_empty=allow_empty
+    )
+    # The applicable sets may legitimately be empty even when the catalogue
+    # parsed fine — a profile that matches nothing is a real, reportable state,
+    # unlike a catalogue that parsed to nothing. The guard above has already
+    # established that something *was* looked at, so this diff is allowed to be
+    # empty on either side.
+    applicable = diff_sets(
+        left_label,
+        applicable_ids(left),
+        right_label,
+        applicable_ids(right),
+        allow_empty=True,
+    )
+
+    changed: list[dict[str, Any]] = []
+    for cid in evaluated["common"]:
+        lhs, rhs = left[cid], right[cid]
+        if bool(lhs.get("applicable")) != bool(rhs.get("applicable")):
+            changed.append(
+                {
+                    "check_id": cid,
+                    left_label: {
+                        "applicable": bool(lhs.get("applicable")),
+                        "reason": lhs.get("reason", ""),
+                    },
+                    right_label: {
+                        "applicable": bool(rhs.get("applicable")),
+                        "reason": rhs.get("reason", ""),
+                    },
+                    "expression": rhs.get("expression", lhs.get("expression", "")),
+                }
+            )
+
+    return {
+        "evaluated": evaluated,
+        "applicable": applicable,
+        "changed_applicability": changed,
+        "identical": evaluated["identical"] and not changed,
+    }
+
+
+def _load_evaluation(
+    path: Path,
+    checks_dir: Path,
+    server: str | None,
+) -> dict[str, dict[str, Any]]:
+    """Load one side of a diff: either a saved evaluation or a profile.
+
+    A saved evaluation is the JSON this tool's `catalog` subcommand emits —
+    that is what makes a diff against an *earlier* run possible, since the
+    catalogue of that run may no longer be on disk. Anything else is treated
+    as a profile and evaluated against `checks_dir` now.
+    """
+    if path.suffix == ".json":
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(data, dict) and data:
+            first = next(iter(data.values()))
+            if isinstance(first, dict) and "applicable" in first:
+                return data
+    profile = _load_profile(path, server)
+    return evaluate_catalog(profile, checks_dir)
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -533,6 +641,46 @@ def main(argv: list[str] | None = None) -> int:
         help="Output format",
     )
 
+    p_diff = sub.add_parser(
+        "diff",
+        help="Compare two applicability evaluations (profiles or saved JSON)",
+    )
+    p_diff.add_argument(
+        "left",
+        help="Profile YAML/JSON, or a saved `catalog --format json` evaluation",
+    )
+    p_diff.add_argument("right", help="The other side, same accepted formats")
+    p_diff.add_argument(
+        "--checks-dir",
+        default=str(Path(__file__).resolve().parent.parent / "checks"),
+        help="Catalogue used when a side is a profile rather than a saved evaluation",
+    )
+    p_diff.add_argument(
+        "--server",
+        default=None,
+        help="When a side is a portfolio file, pick this server entry",
+    )
+    p_diff.add_argument(
+        "--labels",
+        default=None,
+        help="Comma-separated display labels for the two sides (default: the paths)",
+    )
+    p_diff.add_argument(
+        "--allow-empty",
+        action="store_true",
+        help=(
+            "Compare even when a side parsed to nothing. Off by default: two "
+            "empty sides are trivially identical, which says something about "
+            "the parse and nothing about the runs"
+        ),
+    )
+    p_diff.add_argument(
+        "--format",
+        choices=("json", "table"),
+        default="json",
+        help="Output format",
+    )
+
     args = parser.parse_args(argv)
 
     if args.cmd == "expr":
@@ -554,6 +702,66 @@ def main(argv: list[str] | None = None) -> int:
                 marker = "YES" if r["applicable"] else "no"
                 print(f"{check_id:<12} {marker:<6} {r['reason']}")
         return 0
+
+    if args.cmd == "diff":
+        checks_dir = Path(args.checks_dir)
+        left_path, right_path = Path(args.left), Path(args.right)
+        if args.labels:
+            parts = [p.strip() for p in args.labels.split(",")]
+            if len(parts) != 2 or not all(parts):
+                print("Error: --labels needs exactly two names", file=sys.stderr)
+                return 2
+            left_label, right_label = parts
+        else:
+            left_label, right_label = str(left_path), str(right_path)
+        if left_label == right_label:
+            print(
+                "Error: both sides carry the label "
+                f"{left_label!r}; a diff whose columns cannot be told apart "
+                "is not readable",
+                file=sys.stderr,
+            )
+            return 2
+
+        try:
+            left = _load_evaluation(left_path, checks_dir, args.server)
+            right = _load_evaluation(right_path, checks_dir, args.server)
+            report = diff_applicability(
+                left_label, left, right_label, right, allow_empty=args.allow_empty
+            )
+        except EmptyComparisonError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 2
+        except OSError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 2
+
+        if args.format == "json":
+            print(json.dumps(report, indent=2, ensure_ascii=False))
+        else:
+            ev, ap = report["evaluated"], report["applicable"]
+            print(
+                f"Evaluated: {ev['left_count']} ({left_label}) vs "
+                f"{ev['right_count']} ({right_label})"
+            )
+            print(
+                f"Applicable: {ap['left_count']} ({left_label}) vs "
+                f"{ap['right_count']} ({right_label})"
+            )
+            for cid in ev["only_in_left"]:
+                print(f"  -{cid:<12} only evaluated in {left_label}")
+            for cid in ev["only_in_right"]:
+                print(f"  +{cid:<12} only evaluated in {right_label}")
+            for item in report["changed_applicability"]:
+                lhs = "YES" if item[left_label]["applicable"] else "no"
+                rhs = "YES" if item[right_label]["applicable"] else "no"
+                print(
+                    f"  ~{item['check_id']:<12} {lhs} -> {rhs}  ({item['expression']})"
+                )
+            print("\nidentical" if report["identical"] else "\ndiffers")
+        # Exit 1 on a difference so the diff is usable as a gate; 0 means the
+        # two sides really were compared and really did match.
+        return 0 if report["identical"] else 1
 
     return 2
 
