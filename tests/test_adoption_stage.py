@@ -109,7 +109,16 @@ class TestRealCatalogUnchanged:
         # it: of ten servers, none reads `Retry-After` and none spreads its
         # backoff. Enforced on day one would be a red portfolio, which is how
         # checks get reverted rather than adopted.
-        assert advisory_ids(parse_catalog(CHECKS_DIR)) == ["ARCH-014", "OPS-005"]
+        #
+        # OPS-006 takes the same bridge. Of 32 portfolio repos, 29 pin no
+        # tool version at all — enforced on day one would fail almost the
+        # whole portfolio for a property none of them was ever asked to
+        # have. Advisory until a run shows the check is cut correctly.
+        assert advisory_ids(parse_catalog(CHECKS_DIR)) == [
+            "ARCH-014",
+            "OPS-005",
+            "OPS-006",
+        ]
 
     def test_the_mechanism_is_not_a_blanket_demotion(self):
         # An advisory stage is a bridge for a specific new check, not a way to
