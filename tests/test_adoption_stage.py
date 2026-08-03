@@ -132,6 +132,7 @@ class TestRealCatalogUnchanged:
             "OPS-005",
             "OPS-006",
             "OPS-007",
+            "OPS-008",
         ]
 
     def test_the_mechanism_is_not_a_blanket_demotion(self):

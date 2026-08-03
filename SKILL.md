@@ -5,7 +5,7 @@ description: Reproduzierbares Audit von MCP-Servern gegen einen versionierten Be
 
 # MCP Audit — Standardisiertes Audit-Vorgehen
 
-Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer, 97 Checks in zwölf Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
+Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer, 98 Checks in zwölf Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
 
 **Das Mantra in drei Zeilen:**
 
@@ -80,6 +80,7 @@ Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig du
 | Findings-Set vs. Disk validieren (inkl. Leer-Prüfung) | `python tools/aggregate_results.py validate <audit_dir>` |
 | Unveränderte Findings aus früheren Läufen übernehmen | `python tools/carry_forward.py <audit_dir> --from <vorheriger_lauf>` |
 | Audit-Report generieren | `python tools/build_report.py <audit_dir>` |
+| Handgeschriebene Zahlen gegen `summary.json` prüfen | `python tools/check_reported_numbers.py <summary.json> <datei>...` |
 | Task-Agent-Output verifizieren | `python tools/verify_raw_outputs.py raw/ --expected-ids ID1,ID2` |
 | Task-Agent-Run loggen | `python tools/agent_run_log.py log --meta-path audit-meta.json ...` |
 | Release-Vorschlag (Schritt 7) | `python tools/propose_release.py propose <audit_dir> <target_repo>` |
@@ -88,6 +89,21 @@ Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig du
 | Pfad zu Native/POSIX konvertieren | `python tools/path_utils.py to-native <path>` |
 
 Wenn ein Audit ein Snippet braucht das hier nicht abgedeckt ist: erst Issue im Skill-Repo öffnen, dann Helper-Script bauen, dann verwenden. **Inline-Heredoc ist der Anti-Pattern, der nicht-reproduzierbare Audits erzeugt.**
+
+#### Dieselbe Regel gilt für CI-Guards, und dort wiegt sie schwerer
+
+Ein Workflow-Schritt der Form `run: |` mit `python - <<'PY' … PY` ist ausführbarer Code ohne Testbarkeit: Er lässt sich nicht importieren, nicht mit Grenzfällen aufrufen und vor allem nicht mutationstesten. **Ein Guard, den man nicht kaputtmachen kann, ist kein nachgewiesener Guard** — und anders als ein Audit-Snippet läuft er unbeaufsichtigt weiter, oft jahrelang.
+
+**Der Beleg stammt aus diesem Repo.** `tools/render_description_issue.py` war zuerst als Heredoc im Workflow geschrieben. Als Skript mit Tests fiel sofort auf, dass die naheliegende Zwei-Zustands-Logik — Body geschrieben heisst «Issue öffnen», kein Body heisst «Issue schliessen» — ein offenes Issue geschlossen hätte, obwohl der Vergleich nie stattgefunden hatte. Vier verschiedene Eingaben führten dorthin. Im Heredoc wäre der Fehler ausgeliefert worden, weil es dort keine Stelle gibt, an der man ihn hätte suchen können.
+
+Die Grenze verläuft nicht bei der Zeilenzahl, sondern bei der Frage, **ob der Schritt urteilt**:
+
+| Im YAML zulässig | Gehört in ein Skript mit Tests |
+|---|---|
+| `echo`, `mkdir`, Datei kopieren, ein Werkzeug aufrufen | Zustände unterscheiden, Schwellen prüfen, Ergebnisse klassifizieren |
+| Ein Kommando, dessen Exitcode das Urteil **ist** | Ein Kommando, dessen Ausgabe erst **interpretiert** wird |
+
+`python - <<'PY'` in einem Workflow ist damit fast immer das Signal, dass ein Skript fehlt. Der Katalog führt das als `OPS-008`.
 
 ### 0.4 Run-ID + Audit-Meta initialisieren (verbindlich seit Issue #15)
 
@@ -234,12 +250,12 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 | `OBS` | PDF Sec 6 + Anhang B10 — Logging, Errors, SIEM, Tracing | 5–8 | 7 / 7 ✅ |
 | `HITL` | PDF Sec 7 — Sampling, Human-in-the-Loop | 4–5 | 5 / 5 ✅ |
 | `CH` | Custom — DSG/EDÖB, Schweiz-Compliance | 5–8 | 8 / 8 ✅ |
-| `OPS` | Anhang C + Custom — Test-Strategie, Doku, Phasenarchitektur, Audit-Redlichkeit, Pipeline-Ehrlichkeit, reproduzierbare Urteile, ausfuehrbare Anleitungen | 3–7 | 7 / 7 ✅ |
+| `OPS` | Anhang C + Custom — Test-Strategie, Doku, Phasenarchitektur, Audit-Redlichkeit, Pipeline-Ehrlichkeit, reproduzierbare Urteile, ausfuehrbare Anleitungen, pruefbare Guards | 3–8 | 8 / 8 ✅ |
 | `FID` | Custom — Datentreue: Scope, Recall, Leermengen | 4–6 | 5 / 5 ✅ |
 | `IDENT` | Custom — Identität: User-Agent, `__version__`, Manifest, Doku-Version, Release-Gap, Gesundheit des Artefakts | 5–8 | 7 / 7 ✅ |
 | `DRIFT` | Custom — Upstream-Vertrag und Repo-Prosa: Endpoint-Drift, Fallback-Semantik, Testgüte, CHANGELOG gegen Code | 4–7 | 6 / 6 ✅ |
 | `DEP` | Custom — Auflösungsraum des publizierten Artefakts: Obergrenzen, Major-Wechsel | 1–3 | 1 / 1 ✅ |
-| **Total** | | **~85** | **97 / 97 ✅** |
+| **Total** | | **~85** | **98 / 98 ✅** |
 
 ### 2.2 Severity-Stufen
 
@@ -534,7 +550,29 @@ Drei Faustregeln, die die meisten Fälle abdecken:
 - **Was ein Werkzeug installiert oder auswählt, danach zurückfragen.** `--version` nach dem Installieren, `git rev-parse HEAD` nach dem Auschecken. Eine Version, die man annimmt, ist keine Version, die man gemessen hat.
 - **Eine Null ist eine Behauptung.** «0 Treffer» heisst entweder «nichts da» oder «Muster greift nicht». Ohne negative Kontrolle sind die beiden ununterscheidbar — und die falsche Lesart ist immer die bequeme.
 
-**Wo das im Katalog bereits gelebt wird:** Gemessen **11 von 97** Checks — `ARCH-013`, `DRIFT-003`, `FID-003`, `FID-004`, `IDENT-002`, `IDENT-004`, `OPS-005`, `OPS-006`, `OPS-007`, `SCALE-007`, `SEC-024`. Die Zahl ist selbst mit negativer Kontrolle erhoben: Der Detektor lief gegen je eine Datei mit und ohne die Formulierung (1 beziehungsweise 0 Treffer), sonst wäre auch sie nur plausibel. Das ist keine Quote, die man per Gate erzwingt — ein Gate, das bei 86 Checks anschlägt, wird abgeschaltet, und die Zahl misst ohnehin die Erwähnung, nicht die Praxis. Sie steht hier als Ausgangswert, damit sichtbar bleibt, in welche Richtung sie sich bewegt.
+**Wo das im Katalog bereits gelebt wird:** Gemessen **12 von 98** Checks — `ARCH-013`, `DRIFT-003`, `FID-003`, `FID-004`, `IDENT-002`, `IDENT-004`, `OPS-005`, `OPS-006`, `OPS-007`, `OPS-008`, `SCALE-007`, `SEC-024`. Die Zahl ist selbst mit negativer Kontrolle erhoben: Der Detektor lief gegen je eine Datei mit und ohne die Formulierung (1 beziehungsweise 0 Treffer), sonst wäre auch sie nur plausibel. Das ist keine Quote, die man per Gate erzwingt — ein Gate, das bei 86 Checks anschlägt, wird abgeschaltet, und die Zahl misst ohnehin die Erwähnung, nicht die Praxis. Sie steht hier als Ausgangswert, damit sichtbar bleibt, in welche Richtung sie sich bewegt.
+
+#### Jede Zahl trägt ihre Herkunft — und eine abgeleitete speist kein Gate
+
+`build_report.py` zieht jede Zahl aus `summary.json`; der erzeugte Report kann deshalb nicht driften. Driften können die **handgeschriebenen** Zahlen: die `SECURITY.md` des auditierten Repos, ein PR-Body, eine Tracker-Karte, ein Satz im Chat. Sie entstehen aus dem Gedächtnis oder aus einer Vorhersage — und sie überleben den Lauf, den sie beschreiben.
+
+Drei Herkünfte, die auseinandergehalten gehören:
+
+| Herkunft | Bedeutung | Darf ein Gate speisen |
+|---|---|---|
+| `gemessen` | In diesem Lauf erhoben, steht in `summary.json` | ja |
+| `abgeleitet` | Aus anderen Zahlen gefolgert oder vorhergesagt | **nein** |
+| `übernommen` | Aus einem früheren Lauf oder fremden Dokument zitiert | nein, und mit Datum des Ursprungslaufs |
+
+**Der Fall, der das erzwungen hat, ist nicht «Summe falsch».** Über diese Sitzung: vier Vorhersagen, zwei exakt, zwei falsch — und eine davon war in der **Zusammensetzung** falsch, während die Summe stimmte. `30 pass / 4 partial / 2 fail` gegen ein gemessenes `30 / 5 / 1`. Beides ergibt 36. Der Satz las sich bestätigt, und das eine Finding, das von `fail` nach `partial` gewandert war, verschwand aus der Wahrnehmung. **Eine Prüfung, die nur die Gesamtzahl vergleicht, lässt genau das durch** — deshalb vergleicht `tools/check_reported_numbers.py` je Status.
+
+```bash
+# Vor dem Abschluss: jedes Dokument, das Zahlen dieses Laufs nennt
+python tools/check_reported_numbers.py audits/<run>/summary.json \
+    <ziel-repo>/SECURITY.md <ziel-repo>/README.md
+```
+
+Findet das Werkzeug in einer Datei **gar keine** Angabe, ist das kein Bestehen, sondern der Ausgang `ungeprüft` — meist hat sich ein Wortlaut geändert und das Muster greift ins Leere. Exit 1, mit Nennung der Datei.
 
 ### 4.2 Audit-Reihenfolge: Severity descending
 
@@ -957,7 +995,9 @@ Drei Eigenschaften, die erst beim Ausrollen über viele Repos sichtbar werden:
 10. **«Der Patch läuft in meinem Repo grün, also überall»** — bei portfolio-weiten Fixes entscheidet die schmalste konfigurierte Zeilenbreite, nicht die eigene. Siehe [Portfolio-Hygiene](#portfolio-hygiene-ein-commit-33-repos).
 11. **«Ich habe den Text abgeschickt, also steht er da»** — Platzhalter in spitzen Klammern verschwinden auf dem Weg in PR-Body, Issue oder Tracker, lautlos und plausibel. Body zurücklesen, nicht annehmen. Siehe [§0.5](#05-platzhalter-in-spitzen-klammern-überleben-den-weg-nach-draussen-nicht).
 12. **«Das Kommando ist gelaufen, also stimmt die Zahl»** — ein Werkzeug kann sauber laufen, ein plausibles Ergebnis liefern und trotzdem etwas anderes messen als gedacht. Eine Null ist eine Behauptung, kein Befund. Negative Kontrolle fahren, siehe [§4.1](#negative-kontrolle-ein-kommando-das-läuft-misst-nicht-automatisch-das-richtige).
-13. **«Der Guard ist rot, also weiss es jemand»** — ein Guard, der auf `main` läuft, meldet an niemanden. `repo-description` war über sechs Merges rot und wurde nie beantwortet. Ein Befund braucht einen Adressaten, sonst ist er Dekoration.
+13. **«Die Summe stimmt, also stimmt die Aufteilung»** — eine Vorhersage kann in der Zusammensetzung falsch sein, während das Total passt; das ist der Fall, der wie ein Treffer aussieht. Zahlen tragen ihre Herkunft, und eine abgeleitete speist kein Gate. Siehe [§4.1](#jede-zahl-trägt-ihre-herkunft--und-eine-abgeleitete-speist-kein-gate).
+14. **«Prüflogik im Workflow-Heredoc ist auch Code»** — ja, aber nicht testbarer. Was über rot oder grün entscheidet, gehört in ein Skript mit Tests. Siehe [§0.3](#dieselbe-regel-gilt-für-ci-guards-und-dort-wiegt-sie-schwerer) und `OPS-008`.
+15. **«Der Guard ist rot, also weiss es jemand»** — ein Guard, der auf `main` läuft, meldet an niemanden. `repo-description` war über sechs Merges rot und wurde nie beantwortet. Ein Befund braucht einen Adressaten, sonst ist er Dekoration.
 
 ---
 
@@ -1006,6 +1046,8 @@ Drei Eigenschaften, die erst beim Ausrollen über viele Repos sichtbar werden:
 - [ ] Findings-Tabelle nach Severity sortiert
 - [ ] Remediation-Plan mit Reihenfolge-Vorschlag
 - [ ] Audit-Metadata vollständig (Datum, Skill-Version, Katalog-Version)
+- [ ] Jede handgeschriebene Zahl gegen `summary.json` geprüft: `python tools/check_reported_numbers.py <summary.json> <datei>...` — keine Datei darf als `ungeprüft` zurückbleiben (§4.1)
+- [ ] Keine abgeleitete oder vorhergesagte Zahl speist ein Gate oder steht unmarkiert im Report (§4.1)
 
 ---
 
