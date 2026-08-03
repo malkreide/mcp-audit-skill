@@ -27,6 +27,11 @@ on:
 
 permissions:
   contents: read
+  # Für die Eskalation unten. Ein Guard, der nur auf `main` rot wird, meldet an
+  # niemanden: `repo-description` war über sechs aufeinanderfolgende Merges rot
+  # und wurde nie beantwortet, weil ein roter Push-Lauf in keinem PR auftaucht.
+  # Ein Befund braucht einen Adressaten, sonst ist er Dekoration.
+  issues: write
 
 jobs:
   check:
@@ -85,9 +90,58 @@ jobs:
                     "zu ändern gehört einem Menschen.")
           PY
 
+      # Die Job-Summary sieht nur, wer den Lauf öffnet — und einen Push-Lauf auf
+      # `main` öffnet niemand. Deshalb bekommt der Befund hier einen Adressaten:
+      # ein Issue, das bei Drift entsteht oder aktualisiert wird und sich selbst
+      # schliesst, sobald die Description wieder stimmt. Ohne das Schliessen
+      # wäre es Dauergemecker und würde nach zwei Wochen ignoriert.
+      - name: Befund eskalieren oder erledigen
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: "Repo-Description weicht vom Katalog ab"
+        run: |
+          set -euo pipefail
+
+          # Drei Zustände, nicht zwei. Ein leerer Body hiesse sonst «alles gut»
+          # — auch dann, wenn der Vergleich gar nicht stattgefunden hat, weil
+          # `result.json` fehlt oder die Description nicht geholt werden konnte.
+          # Ein nicht gelaufener Check ist kein Bestehen (§2.6), und ein Issue
+          # auf dieser Grundlage zu schliessen wäre eine stille Entwarnung.
+          state=$(python tools/render_description_issue.py \
+                    --result result.json --out issue-body.md)
+          echo "Zustand: $state"
+
+          # `--limit` explizit: der Default von 30 würde das eigene Issue
+          # übersehen, sobald mehr offen sind, und bei jedem Lauf ein neues
+          # anlegen. Ein Guard, der sich selbst dupliziert, wird stummgeschaltet.
+          existing=$(gh issue list --state open --limit 200 --json number,title \
+            --jq '[.[] | select(.title == env.ISSUE_TITLE)] | .[0].number // empty')
+
+          case "$state" in
+            drift)
+              if [ -n "$existing" ]; then
+                gh issue edit "$existing" --body-file issue-body.md
+                echo "Issue #$existing aktualisiert."
+              else
+                gh issue create --title "$ISSUE_TITLE" --body-file issue-body.md
+              fi
+              ;;
+            ok)
+              if [ -n "$existing" ]; then
+                gh issue close "$existing" \
+                  --comment "Description stimmt wieder mit dem Katalog überein — automatisch geschlossen."
+                echo "Issue #$existing geschlossen."
+              fi
+              ;;
+            unchecked)
+              echo "Der Vergleich hat nicht stattgefunden — Issue bleibt, wie es ist."
+              ;;
+          esac
+
       - name: Rot, wenn die Description nicht stimmt
         if: steps.check.outputs.failed == 'true'
         run: |
           echo "Description weicht vom Katalog ab oder konnte nicht geholt werden."
-          echo "Der fertige Text steht in der Job-Summary."
+          echo "Der fertige Text steht in der Job-Summary und im offenen Issue."
           exit 1

@@ -67,13 +67,16 @@ Inline-`python3 << 'PYEOF'`-Blöcke crashen auf Windows Git Bash regelmässig du
 
 | Aufgabe | Helper-Script |
 |---|---|
-| Run-ID + Output-Dir + audit-meta.json initialisieren | `python tools/audit_init.py init <server> --base-dir audits/ --catalog-dir checks/` |
+| Run-ID + Output-Dir + audit-meta.json initialisieren | `python tools/audit_init.py init <server> --base-dir audits/ --catalog-dir checks/ --target-repo <repo>` |
+| Ziel-Revision am Ende erneut prüfen | `python tools/audit_init.py verify-target <audit_dir>` |
 | Profil-Validierung (Placeholder/Schema-Gate) | `python tools/validate_profile.py path/to/profile.yaml` |
 | Catalog parsen (Frontmatter aller `*.md`) | `python tools/parse_catalog.py --format json` |
 | Catalog vs. Manifest validieren | `python tools/parse_catalog.py --format manifest-check` |
 | Portfolio-Inventar gegen die Checkouts prüfen | `python tools/verify_inventory.py --portfolio portfolio.yaml` |
 | `applies_when` evaluieren | `python tools/eval_applicability.py catalog profile.yaml` |
+| Zwei Applicability-Auswertungen vergleichen | `python tools/eval_applicability.py diff <alt> <neu> --labels alt,neu` |
 | Verification-Results aggregieren | `python tools/aggregate_results.py aggregate results.json --checks-dir checks/ --out summary.json` |
+| Gegen den Vorlauf vergleichen (Katalog-Epoche) | `python tools/aggregate_results.py aggregate ... --previous audits/<vorlauf>/` |
 | Findings-Set vs. Disk validieren (inkl. Leer-Prüfung) | `python tools/aggregate_results.py validate <audit_dir>` |
 | Unveränderte Findings aus früheren Läufen übernehmen | `python tools/carry_forward.py <audit_dir> --from <vorheriger_lauf>` |
 | Audit-Report generieren | `python tools/build_report.py <audit_dir>` |
@@ -92,11 +95,12 @@ Niemals `date +%Y-%m-%d` für den Output-Verzeichnisnamen — das hat im ersten 
 
 ```bash
 # Erzeugt Output-Dir mit ISO-Timestamp + Timezone-Offset, schreibt
-# initiale audit-meta.json mit Skill-Version + Catalog-Hash.
+# initiale audit-meta.json mit Skill-Version, Catalog-Hash und Ziel-SHA.
 python "$SKILL_BASE/tools/audit_init.py" init "$SERVER_NAME" \
     --base-dir "$TARGET/audits/" \
     --skill-version "1.6.0" \
-    --catalog-dir "$SKILL_BASE/checks/"
+    --catalog-dir "$SKILL_BASE/checks/" \
+    --target-repo "$TARGET"
 # Output (JSON): { "run_id": "2026-05-02T091245-Z-srgssr-mcp", "output_dir": "...", "meta_path": "..." }
 ```
 
@@ -105,9 +109,49 @@ Run-ID-Format: `YYYY-MM-DDTHHMMSS-<offset>-<server>`, wobei `<offset>` `Z` (UTC)
 Die initiale `audit-meta.json` enthält:
 - `server_name`, `run_id`, `started_at` (ISO mit TZ-Suffix), `timezone_offset`
 - `skill_version`, `catalog_hash` (SHA-256 aller `checks/*.md` + `MANIFEST.txt`), `catalog_dir`
+- `target_repo`, `target_sha`, `target_dirty`, `target_branch` — die Revision des auditierten Repos (nur mit `--target-repo`)
 - Leeres `agent_runs`-Array (wird in Step 4 von `agent_run_log.py` befüllt)
 
 Der `catalog_hash` ist der Reproduzierbarkeits-Anker: jeder Re-Audit kann verifizieren, dass derselbe Katalog-Stand verwendet wurde.
+
+### 0.5 Platzhalter in spitzen Klammern überleben den Weg nach draussen nicht
+
+Diese Datei, `templates/finding.md` und die Finding-Dokumente schreiben Platzhalter als `<ID>`, `<slug>`, `<CHECK-ID>`. Im Repository ist das richtig und bleibt so — Git transportiert Text, nicht HTML.
+
+**Wird derselbe Text von einem Agenten über die GitHub-Werkzeugschicht abgeschickt, ist er weg.** Ein Pull-Request-Body mit dem Satz «suchte `findings/<ID>.md`, während der Lauf `<ID>-<slug>.md` benannt hatte» kommt als «suchte `findings/.md`, während der Lauf `-.md` benannt hatte» an: `<ID>` und `<slug>` werden als unbekannte Tags verworfen. **Backticks schützen nicht** — die Umwandlung läuft vor dem Markdown-Parser.
+
+Gemessen, nicht angenommen: In PR #79 zweimal reproduziert — beim Anlegen und beim Korrekturversuch mit denselben Klammern. Am selben Ort wurde `>` am Zeilenanfang zu `&gt;` escaped, das Blockquote also gleich mit zerstört.
+
+**Wo genau das passiert, ist nicht belegt, und die Vermutung gehört nicht in die Regel.** Der gespeicherte Body enthält `&#39;` für Apostrophe; GitHub escaped die in Issue- und PR-Bodies nicht. Der Verlust entsteht also mit hoher Wahrscheinlichkeit in der Werkzeug- oder Proxy-Schicht des Agenten und **nicht** bei GitHub — ein Mensch, der denselben Text im Web-UI einfügt, dürfte nichts verlieren. Wer das braucht, misst es: Text mit `<ID>` von Hand einfügen, speichern, zurücklesen. Bis dahin gilt die Regel für den Agentenpfad, für den sie gemessen ist.
+
+Bösartig ist der Fall, weil das Ergebnis **plausibel bleibt**. `findings/.md` sieht nicht nach einem Fehler aus, sondern nach einem Dateinamen. Ein Satz über den Unterschied zweier Schreibweisen wurde so zu einem Satz, der beide gleich nennt — ohne Fehlermeldung, ohne rotes Gate. Dieselbe Mechanik trifft das Finding-Template aus §5.1: dessen Überschrift `## Finding: <CHECK-ID> — <CHECK-TITLE>` wird beim Einfügen in ein Issue zu `## Finding:  — `.
+
+**Regel:** Text, den ein Agent in einen PR-Body, ein Issue, einen Review-Kommentar oder den Tracker schreibt, schreibt Platzhalter als `{ID}`, `{slug}`, `{CHECK-ID}` und sagt einmal dazu, dass die geschweifte Form für die spitze steht. Danach **den gespeicherten Body zurücklesen und vergleichen** — die Umwandlung ist still, also ist die Gegenprobe der einzige Beleg. Derselbe Reflex wie beim Gegen-Test einer Mutation: ein Schritt ohne Rückmessung ist kein belegter Schritt.
+
+### 0.6 Die Ziel-Revision festhalten (verbindlich)
+
+`catalog_hash` hält fest, **womit** gemessen wurde. `target_sha` hält fest, **woran** — und erst beide zusammen machen einen Lauf reproduzierbar. Ohne die zweite Zahl teilt ein Commit, der mitten im Audit landet, den Report unbemerkt: Die Checks vor ihm beschreiben einen Baum, die danach einen anderen, und der Report präsentiert die Mischung als ein Urteil. **Ein Audit, dessen Ziel sich während des Laufs bewegt, ist kein Audit** — es ist eine Aussage über keine bestimmte Revision.
+
+`target_dirty` steht daneben, weil ein sauberer SHA über einem verschmutzten Working-Tree einen Baum beschreibt, den es nur auf dieser Maschine gibt. Uncommittete Arbeit zu auditieren ist legitim; der Report darf nur nicht behaupten, er habe den genannten Commit geprüft.
+
+Am Ende des Laufs — vor Schritt 6 — wird erneut geprüft:
+
+```bash
+python "$SKILL_BASE/tools/audit_init.py" verify-target "$OUTPUT_DIR"
+# Exit 0: unverändert. Exit 1: HEAD bewegt, Working-Tree nachträglich verschmutzt,
+#         oder gar keine Ziel-Revision aufgezeichnet.
+```
+
+Dieselbe Prüfung läuft automatisch im Pflicht-Gate aus Schritt 5.0 (`aggregate_results.py validate`). Dort gilt sie abgestuft, und die Abstufung ist Absicht:
+
+| Lage | Gate | Warum |
+|---|---|---|
+| SHA aufgezeichnet, bewegt | **hard fail** | Die Findings beschreiben zwei Bäume |
+| SHA aufgezeichnet, unverändert | pass | |
+| Kein SHA aufgezeichnet | Warnung, Eintrag `target.status: unrecorded` | Läufe von vor `--target-repo` haben keinen; ein hard fail hier würde nur beibringen, `--skip-target-check` reflexhaft zu setzen — und damit auch den Fall abschalten, auf den es ankommt |
+| Repo nicht mehr auffindbar | Warnung mit genanntem Pfad | Nur der Auditor weiss, wohin es verschoben wurde |
+
+Jede dieser Lagen landet in `target.status` im Gate-Report — eine Warnung, die nur nach stderr geht, ist beim Lesen des Run-Verzeichnisses verschwunden.
 
 ---
 
@@ -375,6 +419,29 @@ Severity breakdown of applicable checks:
 
 **Wichtig:** Wenn ein Check nicht anwendbar ist, erscheint er **gar nicht** im Report — nicht einmal als «N/A». Das hält Reports fokussiert und vermeidet Audit-Müdigkeit.
 
+### 3.4 Applicability gegen den Vorlauf vergleichen
+
+Bei einem Re-Audit ist die interessante Frage nicht, welche Checks anwendbar sind, sondern **welche es nicht mehr oder neu sind**. Dieser Vergleich gehört wie jeder andere in ein Skript:
+
+```bash
+# Auswertung des laufenden Audits sichern — der Katalog-Stand des Vorlaufs
+# liegt vielleicht nicht mehr auf der Platte, die gespeicherte Auswertung schon.
+python tools/eval_applicability.py catalog profile.yaml > audits/<run>/applicability.json
+
+# Gegen den Vorlauf halten
+python tools/eval_applicability.py diff \
+    audits/<vorlauf>/applicability.json \
+    audits/<run>/applicability.json \
+    --labels vorlauf,jetzt --format table
+# Exit 0: identisch. Exit 1: Unterschied. Exit 2: eine Seite war leer.
+```
+
+Der Helfer trennt zwei Dinge, die eine reine Anwendbarkeits-Differenz gleich aussehen lässt: **welche Checks überhaupt ausgewertet wurden** (der Katalog hat sich geändert) und **welche anwendbar waren** (das Profil hat sich geändert). Das sind verschiedene Ereignisse mit verschiedenen Konsequenzen.
+
+**Und er verweigert den Vergleich, wenn eine Seite leer parst.** Eine handgeschriebene Fassung dieses Diffs meldete einmal «0 == 0, identisch» — beide Seiten hatten wegen eines falschen Pfads nichts geparst, und die Arithmetik stimmte. Das ist schlimmer als kein Vergleich: Ohne Helfer bleibt die Frage offen und wird irgendwann beantwortet; mit ihm schliesst eine grüne Zeile die Frage mit Belegen, die nie erhoben wurden. Dieselbe Fehlerklasse wie `OPS-005` (was nicht lief, sieht aus wie bestanden) und `FID-003` (eine Leermenge, die der Server für den Aufrufer deutet). Ein leerer Input ist kein Befund von Gleichheit, sondern das Fehlen einer Beobachtung.
+
+Alle Vergleichs-Helfer im Repo laufen deshalb über `tools/compare_guard.py`. Wo eine leere Seite tatsächlich die erwartete Antwort ist, gibt es `--allow-empty` — als Flag und nicht als stille Toleranz, damit die Entscheidung eine Spur hinterlässt.
+
 ---
 
 ## Schritt 4: Check-Ausführung
@@ -475,6 +542,16 @@ Ein Check besteht **nur dann** als `pass`, wenn:
 - Keine `gaps` der Severity ≥ Check-Severity vorliegen
 
 Sonst: `partial` (wenn 50%+ erfüllt) oder `fail`.
+
+**Und wenn sich gar nichts feststellen liess: `not_verified`.** Das ist ein eigener Status mit eigenem Zähler, kein Prosa-Begriff. Bis er in `VALID_STATUSES` aufgenommen wurde, stand die Regel in `OPS-004` («ein `pass` beruht auf einem positiven Beleg … sonst `not_verified`»), während `tools/aggregate_results.py` den Wert zurückwies — wer die Regel befolgen wollte, bekam einen Schema-Fehler und trug am Ende `pass` ein. Genau das Ergebnis, das `OPS-004` verbietet. Eine Regel, deren Einhaltung das Werkzeug unmöglich macht, ist keine strenge Regel; sie ist eine Regel, die sich in ihr Gegenteil auflöst.
+
+| Status | Bedeutung | Abgrenzung |
+|---|---|---|
+| `pass` | Positiver Beleg vorhanden | Nicht: leerer `grep` |
+| `not_verified` | Angeschaut, kein Ergebnis erzielt | Werkzeug nicht erreichbar, Verhalten nur produktiv reproduzierbar, Suchmuster nicht als greifend nachweisbar |
+| `todo` | Noch nicht angeschaut | Arbeitsliste, nicht «Offen» |
+
+`not_verified` blockiert kein Release — ein unbeantwortbarer Check ist kein fehlgeschlagener — steht aber neben dem Urteil statt darin: `summary.json` führt `not_verified_findings`, der Report nennt sie in der Executive Summary und hängt sie ans Production-Readiness-Flag («YES (über 3 nicht verifizierte Checks)»). Ein grünes Urteil über eine grosse unverifizierte Menge ist eine andere Behauptung als ein grünes Urteil über keine, und `OPS-004` verlangt, dass der Leser die beiden unterscheiden kann.
 
 ### 4.5 Task-Agent-Validation-Gate (verbindlich)
 
@@ -664,9 +741,32 @@ jq '.production_ready' audits/<run>/summary.json
 
 # Blocking-Findings (failing critical/high)
 jq -r '.blocking_findings[]' audits/<run>/summary.json
+
+# Nicht verifizierte Checks — weder bestanden noch fehlgeschlagen
+jq -r '.not_verified_findings[]' audits/<run>/summary.json
 ```
 
-### 6.2 Sprache und Adressaten
+### 6.2 Vergleich mit dem Vorlauf: nur innerhalb einer Katalog-Epoche
+
+Zwei Audits desselben Servers sind nur dann ein Trend, wenn sie mit demselben Massstab gemessen wurden. Ändert sich der Katalog dazwischen — Checks kommen dazu, fallen weg, werden umgeschrieben —, ist «30 pass / 4 fail / 2 partial → x/y/z» keine Differenz, sondern zwei verschiedene Messungen mit einem Pfeil dazwischen. Im Lauf, aus dem diese Regel stammt, hätte der Pfeil **36 Checks gegen 54** gespannt, und jede Zahl wäre als Bewegung im Server gelesen worden.
+
+Deshalb wird der Vergleich nicht normalisiert, sondern **verweigert**. Es gibt keine richtige Art, eine über einen Katalog gezählte Zahl von einer über einen anderen gezählten abzuziehen, und eine Fussnote überlebt das erste Zitieren nicht.
+
+```bash
+python tools/aggregate_results.py aggregate \
+    audits/<run>/verification-results.json \
+    --checks-dir "$SKILL_BASE/checks/" \
+    --previous audits/<vorlauf>/ \
+    --out audits/<run>/summary.json
+```
+
+Das schreibt `catalog_epoch` nach `summary.json`. Bei `comparable: false` druckt `build_report.py` **keine** gegenübergestellten Status-Zahlen, sondern nur beide Katalog-Hashes, beide Check-Anzahlen und den Grund — die Verweigerung muss das sichtbare Artefakt sein. Bei `comparable: true` erscheint die Delta-Tabelle.
+
+Ein **unbekannter** Hash auf einer der beiden Seiten gilt ebenfalls als `comparable: false`. Nicht zu wissen, ob sich der Massstab geändert hat, ist nicht dasselbe wie zu wissen, dass er gleich geblieben ist, und die sichere Richtung ist die, die keine Linie zieht.
+
+`--checks-dir` schreibt zusätzlich den Hash des Katalogs, der **tatsächlich auf der Platte liegt**, in die Zusammenfassung — und warnt, wenn er vom aufgezeichneten abweicht. Das ist dieselbe Fehlerklasse wie eine wandernde Ziel-Revision (§0.6), eine Ebene höher: Diesmal hat sich nicht das Gemessene bewegt, sondern das Messgerät.
+
+### 6.3 Sprache und Adressaten
 
 - **GL / KI-Fachgruppe:** Deutsch, Executive Summary + Findings-Tabelle reichen
 - **Entwickler / Maintainer:** Deutsch oder Englisch, vollständiger Detail-Report
@@ -821,6 +921,8 @@ Drei Eigenschaften, die erst beim Ausrollen über viele Repos sichtbar werden:
 8. **«`grep` findet den Satz nicht, also fehlt die Doku»** — `grep` ist zeilenweise. Ein Satz, der umbricht, wird nie gefunden. Vor dem Vergleich normalisieren, siehe [§4.1](#whitespace-normalisieren-bevor-auf-text-geprüft-wird).
 9. **«Das Werkzeug hat nichts gemeldet, also ist der Check bestanden»** — nur wenn das Werkzeug gelaufen ist *und* gefunden hätte. Sonst ist es `todo`, nicht `pass`. Siehe [§2.6](#26-ein-check-der-nichts-findet-muss-sagen-können-ob-er-gesucht-hat).
 10. **«Der Patch läuft in meinem Repo grün, also überall»** — bei portfolio-weiten Fixes entscheidet die schmalste konfigurierte Zeilenbreite, nicht die eigene. Siehe [Portfolio-Hygiene](#portfolio-hygiene-ein-commit-33-repos).
+11. **«Ich habe den Text abgeschickt, also steht er da»** — Platzhalter in spitzen Klammern verschwinden auf dem Weg in PR-Body, Issue oder Tracker, lautlos und plausibel. Body zurücklesen, nicht annehmen. Siehe [§0.5](#05-platzhalter-in-spitzen-klammern-überleben-den-weg-nach-draussen-nicht).
+12. **«Der Guard ist rot, also weiss es jemand»** — ein Guard, der auf `main` läuft, meldet an niemanden. `repo-description` war über sechs Merges rot und wurde nie beantwortet. Ein Befund braucht einen Adressaten, sonst ist er Dekoration.
 
 ---
 

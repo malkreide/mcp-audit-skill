@@ -51,11 +51,20 @@ Step 4 produces this file. It is the **only** ground truth.
 
 | Value | Meaning | Findings-doc by default? |
 |---|---|---|
-| `pass` | Check fully satisfied | No |
+| `pass` | Check fully satisfied, on positive evidence | No |
 | `fail` | Check failed; concrete remediation needed | **Yes** |
 | `partial` | Check 50%+ but not fully satisfied | **Yes** |
-| `todo` | Manual review required, no judgment yet | No |
+| `not_verified` | Applicable and attempted; no evidence either way | No (yes under `needs-attention`) |
+| `todo` | Manual review required, not attempted yet | No |
 | `n/a` | Not applicable to this profile (rare; usually omitted) | No |
+
+#### Why `not_verified` is its own value
+
+[`OPS-004`](../checks/OPS-004.md) has required this status since it was written — "a `pass` rests on positive evidence, not on the absence of negative evidence; otherwise the status is `not_verified`" — while this schema did not know the value. A status the schema rejects cannot be recorded, so an auditor who followed the rule got a validation error and wrote `pass` instead: the one outcome `OPS-004` exists to forbid. A rule the tooling makes impossible to follow is not a strict rule; it is a rule that resolves to its opposite.
+
+`not_verified` versus `todo` turns on whether anyone looked. `todo` is work not started. `not_verified` is work done that produced no answer — a tool that could not be reached, a behaviour reproducible only in production, a grep whose pattern cannot be shown to fire when the anti-pattern is present. Only the second belongs under «Offen» in the report.
+
+It does not veto a release: an unanswerable check is not a failed one. It is listed *beside* the verdict instead, in `not_verified_findings`, and named in the executive summary — a green verdict over a large unverified set is a narrower claim than the same verdict over none, and the reader has to be able to tell them apart.
 
 ### Severity enum
 
@@ -100,13 +109,14 @@ The aggregator (`tools/aggregate_results.py aggregate`) consumes verification-re
     "checks_evaluated": 33,
     "applicable": 26,
     "by_status": {
-      "pass": 8, "fail": 6, "partial": 9, "todo": 3, "n/a": 7
+      "pass": 8, "fail": 6, "partial": 9, "not_verified": 2, "todo": 3, "n/a": 7
     },
     "by_severity_among_findings": {
       "critical": 0, "high": 1, "medium": 14, "low": 0
     },
     "by_category": {
-      "ARCH": {"pass": 5, "fail": 3, "partial": 5, "todo": 0, "n/a": 0},
+      "ARCH": {"pass": 5, "fail": 3, "partial": 5,
+               "not_verified": 0, "todo": 0, "n/a": 0},
       "...": "..."
     }
   },
@@ -125,9 +135,35 @@ The aggregator (`tools/aggregate_results.py aggregate`) consumes verification-re
     ]
   },
   "production_ready": false,
-  "blocking_findings": ["OPS-001"]
+  "blocking_findings": ["OPS-001"],
+  "not_verified_findings": ["SEC-014", "OBS-003"],
+  "catalog_epoch": {
+    "previous_run_id": "2026-07-02T101500-Z-srgssr-mcp",
+    "previous_catalog_hash": "a1b2c3…",
+    "catalog_hash": "d4e5f6…",
+    "previous_checks_evaluated": 36,
+    "checks_evaluated": 54,
+    "comparable": false,
+    "reason": "catalogue changed between the runs …"
+  }
 }
 ```
+
+### Catalog epochs
+
+`catalog_epoch` appears only when `aggregate` was given `--previous`. It answers one question: **may this run's numbers be put beside the previous run's?**
+
+Two audits of the same server are a trend only if they were measured with the same ruler. When the catalogue changes between them, «30 pass / 4 fail / 2 partial → x/y/z» is not a delta — it is two different measurements with an arrow drawn between them. In the run this comes from, that arrow would have spanned 36 checks against 54, and every number would have been read as movement in the server.
+
+The comparison is therefore refused rather than normalised. There is no correct way to subtract a count taken over one catalogue from a count taken over another, and a footnote does not survive being quoted. With `comparable: false`, [`tools/build_report.py`](../tools/build_report.py) prints both catalogue hashes, both check counts and the reason — and no status comparison at all. With `comparable: true`, it prints a `delta_by_status` table.
+
+An unknown hash on either side is also `comparable: false`. Not knowing whether the ruler changed is not the same as knowing it did not.
+
+### Target revision
+
+`audit-meta.json` carries `target_sha` / `target_dirty` when [`tools/audit_init.py init`](../tools/audit_init.py) was given `--target-repo`. `catalog_hash` pins what the audit was measured *with*; `target_sha` pins what it was measured *against*. Without the second, a commit landing mid-audit splits the report silently: checks that ran before it describe one tree, checks after it another, and the report presents the mixture as one verdict.
+
+`aggregate_results.py validate` re-checks it and hard-fails on a moved target, recording the outcome under `target.status` (`unchanged` / `moved` / `unrecorded` / `unreachable` / `unreadable`). Only `moved` fails; a run that never recorded a SHA warns, because failing those would just teach auditors to pass `--skip-target-check` by reflex.
 
 ### Production-readiness rule
 

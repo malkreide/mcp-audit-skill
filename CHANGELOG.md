@@ -61,6 +61,70 @@ Neu: `Modus 3` (Regex-Argumente mit unmaskierten Metazeichen, mit Gegenprobe geg
 
 **Kein Re-Audit-Auslöser nach §5** für die beiden Erweiterungen: keine Severity angehoben, keine `applies_when` erweitert. `OPS-007` ist als neuer Check der übliche Fall — bestehende Audits bleiben gültig, beim nächsten Audit gilt der neue Katalog.
 
+### Hinzugefügt — die Anker, an denen ein Lauf hängt: Ziel-Revision und Katalog-Epoche
+
+Zwei Zahlen machen ein Audit reproduzierbar, und bisher stand nur eine davon fest. `catalog_hash` hielt fest, **womit** gemessen wurde; **woran** gemessen wurde, hielt nichts fest.
+
+**Die Ziel-Revision.** `audit_init.py init --target-repo <repo>` schreibt `target_sha`, `target_dirty`, `target_branch` und `target_repo` in die `audit-meta.json`. Am Ende des Laufs prüft `audit_init.py verify-target <audit_dir>` erneut, und dieselbe Prüfung läuft im Pflicht-Gate `aggregate_results.py validate`. Ohne sie teilt ein Commit, der mitten im Audit landet, den Report unbemerkt: Die Checks vor ihm beschreiben einen Baum, die danach einen anderen, und der Report präsentiert die Mischung als ein Urteil. Ein Audit, dessen Ziel sich während des Laufs bewegt, ist kein Audit — es ist eine Aussage über keine bestimmte Revision.
+
+`target_dirty` steht daneben, weil ein sauberer SHA über einem verschmutzten Working-Tree einen Baum beschreibt, den es nur auf einer Maschine gibt. Ein Tree, der beim Start sauber war und am Ende nicht mehr, zählt als bewegt.
+
+Das Gate ist bewusst abgestuft: **bewegt** ist ein hard fail, **nicht aufgezeichnet** eine Warnung. Ein hard fail auf Läufe, die vor `--target-repo` initialisiert wurden, hätte nur beigebracht, `--skip-target-check` reflexhaft zu setzen — und damit auch den Fall abgeschaltet, auf den es ankommt. Jede Lage landet als `target.status` im Gate-Report; eine Warnung, die nur nach stderr geht, ist beim Lesen des Run-Verzeichnisses verschwunden.
+
+**Die Katalog-Epoche.** `aggregate_results.py aggregate --previous audits/<vorlauf>/` schreibt einen `catalog_epoch`-Block, und bei abweichendem `catalog_hash` verweigert `build_report.py` den Verlaufsvergleich: keine gegenübergestellten Status-Zahlen, nur beide Hashes, beide Check-Anzahlen und der Grund.
+
+Der Anlass war konkret. «30 pass / 4 fail / 2 partial → x/y/z» wäre über **36 gegen 54 Checks** geschrieben worden, und jede Zahl wäre als Bewegung im Server gelesen worden. Zwei Audits desselben Servers sind nur dann ein Trend, wenn sie mit demselben Massstab gemessen wurden. Der Vergleich wird deshalb nicht normalisiert, sondern verweigert: Es gibt keine richtige Art, eine über einen Katalog gezählte Zahl von einer über einen anderen gezählten abzuziehen, und eine Fussnote überlebt das erste Zitieren nicht. Die Verweigerung muss das sichtbare Artefakt sein.
+
+Ein **unbekannter** Hash auf einer der beiden Seiten gilt ebenfalls als nicht vergleichbar. Nicht zu wissen, ob sich der Massstab geändert hat, ist nicht dasselbe wie zu wissen, dass er gleich geblieben ist.
+
+Nebenbei: `--checks-dir` schreibt jetzt den Hash des Katalogs, der **tatsächlich auf der Platte liegt**, und warnt bei Abweichung vom aufgezeichneten. Dieselbe Fehlerklasse wie eine wandernde Ziel-Revision, eine Ebene höher — diesmal hat sich nicht das Gemessene bewegt, sondern das Messgerät.
+
+### Hinzugefügt — Status `not_verified`, weil «nicht geprüft» sonst als `pass` landet
+
+`OPS-004` verlangt diesen Status, seit der Check geschrieben wurde: «ein `pass` beruht auf einem positiven Beleg, nicht auf der Abwesenheit eines Negativbelegs; sonst `not_verified`». Das Schema in `tools/aggregate_results.py` kannte den Wert nicht. Wer die Regel befolgen wollte, bekam einen Schema-Fehler und trug am Ende `pass` ein — genau das Ergebnis, das `OPS-004` verbietet. **Eine Regel, deren Einhaltung das Werkzeug unmöglich macht, ist keine strenge Regel; sie ist eine Regel, die sich in ihr Gegenteil auflöst.**
+
+`not_verified` ist jetzt ein Status mit eigenem Zähler: eigene Spalte in der Applicability-Tabelle, eigene Liste `not_verified_findings` in `summary.json`, eigene Nennung in der Executive Summary und in der Release-Notiz. Er blockiert kein Release — ein unbeantwortbarer Check ist kein fehlgeschlagener — steht aber neben dem Urteil statt darin, samt Zusatz am Flag («YES (über 3 nicht verifizierte Checks)»). Ein grünes Urteil über eine grosse unverifizierte Menge ist eine andere Behauptung als ein grünes Urteil über keine.
+
+Abgrenzung zu `todo`: `todo` heisst *noch nicht angeschaut*, `not_verified` heisst *angeschaut und ohne Ergebnis geblieben*. Unter der Policy `needs-attention` erzeugt er ein Finding-Dokument, unter den beiden anderen nicht.
+
+**Zwei weitere Checks litten unbemerkt an derselben Lücke.** Ein neuer Test hält den ganzen Katalog gegen `VALID_STATUSES` und fand `IDENT-001` und `DRIFT-006`, die den Status als `unverified` schrieben — dieselbe Sache in zweiter Schreibweise. `IDENT-001` bildete beide betroffenen Exit-Codes auf `todo` ab, weil ihm nichts Besseres zur Verfügung stand: Eine Distribution, die sich nicht installieren liess, ist nicht «noch nicht angeschaut». Beide Checks sind auf die eine Schreibweise vereinheitlicht und die Zuordnung korrigiert. Zwei Schreibweisen desselben Status sind genau der Weg, auf dem «nicht verifiziert» dreimal verschieden abgelegt wird.
+
+### Hinzugefügt — `tools/compare_guard.py`: ein Vergleich über eine Leermenge ist kein Vergleich
+
+Ein Applicability-Diff zwischen zwei Läufen meldete **«0 == 0, identisch»** und wurde geglaubt. Beide Seiten hatten wegen eines falschen Pfads nichts geparst; der Helfer zog eine leere Menge von der anderen ab und fand keinen Unterschied. Er hatte in der Arithmetik recht und in allem übrigen unrecht: Die beiden Läufe *waren* verschieden, es hatte nur niemand hingesehen.
+
+Das ist schlimmer als gar kein Vergleich. Ohne Helfer bleibt die Frage offen und wird irgendwann beantwortet; mit ihm schliesst eine grüne Zeile die Frage mit Belegen, die nie erhoben wurden — dieselbe Fehlerklasse, die `OPS-005` für nie gelaufene Checks und `FID-003` für eine vom Server gedeutete Leermenge benennt. Ein leerer Input ist kein Befund von Gleichheit, sondern das Fehlen einer Beobachtung.
+
+Alle Vergleichs-Helfer laufen jetzt über `require_non_empty` / `diff_sets`. Der Guard ist absichtlich stumpf: Er unterscheidet nicht zwischen «legitim leer» und «versehentlich leer», weil der Helfer das nicht kann — und der Auditor, der der ersten Fassung glaubte, konnte es auch nicht. Wo eine leere Seite die erwartete Antwort ist, gibt es `--allow-empty`; als Flag und nicht als stille Toleranz, damit die Entscheidung eine Spur hinterlässt.
+
+Angewandt an drei Stellen:
+
+- **Neu: `eval_applicability.py diff <alt> <neu>`** — der Vergleich, der von Hand schiefging, jetzt einmal geschrieben. Er trennt dabei zwei Dinge, die eine reine Anwendbarkeits-Differenz gleich aussehen lässt: welche Checks überhaupt **ausgewertet** wurden (der Katalog hat sich geändert) und welche **anwendbar** waren (das Profil hat sich geändert). Nimmt gespeicherte Auswertungen entgegen, weil der Katalog-Stand des Vorlaufs vielleicht nicht mehr auf der Platte liegt. Exit 1 bei Unterschied, damit er als Gate taugt.
+- **`carry_forward.py`** verweigert einen Lauf, in dem *keine* Quelle ein brauchbares Dokument enthält. Das ist die zweite der beiden realen Übertrags-Pannen: Der Quell-Lauf war falsch gewählt, es gab nichts zu übernehmen, und der Schritt meldete ein sauberes «0 carried», während jede Findung undokumentiert blieb. Ein Verzeichnis, das ein gültiger Pfad, aber der falsche Lauf ist, sieht exakt aus wie ein Lauf, aus dem nichts mehr zu holen ist.
+- **Die Katalog-Epoche** vergleicht nicht gegen einen Vorlauf mit null ausgewerteten Checks.
+
+### Präzisiert — `ARCH-011`: `SECURITY.md` ist kein README
+
+Das Kriterium verlangte, Abweichungen vom Standard-Layout seien «im README begründet», ohne zu sagen, welche Dateien das *nicht* erfüllen. In einem realen Audit stand die Begründung in `SECURITY.md` und wurde zuerst als bestanden abgelegt.
+
+Jetzt steht dort, dass `README.md` oder `README.de.md` zählen und `SECURITY.md`, `CONTRIBUTING.md`, `docs/`, ein Issue oder eine Commit-Message nicht — auch dann nicht, wenn die Begründung dort inhaltlich vollständig ist. Der Grund ist der Zweck des Kriteriums: Wer die Struktur nicht wiedererkennt, schaut ins README, dorthin, wo die Abweichung ihm begegnet. Eine Begründung in `SECURITY.md` erreicht nur, wer ohnehin nach Sicherheitsthemen sucht.
+
+### Hinzugefügt — der Description-Guard bekommt einen Adressaten
+
+`repo-description` war über **sechs aufeinanderfolgende Merges rot** (seit PR #68) und wurde nie beantwortet. Der Check war dabei die ganze Zeit korrekt: Der Katalog hat 96 Checks, die Repo-Description nennt 93. Gefehlt hat nicht die Prüfung, sondern der Empfänger — ein Guard, der auf `push: main` läuft, meldet an niemanden, weil ein roter Push-Lauf in keinem Pull Request auftaucht und die Job-Summary nur sieht, wer den Lauf öffnet.
+
+Der Workflow legt bei Drift jetzt ein Issue an oder aktualisiert es und **schliesst es selbst**, sobald die Description wieder stimmt. Ohne das Schliessen wäre es Dauergemecker und nach zwei Wochen abgeschaltet.
+
+`tools/render_description_issue.py` trennt drei Zustände statt zwei. Die naheliegende Form — «Body geschrieben → Issue auf, kein Body → Issue zu» — ist falsch, und das hat erst die Messung gezeigt: `result.json` kann fehlen, leer, kaputt oder `description: null` sein, wenn der Abruf scheiterte. Alle vier erzeugen keinen Body und hätten ein offenes Issue geschlossen, gestützt auf einen Vergleich, der nie stattgefunden hat. Ein Check, der nicht gelaufen ist, ist kein Bestehen (§2.6) — `unchecked` fasst deshalb nichts an. 18 Tests, drei Mutationen gegengeprüft, alle drei schlagen an.
+
+### Hinzugefügt — `SKILL.md` §0.5: Platzhalter in spitzen Klammern
+
+Ein PR-Body mit «suchte `findings/<ID>.md`, während der Lauf `<ID>-<slug>.md` benannt hatte» kommt als «suchte `findings/.md`, während der Lauf `-.md` benannt hatte» an. Backticks schützen nicht. In PR #79 zweimal reproduziert — beim Anlegen und beim Korrekturversuch mit denselben Klammern.
+
+Bösartig ist der Fall, weil das Ergebnis plausibel bleibt: `findings/.md` sieht nach einem Dateinamen aus, nicht nach einem Fehler. Ein Text über den Unterschied zweier Schreibweisen wurde zu einem Text, der beide gleich nennt — ohne Meldung, ohne rotes Gate. Dieselbe Mechanik trifft die Template-Überschrift `## Finding: <CHECK-ID> — <CHECK-TITLE>`.
+
+Wo die Umwandlung passiert, ist **nicht** belegt und steht deshalb als Vermutung im Text, nicht als Regel: Der gespeicherte Body escaped auch Apostrophe zu `&#39;`, was GitHub in Bodies nicht tut — der Verlust entsteht also vermutlich in der Werkzeugschicht des Agenten, nicht bei GitHub. Die Regel gilt darum für den Agentenpfad, für den sie gemessen ist.
+
 ### Hinzugefügt — `tools/carry_forward.py`
 
 Übernimmt unveränderte Finding-Dokumente aus früheren Audit-Läufen. Bisher war das ein Handgriff, und er ist zweimal schiefgegangen.

@@ -47,7 +47,7 @@ server-name/
     └── publish.yml                  # PyPI Trusted Publisher (siehe SEC-008)
 ```
 
-Abweichungen sind okay, müssen aber begründet sein.
+Abweichungen sind okay, müssen aber begründet sein — **im `README.md` oder `README.de.md`, sonst nirgends**. `SECURITY.md`, `CONTRIBUTING.md`, `docs/`, ein Issue oder eine Commit-Message erfüllen das Kriterium nicht, auch wenn die Begründung dort inhaltlich vollständig steht. Der Grund ist der Zweck des Kriteriums: Wer die Struktur nicht wiedererkennt, schaut ins README — dorthin, wo die Abweichung ihm begegnet. Eine Begründung in `SECURITY.md` erreicht nur, wer bereits nach Sicherheitsthemen sucht, und ein `docs/`-Verzeichnis liest im Zweifel niemand von aussen. (Diese Präzisierung stammt aus einem realen Audit, in dem die Abweichung in `SECURITY.md` stand und zuerst als bestanden abgelegt wurde.)
 
 ## Verification
 
@@ -127,7 +127,7 @@ wc -l src/*/server.py 2>/dev/null
 - [ ] CI-Workflows: mindestens `test.yml` (CI ohne live-Tests) und `publish.yml`
 - [ ] `README.de.md` ist parallel zu `README.md` (gleiche Top-Level-Sektionen)
 - [ ] Bei > 5 Tools: `tools/`-Verzeichnis mit File-pro-Gruppe-Aufteilung
-- [ ] Abweichungen vom Standard sind im README begründet
+- [ ] Abweichungen vom Standard sind in `README.md` **oder** `README.de.md` begründet — eine Begründung ausschliesslich in `SECURITY.md`, `CONTRIBUTING.md`, `docs/`, einem Issue oder einer Commit-Message zählt nicht
 
 ## Common Failures
 
@@ -138,6 +138,7 @@ wc -l src/*/server.py 2>/dev/null
 | `CHANGELOG.md` fehlt | Releases nicht nachvollziehbar |
 | Alle Tools in einer Datei (`server.py` mit 800 Zeilen) | Code-Review schwer, Test-Isolierung erschwert |
 | Tests im `src/`-Verzeichnis | Nicht-Standard, Linter-Konflikte |
+| Abweichung nur in `SECURITY.md` / `docs/` / Commit-Message begründet | Erreicht nicht, wer über die Abweichung stolpert; der Check gilt als **nicht** erfüllt |
 
 ## Remediation
 
