@@ -502,6 +502,40 @@ rg -U 'not\s+in\s+TERMDAT' src/server.py
 
 **Gegenprobe, wie bei jedem Gate:** Die Assertion einmal gegen einen Text laufen lassen, in dem die Phrase wirklich fehlt. Eine Prüfung, die nach der Normalisierung *immer* zutrifft, hat nur gelernt, alles zu bestehen.
 
+#### Negative Kontrolle: ein Kommando, das läuft, misst nicht automatisch das Richtige
+
+§2.6 behandelt den Fall, dass ein Werkzeug **nichts** meldet: Hat es gesucht? Dieser Abschnitt behandelt den gefährlicheren Fall — das Werkzeug meldet **etwas**, das Ergebnis ist plausibel, und es misst trotzdem nicht, was der Auditor glaubt. Ein leeres Ergebnis macht misstrauisch; ein gefülltes nicht.
+
+Die Regel gilt für die Ad-hoc-Kommandos, mit denen während Schritt 4 ein Sachverhalt festgestellt wird — nicht für die Checks, die im Katalog stehen. Genau diese Kommandos speisen die Evidenz in die Findings, und genau sie werden nie gegengeprüft, weil sie Wegwerf-Befehle sind.
+
+**Zwei reale Fälle, beide aus einer einzigen Sitzung, beide von der auditierenden Instanz selbst:**
+
+| Kommando | Gemeldet | Tatsächlich |
+|---|---|---|
+| `grep -E "^\s+- (run\|uses):"` über drei CI-Dateien | «je ein Schritt» → Schluss: die CI tut nichts | Die Dateien haben 9 bis 11 Schritte. Das Muster traf nur `- uses:`-Zeilen, weil die übrigen Schritte mit `- name:` beginnen und `run:` eine Zeile tiefer steht. |
+| `pip install "ruff>=0.6,<0.7"` mit unterdrückter Ausgabe | Installation angenommen | Sie schlug fehl. `ruff --version` meldete 0.15.8, und der anschliessende Versionsvergleich lief zweimal unter derselben Version. |
+
+Beide Ergebnisse waren in sich stimmig. Der erste hätte einen Befund über drei fremde Repositories erzeugt, der falsch gewesen wäre; er ist nur aufgefallen, weil vor dem Berichten eine der Dateien gelesen wurde.
+
+**Regel: Jede Zähl- oder Suchprüfung, deren Ergebnis in einen Befund eingeht, braucht eine negative Kontrolle** — die gesuchte Sache absichtlich herstellen und sehen, dass das Kommando sie findet. Nicht «der Befehl lief», sondern «der Befehl schlägt an, wenn es etwas zu finden gibt».
+
+```bash
+# Behauptung: "in diesen Dateien steht kein Formatgate"
+grep -c "format --check" .github/workflows/*.yml        # → 0
+
+# Negative Kontrolle, drei Sekunden: findet das Muster überhaupt etwas?
+printf 'ruff format --check .\n' > /tmp/probe.yml
+grep -c "format --check" /tmp/probe.yml                 # → 1, sonst misst das Muster nichts
+```
+
+Drei Faustregeln, die die meisten Fälle abdecken:
+
+- **Ausgabe nie unterdrücken, deren Fehlschlag das Ergebnis verfälscht.** `2>/dev/null`, `| tail -0` und `|| true` verbergen genau den Fall, der das Messergebnis kippt.
+- **Was ein Werkzeug installiert oder auswählt, danach zurückfragen.** `--version` nach dem Installieren, `git rev-parse HEAD` nach dem Auschecken. Eine Version, die man annimmt, ist keine Version, die man gemessen hat.
+- **Eine Null ist eine Behauptung.** «0 Treffer» heisst entweder «nichts da» oder «Muster greift nicht». Ohne negative Kontrolle sind die beiden ununterscheidbar — und die falsche Lesart ist immer die bequeme.
+
+**Wo das im Katalog bereits gelebt wird:** Gemessen **11 von 97** Checks — `ARCH-013`, `DRIFT-003`, `FID-003`, `FID-004`, `IDENT-002`, `IDENT-004`, `OPS-005`, `OPS-006`, `OPS-007`, `SCALE-007`, `SEC-024`. Die Zahl ist selbst mit negativer Kontrolle erhoben: Der Detektor lief gegen je eine Datei mit und ohne die Formulierung (1 beziehungsweise 0 Treffer), sonst wäre auch sie nur plausibel. Das ist keine Quote, die man per Gate erzwingt — ein Gate, das bei 86 Checks anschlägt, wird abgeschaltet, und die Zahl misst ohnehin die Erwähnung, nicht die Praxis. Sie steht hier als Ausgangswert, damit sichtbar bleibt, in welche Richtung sie sich bewegt.
+
 ### 4.2 Audit-Reihenfolge: Severity descending
 
 Innerhalb der anwendbaren Checks läuft der Audit in dieser Reihenfolge:
@@ -922,7 +956,8 @@ Drei Eigenschaften, die erst beim Ausrollen über viele Repos sichtbar werden:
 9. **«Das Werkzeug hat nichts gemeldet, also ist der Check bestanden»** — nur wenn das Werkzeug gelaufen ist *und* gefunden hätte. Sonst ist es `todo`, nicht `pass`. Siehe [§2.6](#26-ein-check-der-nichts-findet-muss-sagen-können-ob-er-gesucht-hat).
 10. **«Der Patch läuft in meinem Repo grün, also überall»** — bei portfolio-weiten Fixes entscheidet die schmalste konfigurierte Zeilenbreite, nicht die eigene. Siehe [Portfolio-Hygiene](#portfolio-hygiene-ein-commit-33-repos).
 11. **«Ich habe den Text abgeschickt, also steht er da»** — Platzhalter in spitzen Klammern verschwinden auf dem Weg in PR-Body, Issue oder Tracker, lautlos und plausibel. Body zurücklesen, nicht annehmen. Siehe [§0.5](#05-platzhalter-in-spitzen-klammern-überleben-den-weg-nach-draussen-nicht).
-12. **«Der Guard ist rot, also weiss es jemand»** — ein Guard, der auf `main` läuft, meldet an niemanden. `repo-description` war über sechs Merges rot und wurde nie beantwortet. Ein Befund braucht einen Adressaten, sonst ist er Dekoration.
+12. **«Das Kommando ist gelaufen, also stimmt die Zahl»** — ein Werkzeug kann sauber laufen, ein plausibles Ergebnis liefern und trotzdem etwas anderes messen als gedacht. Eine Null ist eine Behauptung, kein Befund. Negative Kontrolle fahren, siehe [§4.1](#negative-kontrolle-ein-kommando-das-läuft-misst-nicht-automatisch-das-richtige).
+13. **«Der Guard ist rot, also weiss es jemand»** — ein Guard, der auf `main` läuft, meldet an niemanden. `repo-description` war über sechs Merges rot und wurde nie beantwortet. Ein Befund braucht einen Adressaten, sonst ist er Dekoration.
 
 ---
 
@@ -956,6 +991,8 @@ Drei Eigenschaften, die erst beim Ausrollen über viele Repos sichtbar werden:
 - [ ] Checks in Severity-Reihenfolge ausgeführt (`critical` zuerst)
 - [ ] Pro Check Evidenz mit Datei + Zeilen-Referenz dokumentiert
 - [ ] Jeder Check ohne Fund belegt, dass gesucht wurde — sonst `todo` statt `pass` (§2.6)
+- [ ] Jedes Zähl- oder Suchkommando, dessen Ergebnis in einen Befund eingeht, hat eine negative Kontrolle: es schlägt nachweislich an, wenn es etwas zu finden gibt (§4.1)
+- [ ] Keine Messung mit unterdrückter Fehlerausgabe (`2>/dev/null`, `|| true`, `tail -0`) als Beleg verwendet
 
 **Schritt 5 — Findings**
 - [ ] Pro fehlgeschlagenem Check ein Finding nach Template

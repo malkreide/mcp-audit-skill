@@ -6,6 +6,20 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `SKILL.md` §4.1: negative Kontrolle für Ad-hoc-Messungen
+
+§2.6 behandelt den Fall, dass ein Werkzeug **nichts** meldet: Hat es gesucht? Der neue Abschnitt behandelt den gefährlicheren Fall — das Werkzeug meldet **etwas**, das Ergebnis ist plausibel, und es misst trotzdem etwas anderes. Ein leeres Ergebnis macht misstrauisch, ein gefülltes nicht.
+
+Die Regel gilt bewusst nicht den Checks im Katalog, sondern den **Wegwerf-Kommandos**, mit denen während Schritt 4 ein Sachverhalt festgestellt wird. Genau die speisen die Evidenz in die Findings, und genau die werden nie gegengeprüft. Der Katalog kennt die Gegenprobe längst; für die Kommandos des Auditors gab es sie nicht.
+
+Zwei reale Fälle, beide in einer Sitzung, beide von der auditierenden Instanz selbst: ein `grep`-Muster, das nur `- uses:`-Zeilen traf und deshalb nahelegte, drei CI-Dateien täten nichts — sie haben 9 bis 11 Schritte; und ein `pip install` mit unterdrückter Ausgabe, dessen Fehlschlag dazu führte, dass ein Versionsvergleich zweimal unter derselben Version lief. Der erste hätte einen falschen Befund über drei fremde Repositories erzeugt und fiel nur auf, weil vor dem Berichten eine der Dateien gelesen wurde.
+
+Drei Faustregeln statt einer Haltung: Ausgabe nie unterdrücken, deren Fehlschlag das Ergebnis verfälscht; nach dem Installieren oder Auschecken zurückfragen (`--version`, `git rev-parse HEAD`); und eine Null als Behauptung lesen — «0 Treffer» heisst entweder «nichts da» oder «Muster greift nicht», und ohne Gegenprobe sind die beiden ununterscheidbar.
+
+**Bewusst kein Gate.** Über den Katalog gemessen führen 11 von 97 Checks eine Gegenprobe. Ein Guard, der bei 86 anschlägt, wird abgeschaltet — und die Zahl misst die Erwähnung, nicht die Praxis. Sie steht als Ausgangswert im Text, damit die Richtung sichtbar bleibt, und ist selbst mit negativer Kontrolle erhoben.
+
+Verankert in der Qualitätschecklist (Schritt 4, zwei Zeilen) und als Anti-Pattern 12. `tests/test_negative_control.py` hält Abschnitt, Belege, Checklist-Zeilen und Anti-Pattern fest — 11 Tests, fünf Mutationen gegengeprüft, alle fünf schlagen an. Jede Prüfung scheitert auch, wenn ihr Muster ins Leere greift; die Testdatei wendet damit an, was sie einfordert.
+
 ### Geändert — `ARCH-014` blockiert jetzt: von `advisory` auf `enforced`
 
 Der Check startete auf der Brücke, und die Zahlen gaben dem recht. Bei der Erhebung las **keiner von elf** Servern `Retry-After`, **keiner** streute seinen Backoff, und drei hatten überhaupt keine Retry-Schleife. Enforced am ersten Tag wäre ein rotes Portfolio gewesen — so werden Checks zurückgenommen statt übernommen.
