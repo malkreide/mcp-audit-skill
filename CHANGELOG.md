@@ -6,6 +6,24 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v1.7.0] — 2026-08-03 — Woran ein Lauf hängt, und was ein Report nicht behaupten darf
+
+**Ein neuer Check** (`OPS-007`) — der Katalog wächst von 96 auf **97 in zwölf Kategorien**, 700 Tests. Dazu je eine neue Ausprägung in `OPS-006` und `DRIFT-003`, und eine Präzisierung an `ARCH-011`.
+
+Der Rest dieses Release stammt nicht aus dem Katalog, sondern aus dem Werkzeug darunter — und alle Punkte teilen eine Form. Die Prüflogik war jedes Mal in Ordnung. Falsch war, **was zwischen zwei Läufen transportiert wurde und was ein Report zu behaupten bereit war, ohne es gemessen zu haben.**
+
+**Woran ein Lauf hängt.** `catalog_hash` hielt bisher fest, *womit* gemessen wurde; *woran*, hielt nichts fest. `audit_init.py init --target-repo` schreibt jetzt die HEAD-Revision des auditierten Repos, und das Pflicht-Gate prüft sie am Ende erneut. Ein Commit, der mitten im Lauf landet, teilt den Report sonst unbemerkt: Die Checks davor beschreiben einen Baum, die danach einen anderen, und die Mischung wird als ein Urteil präsentiert.
+
+**Was ein Report nicht behaupten darf.** Drei Verweigerungen, dieselbe Regel:
+
+- Weicht der Katalog-Stand vom Vorlauf ab, wird der Verlaufsvergleich **verweigert** statt korrigiert. «30 pass / 4 fail / 2 partial → x/y/z» wäre über 36 gegen 54 Checks geschrieben worden, und jede Zahl wäre als Bewegung im Server gelesen worden.
+- Ein Vergleich, dessen beide Seiten leer parsen, meldet nicht mehr «identisch». Er hat recht in der Arithmetik und unrecht in allem übrigen.
+- Ein Check, der sich nicht feststellen liess, hat mit `not_verified` endlich einen Status. `OPS-004` verlangte ihn, seit der Check geschrieben wurde, während das Schema den Wert zurückwies — wer die Regel befolgen wollte, bekam einen Fehler und trug `pass` ein. Eine Regel, deren Einhaltung das Werkzeug unmöglich macht, ist keine strenge Regel; sie ist eine Regel, die sich in ihr Gegenteil auflöst.
+
+**Kein Re-Audit-Auslöser nach §5.** `OPS-007` startet `advisory`; damit sind vier Checks advisory: `ARCH-014`, `OPS-005`, `OPS-006`, `OPS-007`. Die Erweiterungen an `OPS-006` und `DRIFT-003` heben keine Severity an und dehnen kein `applies_when`. Die Präzisierung an `ARCH-011` ist enger als der bisherige Wortlaut — ein Audit, das eine Abweichung allein wegen einer Begründung in `SECURITY.md` bestanden hat, würde heute anders ausfallen; wer `ARCH-011` in einem laufenden Audit auf `pass` stehen hat, sieht dort noch einmal nach.
+
+**Nicht dabei:** `not_verified` blockiert keine Freigabe. Ein unbeantwortbarer Check ist kein fehlgeschlagener — er steht neben dem Urteil, nicht darin.
+
 ### Ergänzt — `OPS-007`, und zwei Ausprägungen, die kein neuer Check sein durften
 
 **Ein neuer Check** (`OPS-007`) — der Katalog wächst von 96 auf **97 in zwölf Kategorien**. Dazu je eine neue Ausprägung in `OPS-006` und `DRIFT-003`.
