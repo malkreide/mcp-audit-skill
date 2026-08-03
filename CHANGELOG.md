@@ -6,6 +6,18 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben — ein zu breites Pass-Kriterium in `DRIFT-003`, und die Gegenrichtung des Advisory-Wächters
+
+**Das mit v1.7.0 hinzugekommene Pass-Kriterium in `DRIFT-003` war unbedingt formuliert.** Es verlangte, dass Regex-Prüfmuster ihre Metazeichen maskieren — ohne Ausnahme. Ein Test mit `match=r"timeout|unavailable"` meint das Metazeichen aber absichtlich; nach dem Wortlaut wäre er ein Verstoss, und weil `DRIFT-003` `enforced`, `high` und `always` ist, ein blockierender.
+
+Das Kriterium gilt jetzt für Muster, die **wörtlich gemeint** sind. Ein beabsichtigtes Metazeichen ist ausdrücklich kein Befund — es muss aber als Absicht erkennbar sein und nicht bloss übrig geblieben. Der Prosa-Teil von Modus 3 sagte das bereits («Jeder Treffer ist zu prüfen, nicht automatisch ein Befund»); die Pass-Kriterien, die das Verdikt tragen, sagten es nicht, und sie tragen es. Neu dazu ein Anti-Pattern für die Gegenrichtung: `re.escape` pauschal über ein absichtlich gemeintes Muster gelegt, womit aus `timeout|unavailable` eine Zeichenkette wird.
+
+**`TestReadmesNameTheAdvisorySet` prüfte nur eine Richtung.** Der mit v1.7.0 eingezogene Wächter stellt sicher, dass jeder Check, den der Katalog als `advisory` führt, im README-Satz genannt wird — und dass das Zahlwort stimmt. Was er nicht prüfte: ob der Satz einen Check nennt, den der Katalog **nicht mehr** auf der Brücke führt. Eine Promotion auf `enforced` ist genau der Vorgang, bei dem dieser Satz zu lang wird, und das Zahlwort fängt es nur, solange auch die Länge auffällt.
+
+Neu `test_no_promoted_check_is_still_listed`. Der Satz nennt hinter dem Punkt bewusst auch die bereits promovierten Checks — geprüft wird deshalb nur der Teil davor.
+
+Beide Punkte stammen aus dem automatisierten Review zu `#80`; der dritte Befund von dort (der Advisory-Satz nannte drei Checks statt vier) war bei v1.7.0 bereits behoben.
+
 ## [v1.7.0] — 2026-08-03 — Woran ein Lauf hängt, und was ein Report nicht behaupten darf
 
 **Ein neuer Check** (`OPS-007`) — der Katalog wächst von 96 auf **97 in zwölf Kategorien**, 700 Tests. Dazu je eine neue Ausprägung in `OPS-006` und `DRIFT-003`, und eine Präzisierung an `ARCH-011`.

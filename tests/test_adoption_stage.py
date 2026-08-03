@@ -184,6 +184,28 @@ class TestReadmesNameTheAdvisorySet:
         )
 
     @pytest.mark.parametrize("readme", READMES, ids=lambda p: p.name)
+    def test_no_promoted_check_is_still_listed(self, readme: Path):
+        # The other direction, and the one a promotion breaks: the sentence
+        # naming a check the catalogue no longer holds on the bridge. Adding a
+        # check is loud — someone writes the paragraph. Promoting one is quiet:
+        # a single frontmatter line moves from `advisory` to `enforced`, and
+        # nothing pulls the sentence along. The count word catches it only if
+        # the length is noticed too, which is what went wrong the first time.
+        catalog = parse_catalog(CHECKS_DIR)
+        expected = advisory_ids(catalog)
+        text = readme.read_text(encoding="utf-8")
+        start = text.index("`advisory`:")
+        sentence = text[start : text.index("\n", start)]
+        # Past the first period the same sentence deliberately names the checks
+        # that *were* promoted. Only the part before it is the bridge.
+        listed = sentence.split("`advisory`:", 1)[1].split(".", 1)[0]
+        stale = [cid for cid in catalog if cid not in expected and f"`{cid}`" in listed]
+        assert not stale, (
+            f"{readme.name} still names {stale} as advisory. The catalogue has "
+            f"{[(cid, catalog[cid]['adoption']) for cid in stale]}"
+        )
+
+    @pytest.mark.parametrize("readme", READMES, ids=lambda p: p.name)
     def test_the_stated_count_matches(self, readme: Path):
         expected = len(advisory_ids(parse_catalog(CHECKS_DIR)))
         words = {
