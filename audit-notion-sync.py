@@ -166,12 +166,29 @@ def build_profile(props: dict[str, Any]) -> dict[str, Any]:
     data_class = prop_select(props.get("Datenklasse", {})) or "Public Open Data"
     write_access = prop_select(props.get("Schreibzugriff", {})) or "read-only"
     deployment = prop_multi_select(props.get("Deployment", {})) or ["local-stdio"]
+    # Pflichtfeld seit v2.0.0. Anders als bei `sdk_language` ist der Default
+    # hier NICHT harmlos: Er entscheidet, welche Hälfte des Katalogs läuft —
+    # fünf Checks messen einen Gegenstand, den 2026-07-28 entfernt hat,
+    # vierzehn einen, den es davor nicht gab. Ein falscher Default tauscht die
+    # geprüfte Menge aus, ohne dass irgendwo etwas rot wird.
+    #
+    # `2025-11-25` als Vorbelegung, weil die Migrationswellen A–D erst
+    # anlaufen. Er ist bewusst der konservative: Ein
+    # Server, der in Wahrheit migriert ist, bekommt dadurch zu wenige Checks
+    # und fällt beim ersten Migrations-Finding auf. Umgekehrt wäre der Fehler
+    # still — die alten Checks bestünden am neuen Protokoll vorbei.
+    #
+    # Die Notion-Property «MCP-Spec-Version» ist deshalb zu pflegen, sobald ein
+    # Server eine Welle durchlaufen hat. `validate_profile.py` lehnt jede
+    # andere Schreibweise ab.
+    mcp_spec_version = prop_select(props.get("MCP-Spec-Version", {})) or "2025-11-25"
 
     org_kontext = prop_multi_select(props.get("Org-Kontext", {}))
 
     profile: dict[str, Any] = {
         "transport": transport,
         "sdk_language": sdk_language,
+        "mcp_spec_version": mcp_spec_version,
         "auth_model": auth_model,
         "data_class": data_class,
         "write_capable": write_access == "write-capable",

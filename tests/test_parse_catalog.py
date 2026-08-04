@@ -55,18 +55,18 @@ class TestRealCatalog:
         counts = category_counts(catalog)
         # Expected per SKILL.md table.
         assert counts == {
-            "ARCH": 14,
+            "ARCH": 21,
             "DEP": 1,
             "DRIFT": 6,
             "CH": 8,
             "FID": 5,
-            "HITL": 5,
+            "HITL": 6,
             "IDENT": 7,
             "OBS": 7,
             "OPS": 8,
-            "SCALE": 7,
+            "SCALE": 10,
             "SDK": 6,
-            "SEC": 24,
+            "SEC": 27,
         }
 
     def test_severity_distribution_known_set(self):

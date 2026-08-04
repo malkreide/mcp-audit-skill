@@ -4,11 +4,17 @@ title: "Mcp-Session-Id Routing via Edge-LB (HAProxy Stick-Tables)"
 category: SCALE
 severity: high
 applies_when: '(transport == "HTTP/SSE" or transport == "dual") and is_cloud_deployed == true'
+spec_baseline: 2025-11-25
 pdf_ref: "Sec 5.2"
 evidence_required: 2
 ---
 
 # SCALE-003 — Mcp-Session-Id Routing via Edge-LB
+
+> **Baseline `2025-11-25`.** Dieser Check misst gegen das Protokoll vor
+> der Stateless-Umstellung und wird für Server mit
+> `mcp_spec_version: 2026-07-28` nicht mehr ausgewertet.
+> Nachfolger: ersatzlos — der `Mcp-Session-Id`-Header existiert nicht mehr. Was an seine Stelle tritt, prüft `ARCH-017` (Handles), nicht der Load Balancer.
 
 ## Description
 

@@ -10,6 +10,23 @@ evidence_required: 2
 
 # ARCH-013 — Alle Netz-Transportpfade identisch verdrahtet
 
+> **Baseline-Hinweis (seit v2.0.0) — welche Pfade es überhaupt gibt.** Die Menge
+> der zu prüfenden Netzwege ist auf `mcp_spec_version: 2026-07-28` eine andere:
+>
+> | Pfad | `2025-11-25` | `2026-07-28` |
+> |---|---|---|
+> | Streamable HTTP POST | ja | ja, mit Pflichtheadern (`SCALE-008`) |
+> | HTTP GET für serverinitiierte Nachrichten | ja | **entfällt** — `subscriptions/listen` (`SCALE-010`) |
+> | Legacy HTTP+SSE | deprecated seit 2025-03-26 | formal **Deprecated** (`SCALE-009`) |
+> | stdio | ja | ja |
+>
+> Die Regel dieses Checks bleibt wörtlich dieselbe — **jeder** bediente Netzweg
+> trägt dieselbe Härtung — und genau deshalb ändert sich das Prüfergebnis: Ein
+> Legacy-SSE-Pfad, der neben dem Streamable-HTTP-Pfad weiterläuft, ist auf der
+> neuen Baseline ein Pfad, der ein Protokoll spricht, das der Server nach
+> eigener Aussage nicht mehr führt. Ein GET-Endpunkt, der noch antwortet,
+> ebenso.
+
 ## Description
 
 Ein Server, der über Netz erreichbar ist, konstruiert seine ASGI-App fast nie an genau einer Stelle. Typisch sind drei bis vier Wege, und sie entstehen nacheinander, ohne dass jemand sie als Menge betrachtet:

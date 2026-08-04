@@ -366,6 +366,104 @@ def evaluate(expression: str, profile: dict[str, Any]) -> bool:
     return parser.parse_expr()
 
 
+# ---------------------------------------------------------------------------
+# Spec baseline
+# ---------------------------------------------------------------------------
+
+# Which revision of the MCP specification a check is written against.
+#
+#   2025-11-25   the check measures against the pre-stateless protocol
+#   2026-07-28   the check measures against the stateless protocol
+#   beide        the check is protocol-shape independent
+#
+# This is a SECOND axis next to `applies_when`, deliberately not folded into
+# it. Technically it could be one: `mcp_spec_version == "2026-07-28"` is an
+# ordinary field comparison and the evaluator would handle it. Keeping them
+# apart is the decision.
+#
+# `applies_when` answers *does this server look like the kind of server the
+# check is about*. The baseline answers *does this check still describe the
+# protocol this server speaks*. Those are different events with different
+# fixes — a check that dropped out because the server is stdio-only needs a
+# profile correction, a check that dropped out because the server migrated
+# needs nothing at all — and §3.4 already draws exactly this line between a
+# changed catalogue and a changed profile. Folded into one expression, the
+# applicability report renders both as a bare `no-match` and the distinction
+# is gone.
+#
+# The default is `beide`, which is the safe direction: a check that predates
+# the field keeps firing for every profile, exactly as before. Narrowing is
+# always an explicit act.
+VALID_SPEC_BASELINES = ("2025-11-25", "2026-07-28", "beide")
+DEFAULT_SPEC_BASELINE = "beide"
+SPEC_BASELINE_FIELD = "mcp_spec_version"
+
+# Reason prefixes. `baseline-mismatch` is an ordinary, expected outcome during
+# waves A–D. `baseline-unresolved` is not: it means the profile never said
+# which protocol the server speaks, so the answer is unknown rather than no.
+# They are separate strings because collapsing them would recreate the §2.6
+# defect one level up — "not applicable" and "never asked" reading alike.
+REASON_BASELINE_MISMATCH = "baseline-mismatch"
+REASON_BASELINE_UNRESOLVED = "baseline-unresolved"
+
+
+def baseline_applies(check_baseline: str, profile_version: Any) -> tuple[bool, str]:
+    """Does a check on `check_baseline` measure a server on `profile_version`?
+
+    Returns `(applies, reason)`. The reason is empty when it applies, and
+    carries one of the REASON_BASELINE_* prefixes when it does not.
+
+    A check declaring `beide` applies regardless — including when the profile
+    is silent, since nothing about it depends on the answer.
+    """
+    baseline = str(check_baseline or DEFAULT_SPEC_BASELINE).strip()
+    if baseline not in VALID_SPEC_BASELINES:
+        return False, (
+            f"{REASON_BASELINE_UNRESOLVED}: check declares invalid "
+            f"spec_baseline {baseline!r}; expected one of {VALID_SPEC_BASELINES}"
+        )
+    if baseline == DEFAULT_SPEC_BASELINE:
+        return True, ""
+    if profile_version is None or not str(profile_version).strip():
+        return False, (
+            f"{REASON_BASELINE_UNRESOLVED}: check is {baseline}-only but the "
+            f"profile carries no {SPEC_BASELINE_FIELD}"
+        )
+    version = str(profile_version).strip()
+    if version == baseline:
+        return True, ""
+    return False, (
+        f"{REASON_BASELINE_MISMATCH}: check is {baseline}-only, "
+        f"profile speaks {version}"
+    )
+
+
+def baseline_summary(results: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Count how the baseline gate changed the outcome, with the IDs.
+
+    The counts exist so an applicability report can carry a line naming what
+    the baseline removed. A migration in which 14 checks appear and 5 vanish is
+    a large silent change to what an audit covers; unreported it looks like a
+    clean run over a smaller catalogue, which is the failure `OPS-005` names.
+    """
+    mismatch = sorted(
+        cid
+        for cid, r in results.items()
+        if str(r.get("reason", "")).startswith(REASON_BASELINE_MISMATCH)
+    )
+    unresolved = sorted(
+        cid
+        for cid, r in results.items()
+        if str(r.get("reason", "")).startswith(REASON_BASELINE_UNRESOLVED)
+    )
+    return {
+        "dropped_by_baseline": len(mismatch),
+        "dropped_ids": mismatch,
+        "unresolved": len(unresolved),
+        "unresolved_ids": unresolved,
+    }
+
+
 _FRONTMATTER_RE = re.compile(r"^---\s*\r?\n(.*?)\r?\n---", re.DOTALL)
 
 
@@ -406,9 +504,18 @@ def evaluate_catalog(
     """Evaluate every check in checks_dir against the profile.
 
     Returns a dict keyed by check ID with shape:
-        { "applicable": bool, "reason": str, "expression": str }
+        { "applicable": bool, "reason": str, "expression": str,
+          "spec_baseline": str }
+
+    Two gates run, in this order: the spec baseline first, then `applies_when`.
+    The order is not cosmetic. If a check describes a protocol this server does
+    not speak, its `applies_when` verdict says nothing worth reporting — the
+    profile fields it compares (transport, auth model) are still meaningful,
+    but the thing being checked no longer exists. Reporting the coarser reason
+    is the honest one.
     """
     results: dict[str, dict[str, Any]] = {}
+    profile_version = profile.get(SPEC_BASELINE_FIELD)
     for md in sorted(checks_dir.glob("*.md")):
         try:
             fm = parse_check_frontmatter(md)
@@ -417,10 +524,21 @@ def evaluate_catalog(
                 "applicable": False,
                 "reason": f"frontmatter-error: {e}",
                 "expression": "",
+                "spec_baseline": DEFAULT_SPEC_BASELINE,
             }
             continue
         check_id = fm.get("id", md.stem)
         expr = fm.get("applies_when", "always")
+        baseline = fm.get("spec_baseline", DEFAULT_SPEC_BASELINE)
+        in_baseline, baseline_reason = baseline_applies(baseline, profile_version)
+        if not in_baseline:
+            results[check_id] = {
+                "applicable": False,
+                "reason": baseline_reason,
+                "expression": expr,
+                "spec_baseline": baseline,
+            }
+            continue
         try:
             applicable = evaluate(expr, profile)
             reason = "match" if applicable else "no-match"
@@ -437,6 +555,7 @@ def evaluate_catalog(
             "applicable": applicable,
             "reason": reason,
             "expression": expr,
+            "spec_baseline": baseline,
         }
     return results
 
@@ -692,15 +811,36 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "catalog":
         profile = _load_profile(Path(args.profile), getattr(args, "server", None))
         results = evaluate_catalog(profile, Path(args.checks_dir))
+        baselines = baseline_summary(results)
         if args.format == "json":
+            # No summary key in the payload: this JSON is the saved evaluation
+            # the `diff` subcommand reads back, and it is keyed by check ID
+            # throughout. A `_meta` entry would parse as a check.
             print(json.dumps(results, indent=2))
         else:
             applicable_count = sum(1 for r in results.values() if r["applicable"])
+            version = profile.get(SPEC_BASELINE_FIELD) or "<unset>"
             print(f"Applicable: {applicable_count} / {len(results)}")
+            print(
+                f"Spec baseline: profile speaks {version}; "
+                f"{baselines['dropped_by_baseline']} check(s) dropped as "
+                f"written for the other revision"
+            )
+            if baselines["dropped_ids"]:
+                print(f"  dropped: {', '.join(baselines['dropped_ids'])}")
             print(f"{'ID':<12} {'APPL':<6} reason")
             for check_id, r in results.items():
                 marker = "YES" if r["applicable"] else "no"
                 print(f"{check_id:<12} {marker:<6} {r['reason']}")
+        if baselines["unresolved"]:
+            print(
+                f"Error: {baselines['unresolved']} check(s) declare a spec "
+                f"baseline this profile cannot answer — it carries no "
+                f"{SPEC_BASELINE_FIELD}. Those checks were neither run nor "
+                f"ruled out: {', '.join(baselines['unresolved_ids'])}",
+                file=sys.stderr,
+            )
+            return 3
         return 0
 
     if args.cmd == "diff":

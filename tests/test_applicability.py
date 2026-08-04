@@ -11,9 +11,11 @@ from typing import ClassVar
 import pytest
 
 from tools.eval_applicability import (
+    REASON_BASELINE_MISMATCH,
     ParseError,
     TypeMismatchError,
     UnknownFieldError,
+    baseline_summary,
     evaluate,
     evaluate_catalog,
     parse_check_frontmatter,
@@ -47,6 +49,7 @@ def srgssr_profile() -> dict:
         "volksschule_context": False,
         "enterprise_context": False,
         "sdk_language": "Python",
+        "mcp_spec_version": "2025-11-25",
         "data_source": {"is_swiss_open_data": True},
     }
 
@@ -71,6 +74,7 @@ def zh_education_profile() -> dict:
         "volksschule_context": True,
         "enterprise_context": False,
         "sdk_language": "Python",
+        "mcp_spec_version": "2025-11-25",
         "data_source": {"is_swiss_open_data": False},
     }
 
@@ -95,6 +99,7 @@ def cloud_oauth_profile() -> dict:
         "volksschule_context": True,
         "enterprise_context": True,
         "sdk_language": "TypeScript",
+        "mcp_spec_version": "2025-11-25",
         "data_source": {"is_swiss_open_data": False},
     }
 
@@ -329,8 +334,8 @@ class TestRealCatalog:
         # Note: total count of checks (79 → 85 mit DRIFT und IDENT-006,
         # 86 mit OPS-005, 87 mit SCALE-007, 93 mit IDENT-007, DEP-001 und
         # DRIFT-006, 94 mit OBS-007, 95 mit ARCH-014, 96 mit OPS-006,
-        # 98 mit OPS-008)
-        assert len(results) == 98
+        # 98 mit OPS-008, 112 mit den vierzehn Spec-Checks aus v2.0.0)
+        assert len(results) == 112
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
         # test fails loudly only on grammar drift.
@@ -353,6 +358,12 @@ class TestRealCatalog:
         # mit spürbarer Luft, damit nicht jeder zweite neue Check hier
         # vorbeikommen muss; die Untergrenze bleibt, sie ist die Seite, die
         # echten Grammatik-Ausfall fangen würde.
+        # Obergrenze unverändert bei 62, obwohl der Katalog um vierzehn Checks
+        # gewachsen ist: `srgssr` spricht `2025-11-25`, und elf der vierzehn
+        # tragen `spec_baseline: 2026-07-28`. Für dieses Profil sind sie nicht
+        # anwendbar — die Baseline-Stufe fängt sie vor der Grammatik ab.
+        # Genau das ist der Zweck der zweiten Achse, und dass die Schranke hier
+        # nicht wandert, ist ihr Beleg.
         assert 25 <= len(applicable) <= 62, (
             f"Applicable count drifted: got {len(applicable)} ({applicable})"
         )
@@ -374,16 +385,50 @@ class TestRealCatalog:
     }
 
     def test_no_unexpected_eval_errors_for_realistic_profile(self, srgssr_profile):
+        """Every non-applicable check must be so for a *stateable* reason.
+
+        Two reasons are legitimate: `no-match` (the profile does not describe
+        this kind of server) and `baseline-mismatch` (the check measures the
+        other spec revision). Anything else — an unknown field, a type
+        mismatch, a parse error — means the catalogue and the profile schema
+        have drifted apart, and the audit would silently run over a smaller
+        catalogue than it claims.
+
+        `baseline-unresolved` is deliberately NOT on the allowed list. It says
+        the profile never stated which revision the server speaks, so those
+        checks were neither run nor ruled out — the §2.6 failure one level up.
+        """
         results = evaluate_catalog(srgssr_profile, CHECKS_DIR)
+        allowed = ("no-match", REASON_BASELINE_MISMATCH)
         unexpected = {
             cid: r["reason"]
             for cid, r in results.items()
-            if not r["applicable"] and r["reason"] != "no-match"
+            if not r["applicable"] and not r["reason"].startswith(allowed)
         }
         assert unexpected == {}, (
             "Unexpected evaluator errors against srgssr profile (catalog drift?): "
             f"{unexpected}"
         )
+
+    def test_baseline_drops_are_reported_not_silent(self, srgssr_profile):
+        """A check dropped for baseline reasons must say so by name.
+
+        The migration moves fourteen checks in and five out of scope per
+        server. Unreported that is a large silent change to what an audit
+        covers — a clean run over a smaller catalogue, which is the failure
+        `OPS-005` names.
+        """
+        results = evaluate_catalog(srgssr_profile, CHECKS_DIR)
+        summary = baseline_summary(results)
+        assert summary["unresolved"] == 0, summary["unresolved_ids"]
+        assert summary["dropped_by_baseline"] == len(summary["dropped_ids"])
+        assert summary["dropped_by_baseline"] > 0, (
+            "A 2025-11-25 profile must drop the 2026-07-28 checks. Zero here "
+            "means the baseline gate never ran — which looks identical to a "
+            "catalogue that has no baseline-bearing checks."
+        )
+        for cid in summary["dropped_ids"]:
+            assert results[cid]["spec_baseline"] == "2026-07-28", cid
 
     def test_no_check_compares_deployment_list_to_string_literal(self):
         """Regression for issue #16: no check may compare the `deployment`
@@ -477,6 +522,7 @@ class TestIsCloudDeployedFlag:
             "volksschule_context": False,
             "enterprise_context": False,
             "sdk_language": "Python",
+            "mcp_spec_version": "2025-11-25",
             "data_source": {"is_swiss_open_data": True},
         }
         results = evaluate_catalog(profile, CHECKS_DIR)
@@ -501,6 +547,7 @@ class TestIsCloudDeployedFlag:
             "volksschule_context": False,
             "enterprise_context": False,
             "sdk_language": "Python",
+            "mcp_spec_version": "2025-11-25",
             "data_source": {"is_swiss_open_data": True},
         }
         results = evaluate_catalog(profile, CHECKS_DIR)
@@ -562,6 +609,7 @@ class TestWriteCapableSchemaMigration:
             "volksschule_context": False,
             "enterprise_context": False,
             "sdk_language": "Python",
+            "mcp_spec_version": "2025-11-25",
             "data_source": {"is_swiss_open_data": False},
         }
         results = evaluate_catalog(legacy_profile, CHECKS_DIR)
@@ -589,6 +637,7 @@ class TestWriteCapableSchemaMigration:
             "volksschule_context": False,
             "enterprise_context": False,
             "sdk_language": "Python",
+            "mcp_spec_version": "2025-11-25",
             "data_source": {"is_swiss_open_data": False},
         }
         results = evaluate_catalog(legacy_profile, CHECKS_DIR)
@@ -670,6 +719,7 @@ class TestSsrfScope:
             "volksschule_context": False,
             "enterprise_context": False,
             "sdk_language": "Python",
+            "mcp_spec_version": "2025-11-25",
             "data_source": {"is_swiss_open_data": True},
         }
 

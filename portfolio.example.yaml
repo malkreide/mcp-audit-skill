@@ -9,6 +9,14 @@
 #   ./audit-portfolio.sh <name>          # nur den genannten Server
 #   ./audit-portfolio.sh --dry-run       # Plan ausgeben, ohne claude zu rufen
 #
+# `mcp_spec_version` ist seit v2.0.0 Pflicht und hat bewusst keinen Default:
+# Während der Migrationswellen A–D stehen beide Protokollstände gleichzeitig im
+# Portfolio, und der Wert entscheidet, welche Hälfte des Katalogs läuft. Fünf
+# Checks messen einen Gegenstand, den 2026-07-28 entfernt hat (SCALE-002/003/007,
+# SDK-004, SEC-009), vierzehn einen, den es davor nicht gab. Eine falsche Angabe
+# tauscht die geprüfte Menge aus, ohne dass etwas rot wird — dieselbe Klasse wie
+# der `transport: HTTP`-Vorfall, nur mit grösserer Reichweite.
+#
 # Pro Server sind name + repo + profile Pflicht. Die Profil-Werte werden
 # autoritativ an /audit-mcp übergeben — Schritt 1 (Profil-Bestätigung) wird
 # im Headless-Modus übersprungen.
@@ -48,6 +56,7 @@ servers:
     profile:
       transport: dual                              # stdio-only | dual | HTTP/SSE
       sdk_language: Python                         # Python | TypeScript (siehe unten)
+      mcp_spec_version: "2025-11-25"                # 2025-11-25 | 2026-07-28 — wählt die Baseline
       auth_model: none                             # none | API-Key | OAuth-Proxy | OIDC
       data_class: Public Open Data                 # Public Open Data | Verwaltungsdaten | PII
       write_capable: false
@@ -69,6 +78,7 @@ servers:
     profile:
       transport: stdio-only
       sdk_language: Python
+      mcp_spec_version: "2026-07-28"                # dieser Server hat Welle A durchlaufen
       auth_model: API-Key
       data_class: Verwaltungsdaten
       write_capable: false

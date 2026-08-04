@@ -5,7 +5,7 @@ description: Reproduzierbares Audit von MCP-Servern gegen einen versionierten Be
 
 # MCP Audit — Standardisiertes Audit-Vorgehen
 
-Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer, 98 Checks in zwölf Kategorien). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
+Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer sowie den Spec-Migrations-Layer, 112 Checks in zwölf Kategorien auf zwei Spec-Baselines). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
 
 **Das Mantra in drei Zeilen:**
 
@@ -187,9 +187,12 @@ Bevor ein Audit beginnt, müssen diese Felder in der Audit-Tracker-Karte gesetzt
 | `Datenklasse` | `Public Open Data` / `Verwaltungsdaten` / `PII` | filtert PII-Checks und CH-Compliance |
 | `Schreibzugriff` | `read-only` / `write-capable` | filtert HITL-Checks |
 | `Deployment` | `local-stdio` / `Railway` / `Render` / `andere` | filtert Cloud-Checks |
+| `MCP-Spec-Version` | `2025-11-25` / `2026-07-28` | wählt die Baseline — welche Hälfte des Katalogs geprüft wird |
 | `Repo URL` | GitHub-URL | für Code-Review-Schritte |
 
 Wenn ein Pflichtfeld fehlt, wird der Audit gestoppt und der User aufgefordert, das Feld zu füllen. **Audits mit unvollständigem Profil sind wertlos** — applicability wird falsch berechnet, die Findings werden unverlässlich.
+
+**`MCP-Spec-Version` ist seit v2.0.0 Pflicht und hat bewusst keinen Default.** Während der Migrationswellen A–D stehen beide Protokollstände gleichzeitig im Portfolio. Ein Default würde die Frage für jedes Profil beantworten, das sie vergessen hat — und zwar still: Fünf Checks messen einen Gegenstand, den `2026-07-28` entfernt hat, vierzehn messen einen, den es davor nicht gab. Die falsche Antwort tauscht die geprüfte Hälfte des Katalogs aus, ohne dass irgendwo etwas rot wird. Das ist der `transport: HTTP`-Vorfall aus §1.3, eine Achse weiter und mit grösserer Reichweite.
 
 ### 1.2 Profil-Notation für interne Verwendung
 
@@ -201,6 +204,7 @@ profile:
   repo: https://github.com/malkreide/zurich-opendata-mcp
   transport: dual
   sdk_language: Python             # filtert SDK-001…006 und IDENT-005
+  mcp_spec_version: "2025-11-25"   # 2025-11-25 | 2026-07-28 — wählt die Baseline
   auth_model: none
   data_class: Public Open Data
   write_capable: false              # bool — kanonisches Feld (siehe Migration unten)
@@ -243,19 +247,19 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 
 | Kategorie | Quelle | Typische Anzahl Checks | Status |
 |---|---|---|---|
-| `ARCH` | PDF Sec 2 + Anhang A + Custom — Tool-Design, Annotations, Idempotency, Retry-Politik, Repo-Struktur, Spec-Versionierung | 10–15 | 14 / 14 ✅ |
+| `ARCH` | PDF Sec 2 + Anhang A + Custom + Spec 2026-07-28 — Tool-Design, Annotations, Idempotency, Retry-Politik, Repo-Struktur, Spec-Versionierung, Stateless-Konformität, Handles, Extensions | 10–22 | 21 / 21 ✅ |
 | `SDK` | PDF Sec 3 — FastMCP, TypeScript, Zod, Lifecycle | 5–7 | 6 / 6 ✅ |
-| `SEC` | PDF Sec 4 + Anhang B — Security (grösste Kategorie) | 20–25 | 24 / 24 ✅ |
-| `SCALE` | PDF Sec 5 — Transport, LB, Container, Gateway | 5–7 | 7 / 7 ✅ |
+| `SEC` | PDF Sec 4 + Anhang B + Spec 2026-07-28 — Security (grösste Kategorie) | 20–28 | 27 / 27 ✅ |
+| `SCALE` | PDF Sec 5 + Spec 2026-07-28 — Transport, LB, Container, Gateway, Pflichtheader, Abkündigungsfristen | 5–11 | 10 / 10 ✅ |
 | `OBS` | PDF Sec 6 + Anhang B10 — Logging, Errors, SIEM, Tracing | 5–8 | 7 / 7 ✅ |
-| `HITL` | PDF Sec 7 — Sampling, Human-in-the-Loop | 4–5 | 5 / 5 ✅ |
+| `HITL` | PDF Sec 7 + Spec 2026-07-28 — Sampling, Human-in-the-Loop, MRTR | 4–6 | 6 / 6 ✅ |
 | `CH` | Custom — DSG/EDÖB, Schweiz-Compliance | 5–8 | 8 / 8 ✅ |
 | `OPS` | Anhang C + Custom — Test-Strategie, Doku, Phasenarchitektur, Audit-Redlichkeit, Pipeline-Ehrlichkeit, reproduzierbare Urteile, ausfuehrbare Anleitungen, pruefbare Guards | 3–8 | 8 / 8 ✅ |
 | `FID` | Custom — Datentreue: Scope, Recall, Leermengen | 4–6 | 5 / 5 ✅ |
 | `IDENT` | Custom — Identität: User-Agent, `__version__`, Manifest, Doku-Version, Release-Gap, Gesundheit des Artefakts | 5–8 | 7 / 7 ✅ |
 | `DRIFT` | Custom — Upstream-Vertrag und Repo-Prosa: Endpoint-Drift, Fallback-Semantik, Testgüte, CHANGELOG gegen Code | 4–7 | 6 / 6 ✅ |
 | `DEP` | Custom — Auflösungsraum des publizierten Artefakts: Obergrenzen, Major-Wechsel | 1–3 | 1 / 1 ✅ |
-| **Total** | | **~85** | **98 / 98 ✅** |
+| **Total** | | **~99** | **112 / 112 ✅** |
 
 ### 2.2 Severity-Stufen
 
@@ -279,6 +283,8 @@ Severity sagt, **wie schlimm** ein Verstoss ist. Die Adoptionsstufe sagt, **ob d
 adoption: advisory   # optional; fehlt das Feld, gilt `enforced`
 ```
 
+Die Adoptionsstufe ist die eine von zwei Achsen, auf denen ein Check aufhören kann zu beissen. Die andere ist die **Spec-Baseline** — siehe [§2.7](#27-spec-baseline-welcher-protokollstand-gemessen-wird). Sie beantworten verschiedene Fragen: `adoption` sagt, ob der Katalog **schon** urteilen darf; `spec_baseline` sagt, ob der Check das Protokoll **überhaupt noch** beschreibt.
+
 **Advisory versteckt nichts.** Das Finding entsteht, trägt seine Severity und erscheint im Report. Nur das Veto entfällt. Eine Stufe, die den Befund unterdrückte statt nur sein Veto, wäre schlimmer als gar keine Stufe.
 
 Ein Advisory-Finding auf blockierender Severity wird im Report unter `advisory_findings` **namentlich genannt** — auch bei grünem Verdikt. Wer später promoviert, weiss vorher, was rot würde.
@@ -288,6 +294,8 @@ Ein Advisory-Finding auf blockierender Severity wird im Report unter `advisory_f
 1. Als `advisory` mergen. Der Check läuft im nächsten Portfolio-Durchlauf mit und meldet, ohne zu blockieren.
 2. Die Advisory-Findings über das Portfolio auswerten: Ist der Check richtig geschnitten? Produziert er Fehlalarme?
 3. Wenn die betroffenen Server nachgezogen haben — oder der Rückstand bewusst akzeptiert ist —, auf `enforced` promovieren. Die Promotion gehört in den CHANGELOG, nicht in einen Diff, den niemand liest. Wird sie auf `critical` oder `high` ausgesprochen, ist sie ausserdem ein **Re-Audit-Auslöser** nach [§5d](#versionierung-des-check-katalogs): Ab diesem Moment verlieren Server ihre Production-Readiness, deren letztes Audit dasselbe Finding noch als folgenlos führen durfte.
+
+   - **e) Spec-Baseline verengt oder Prüfkriterium an eine neue Revision angepasst.** Ein Sonderfall von b) und c) mit eigener Auslösebedingung: Wechselt ein Server seine `mcp_spec_version`, ändert sich die geprüfte Katalogmenge in **beide** Richtungen, ohne dass an einem einzigen Check etwas geändert wurde. Das Audit davor hat gegen einen anderen Katalog gemessen als das danach — nicht gegen einen kleineren oder grösseren, sondern gegen einen teilweise anderen. Ein `production_ready: true` von vor der Migration trägt deshalb nicht über sie hinweg. **Die Migration eines Servers ist ein Re-Audit-Auslöser, unabhängig davon, ob der Katalog sich bewegt hat.**
 
    Wird Schritt 2 übersprungen — Promotion ohne dazwischenliegenden Portfolio-Durchlauf —, stützt sie sich auf «Rückstand bewusst akzeptiert» und **nicht** auf ausgewertete Advisory-Findings. Beides ist zulässig; welches von beidem gilt, gehört in den CHANGELOG-Eintrag. Eine Promotion, die Evidenz behauptet, die nicht erhoben wurde, ist der Fehler aus `OPS-004`.
 
@@ -313,12 +321,17 @@ title: "Confused Deputy: Per-Client Consent Flow"
 category: security
 severity: critical
 applies_when: 'auth_model == "OAuth-Proxy"'
+spec_baseline: beide          # optional; fehlt das Feld, gilt `beide`
+adoption: enforced            # optional; fehlt das Feld, gilt `enforced`
 pdf_ref: "Sec 4.1"
+spec_ref: "SEP-xxxx (PR xxxx)"   # bei Checks aus einem Spec-Changelog
 evidence_required: 3
 ---
 
 # Body mit Description, Verification, Pass Criteria, Remediation
 ```
+
+Ein Check, der aus einem Spec-Changelog stammt, trägt in `spec_ref` seine **SEP-Nummer**. Das ist keine Zierde: Die Begründung eines solchen Checks liegt nicht im Katalog, sondern in einem Dokument, das sich weiterentwickelt. Ohne die Nummer ist bei der nächsten Revision nicht feststellbar, ob ein Check noch die aktuelle Fassung seiner Quelle wiedergibt — und genau das ist der Zustand, aus dem `OBS-001` acht Monate lang das Gegenteil der Spec gelehrt hat.
 
 Details siehe `templates/finding.md` und beliebige Datei in `checks/`.
 
@@ -372,6 +385,43 @@ Die dritte Zeile ist die, die in der Praxis verschwindet. «Nichts gefunden» un
 
 **Eselsbrücke:** *«Schweigen ist kein Freispruch.»*
 
+### 2.7 Spec-Baseline: welcher Protokollstand gemessen wird
+
+Seit v2.0.0 trägt jeder Check ein zweites Feld, das über seine Anwendbarkeit entscheidet:
+
+```yaml
+spec_baseline: 2026-07-28    # 2025-11-25 | 2026-07-28 | beide (Default)
+```
+
+Es wird gegen `mcp_spec_version` aus dem Profil gehalten. Der Anlass ist konkret: `2026-07-28` hat Sitzungen, den `initialize`-Handshake und die SSE-Resumability entfernt. Fünf Checks messen damit einen Gegenstand, den es nicht mehr gibt; vierzehn messen einen, den es vorher nicht gab. Während der Wellen A–D stehen beide Stände gleichzeitig im Portfolio.
+
+| Wert | Bedeutung |
+|---|---|
+| `2025-11-25` | misst gegen das Protokoll vor der Stateless-Umstellung |
+| `2026-07-28` | misst gegen das Protokoll danach |
+| `beide` | protokollunabhängig — Default, wenn das Feld fehlt |
+
+**Warum das eine eigene Stufe ist und keine `applies_when`-Klausel.** Technisch ginge beides; `mcp_spec_version == "2026-07-28"` wäre ein gewöhnlicher Feldvergleich. Die Trennung ist die Entscheidung:
+
+- `applies_when` beantwortet: *Ist dieser Server die Art von Server, um die es geht?*
+- `spec_baseline` beantwortet: *Beschreibt dieser Check noch das Protokoll, das dieser Server spricht?*
+
+Zusammengefaltet erscheinen beide Ausgänge im Applicability-Report als dasselbe `no-match` — und die Unterscheidung, die §3.4 zwischen «Katalog hat sich geändert» und «Profil hat sich geändert» zieht, verliert ihre dritte Möglichkeit. Ein Check, der wegfällt, weil der Server stdio-only ist, verlangt eine Profilkorrektur; einer, der wegfällt, weil der Server migriert ist, verlangt gar nichts. Der Report muss das sagen können.
+
+**Drei Ausgänge, nicht zwei** — dieselbe Konstruktion wie in §2.6:
+
+| Reason | Bedeutung |
+|---|---|
+| *(leer)* | Baseline passt, `applies_when` entscheidet |
+| `baseline-mismatch` | Geprüft und ausgeschlossen: der Check misst die andere Revision |
+| `baseline-unresolved` | **Nicht geprüft** — das Profil sagt nicht, welchen Stand der Server spricht |
+
+Der dritte ist der Grund für den eigenen Wert. Fiele er mit dem zweiten zusammen, sähe ein Profil mit vergessenem Feld exakt aus wie ein sauberer Lauf über einen kleineren Katalog. `eval_applicability.py catalog` exitet deshalb mit **3**, wenn ein Check unresolved bleibt.
+
+**Verengen statt löschen.** Ein Check, dessen Gegenstand verschwunden ist, wird nicht entfernt und nicht umbenannt — er bekommt `spec_baseline: 2025-11-25` und **nennt in seinem Kopf den Nachfolger**. Löschen würde die Frage mit dem Check verschwinden lassen; ohne Nachfolgerangabe wäre nicht auffindbar, wo sie jetzt gestellt wird. Die fünf verengten Checks sind `SCALE-002`, `SCALE-003`, `SCALE-007`, `SDK-004` und `SEC-009`.
+
+**Eselsbrücke:** *«`adoption` sagt, ob schon geurteilt wird. `spec_baseline` sagt, ob noch das Richtige gemessen wird.»*
+
 ---
 
 ## Schritt 3: Applicability-Filter
@@ -389,6 +439,8 @@ Die Klausel ist ein Boolean-Ausdruck gegen die Profil-Felder. Die formale DSL-Sp
 | `.includes(...)` | `deployment.includes("Railway")` | Multi-Select-Membership |
 | `and` / `or` | `transport == "HTTP/SSE" and auth_model == "OAuth-Proxy"` | Verknüpfung |
 | `always` | `always` | Check ist universell, läuft immer |
+
+**Vor der Klausel läuft die Baseline-Stufe** ([§2.7](#27-spec-baseline-welcher-protokollstand-gemessen-wird)). Die Reihenfolge ist nicht kosmetisch: Beschreibt ein Check ein Protokoll, das dieser Server nicht spricht, sagt sein `applies_when`-Urteil nichts Berichtenswertes — die verglichenen Profilfelder sind zwar gültig, aber der geprüfte Gegenstand existiert nicht. Der Report nennt dann den gröberen Grund.
 
 **Pflicht: Verwende den kanonischen Evaluator, niemals Python `eval()` oder ad-hoc-Substitution.** Letzteres hat in der Vergangenheit zu nicht-reproduzierbaren Audits geführt (Listen-vs-String-Vergleiche, `True` vs `true`, etc.).
 
@@ -419,6 +471,11 @@ Bevor der eigentliche Audit beginnt, gibt Claude diese Übersicht aus:
 === Audit applicability for zurich-opendata-mcp ===
 Profile: dual transport, no auth, Public Open Data, read-only,
          Deployment: [local-stdio, Railway]
+         MCP spec: 2025-11-25
+
+Spec baseline: 11 check(s) dropped as written for the other revision
+  dropped: ARCH-015, ARCH-016, ARCH-017, ARCH-018, ARCH-020, ARCH-021,
+           HITL-006, SCALE-008, SCALE-010, SEC-025, SEC-027
 
 Applicable checks: 23 / 50
   ARCH: 7/7      (universal)
@@ -434,6 +491,10 @@ Severity breakdown of applicable checks:
 ```
 
 **Wichtig:** Wenn ein Check nicht anwendbar ist, erscheint er **gar nicht** im Report — nicht einmal als «N/A». Das hält Reports fokussiert und vermeidet Audit-Müdigkeit.
+
+**Ausnahme: Baseline-Ausfälle werden namentlich genannt.** Sie sind kein Profil-Detail, sondern eine Aussage über den Katalog — und über die Migration eines konkreten Servers bewegen sie zweistellige Zahlen in beide Richtungen. Ein Lauf, der das verschweigt, meldet einen sauberen Durchgang über einen kleineren Katalog, als er behauptet. Das ist der Fehler aus `OPS-005`, gestellt an das Audit selbst.
+
+Bleibt ein Check `baseline-unresolved`, wird Schritt 4 **nicht gestartet**: Das Profil hat nicht gesagt, welchen Protokollstand der Server spricht, und die betroffenen Checks sind weder gelaufen noch ausgeschlossen.
 
 ### 3.4 Applicability gegen den Vorlauf vergleichen
 
@@ -1053,6 +1114,8 @@ Drei Eigenschaften, die erst beim Ausrollen über viele Repos sichtbar werden:
 - [ ] Effort-Schätzung S/M/L/XL gesetzt
 - [ ] Tracker-Findings-Anzahl aktualisiert
 - [ ] Jeder vorgeschlagene neue Check gegen §2.5 geprüft (Reichweite vor neuer Regel)
+- [ ] `mcp_spec_version` im Profil gesetzt, und kein Check blieb `baseline-unresolved` (§2.7)
+- [ ] Baseline-bedingte Ausfälle im Report namentlich genannt, nicht stillschweigend weggelassen (§3.3)
 - [ ] Audit-Status auf `Findings dokumentiert` gesetzt
 
 **Schritt 6 — Report**
@@ -1088,7 +1151,7 @@ Der Fall ist selten und deshalb leicht zu übersehen: Promotionen sind einzelne,
 
 **Eselsbrücke:** *«Ein neuer Check ist ein neuer Vertrag. Bestehende Audits sind nicht rückwirkend ungültig, aber bei nächstem Audit gilt der neue Katalog.»*
 
-**Zweite Eselsbrücke, für Punkt 5:** *«Re-Audit, wenn sich geändert hat, wie hart geprüft wird (a), wer geprüft wird (b), worauf geprüft wird (c) — oder ob der Befund noch folgenlos bleibt (d).»*
+**Zweite Eselsbrücke, für Punkt 5:** *«Re-Audit, wenn sich geändert hat, wie hart geprüft wird (a), wer geprüft wird (b), worauf geprüft wird (c), ob der Befund noch folgenlos bleibt (d) — oder gegen welches Protokoll gemessen wird (e).»*
 
 ---
 

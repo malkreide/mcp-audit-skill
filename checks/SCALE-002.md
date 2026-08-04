@@ -4,11 +4,17 @@ title: "Stateful Load Balancing für Streamable HTTP / SSE"
 category: SCALE
 severity: high
 applies_when: 'transport == "HTTP/SSE" or transport == "dual"'
+spec_baseline: 2025-11-25
 pdf_ref: "Sec 5.2"
 evidence_required: 2
 ---
 
 # SCALE-002 — Stateful Load Balancing für Streamable HTTP / SSE
+
+> **Baseline `2025-11-25`.** Dieser Check misst gegen das Protokoll vor
+> der Stateless-Umstellung und wird für Server mit
+> `mcp_spec_version: 2026-07-28` nicht mehr ausgewertet.
+> Nachfolger: `ARCH-015` (Stateless-Konformität) — auf der neuen Baseline variieren List-Antworten nicht mehr pro Verbindung, und Affinität hat keinen Gegenstand mehr. Prozessexterner Zustand bleibt relevant, aber als Handle-Speicher: `ARCH-017`.
 
 ## Description
 

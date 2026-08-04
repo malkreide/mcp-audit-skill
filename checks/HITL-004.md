@@ -150,6 +150,8 @@ Im Repo `docs/sanitization-patterns.md` mit:
 
 S — < 1 Tag pro Server.
 
+> **Hinweis zum Sampling-Bezug (seit v2.0.0).** Sampling ist seit `2026-07-28` deprecated (SEP-2577) und wird nicht mehr über einen serverinitiierten Request angefordert, sondern über MRTR (SEP-2322). Die Aussage dieses Checks bleibt davon unberührt — sie betrifft die Sanitisierung der Thought-Objekte; der Abflusskanal wird ein anderer, das Leck bleibt dasselbe. Ausstieg: `ARCH-019`. Retry-Pfad: `HITL-006`.
+
 ## References
 
 - PDF Sec 7.3 — Sequential Thinking

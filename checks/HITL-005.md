@@ -10,6 +10,22 @@ evidence_required: 3
 
 # HITL-005 — Destructive Operation Confirmation
 
+> **Baseline-Hinweis (seit v2.0.0).** Die Bestätigungspflicht bleibt; der Kanal
+> ändert sich. Auf `mcp_spec_version: 2026-07-28` gibt es `elicitation/create`
+> als serverinitiierten Request nicht mehr (SEP-2322) — die Bestätigung läuft
+> über MRTR: `resultType: "input_required"` mit `inputRequests`, Antwort im
+> Retry über `inputResponses`.
+>
+> **Der Umbau bringt eine neue Fehlerklasse mit, die es hier vorher nicht gab.**
+> `ctx.elicit()` unterbrach die Bearbeitung und setzte sie danach fort; ein
+> MRTR-Retry lässt das Tool **von vorn** laufen. Steht die destruktive Aktion
+> nach der Rückfrage, ist alles gut — steht irgendeine Nebenwirkung davor,
+> geschieht sie zweimal. Die Bestätigung schützt dann genau die eine Operation,
+> die sie schützen sollte, und keine der Vorbereitungen.
+>
+> Pass-Kriterien und Retry-Idempotenz für den neuen Kanal stehen in `HITL-006`;
+> dieser Check bleibt für die Bestätigung als solche zuständig.
+
 ## Description
 
 Wenn ein MCP-Server schreibende Tools (DELETE, UPDATE, DROP, Send-Email, Post-Message, Cancel-Subscription, etc.) anbietet, erweitert er die Macht des LLMs ins Unumkehrbare. Ohne Human-in-the-Loop-Checkpoint (HITL) kann eine Halluzination oder Prompt-Injection zu echten, irreversiblen Schäden führen — gelöschte Daten, verschickte E-Mails an falsche Empfänger, abgesagte Termine, gelöschte Code-Branches.

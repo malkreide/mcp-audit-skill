@@ -76,6 +76,15 @@ REQUIRED_FIELDS: dict[str, type | tuple[type, ...]] = {
     # UnknownFieldError — nach dem Gate, das genau solche Löcher fangen soll.
     # `audit-notion-sync.py` hat es bis v1.3.0 nie gesetzt.
     "sdk_language": str,
+    # Which revision of the MCP specification this server speaks. Required
+    # rather than optional-with-default, and that is the whole point: during
+    # migration waves A–D both revisions exist in the portfolio at once, and a
+    # default would answer the question for every profile that forgot to. The
+    # wrong answer here does not fail loudly — it silently swaps which half of
+    # the catalog runs, which is the `transport: HTTP` incident again with a
+    # larger blast radius (five checks narrowed to the old revision, fourteen
+    # written for the new one).
+    "mcp_spec_version": str,
     "data_source": dict,
 }
 
@@ -99,8 +108,15 @@ REQUIRED_FIELDS: dict[str, type | tuple[type, ...]] = {
 # Adding a value here is a catalog-wide decision: it must be a value some
 # `applies_when` clause actually tests, or the vocabulary grows a member
 # that can never change an audit outcome.
+# `mcp_spec_version` is closed for the same reason and with a sharper edge:
+# every value here is compared against a check's `spec_baseline`, and a
+# spelling nobody compares against (`2026-07`, `latest`, `2026-07-28-draft`)
+# does not fail — it makes every baseline-bearing check report
+# `baseline-mismatch` and quietly halves the audit. `beide` is deliberately
+# NOT a member: it is an answer a *check* may give, never a server.
 ALLOWED_VALUES: dict[str, tuple[str, ...]] = {
     "transport": ("stdio-only", "dual", "HTTP/SSE"),
+    "mcp_spec_version": ("2025-11-25", "2026-07-28"),
 }
 
 # A field whose value matches one of these patterns is a placeholder.

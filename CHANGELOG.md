@@ -6,6 +6,97 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — Dual-Baseline `2025-11-25` + `2026-07-28`, vierzehn neue Checks, zweite Anwendbarkeits-Achse
+
+Die MCP-Spec `2026-07-28` entfernt Sitzungen, den `initialize`-Handshake und die SSE-Resumability. Damit messen fünf Checks des Katalogs einen Gegenstand, den es nicht mehr gibt, und vierzehn Fragen hatte er noch nie gestellt. Während der Migrationswellen A–D stehen beide Protokollstände gleichzeitig im Portfolio — der Katalog muss ab jetzt sagen können, **gegen welchen** er misst.
+
+**Warum `2.0.0` und nicht `1.8.0`.** Drei Gründe, jeder für sich ausreichend: Das Profil bekommt ein Pflichtfeld ohne Default, das jedes bestehende Profil ungültig macht. Fünf Checks ändern ihre Reichweite. Und `catalog_hash` bewegt sich, womit die Trendlinie portfolioweit bricht (§6.2).
+
+#### Neue Achse: `spec_baseline` im Check, `mcp_spec_version` im Profil
+
+Jeder Check trägt neu ein Frontmatter-Feld `spec_baseline` (`2025-11-25` / `2026-07-28` / `beide`, Default `beide`), jedes Profil ein Pflichtfeld `mcp_spec_version`. Der Abgleich läuft als **eigene Stufe vor** der `applies_when`-Auswertung.
+
+**Technisch wäre das eine Klausel gewesen** — `mcp_spec_version == "2026-07-28"` ist ein gewöhnlicher Feldvergleich, der Evaluator hätte ihn ohne Änderung verarbeitet. Die Trennung kauft genau eine Sache, die die Grammatik nicht kann: einen **eigenen Grund im Report**.
+
+| Reason | Bedeutung |
+|---|---|
+| `no-match` | Das Profil beschreibt nicht die Art Server, um die es geht |
+| `baseline-mismatch` | Geprüft und ausgeschlossen: der Check misst die andere Revision |
+| `baseline-unresolved` | **Nicht geprüft** — das Profil nennt keine `mcp_spec_version` |
+
+In einer `applies_when`-Klausel fielen die ersten beiden zusammen, und der dritte könnte gar nicht entstehen: Ein fehlendes Feld löst `UnknownFieldError` aus, was der Katalog-Evaluator auf «nicht anwendbar» abbildet — «nie gefragt» würde zu «ausgeschlossen». Das ist der Fehler aus §2.6, eine Ebene höher. `eval_applicability.py catalog` exitet deshalb mit **3**, sobald ein Check unresolved bleibt, und `tests/test_spec_baseline.py` verbietet `mcp_spec_version` in jeder `applies_when`-Klausel.
+
+Der Applicability-Report nennt baseline-bedingte Ausfälle **namentlich**. Über eine Server-Migration bewegen sie 11 Checks in die eine und 5 in die andere Richtung; unberichtet liest sich das als sauberer Lauf über einen Katalog, der so nie gelaufen ist.
+
+`mcp_spec_version` ist ein **geschlossenes Vokabular** (`2025-11-25`, `2026-07-28`). Das ist die `transport: HTTP`-Lehre aus v1.3.1, eine Achse weiter: Eine Schreibweise, gegen die niemand vergleicht, wirft keinen Fehler — sie lässt jeden baseline-tragenden Check als `baseline-mismatch` durchfallen und halbiert den Katalog im Stillen. `beide` steht bewusst **nicht** im Vokabular: Es ist eine Antwort, die ein Check geben darf, nie ein Server.
+
+#### Vierzehn neue Checks — alle `advisory`
+
+| ID | Titel | Baseline | Quelle | Severity |
+|---|---|---|---|---|
+| `ARCH-015` | Stateless-Konformität: kein `initialize`, keine Server-Sitzung | 2026-07-28 | SEP-2575, SEP-2567 | high |
+| `ARCH-016` | `server/discover` implementiert — der RPC ist MUSS | 2026-07-28 | SEP-2575 | high |
+| `ARCH-017` | Zustand nur über server-geprägte Handles als Tool-Argumente | 2026-07-28 | SEP-2567 | high |
+| `ARCH-018` | `resultType` auf allen Results | 2026-07-28 | SEP-2322 | medium |
+| `ARCH-019` | Roots/Sampling/Logging: kein Neubau, Bestand mit Fristdatum | beide | SEP-2577, SEP-2596 | medium |
+| `ARCH-020` | `ttlMs`/`cacheScope` und deterministische Reihenfolge | 2026-07-28 | SEP-2549 | medium |
+| `ARCH-021` | Extensions deklariert und versioniert; Tasks nicht im Core | 2026-07-28 | SEP-2663 | medium |
+| `SCALE-008` | `Mcp-Method`/`Mcp-Name` als Pflichtheader | 2026-07-28 | SEP-2243 | high |
+| `SCALE-009` | Legacy HTTP+SSE abgeschaltet — mit Datum | beide | SEP-2596 | high |
+| `SCALE-010` | `subscriptions/listen` statt GET und `resources/subscribe` | 2026-07-28 | SEP-2575 | medium |
+| `HITL-006` | MRTR: `input_required`, Retry, Idempotenz | 2026-07-28 | SEP-2322 | high |
+| `SEC-025` | RFC-9207-`iss`-Validierung vor dem Code-Einlösen | 2026-07-28 | SEP-2468 | high |
+| `SEC-026` | CIMD statt DCR; Credentials issuer-gebunden | beide | PR 2858, SEP-2352, SEP-837 | high |
+| `SEC-027` | `x-mcp-header`: Allow-List für Header aus Tool-Parametern | 2026-07-28 | SEP-2243 | high |
+
+Katalog: 98 → **112 Checks**. `ARCH` 14 → 21, `SCALE` 7 → 10, `SEC` 24 → 27, `HITL` 5 → 6.
+
+**Alle vierzehn kommen als `advisory` herein**, und das ist keine Aufweichung. Die Wellen A–D laufen erst an; `enforced` wäre am Tag des Merges ein rotes Portfolio für ein Protokoll, das noch kein Server spricht — genau der Ablauf, gegen den §2.3 geschrieben wurde. Sie verlassen die Brücke **gemeinsam als Abschluss-Gate von Welle D**, nicht einzeln.
+
+Zur Zahl: Der Stand je Server steht in `portfolio.json` (`mcp_spec_version`, `migration_wave`) und wird hier bewusst **nicht** zitiert. Eine frühere Fassung dieses Eintrags schrieb «39 von 42 Servern» — die Zahl stammte aus der SDK-Verteilung (39 Server auf `mcp` 2.x, 3 auf standalone `fastmcp`) und sagt über die Spec-Version nichts. Zwei Merkmale mit derselben Zahl sind nicht dasselbe Merkmal; das ist `OPS-004`, begangen im eigenen CHANGELOG.
+
+**Der Guard gegen Massen-Demotion musste dafür umgebaut werden, nicht abgeschaltet.** `advisory <= len(catalog) // 10` war für Checks kalibriert, die einzeln ankommen, und hätte bei 18 von 112 gefeuert. Der Reflex wäre gewesen, die Schwelle anzuheben — womit das Gate dauerhaft weg wäre. Stattdessen misst es jetzt die **Nicht-Migrations-Checks**, und die vierzehn Ausnahmen sind namentlich gepinnt: Ein zweiter Test verlangt, dass jede von ihnen tatsächlich `2026-07-28` benennt. Eine unbenannte Ausnahme wäre gewachsen — der nächste unbequeme Check hätte still eine Baseline bekommen und wäre aus der Zählung verschwunden.
+
+#### Vier Checks korrigiert, von denen zwei schon vor dieser Migration falsch waren
+
+Das ist der unangenehmere Teil des Release, und er hat nichts mit `2026-07-28` zu tun.
+
+- **`OBS-001` führte «Schema-Mismatch» als Protocol Error.** Falsch seit `2025-11-25`: SEP-1303 verlangt Input-Validierungsfehler als **Tool Execution Error**, damit das Modell sich selbst korrigieren kann. Der Katalog hat acht Monate lang das Gegenteil seiner Quelle gelehrt — und ein `pass` daraus kann für einen Server vergeben worden sein, der Validierungsfehler als JSON-RPC-Error warf und damit jedes Modell in die Sackgasse schickte. Dazu die Fehlercode-Neuordnung aus `2026-07-28` (`-32002` → `-32602`; `-32020`…`-32099` reserviert).
+- **`SEC-003` verlangte `WWW-Authenticate` und kannte den zweiten Discovery-Weg nicht.** SEP-985 richtet die Protected-Resource-Metadata-Discovery an RFC 9728 aus und macht den Header als Discovery-Weg optional, mit `.well-known`-Rückfall. Ein Server, der nur den Header setzt, hat den Check bestanden und ist für jeden RFC-9728-Client unauffindbar. Neu mit eigenem Verifikationsmodus.
+- **`ARCH-012`** pinnte die `protocolVersion` an einer Stelle, die auf der neuen Baseline nichts mehr durchsetzt: Die Version reist pro Request in `_meta`, und eine Konstruktor-Konstante ohne Vergleich dagegen ist Dekoration. Neu mit Baseline-Tabelle und getrennten Pass-Kriterien.
+- **`OBS-006`** liess die Trace-Kontext-Weitergabe offen; SEP-414 konventioniert sie (`traceparent`, `tracestate`, `baggage` in `_meta`).
+
+**Die beiden erstgenannten sind Re-Audit-Auslöser nach §5c** — auf **beiden** Baselines, also für alle 42 Server. Ein Katalog, der sich geirrt hat, macht bestandene Audits nicht rückwirkend richtig.
+
+Die Lehre ist in §2.4 verankert: Ein Check aus einem Spec-Changelog trägt neu seine **SEP-Nummer in `spec_ref`**. Ohne sie ist bei der nächsten Revision nicht feststellbar, ob er noch die aktuelle Fassung seiner Quelle wiedergibt — und genau das war der Zustand, in dem `OBS-001` acht Monate überlebt hat.
+
+#### Sieben weitere Checks auf den Mechanismus-Wechsel nachgezogen
+
+`ARCH-013` (welche Netzpfade es überhaupt noch gibt), `SDK-003` (`logging/setLevel` entfernt, `notifications/message` nur bei gesetztem `logLevel`), `HITL-001`/`HITL-002`/`HITL-003` (Sampling läuft über MRTR statt über serverinitiierte Requests), `HITL-005` (Bestätigung über MRTR — mit der neuen Doppelausführungs-Gefahr im Retry), `SEC-002` (Verweis auf die `iss`-Prüfung der Authorization-Response).
+
+Vier weitere tragen nur eine Fussnote zum Sampling-Bezug: `SEC-015`, `SEC-023`, `CH-002`, `HITL-004`.
+
+**`SEC-017` wurde geprüft und nicht geändert.** Der Grep nach `roots` traf dort `ALLOWED_ROOTS` — eine lokale Variable für Filesystem-Pfade, kein Bezug zum MCP-Roots-Feature. Ohne die Gegenprobe wäre er als betroffen gemeldet worden.
+
+#### Fünf Checks verengt statt gelöscht
+
+`SCALE-002`, `SCALE-003`, `SCALE-007`, `SDK-004` und `SEC-009` messen einen Gegenstand, den `2026-07-28` entfernt hat. Sie bekommen `spec_baseline: 2025-11-25` und **nennen im Kopf ihren Nachfolger**. Keine Umbenennung, keine Löschung: Löschen liesse die Frage mit dem Check verschwinden, und ohne Nachfolgerangabe wäre nicht auffindbar, wo sie jetzt gestellt wird. `SEC-009` (Session-ID-Bindung) geht in `ARCH-017` (Handle-Bindung) über — dieselbe Frage nach Entropie, Identitätsbindung und Ablauf, an einen anderen Gegenstand gestellt.
+
+`SCALE-007` ist der Fall, den die Aufgabenstellung nicht auf dem Schirm hatte: SEP-2575 entfernt Resumability und `Last-Event-ID` **ersatzlos**. Ein abgerissener Antwortstrom verliert den laufenden Request, und der Client **MUSS** ihn neu stellen. Damit wird `ARCH-010` (Idempotency-Keys) auf der neuen Baseline strenger, nicht schwächer.
+
+#### Sonstiges
+
+- `tools/parse_catalog.py`: `spec_baseline` wird geparst; ein Tippfehler ist ein **harter Fehler** — dieselbe Behandlung wie bei `adoption`, aus demselben Grund. Neu `spec_baseline_counts()` und `ids_for_baseline()`.
+- `tools/eval_applicability.py`: `baseline_applies()`, `baseline_summary()`, Baseline-Stufe in `evaluate_catalog()`, Exit **3** bei unresolved.
+- `tools/validate_profile.py`: `mcp_spec_version` als Pflichtfeld mit geschlossenem Vokabular.
+- `audit-notion-sync.py`: liest die Notion-Property **«MCP-Spec-Version»**. Vorbelegung `2025-11-25` — bewusst die konservative Richtung: Ein migrierter Server bekommt damit zu wenige Checks und fällt beim ersten Migrations-Finding auf, während der umgekehrte Fehler still bliebe. **Die Property muss im Tracker angelegt und je Server gepflegt werden**, sonst ist die Vorbelegung die einzige Quelle.
+- `SKILL.md` §2.7 (neue Sektion, ohne Umnummerierung bestehender Anker), §1.1, §1.2, §2.4, §3.1, §3.3, Qualitätschecklist.
+- **§5 Re-Audit-Auslöser um Punkt e) erweitert:** Die Migration eines Servers ist selbst ein Auslöser, auch ohne jede Katalogänderung — davor und danach wurde gegen teilweise verschiedene Katalogmengen gemessen.
+- `docs/applies-when-dsl.md`: neue Sektion, warum die Baseline **nicht** Teil der DSL ist.
+- `tests/test_spec_baseline.py`: 29 Tests. Fünf Mutationen gegengeprüft — Baseline-Stufe ausgehängt, `unresolved` mit `mismatch` zusammengelegt, Vokabular geöffnet, Pflichtfeld auf optional, Typo-Gate entfernt. Alle fünf schlagen an.
+
+**Nicht enthalten:** Die Migration der Server selbst. Dieser Katalog misst sie, er führt sie nicht durch.
+
 ### Hinzugefügt — `OPS-008`: Prüflogik in Workflow-Heredocs ist nicht nachweisbar
 
 `OPS-005` fragt, ob ein Gate gelaufen ist. `OPS-006`, ob sein Urteil über die Zeit hält. `OPS-008` fragt das Vorgelagerte: **Lässt sich das Urteil überhaupt prüfen?** Ein `run: |` mit `python - <<'PY' … PY` ist ausführbarer Code an der einzigen Stelle im Repo, an der Code keine Tests haben kann — nicht importierbar, nicht mit Grenzfällen aufrufbar, nicht mutationstestbar.
