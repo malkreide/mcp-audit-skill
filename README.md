@@ -166,12 +166,32 @@ If your audit tracker lives in Notion, use `audit-notion-sync.py` for bidirectio
 **One-time setup:**
 
 1. In Notion: tracker → `•••` → **Connections** → **+ Add connections** → select your internal integration
-2. Add a new property to the tracker: name `Org-Kontext`, type `Multi-select`, options `Stadt Zürich`, `Schulamt`, `Volksschule`, `Enterprise` — then tick what applies per server
+2. Add three properties to the tracker. Each one has a default the sync falls back to, so a missing column does not fail — it quietly decides something for you:
+
+   | Property | Type | Options | What the fallback costs |
+   |---|---|---|---|
+   | `Org-Kontext` | Multi-select | `Stadt Zürich`, `Schulamt`, `Volksschule`, `Enterprise` | All org flags `False` — most CH-compliance checks drop out |
+   | `MCP-Spec-Version` | Select | `2025-11-25`, `2026-07-28` | Every server audited against the `2025-11-25` half of the catalogue |
+   | `SDK-Sprache` | Select | `Python`, `TypeScript` | Every server treated as Python — `SDK-001…006` and `IDENT-005` measure the wrong SDK |
+
+   Then fill them in per server. An **empty cell** behaves exactly like a missing column; `pull` names the affected servers so it does not pass unnoticed.
+
 3. Token into your shell RC (never commit it):
+
    ```bash
+   # bash / zsh
    export NOTION_TOKEN="ntn_..."
    ```
-4. Verify:
+
+   ```powershell
+   # PowerShell — this session only
+   $env:NOTION_TOKEN = "ntn_..."
+   # PowerShell — persistent, takes effect in a new terminal
+   [Environment]::SetEnvironmentVariable("NOTION_TOKEN", "ntn_...", "User")
+   ```
+
+4. Verify — the output must show `present ✓` for all three properties:
+
    ```bash
    python3 audit-notion-sync.py health
    ```

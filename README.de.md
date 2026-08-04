@@ -166,12 +166,32 @@ Wenn dein Audit-Tracker in Notion lebt, nutze `audit-notion-sync.py` für bidire
 **Einmaliges Setup:**
 
 1. In Notion: Tracker → `•••` → **Connections** → **+ Add connections** → deine Internal Integration auswählen
-2. Im Tracker eine neue Property anlegen: Name `Org-Kontext`, Type `Multi-select`, Optionen `Stadt Zürich`, `Schulamt`, `Volksschule`, `Enterprise` — dann pro Server ankreuzen, was zutrifft
+2. Im Tracker drei Properties anlegen. Jede hat einen Default, auf den der Sync zurückfällt — eine fehlende Spalte scheitert also nicht, sie entscheidet still etwas für dich:
+
+   | Property | Type | Optionen | Was der Default kostet |
+   |---|---|---|---|
+   | `Org-Kontext` | Multi-select | `Stadt Zürich`, `Schulamt`, `Volksschule`, `Enterprise` | Alle Org-Flags `False` — die meisten CH-Compliance-Checks fallen weg |
+   | `MCP-Spec-Version` | Select | `2025-11-25`, `2026-07-28` | Jeder Server wird gegen die `2025-11-25`-Hälfte des Katalogs geprüft |
+   | `SDK-Sprache` | Select | `Python`, `TypeScript` | Jeder Server gilt als Python — `SDK-001…006` und `IDENT-005` messen das falsche SDK |
+
+   Danach pro Server ausfüllen. Eine **leere Zelle** verhält sich genau wie eine fehlende Spalte; `pull` nennt die betroffenen Server namentlich, damit es nicht unbemerkt durchgeht.
+
 3. Token in deine Shell-RC (niemals committen):
+
    ```bash
+   # bash / zsh
    export NOTION_TOKEN="ntn_..."
    ```
-4. Verifizieren:
+
+   ```powershell
+   # PowerShell — nur diese Session
+   $env:NOTION_TOKEN = "ntn_..."
+   # PowerShell — dauerhaft, wirkt im nächsten Terminal
+   [Environment]::SetEnvironmentVariable("NOTION_TOKEN", "ntn_...", "User")
+   ```
+
+4. Verifizieren — die Ausgabe muss für alle drei Properties `present ✓` zeigen:
+
    ```bash
    python3 audit-notion-sync.py health
    ```
