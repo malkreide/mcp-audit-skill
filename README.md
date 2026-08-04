@@ -1,11 +1,11 @@
 # mcp-audit-skill
 
-> Claude skill for systematic audits of MCP servers against a curated corpus of best-practice standards. **98 checks**, 12 categories, with a Swiss compliance layer for public administration and a data-fidelity layer for data-source servers.
+> Claude skill for systematic audits of MCP servers against a curated corpus of best-practice standards. **112 checks**, 12 categories, on a dual spec baseline (`2025-11-25` and `2026-07-28`), with a Swiss compliance layer for public administration and a data-fidelity layer for data-source servers.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Checks: 98](https://img.shields.io/badge/Checks-98-blue.svg)](./checks/)
+[![Checks: 112](https://img.shields.io/badge/Checks-112-blue.svg)](./checks/)
 [![Coverage: A1–A9, B1–B12, C1–C4](https://img.shields.io/badge/Best--Practice%20Coverage-A1%E2%80%93A9%2C%20B1%E2%80%93B12%2C%20C1%E2%80%93C4-success)](./CHANGELOG.md)
-[![MCP Spec: 2025-06-18](https://img.shields.io/badge/MCP%20Spec-2025--06--18-orange)](https://modelcontextprotocol.io/specification/)
+[![MCP Spec: 2025-11-25 + 2026-07-28](https://img.shields.io/badge/MCP%20Spec-2025--11--25%20%2B%202026--07--28-orange)](https://modelcontextprotocol.io/specification/)
 
 🇩🇪 [Deutsche Version](README.de.md)
 
@@ -70,11 +70,11 @@ With the slash command installed:
 > /audit-mcp .
 ```
 
-Output: profile-driven selection of the ~30 applicable checks out of 98, automated verification of every `automated` / `config_check` / `documentation_check` mode, findings stubs for `code_review` / `runtime_test` modes, and a full audit report from the template — all under `<repo>/audits/YYYY-MM-DD-<server-name>/`.
+Output: profile-driven selection of the ~30 applicable checks out of 112, automated verification of every `automated` / `config_check` / `documentation_check` mode, findings stubs for `code_review` / `runtime_test` modes, and a full audit report from the template — all under `<repo>/audits/YYYY-MM-DD-<server-name>/`.
 
 ## Standards provenance
 
-The 98 checks come from two curated best-practice documents plus five layers of our own (Swiss compliance, data fidelity, identity, upstream drift, dependency resolution), in auditable form. Every check carries a `pdf_ref` reference to its source in the frontmatter.
+The 112 checks come from two curated best-practice documents plus five layers of our own (Swiss compliance, data fidelity, identity, upstream drift, dependency resolution), in auditable form. Every check carries a `pdf_ref` reference to its source in the frontmatter.
 
 | Source | Content | Derived checks |
 |---|---|---|
@@ -85,7 +85,8 @@ The 98 checks come from two curated best-practice documents plus five layers of 
 | **Identity layer** | User agent, `__version__`, manifest version, documented version — what a server claims to be from the outside; plus whether the published artefact still starts at all. Derived from a portfolio sweep across 30 servers and from two dead releases on the index | 7 Checks (`IDENT-*`) |
 | **Upstream-drift layer** | The contract with the source changes and nothing notices: retired endpoints, fallbacks that swap the dataset, assertions the failure case satisfies too — and prose in the repo that contradicts the code. Derived from a real portfolio incident ([meteoswiss-mcp#33](https://github.com/malkreide/meteoswiss-mcp/issues/33), #35, #37) and from a CHANGELOG that called merged work pending | 6 Checks (`DRIFT-*`) |
 | **Dependency layer** | A range without an upper bound hands the choice of major version to whoever publishes next: the published artefact changes without anyone publishing it. Derived from `mcp` 2.0.0 removing `mcp.server.fastmcp` on 2026-07-28 and killing two releases that had nothing wrong with them | 1 Check (`DEP-*`) |
-| **Architecture** | Tool design, annotations, idempotency and repo structure from main catalogue section 2 and appendix A; plus the retry policy toward the source (`ARCH-014`) — our own finding: at the time of the survey, of eleven portfolio servers eight retried, none read `Retry-After` and none spread its backoff; all eleven do now | 14 Checks (`ARCH-*`) |
+| **Architecture** | Tool design, annotations, idempotency and repo structure from main catalogue section 2 and appendix A; plus the retry policy toward the source (`ARCH-014`) — our own finding: at the time of the survey, of eleven portfolio servers eight retried, none read `Retry-After` and none spread its backoff; all eleven do now; plus the seven stateless-protocol checks from the spec migration | 21 Checks (`ARCH-*`) |
+| **Spec-migration layer** (`2026-07-28`) | Statelessness, `server/discover`, handle-based state, `resultType`, deprecated Roots/Sampling/Logging, `ttlMs`/`cacheScope`, extensions, mandatory `Mcp-Method`/`Mcp-Name` headers, legacy-SSE deadline, `subscriptions/listen`, MRTR, RFC-9207 `iss`, CIMD instead of DCR, `x-mcp-header`. Every check names its SEP in the frontmatter | 14 checks across `ARCH`, `SCALE`, `HITL`, `SEC` |
 | **Observability** | Logging, error classification, SIEM and tracing from main catalogue section 6 and appendix B10; plus error diagnosability (`OBS-007`) — our own finding: an error masked correctly on the way out, with nothing behind the mask on the way in ([swiss-efv-mcp#16](https://github.com/malkreide/swiss-efv-mcp/pull/16)) | 7 Checks (`OBS-*`) |
 | **Operational practice** | Test strategy, documentation standard and phase architecture from appendix C; plus audit honesty (`OPS-004`), pipeline honesty (`OPS-005`) documented commands that actually run (`OPS-007`) and check logic that can be tested at all (`OPS-008`) — our own findings: a report that closed an unexplained remainder with a guess ([termdat-mcp#11](https://github.com/malkreide/termdat-mcp/issues/11)), a test suite no workflow ever ran ([mcp-continuous-auditor#29](https://github.com/malkreide/mcp-continuous-auditor/pull/29)), and a setup instruction that is a syntax error in PowerShell | 8 Checks (`OPS-*`) |
 
@@ -202,19 +203,19 @@ Then, in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`. The workflow 
 
 | Code | Area | Source | Count | Severity profile |
 |---|---|---|---:|---|
-| `ARCH` | Tool design, annotations, idempotency, upstream retry policy, repo structure, spec versioning | Main catalogue sec 2 + appendix A + custom | 14 | 2 critical · 5 high · 7 medium |
+| `ARCH` | Tool design, annotations, idempotency, upstream retry policy, repo structure, spec versioning, stateless conformance, handles, extensions | Main catalogue sec 2 + appendix A + custom + spec 2026-07-28 | 21 | 2 critical · 8 high · 11 medium |
 | `SDK` | FastMCP, TypeScript, Zod, lifecycle | Main catalogue sec 3 | 6 | — · 4 high · 2 medium |
-| `SEC` | Security (largest category) | Main catalogue sec 4 + appendix B | 24 | 8 critical · 13 high · 3 medium |
-| `SCALE` | Transport, load balancing, containers, gateway | Main catalogue sec 5 | 7 | — · 3 high · 4 medium |
+| `SEC` | Security (largest category) | Main catalogue sec 4 + appendix B + spec 2026-07-28 | 27 | 8 critical · 16 high · 3 medium |
+| `SCALE` | Transport, load balancing, containers, gateway, mandatory headers, deprecation deadlines | Main catalogue sec 5 + spec 2026-07-28 | 10 | — · 5 high · 5 medium |
 | `OBS` | Logging, errors, SIEM, OpenTelemetry | Main catalogue sec 6 + appendix B10 | 7 | 1 critical · 2 high · 4 medium |
-| `HITL` | Sampling, human-in-the-loop | Main catalogue sec 7 | 5 | 2 critical · 2 high · 1 medium |
+| `HITL` | Sampling, human-in-the-loop, multi round-trip requests | Main catalogue sec 7 + spec 2026-07-28 | 6 | 2 critical · 3 high · 1 medium |
 | `CH` | DSG/EDÖB, ISDS City of Zurich, compulsory schooling | Custom | 8 | 2 critical · 4 high · 2 medium |
 | `OPS` | Test strategy, documentation standard, phase architecture, audit honesty, pipeline honesty, reproducible verdicts, executable instructions, testable guards | Appendix C + custom | 8 | — · 5 high · 3 medium |
 | `FID` | Data fidelity: scope defaults, recall, empty results, query syntax | Custom | 5 | 1 critical · 2 high · 2 medium |
 | `IDENT` | Identity: user agent, `__version__`, manifest, documented version, release gap, artefact health | Custom | 7 | — · 3 high · 3 medium · 1 low |
 | `DRIFT` | Upstream contract and repo prose: endpoint drift, fallback semantics, test quality, CHANGELOG vs code | Custom | 6 | — · 3 high · 3 medium |
 | `DEP` | Resolution space of the published artefact: upper bounds, major upgrades | Custom | 1 | — · 1 high |
-| **Total** | | | **98** | **16 critical · 47 high · 34 medium · 1 low** |
+| **Total** | | | **112** | **16 critical · 56 high · 39 medium · 1 low** |
 
 ## Severity levels
 
@@ -234,7 +235,9 @@ Severity says **how bad** a violation is. The adoption level says **whether the 
 | `enforced` | The catalogue holds the portfolio to it | A `fail` on `critical`/`high` blocks production readiness |
 | `advisory` | The check reports but does not yet judge | The finding is created, counted and carried at full severity — but does not block |
 
-The field is optional; when absent, `enforced` applies. Of 98 checks exactly four are `advisory`: `OPS-005`, `OPS-006`, `OPS-007` and `OPS-008`. `DEP-001`, `DRIFT-006`, `OBS-007` and `ARCH-014` took the same path and have since been promoted to `enforced` — the bridge is meant to carry a handful of new checks, not to fill up.
+The field is optional; when absent, `enforced` applies. Of 112 checks exactly eighteen are `advisory`: `OPS-005`, `OPS-006`, `OPS-007`, `OPS-008` — plus the fourteen migration checks `ARCH-015`, `ARCH-016`, `ARCH-017`, `ARCH-018`, `ARCH-019`, `ARCH-020`, `ARCH-021`, `HITL-006`, `SCALE-008`, `SCALE-009`, `SCALE-010`, `SEC-025`, `SEC-026` and `SEC-027`. `DEP-001`, `DRIFT-006`, `OBS-007` and `ARCH-014` took the same path and have since been promoted to `enforced` — the bridge is meant to carry a handful of new checks, not to fill up.
+
+The fourteen entered together because they measure a protocol the portfolio has not migrated to yet: migration waves A–D are only starting, so on the day they merged the catalogue's own example profiles were the only things speaking `2026-07-28`. The per-server distribution lives in `portfolio.json` (`mcp_spec_version`, `migration_wave`), not here — this file states the reason, not a count it cannot verify. They leave advisory as the closing gate of migration wave D, not one at a time.
 
 **Advisory hides nothing.** Only the veto is dropped. An advisory finding at blocking severity is still named explicitly even when the verdict is green, so that a later promotion is a decision rather than a surprise.
 
@@ -248,7 +251,7 @@ python tools/aggregate_results.py aggregate verification-results.json \
 ## Audit workflow (short form)
 
 1. **Load the profile** — server properties from the Notion audit tracker, or inferred from the repo
-2. **Load the catalogue** — parse all 98 checks
+2. **Load the catalogue** — parse all 112 checks
 3. **Applicability filter** — select only the checks that fit (a stdio-only server skips the OAuth checks, for instance)
 4. **Run the checks** — automated (grep, AST, config scan) or as a code-review TODO per check
 5. **Document findings** — `templates/finding.md`
@@ -329,7 +332,7 @@ proof holds.
 **Completeness:**
 - ✅ Methodology (`SKILL.md`) and templates (finding, audit report)
 - ✅ Reference summary
-- ✅ Check catalogue: **98 checks, all 12 categories complete**
+- ✅ Check catalogue: **112 checks, all 12 categories complete**
 - ✅ Slash command for Claude Code (`/audit-mcp <repo>`)
 - ✅ Portfolio batch audit (`audit-portfolio.sh` for multi-server runs)
 - ✅ Inventory gate (`./audit-portfolio.sh --verify-inventory`) — finds servers missing from `portfolio.yaml`, including nested ones

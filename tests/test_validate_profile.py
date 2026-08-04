@@ -31,6 +31,7 @@ def _good_profile() -> dict:
         "volksschule_context": False,
         "enterprise_context": False,
         "sdk_language": "Python",
+        "mcp_spec_version": "2025-11-25",
         "data_source": {"is_swiss_open_data": True},
     }
 

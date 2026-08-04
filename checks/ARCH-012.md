@@ -12,11 +12,12 @@ evidence_required: 3
 
 ## Description
 
-Die MCP-Spec hat in 13 Monaten vier Major-Updates erlebt (2024-11, 2025-03, 2025-06, 2025-11). Das ist eine ungewöhnlich hohe Velocity für einen Industriestandard. Konkrete Folgen für Server-Maintainer:
+Die MCP-Spec hat in 21 Monaten fünf Major-Updates erlebt (2024-11, 2025-03, 2025-06, 2025-11, 2026-07). Das ist eine ungewöhnlich hohe Velocity für einen Industriestandard. Konkrete Folgen für Server-Maintainer:
 
 1. **Tool Annotations** kamen erst 2025-03-26
 2. **OAuth Resource Server** mit RFC 8707 wurde erst 2025-06-18 verpflichtend
 3. **WebSocket-Transport** wurde 2025-03 abgeschafft, durch Streamable HTTP ersetzt
+4. **Sitzungen und der `initialize`-Handshake** sind mit 2026-07-28 ersatzlos entfallen
 
 Wer die `protocolVersion` als «latest» (oder gar nicht) pinnt, riskiert dass:
 
@@ -33,15 +34,44 @@ Der Anhang verlangt drei Disziplinen:
 
 Severity ist `medium`, weil Verstösse meist über Tests oder CI sichtbar werden — nicht stille Sicherheitslücken, sondern offene Brüche, die behoben werden.
 
+### Wo die Version steht, hängt an der Baseline
+
+Punkt 1 hat mit `2026-07-28` seinen Ort gewechselt, und das ist keine Feinheit — es ist der Unterschied zwischen einer Konstruktor-Konstante und einem Feld an jeder Anfrage:
+
+| | `2025-11-25` | `2026-07-28` |
+|---|---|---|
+| Wo verhandelt | einmal im `initialize`-Handshake | gar nicht — jede Anfrage trägt die Version selbst |
+| Wo im Code | `protocol_version=` am Server-Objekt | `io.modelcontextprotocol/protocolVersion` in `_meta`, pro Request gelesen |
+| Wie ausgewiesen | Capabilities aus dem Handshake | `server/discover` (`ARCH-016`), als **Liste** unterstützter Versionen |
+| Bei Nichtübereinstimmung | Handshake scheitert | `UnsupportedProtocolVersionError` (`-32022`) je Anfrage |
+
+**Was dabei kippt:** Auf der alten Baseline war eine gepinnte Version eine Zusicherung — der Handshake liess nichts anderes zu. Auf der neuen ist eine im Konstruktor gepinnte Version bestenfalls Dekoration und schlimmstenfalls eine Lüge: Sie hindert niemanden daran, eine Anfrage mit einer anderen Version zu schicken, und wenn der Server das `_meta`-Feld nicht liest, bearbeitet er sie trotzdem. Der Server behauptet dann eine Version, die er nicht durchsetzt.
+
+Deshalb prüft Modus 1 unten **je Baseline etwas anderes**. Dieselbe Frage, zwei Orte.
+
 ## Verification
 
 ### Modus 1: code_review (protocolVersion gepinnt)
 
 ```bash
-grep -rE 'protocolVersion|protocol_version|PROTOCOL_VERSION' src/
+grep -rnE 'protocolVersion|protocol_version|PROTOCOL_VERSION|SUPPORTED_PROTOCOL' src/
 ```
 
-**Pass-Pattern:**
+**Auf `mcp_spec_version: 2026-07-28`** ist das Pass-Pattern ein anderes — die Liste plus das Lesen aus `_meta`:
+
+```python
+SUPPORTED_PROTOCOL_VERSIONS = ["2026-07-28"]
+
+def negotiate(meta: dict) -> str:
+    requested = meta.get("io.modelcontextprotocol/protocolVersion")
+    if requested not in SUPPORTED_PROTOCOL_VERSIONS:
+        raise UnsupportedProtocolVersionError(-32022, supported=SUPPORTED_PROTOCOL_VERSIONS)
+    return requested
+```
+
+Fail auf dieser Baseline: eine Konstante, die nirgends gegen `_meta` verglichen wird. Sie sieht wie ein Pin aus und ist keiner.
+
+**Auf `mcp_spec_version: 2025-11-25` gilt weiterhin das Pattern darunter:**
 
 ```python
 from mcp.server import FastMCP
@@ -154,6 +184,8 @@ updates:
 ## Pass Criteria
 
 - [ ] `protocolVersion` ist im Server-Code explizit gepinnt (kein «latest», kein Default)
+- [ ] Auf `2026-07-28`: Die gepinnte Version wird **pro Request** gegen `io.modelcontextprotocol/protocolVersion` aus `_meta` geprüft — eine Konstante ohne diesen Vergleich zählt nicht
+- [ ] Auf `2026-07-28`: Nichtübereinstimmung liefert `UnsupportedProtocolVersionError` (`-32022`), und `server/discover` nennt dieselbe Versionsliste (`ARCH-016`)
 - [ ] `CHANGELOG.md` vorhanden, im Keep-a-Changelog-Format
 - [ ] CHANGELOG-Einträge nennen explizit Spec-Version-Bumps
 - [ ] README hat Sektion «MCP Protocol Version» mit aktuell unterstützter Version
@@ -212,6 +244,9 @@ Im Audit-Tracker (Notion) oder GitHub Issues ein recurring Reminder für quartal
 S — < 1 Tag pro Server. Pinning + CHANGELOG-Template + Dependabot-Setup.
 
 ## References
+
+- [Spec 2026-07-28 — Changelog, Major #2 und #3](https://modelcontextprotocol.io/specification/2026-07-28/changelog)
+- `ARCH-015` (Stateless), `ARCH-016` (server/discover), `ARCH-021` (Extensions)
 
 - Anhang A9 — Versionierung und Spec-Velocity
 - [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/)

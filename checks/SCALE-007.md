@@ -4,11 +4,17 @@ title: "Wiederaufnahme abgerissener Streams via Last-Event-ID"
 category: SCALE
 severity: medium
 applies_when: '(transport == "HTTP/SSE" or transport == "dual") and is_cloud_deployed == true'
+spec_baseline: 2025-11-25
 pdf_ref: "Sec 5.1"
 evidence_required: 2
 ---
 
 # SCALE-007 — Wiederaufnahme abgerissener Streams via Last-Event-ID
+
+> **Baseline `2025-11-25`.** Dieser Check misst gegen das Protokoll vor
+> der Stateless-Umstellung und wird für Server mit
+> `mcp_spec_version: 2026-07-28` nicht mehr ausgewertet.
+> Nachfolger: ersatzlos — SEP-2575 entfernt Resumability und `Last-Event-ID`. Ein abgerissener Antwortstrom verliert den laufenden Request; der Client **MUSS** ihn als neuen Request mit neuer Request-ID wiederholen. Damit wird `ARCH-010` (Idempotency-Keys) auf der neuen Baseline strenger, nicht schwächer: die Wiederholung ist jetzt der vorgesehene Weg.
 
 ## Description
 

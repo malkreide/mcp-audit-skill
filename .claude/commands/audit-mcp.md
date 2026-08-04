@@ -77,6 +77,7 @@ Daraus baust du das Profil mit folgenden Variablen (Defaults bei Unsicherheit):
 |---|---|---|
 | `transport` | `stdio-only`, `dual`, `HTTP/SSE` | `dual` |
 | `sdk_language` | `Python`, `TypeScript` | aus dem Repo ablesen (`pyproject.toml` → Python, `package.json` → TypeScript) |
+| `mcp_spec_version` | `2025-11-25`, `2026-07-28` | **kein Default — ermitteln** (siehe unten) |
 | `auth_model` | `none`, `API-Key`, `OAuth-Proxy`, `OIDC` | `none` |
 | `data_class` | `Public Open Data`, `Verwaltungsdaten`, `PII` | `Public Open Data` |
 | `write_capable` | `true`, `false` | `false` |
@@ -90,6 +91,21 @@ Daraus baust du das Profil mit folgenden Variablen (Defaults bei Unsicherheit):
 | `volksschule_context` | `true`, `false` | `false` |
 | `enterprise_context` | `true`, `false` | `false` |
 | `data_source.is_swiss_open_data` | `true`, `false` | inferiert aus Quellen-URLs |
+
+**`mcp_spec_version` hat als einziges Feld keinen Rückfall-Default**, weil eine falsche Angabe hier nicht auffällt: Sie tauscht die geprüfte Katalog-Hälfte aus, ohne dass etwas rot wird. Fünf Checks messen einen Gegenstand, den `2026-07-28` entfernt hat, vierzehn einen, den es davor nicht gab. Ermitteln statt raten:
+
+```bash
+# Reste des alten Protokolls — Treffer sprechen für 2025-11-25
+grep -rniE "mcp[-_]session[-_]id|initialize|last[-_]event[-_]id" $TARGET/src/ | head
+
+# Merkmale des neuen — Treffer sprechen für 2026-07-28
+grep -rniE "server/discover|input_required|ttlMs|cacheScope|Mcp-Method" $TARGET/src/ | head
+
+# Was das README behauptet
+grep -rniE "2025-11-25|2026-07-28|protocol.?version" $TARGET/README.md $TARGET/README.de.md
+```
+
+Widersprechen sich Code und README, gilt der Code — und der Widerspruch gehört als Befund in den Report (`ARCH-012`). Lässt sich der Stand **nicht** feststellen, ist das kein Fall für eine Annahme: Frag den User. Ein geratener Wert ist hier schlimmer als eine offene Frage, weil er das Audit vollständig aussehen lässt.
 
 **Output Schritt 1:** Vollständiges Profil als YAML-Block. **Bestätige mit dem User**, dass das Profil korrekt ist, bevor du weiter machst. Profil falsch = ganzer Audit falsch.
 
@@ -165,7 +181,16 @@ Erstelle eine Tabelle:
 | SEC-003 | Progressive Scope... | SEC | high | ❌ | auth_model = none |
 ```
 
-**Output Schritt 3:** Tabelle aller 53 Checks mit Applicable-Spalte. Plus Zusammenfassung «X von 53 Checks anwendbar».
+**Vor der `applies_when`-Auswertung läuft die Baseline-Stufe.** Jeder Check trägt ein Frontmatter-Feld `spec_baseline` (`2025-11-25` / `2026-07-28` / `beide`, Default `beide`). Passt es nicht zur `mcp_spec_version` des Profils, fällt der Check aus — mit eigenem Grund, nicht als gewöhnliches `no-match`:
+
+| Reason | Bedeutung |
+|---|---|
+| `baseline-mismatch` | geprüft und ausgeschlossen: der Check misst die andere Revision |
+| `baseline-unresolved` | **nicht geprüft** — das Profil nennt keine `mcp_spec_version` |
+
+Bei `baseline-unresolved` exitet `eval_applicability.py catalog` mit **3**. Dann wird Schritt 4 nicht gestartet: Die betroffenen Checks sind weder gelaufen noch ausgeschlossen.
+
+**Output Schritt 3:** Tabelle aller Checks mit Applicable-Spalte. Plus Zusammenfassung «X von Y Checks anwendbar» — **und eine eigene Zeile mit den baseline-bedingten Ausfällen, namentlich**. Ohne sie liest sich ein Lauf über eine kleinere Katalog-Hälfte wie ein sauberer Lauf über den ganzen Katalog.
 
 ---
 

@@ -128,22 +128,101 @@ class TestRealCatalogUnchanged:
         # finding behind the check surfaced only because a user said which
         # shell they use. Enforced on day one would fail the portfolio for a
         # property nobody has measured yet — advisory until a run does.
+        # v2.0.0 adds fourteen checks for the 2026-07-28 spec baseline. All
+        # fourteen enter advisory, and that is not a softening: migration waves
+        # A–D are only starting, so enforced on day one would be a red
+        # portfolio for a protocol no server speaks yet — the exact failure
+        # mode §2.3 exists to prevent. (The per-server distribution lives in
+        # portfolio.json, not in this repo; no count is asserted here because
+        # none can be verified from here.)
+        #
+        # They leave advisory as the closing gate of migration wave D, not one
+        # by one.
         assert advisory_ids(parse_catalog(CHECKS_DIR)) == [
+            "ARCH-015",
+            "ARCH-016",
+            "ARCH-017",
+            "ARCH-018",
+            "ARCH-019",
+            "ARCH-020",
+            "ARCH-021",
+            "HITL-006",
             "OPS-005",
             "OPS-006",
             "OPS-007",
             "OPS-008",
+            "SCALE-008",
+            "SCALE-009",
+            "SCALE-010",
+            "SEC-025",
+            "SEC-026",
+            "SEC-027",
         ]
+
+    # The migration cohort: checks that arrived with the 2026-07-28 spec
+    # baseline and ride the bridge together rather than one at a time.
+    #
+    # This set is excluded from the ratio guard below, and pinning it by name
+    # is the price of that exclusion. An unnamed exemption would grow — the
+    # next inconvenient check would quietly acquire a migration baseline and
+    # disappear from the count, which is precisely the drift the ratio guard
+    # was written to catch.
+    MIGRATION_ADVISORY: ClassVar[frozenset[str]] = frozenset(
+        {
+            "ARCH-015",
+            "ARCH-016",
+            "ARCH-017",
+            "ARCH-018",
+            "ARCH-019",
+            "ARCH-020",
+            "ARCH-021",
+            "HITL-006",
+            "SCALE-008",
+            "SCALE-009",
+            "SCALE-010",
+            "SEC-025",
+            "SEC-026",
+            "SEC-027",
+        }
+    )
+
+    def test_the_migration_cohort_is_exactly_what_it_claims(self):
+        # Every exempted check must actually be migration work: it carries a
+        # spec baseline, so it did not exist as a question before 2026-07-28.
+        # A check on `beide` that never mentions the new revision would be an
+        # ordinary check hiding in the exemption.
+        catalog = parse_catalog(CHECKS_DIR)
+        for cid in sorted(self.MIGRATION_ADVISORY):
+            assert cid in catalog, f"{cid} is exempted but not in the catalogue"
+            fm = catalog[cid]
+            assert fm["adoption"] == "advisory", f"{cid} is exempted but enforced"
+            text = (CHECKS_DIR / f"{cid}.md").read_text(encoding="utf-8")
+            assert "2026-07-28" in text, (
+                f"{cid} is exempted as migration work but never names the "
+                "2026-07-28 revision"
+            )
 
     def test_the_mechanism_is_not_a_blanket_demotion(self):
         # An advisory stage is a bridge for a specific new check, not a way to
         # soften the catalogue. If most of it stopped blocking, the stage has
         # become an excuse.
+        #
+        # The ratio is measured over the checks that are NOT migration work.
+        # The original form (`advisory <= len(catalogue) // 10`) was calibrated
+        # for checks arriving one at a time, and a spec migration adds fourteen
+        # at once — it would have fired at 18 of 112 and the reflex would have
+        # been to raise the threshold, which turns the guard off for good.
+        #
+        # Measuring the remainder keeps it biting where it was meant to: an
+        # ordinary check that stops blocking still moves this number.
         catalog = parse_catalog(CHECKS_DIR)
-        counts = adoption_counts(catalog)
-        assert counts["advisory"] <= len(catalog) // 10, (
-            f"{counts['advisory']} of {len(catalog)} checks are advisory — "
-            "the stage is meant to carry a handful of new checks, not the catalogue"
+        ordinary_advisory = [
+            cid for cid in advisory_ids(catalog) if cid not in self.MIGRATION_ADVISORY
+        ]
+        assert len(ordinary_advisory) <= len(catalog) // 10, (
+            f"{len(ordinary_advisory)} of {len(catalog)} checks are advisory "
+            "outside the migration cohort — the stage is meant to carry a "
+            f"handful of new checks, not the catalogue: {ordinary_advisory}"
         )
 
 
@@ -222,6 +301,7 @@ class TestReadmesNameTheAdvisorySet:
             3: ("three", "drei"),
             4: ("four", "vier"),
             5: ("five", "fünf"),
+            18: ("eighteen", "achtzehn"),
         }
         assert expected in words, (
             f"{expected} advisory checks — extend the number words in this test"

@@ -10,6 +10,21 @@ evidence_required: 2
 
 # HITL-001 — Sampling Request Review
 
+> **Baseline-Hinweis (seit v2.0.0).** Der Prüfgegenstand bleibt, sein Mechanismus
+> nicht. Auf `mcp_spec_version: 2026-07-28` gibt es **keine serverinitiierten
+> Requests** mehr: SEP-2322 ersetzt `sampling/createMessage` durch das
+> MRTR-Muster — der Server antwortet mit `resultType: "input_required"`, der
+> Client beschafft und wiederholt den Request mit `inputResponses`. Zusätzlich
+> ist Sampling seit `2026-07-28` deprecated (SEP-2577, Fenster bis frühestens
+> 2027-07-28); der von der Spec empfohlene Weg ist die direkte Anbindung an den
+> LLM-Anbieter.
+>
+> Für diesen Check heisst das: Die Freigabe **vor** dem LLM-Send bleibt verbindlich. Sie hängt auf der neuen Baseline aber an der `inputRequests`-Runde, nicht an einem Request, den der Server von sich aus stellt. Wer den Pfad auf MRTR umbaut, muss die Freigabe mit umbauen — sie fällt sonst still weg, weil der Ort verschwindet, an dem sie hing.
+>
+> Der Check bleibt deshalb auf `spec_baseline: beide` — ein Server, der Sampling
+> im Restfenster weiterführt, muss ihn erfüllen. Der Ausstieg selbst steht in
+> `ARCH-019`, der Retry-Pfad in `HITL-006`.
+
 ## Description
 
 Das MCP-Sampling-Protokoll erlaubt einem Server, LLM-Inferenz über den Client anzufordern (umgekehrte Richtung des normalen Tool-Calls). Beispiel: ein Curia-Vista-Server findet 50 Motionen und bittet den LLM via Sampling, daraus eine Zusammenfassung zu erstellen — der Client (Claude Desktop) führt die LLM-Anfrage aus und leitet die Antwort zurück.

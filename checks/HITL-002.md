@@ -10,6 +10,21 @@ evidence_required: 2
 
 # HITL-002 — Sampling Response Review
 
+> **Baseline-Hinweis (seit v2.0.0).** Der Prüfgegenstand bleibt, sein Mechanismus
+> nicht. Auf `mcp_spec_version: 2026-07-28` gibt es **keine serverinitiierten
+> Requests** mehr: SEP-2322 ersetzt `sampling/createMessage` durch das
+> MRTR-Muster — der Server antwortet mit `resultType: "input_required"`, der
+> Client beschafft und wiederholt den Request mit `inputResponses`. Zusätzlich
+> ist Sampling seit `2026-07-28` deprecated (SEP-2577, Fenster bis frühestens
+> 2027-07-28); der von der Spec empfohlene Weg ist die direkte Anbindung an den
+> LLM-Anbieter.
+>
+> Für diesen Check heisst das: Die Verifikation der LLM-Antwort **vor** der Übergabe an den Server bleibt verbindlich. Sie liegt neu im `inputResponses`-Feld des Retrys — und damit auf einem Weg, der von aussen kommt und nach `SEC-018` validiert werden muss wie jedes andere Tool-Argument.
+>
+> Der Check bleibt deshalb auf `spec_baseline: beide` — ein Server, der Sampling
+> im Restfenster weiterführt, muss ihn erfüllen. Der Ausstieg selbst steht in
+> `ARCH-019`, der Retry-Pfad in `HITL-006`.
+
 ## Description
 
 HITL-001 deckt den Hin-Weg ab (Server → LLM): User sieht den Prompt vor dem Send. HITL-002 deckt den Rück-Weg ab (LLM → Server): User sieht die generierte Antwort, bevor sie an den Server zurückgeht und dort weiterverarbeitet wird.

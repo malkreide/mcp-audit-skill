@@ -10,6 +10,21 @@ evidence_required: 3
 
 # HITL-003 — Data Redaction vor LLM-Send
 
+> **Baseline-Hinweis (seit v2.0.0).** Der Prüfgegenstand bleibt, sein Mechanismus
+> nicht. Auf `mcp_spec_version: 2026-07-28` gibt es **keine serverinitiierten
+> Requests** mehr: SEP-2322 ersetzt `sampling/createMessage` durch das
+> MRTR-Muster — der Server antwortet mit `resultType: "input_required"`, der
+> Client beschafft und wiederholt den Request mit `inputResponses`. Zusätzlich
+> ist Sampling seit `2026-07-28` deprecated (SEP-2577, Fenster bis frühestens
+> 2027-07-28); der von der Spec empfohlene Weg ist die direkte Anbindung an den
+> LLM-Anbieter.
+>
+> Für diesen Check heisst das: Der PII-Filter vor dem LLM-Send bleibt verbindlich, unabhängig vom Mechanismus. Bei der von der Spec empfohlenen Migration — direkte Anbindung an den LLM-Anbieter — wird er sogar wichtiger: Der Server sendet dann selbst an einen Drittanbieter, statt den Host senden zu lassen. Das ist eine eigene Bekanntgabe und ein Fall für `CH-002`.
+>
+> Der Check bleibt deshalb auf `spec_baseline: beide` — ein Server, der Sampling
+> im Restfenster weiterführt, muss ihn erfüllen. Der Ausstieg selbst steht in
+> `ARCH-019`, der Retry-Pfad in `HITL-006`.
+
 ## Description
 
 Wenn ein Server Sampling verwendet **und** Verwaltungsdaten/PII verarbeitet, fliessen diese Daten via Sampling-Prompt an den LLM-Provider (z.B. Anthropic, OpenAI). Das ist nicht nur ein Daten-Leak-Risiko, sondern bei DSG-relevanten Daten ein direkter Compliance-Bruch (siehe CH-001 Datenresidenz und CH-002 Personendaten-Verarbeitung).

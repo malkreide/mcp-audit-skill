@@ -27,7 +27,11 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from tools.eval_applicability import parse_check_frontmatter  # noqa: E402
+from tools.eval_applicability import (  # noqa: E402
+    DEFAULT_SPEC_BASELINE,
+    VALID_SPEC_BASELINES,
+    parse_check_frontmatter,
+)
 from tools.path_utils import force_utf8_stdio  # noqa: E402
 
 REQUIRED_FIELDS = ("id", "title", "category", "severity", "applies_when")
@@ -48,6 +52,10 @@ REQUIRED_FIELDS = ("id", "title", "category", "severity", "applies_when")
 # a check to advisory, which would be the quietest possible way to lose one.
 VALID_ADOPTIONS = ("advisory", "enforced")
 DEFAULT_ADOPTION = "enforced"
+
+# Spec baseline vocabulary lives in `eval_applicability` — that module owns the
+# gate that applies it, and importing the other way round would be circular.
+# The reasoning behind the field is documented at the definition.
 
 # How many observations a result for this check must carry before it counts as
 # verified — for `pass` just as much as for `fail`.
@@ -114,6 +122,13 @@ def parse_catalog(checks_dir: Path) -> dict[str, dict[str, Any]]:
                 f"expected one of {VALID_ADOPTIONS}"
             )
         fm["adoption"] = adoption
+        baseline = str(fm.get("spec_baseline") or DEFAULT_SPEC_BASELINE).strip()
+        if baseline not in VALID_SPEC_BASELINES:
+            raise ValueError(
+                f"{path.name}: invalid spec_baseline {baseline!r}; "
+                f"expected one of {VALID_SPEC_BASELINES}"
+            )
+        fm["spec_baseline"] = baseline
         fm["evidence_required"] = _coerce_evidence_required(
             fm.get("evidence_required"), path.name
         )
@@ -183,6 +198,38 @@ def adoption_counts(catalog: dict[str, dict[str, Any]]) -> dict[str, int]:
     return counts
 
 
+def spec_baseline_counts(catalog: dict[str, dict[str, Any]]) -> dict[str, int]:
+    """How many checks sit on each spec baseline.
+
+    Every key is always present, including at zero — for the same reason
+    `adoption_counts` does it. During waves A–D both baselines exist in the
+    portfolio simultaneously, and "no checks for that revision" and "never
+    counted" must not read alike.
+    """
+    counts: dict[str, int] = dict.fromkeys(VALID_SPEC_BASELINES, 0)
+    for fm in catalog.values():
+        counts[fm.get("spec_baseline", DEFAULT_SPEC_BASELINE)] += 1
+    return counts
+
+
+def ids_for_baseline(catalog: dict[str, dict[str, Any]], baseline: str) -> list[str]:
+    """IDs of the checks declaring exactly `baseline`, sorted.
+
+    Exact match, not "would fire for" — `beide` is its own answer here. The
+    retirement question at the end of wave D ("which checks describe a protocol
+    nobody speaks any more") needs the narrow set, not the firing set.
+    """
+    if baseline not in VALID_SPEC_BASELINES:
+        raise ValueError(
+            f"invalid spec_baseline {baseline!r}; expected one of {VALID_SPEC_BASELINES}"
+        )
+    return sorted(
+        cid
+        for cid, fm in catalog.items()
+        if fm.get("spec_baseline", DEFAULT_SPEC_BASELINE) == baseline
+    )
+
+
 def advisory_ids(catalog: dict[str, dict[str, Any]]) -> list[str]:
     """IDs of the checks that report but do not block, sorted."""
     return sorted(
@@ -193,13 +240,17 @@ def advisory_ids(catalog: dict[str, dict[str, Any]]) -> list[str]:
 
 
 def _print_table(catalog: dict[str, dict[str, Any]]) -> None:
-    print(f"{'ID':<14} {'CAT':<6} {'SEV':<10} {'ADOPTION':<10} APPLIES_WHEN")
+    print(
+        f"{'ID':<14} {'CAT':<6} {'SEV':<10} {'ADOPTION':<10} "
+        f"{'BASELINE':<12} APPLIES_WHEN"
+    )
     for cid, fm in catalog.items():
         print(
             f"{cid:<14} "
             f"{fm.get('category', '?'):<6} "
             f"{fm.get('severity', '?'):<10} "
             f"{fm.get('adoption', DEFAULT_ADOPTION):<10} "
+            f"{fm.get('spec_baseline', DEFAULT_SPEC_BASELINE):<12} "
             f"{fm.get('applies_when', '?')}"
         )
     print()
@@ -207,6 +258,7 @@ def _print_table(catalog: dict[str, dict[str, Any]]) -> None:
     print(f"By category: {category_counts(catalog)}")
     print(f"By severity: {severity_counts(catalog)}")
     print(f"By adoption: {adoption_counts(catalog)}")
+    print(f"By spec baseline: {spec_baseline_counts(catalog)}")
     advisory = advisory_ids(catalog)
     if advisory:
         print(f"Advisory (reported, never blocking): {', '.join(advisory)}")

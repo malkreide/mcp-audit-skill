@@ -150,6 +150,33 @@ applies_when: '"stdio-only"'
 
 Use `always` for "always applies" or a real comparison for everything else.
 
+## Out of scope: the spec baseline
+
+`spec_baseline` is **not** part of this DSL, and that is deliberate.
+
+A check's spec baseline is evaluated by a separate gate that runs *before* the
+`applies_when` expression (`baseline_applies()` in the reference
+implementation). It compares the check's `spec_baseline` frontmatter field
+against the profile's `mcp_spec_version`.
+
+Expressing it in the DSL would work — `mcp_spec_version == "2026-07-28"` is an
+ordinary field comparison and the evaluator would handle it correctly. The
+separation buys one thing the grammar cannot: a **distinct reason string** in
+the applicability report.
+
+- `no-match` — the profile does not describe the kind of server this check is about.
+- `baseline-mismatch` — the check measures the other protocol revision.
+- `baseline-unresolved` — the profile never said which revision the server speaks.
+
+Folded into `applies_when`, the first two collapse into one, and the third
+cannot exist at all: an unset `mcp_spec_version` would raise
+`UnknownFieldError`, which the catalog evaluator maps to *not applicable* —
+turning "never asked" into "ruled out".
+
+Therefore: **no `applies_when` clause may reference `mcp_spec_version`.**
+`tests/test_spec_baseline.py::test_no_check_folds_the_baseline_into_applies_when`
+enforces this across the catalog.
+
 ## Reference implementation
 
 - Module: [`tools/eval_applicability.py`](../tools/eval_applicability.py)
