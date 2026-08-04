@@ -24,7 +24,7 @@ Arbeite die folgenden sechs Schritte sequenziell ab. Nach jedem Schritt fasst du
    - **Fallback (Cloud-Modus):** Falls kein lokaler Pfad existiert, setze `SKILL_BASE=https://raw.githubusercontent.com/malkreide/mcp-audit-skill/main` und `SKILL_MODE=remote`. Dieser Modus nutzt `WebFetch` und benötigt keinen lokalen Klon des Skills.
 
    **Verifiziere:**
-   - `local`: `ls $SKILL_BASE/checks/MANIFEST.txt && wc -l $SKILL_BASE/checks/MANIFEST.txt` — Manifest muss existieren und ≥ 50 Check-IDs enthalten.
+   - `local`: `wc -l $SKILL_BASE/checks/MANIFEST.txt` — Manifest muss existieren und ≥ 50 Check-IDs enthalten. (Kein `&&`: In PowerShell 5.1 ist das ein Syntaxfehler, und `wc -l` scheitert bei fehlender Datei ohnehin von selbst.)
    - `remote`: WebFetch `$SKILL_BASE/checks/MANIFEST.txt` mit dem Prompt «Gib den Inhalt unverändert zurück» — Antwort muss ≥ 50 Zeilen mit Check-IDs (z.B. `ARCH-001`) liefern. Falls WebFetch fehlschlägt: brich ab und bitte den User, das Skill-Repo lokal zu klonen oder `MCP_AUDIT_SKILL_PATH` zu setzen.
 
 2. **Target-Repo zugreifen.**

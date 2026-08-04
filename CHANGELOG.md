@@ -6,6 +6,35 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben — Die Setup-Anleitung lief auf Windows nicht, und `OPS-007` hatte keinen Wächter
+
+Ein Benutzer folgte Schritt 3 des Notion-Setups und bekam `NOTION_TOKEN env var not set`. Die Anleitung dokumentierte genau einen Weg:
+
+```bash
+export NOTION_TOKEN="ntn_..."
+```
+
+`export` ist kein PowerShell-Befehl. Das Repo unterstützt Windows ausdrücklich — die Testmatrix fährt `windows-latest`, der Quickstart trägt einen eigenen `powershell`-Block —, und trotzdem war der einzige dokumentierte Weg zum Token für diese Plattform nicht ausführbar.
+
+**Das ist `OPS-007`, angewandt auf das Repo, das ihn geschrieben hat.** Der Check entstand aus `#70`: `pip install pre-commit && pre-commit install`, und `&&` ist in PowerShell 5.1 ein Syntaxfehler. Behoben in `#71` — **ohne Wächter**. Die Klasse kam zurück, und sie ist genau dann aufgefallen, wenn es am teuersten ist: bei jemandem, der das Setup zum ersten Mal durchläuft und die Ursache nicht erkennen kann.
+
+Drei Fundstellen behoben:
+
+| Ort | Was brach |
+|---|---|
+| `README.md` / `README.de.md`, Setup Schritt 3 | `export` ohne PowerShell-Entsprechung |
+| `.claude/commands/audit-mcp.md` | `ls … && wc -l …` in einem Befehl, den der Agent auf der Zielplattform ausführt |
+
+**Der Wächter, der beim ersten Mal fehlte:** `tests/test_shell_portability.py`. Er scannt README-Fassungen, `SKILL.md`, die Slash-Commands und `docs/` nach `export VAR=` und ` && ` — in Code-Blöcken **und** in Inline-Code — und verlangt eine PowerShell-Entsprechung innerhalb von vier Zeilen. `checks/` ist bewusst ausgenommen: Dessen Snippets sind Beispiele für fremde Repos, nicht Anleitungen für dieses.
+
+**Der Scanner hat sich zuerst selbst belogen.** Seine erste Fassung verlangte die Code-Fence am Spaltenanfang. Die README-Blöcke stehen eingerückt in einer nummerierten Liste, also betrat er sie nie und meldete **einen Fund statt vier** — und eine niedrige Zahl liest sich wie eine gute Nachricht. Aufgefallen ist es nur, weil vorher ein gewöhnlicher `grep` drei Treffer gezeigt hatte und die Zahlen nicht zusammenpassten. `TestTheScannerActuallyDetects` hält das jetzt fest: vier gepflanzte Verstösse, die gefunden werden müssen, vier zulässige Muster, die keinen Fehlalarm auslösen dürfen, und ein Test, dass ein weit entfernter PowerShell-Block **keine** Entschuldigung ist.
+
+19 Tests. Drei Mutationen gegengeprüft — PowerShell-Block entfernt, Fence-Regex auf den Originalfehler zurückgedreht, `&&` wieder eingesetzt. Alle drei schlagen an, die zweite genau an dem Fall, den die erste Scanner-Fassung übersah.
+
+### Geändert — Setup nennt jetzt alle drei Tracker-Properties
+
+Schritt 2 des Notion-Setups nannte nur `Org-Kontext`. Ein frisches Setup nach dieser Anleitung hätte `MCP-Spec-Version` und `SDK-Sprache` nicht angelegt — also genau die Lücke reproduziert, die v2.0.0 gerade sichtbar gemacht hat. Neu als Tabelle, mit der Spalte, auf die es ankommt: **was der Default kostet**, wenn die Property fehlt oder die Zelle leer bleibt.
+
 ## [v2.0.0] — 2026-08-04 — Zwei Protokollstände, und ein Katalog der sagt gegen welchen er misst
 
 ### Hinzugefügt — Dual-Baseline `2025-11-25` + `2026-07-28`, vierzehn neue Checks, zweite Anwendbarkeits-Achse
