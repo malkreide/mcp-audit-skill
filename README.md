@@ -327,7 +327,7 @@ proof holds.
 
 ## Status
 
-**Version:** v1.7.0 — what a run is pinned to, and what a report may not claim. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
+**Version:** v2.0.0 — two protocol revisions, and a catalogue that says which one it measures against. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
 
 **Completeness:**
 - ✅ Methodology (`SKILL.md`) and templates (finding, audit report)

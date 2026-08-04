@@ -222,6 +222,15 @@ def build_server_entry(page: dict[str, Any]) -> dict[str, Any] | None:
         "repo": repo,
         "_page_id": page.get("id"),  # for push-back; stripped from YAML output
         "_status": prop_select(props.get("Audit-Status", {})),
+        # Which columns this entry could not read and had to guess. A present
+        # column with an EMPTY cell defaults exactly like a missing column
+        # does, and `cmd_health` only sees the schema — so the emptiness has
+        # to be recorded here, where the cell is actually read.
+        "_defaulted": [
+            column
+            for column in ("MCP-Spec-Version", "SDK-Sprache")
+            if not prop_select(props.get(column, {}))
+        ],
         "profile": build_profile(props),
     }
 
@@ -322,7 +331,8 @@ def cmd_health(_args: argparse.Namespace) -> None:
     print(f"Bot:         {bot_name}")
     print(f"Database:    {db_title} ({db_id})")
     print(f"Properties:  {prop_count}")
-    if "Org-Kontext" not in db.get("properties", {}):
+    props = db.get("properties", {})
+    if "Org-Kontext" not in props:
         print(
             "\nWarning: 'Org-Kontext' multi_select column not found.\n"
             "  Without it, all org-context flags default to False, which\n"
@@ -331,6 +341,30 @@ def cmd_health(_args: argparse.Namespace) -> None:
         )
     else:
         print("Org-Kontext: present ✓")
+
+    # Two columns whose absence is silent rather than loud. `pull` fills a
+    # default for each, the profile validates cleanly, and the audit runs —
+    # over a catalogue chosen by a guess. `MCP-Spec-Version` is the more
+    # expensive of the two: it decides which half of the catalogue applies.
+    for column, why in (
+        (
+            "MCP-Spec-Version",
+            "every server falls back to 2025-11-25, so the fourteen\n"
+            "  2026-07-28 checks never run for any of them. Add the column\n"
+            "  as a select with options: 2025-11-25, 2026-07-28.",
+        ),
+        (
+            "SDK-Sprache",
+            "every server falls back to Python, so SDK-001…006 and\n"
+            "  IDENT-005 are evaluated against the wrong SDK for any\n"
+            "  TypeScript server. Add the column as a select with\n"
+            "  options: Python, TypeScript.",
+        ),
+    ):
+        if column not in props:
+            print(f"\nWarning: '{column}' column not found.\n  Without it, {why}")
+        else:
+            print(f"{column}: present ✓")
 
 
 def cmd_pull(args: argparse.Namespace) -> None:
@@ -359,6 +393,32 @@ def cmd_pull(args: argparse.Namespace) -> None:
     print(f"Wrote {out_path} with {len(servers)} server(s).")
     if not args.all:
         print(f"Filter: Audit-Status ∈ {{{', '.join(sorted(DEFAULT_STATUS_FILTER))}}}")
+
+    # A guessed value produces a file that validates and an audit that runs.
+    # Naming the servers is the difference between a number someone can act on
+    # and a warning they scroll past.
+    for column in ("MCP-Spec-Version", "SDK-Sprache"):
+        affected = sorted(
+            s["name"] for s in servers if column in s.get("_defaulted", [])
+        )
+        if not affected:
+            continue
+        print(
+            f"\nWarning: {len(affected)} of {len(servers)} server(s) carry no "
+            f"'{column}'; the written profile guesses one.",
+            file=sys.stderr,
+        )
+        print(f"  {', '.join(affected)}", file=sys.stderr)
+        if column == "MCP-Spec-Version":
+            print(
+                "  Those profiles are audited against the 2025-11-25 half of "
+                "the catalogue.\n"
+                "  For a server that has already migrated, that is the wrong "
+                "half — and nothing\n"
+                "  in the run says so. Set the column in the tracker and pull "
+                "again.",
+                file=sys.stderr,
+            )
 
 
 def find_page_by_name(token: str, db_id: str, server_name: str) -> str | None:
