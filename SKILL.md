@@ -1149,6 +1149,8 @@ Wenn das PDF aktualisiert wird oder neue Best Practices auftauchen:
 
 Der Fall ist selten und deshalb leicht zu übersehen: Promotionen sind einzelne, bewusste Entscheidungen. Aber eine Regel, die nur die häufigen Fälle kennt, meldet nichts, wenn es darauf ankommt — sie muss den Fall benennen, gerade weil er selten ist.
 
+Die jeweils offene Warteschlange steht in [`docs/re-audit-queue.md`](docs/re-audit-queue.md) — mit Datum, Auslöser je Server und der Herkunft jeder Zahl. Sie ist eine Momentaufnahme und keine gepflegte Liste: Ein Dokument, das vorgibt immer aktuell zu sein, ist nach dem zweiten Release falsch, ohne dass es jemand merkt.
+
 **Eselsbrücke:** *«Ein neuer Check ist ein neuer Vertrag. Bestehende Audits sind nicht rückwirkend ungültig, aber bei nächstem Audit gilt der neue Katalog.»*
 
 **Zweite Eselsbrücke, für Punkt 5:** *«Re-Audit, wenn sich geändert hat, wie hart geprüft wird (a), wer geprüft wird (b), worauf geprüft wird (c), ob der Befund noch folgenlos bleibt (d) — oder gegen welches Protokoll gemessen wird (e).»*

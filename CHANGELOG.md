@@ -6,6 +6,34 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `docs/re-audit-queue.md`: welche bestandenen Audits nicht mehr gelten
+
+`v2.0.0` hat zwei §5c-Auslöser ausgelöst und niemandem gesagt, wen sie treffen. Die Liste beantwortet das mit Datum, Auslöser je Server und Herkunft jeder Zahl.
+
+Drei Stufen statt einer Aufzählung: vier Server, bei denen **beide** korrigierten Checks greifen (`auth_model: API-Key`); zwei mit einem Audit gegen einen überholten Katalogstand; der Rest unter `OBS-001` allein, mitzunehmen beim nächsten ohnehin anstehenden Anlass. §5 verlangt ausdrücklich kein automatisches Reaudit aller Server.
+
+**Was bewusst nicht drinsteht:** Die vierzehn Migrations-Checks lösen **kein** §5b aus. §5b greift, wenn ein *blockierender* Check Server erreicht, die vorher nicht dagegen gemessen wurden — die vierzehn sind `advisory`. Sie aufzuführen hätte 42 Server unter einen Auslöser gestellt, den es nicht gibt, und die beiden echten Gründe darin untergehen lassen.
+
+Die Datei ist eine Momentaufnahme und keine gepflegte Liste — mit Datum im Kopf. Ein Dokument, das vorgibt immer aktuell zu sein, ist nach dem zweiten Release falsch, ohne dass es jemand merkt. Der maschinelle Stand bleibt im Tracker; hier steht die Begründung, die dort nicht hinpasst.
+
+### Behoben — Zwei auditierte Server fehlten im Audit-Tracker
+
+`lindas-mcp` und `swiss-housing-mcp` stehen im Index (`portfolio.json`, `scope: core`, `audit: published`) und hatten veröffentlichte Audits — im Notion-Tracker gab es sie nicht. Damit waren sie aus jedem tracker-getriebenen Portfolio-Lauf heraus, und ihre Findings wurden nirgends geführt.
+
+Das ist die `openparldata-mcp`-Lücke eine Ebene höher: `--verify-inventory` prüft Server gegen `portfolio.yaml`, aber **niemand prüfte `portfolio.yaml` gegen den Index**. Die Differenz fiel nur auf, weil das Briefing von 42 Servern sprach und der Tracker 40 zeigte.
+
+Beide sind nachgetragen. `lindas-mcp` mit einem aus `applicability.json` seines Laufs **abgeleiteten** Profil; bei `swiss-housing-mcp` bleiben Transport, Auth-Modell, Schreibzugriff und Deployment **leer**, weil jener Lauf keine `applicability.json` hinterliess und die Abwesenheit eines Checks in `verification-results.json` seine Unanwendbarkeit nicht belegt. Das Validierungs-Gate stoppt das nächste Audit, bis die Felder erhoben sind — so gewollt. Beide Notizfelder tragen die Herkunft.
+
+### Behoben — Repo-URL von `swiss-electricity-mcp` zeigte ins Leere
+
+Der Tracker führte `.../swiss_electricity_mcp` (Unterstriche); das Repo heisst `swiss-electricity-mcp` (Bindestriche). Unter der alten URL scheitert jeder Clone — `audit-portfolio.sh` hätte den Server übersprungen, und ein übersprungener Server sieht in der Zusammenfassung aus wie ein Server ohne Befunde.
+
+### Geändert — Tracker trägt `SDK-Sprache`, beide neuen Spalten sind gefüllt
+
+Die Spalte fehlte seit jeher; `build_profile` nahm für jeden Server stillschweigend `Python` an. Angelegt und für alle 42 Zeilen gesetzt — **belegt**, nicht angenommen: Jeder aktive Server führt in `portfolio.json` eine `pypi_dist`, und PyPI ist Python-only. Zwei Manifeste zusätzlich direkt gelesen.
+
+`MCP-Spec-Version` ist ebenfalls für alle 42 gesetzt (`2025-11-25`), übernommen aus `portfolio.json` (`current_mcp_spec_baseline`) statt geraten.
+
 ### Behoben — Die Setup-Anleitung lief auf Windows nicht, und `OPS-007` hatte keinen Wächter
 
 Ein Benutzer folgte Schritt 3 des Notion-Setups und bekam `NOTION_TOKEN env var not set`. Die Anleitung dokumentierte genau einen Weg:
