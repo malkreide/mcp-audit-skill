@@ -6,6 +6,8 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v2.0.0] — 2026-08-04 — Zwei Protokollstände, und ein Katalog der sagt gegen welchen er misst
+
 ### Hinzugefügt — Dual-Baseline `2025-11-25` + `2026-07-28`, vierzehn neue Checks, zweite Anwendbarkeits-Achse
 
 Die MCP-Spec `2026-07-28` entfernt Sitzungen, den `initialize`-Handshake und die SSE-Resumability. Damit messen fünf Checks des Katalogs einen Gegenstand, den es nicht mehr gibt, und vierzehn Fragen hatte er noch nie gestellt. Während der Migrationswellen A–D stehen beide Protokollstände gleichzeitig im Portfolio — der Katalog muss ab jetzt sagen können, **gegen welchen** er misst.
@@ -89,10 +91,18 @@ Vier weitere tragen nur eine Fussnote zum Sampling-Bezug: `SEC-015`, `SEC-023`, 
 - `tools/parse_catalog.py`: `spec_baseline` wird geparst; ein Tippfehler ist ein **harter Fehler** — dieselbe Behandlung wie bei `adoption`, aus demselben Grund. Neu `spec_baseline_counts()` und `ids_for_baseline()`.
 - `tools/eval_applicability.py`: `baseline_applies()`, `baseline_summary()`, Baseline-Stufe in `evaluate_catalog()`, Exit **3** bei unresolved.
 - `tools/validate_profile.py`: `mcp_spec_version` als Pflichtfeld mit geschlossenem Vokabular.
-- `audit-notion-sync.py`: liest die Notion-Property **«MCP-Spec-Version»**. Vorbelegung `2025-11-25` — bewusst die konservative Richtung: Ein migrierter Server bekommt damit zu wenige Checks und fällt beim ersten Migrations-Finding auf, während der umgekehrte Fehler still bliebe. **Die Property muss im Tracker angelegt und je Server gepflegt werden**, sonst ist die Vorbelegung die einzige Quelle.
+- `audit-notion-sync.py`: liest die Notion-Property **«MCP-Spec-Version»** (im Tracker angelegt als Select mit `2025-11-25` / `2026-07-28`). Vorbelegung `2025-11-25` — bewusst die konservative Richtung: Ein migrierter Server bekommt damit zu wenige Checks und fällt beim ersten Migrations-Finding auf, während der umgekehrte Fehler still bliebe.
+
+  **Und die Vorbelegung meldet sich.** Zwei Stellen, weil eine nicht reicht:
+
+  - `health` warnt, wenn die **Spalte** fehlt — für «MCP-Spec-Version» und, neu mitgefangen, für «SDK-Sprache». Letztere fehlte im Tracker seit jeher; `build_profile` liest sie seit v1.3.1 und hat für jeden Server stillschweigend `Python` angenommen. Ein TypeScript-Server wäre gegen die falschen SDK-Checks gemessen worden, ohne dass irgendwo etwas rot wird.
+  - `pull` warnt, wenn die **Zelle** leer ist, und nennt die betroffenen Server **namentlich**. Das ist der Fall, den `health` konstruktionsbedingt nicht sehen kann: Die Spalte ist da, also meldet die Schema-Prüfung «present ✓», und die Zeile ist trotzdem leer. Genau so hat `sdk_language` überlebt.
+
+  Der Marker (`_defaulted`) ist Buchhaltung für den Betreiber und landet nicht im YAML — ein Leck brächte einen unbekannten Schlüssel in jedes Profil und liesse `applies_when` beim nächsten Audit mit `UnknownFieldError` fallen. Ein Test hält das fest, ein zweiter prüft, dass das geschriebene Profil den Validator besteht: Ohne den driften Generator und Schema auseinander, und der Bruch zeigt sich erst mitten im Audit.
 - `SKILL.md` §2.7 (neue Sektion, ohne Umnummerierung bestehender Anker), §1.1, §1.2, §2.4, §3.1, §3.3, Qualitätschecklist.
 - **§5 Re-Audit-Auslöser um Punkt e) erweitert:** Die Migration eines Servers ist selbst ein Auslöser, auch ohne jede Katalogänderung — davor und danach wurde gegen teilweise verschiedene Katalogmengen gemessen.
 - `docs/applies-when-dsl.md`: neue Sektion, warum die Baseline **nicht** Teil der DSL ist.
+- `tests/test_notion_sync.py`: 7 Tests für die neue Spalte, drei Mutationen gegengeprüft (Feld aus `build_profile` entfernt, Leer-Erkennung ausgehängt, Default gedreht) — alle drei schlagen an.
 - `tests/test_spec_baseline.py`: 29 Tests. Fünf Mutationen gegengeprüft — Baseline-Stufe ausgehängt, `unresolved` mit `mismatch` zusammengelegt, Vokabular geöffnet, Pflichtfeld auf optional, Typo-Gate entfernt. Alle fünf schlagen an.
 
 **Nicht enthalten:** Die Migration der Server selbst. Dieser Katalog misst sie, er führt sie nicht durch.
@@ -2036,5 +2046,6 @@ v0.4.0) sind in diesem CHANGELOG dokumentiert, existieren aber nicht als
 separate Git-Tags — sie repräsentieren Iterationsstände während der
 initialen Skill-Entwicklung vor dem GitHub-Push.
 
-[Unreleased]: https://github.com/malkreide/mcp-audit-skill/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/malkreide/mcp-audit-skill/compare/v2.0.0...HEAD
+[v2.0.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v2.0.0
 [v0.5.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.5.0

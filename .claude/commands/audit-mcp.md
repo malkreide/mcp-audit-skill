@@ -38,7 +38,7 @@ Arbeite die folgenden sechs Schritte sequenziell ab. Nach jedem Schritt fasst du
    ```bash
    python "$SKILL_BASE/tools/audit_init.py" init "$SERVER_NAME" \
        --base-dir "$TARGET/audits/" \
-       --skill-version "1.7.0" \
+       --skill-version "2.0.0" \
        --catalog-dir "$SKILL_BASE/checks/" \
        --target-repo "$TARGET"
    # → JSON mit run_id, output_dir, meta_path
