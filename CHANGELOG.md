@@ -7,6 +7,227 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-05
+
+Sieben Regeln werden zwölf. Anlass ist die Spec-Revision `2026-07-28`, und sie
+trifft diesen Skill härter als jeden anderen der Kette: Transport und Auth sind
+genau die Ebenen, die sich am stärksten geändert haben. Der Handshake ist weg,
+die Sitzung ist weg, zwei Header sind neu Pflicht, der Legacy-Transport hat ein
+Abschaltdatum, und serverinitiierte Rückfragen sind durch ein Muster ersetzt, bei
+dem dieselbe Bearbeitung mehrfach von vorn läuft.
+
+Major, nicht Minor: Der Skill spannt neu über **zwei** Spec-Baselines, die
+Regelzahl bestimmt Überschriften, auf die die CI zeigt, und die Aussage «Nicht
+nötig für Server, die ausschliesslich über stdio laufen» im Trigger war
+schlichtweg falsch geworden — die Stateless-Regeln gelten dort ebenso.
+`mcp-audit` ist an derselben Grenze auf v2.0.0 gegangen.
+
+**Die neuen Regeln sind angehängt, nicht eingeschoben.** Die Beweisregeln bleiben
+5–7. Dieses CHANGELOG zitiert «Regel 6» und «Regeln 5–7» mehrfach, `mcp-audit`
+und `mcp-data-fidelity` verweisen von aussen darauf; eine Umnummerierung hätte
+die eigene Historie rückwirkend falsch gemacht. Die Blockordnung steht dafür
+jetzt als Tabelle im Kopf: 1–4 Bind und Verdrahtung, 5–7 der Beweis, 8–12 die
+Stateless-Welt.
+
+### Added
+
+- **Regel 8 — ohne Sitzung teilt sich Zustand still, statt zu fehlen.**
+  `initialize`, `notifications/initialized` und `Mcp-Session-Id` sind entfernt;
+  jede Anfrage trägt Protokollversion, `clientInfo` und Capabilities in `_meta`
+  unter `io.modelcontextprotocol/*`. Der gefährliche Server ist nicht der, der
+  abstürzt, sondern der, der weiterläuft: prozesslokaler Zustand, der per
+  Konvention über die Sitzung adressiert war, landet ohne Sitzung im selben
+  Eimer — bei einem Aufrufer unauffällig, bei zweien ein Datenleck ohne
+  Fehlermeldung. Zustand reist als expliziter, server-geprägter, ablaufender
+  Handle im Tool-Argument; ein Handle ohne Ablauf ist Zustand ohne Ende, weil
+  ohne Verbindungsabbruch kein Ereignis mehr aufräumt. Und `server/discover` ist
+  serverseitig ein **MUSS**, clientseitig ein MAY — genau diese Asymmetrie macht
+  ein fehlendes `server/discover` zu einer falschen Auskunft über die eigene
+  Protokollversion statt zu einem fehlenden Feature.
+
+  Der Nachweis ist der Zwei-Aufrufer-Test, und er ist zugleich Regel 5 auf sich
+  selbst angewandt: Unter der Mutation «Handle-Argument entfernen» bleibt ein
+  Test mit *einem* Aufrufer grün, weil er die Bedingung gar nicht herstellt.
+
+- **Regel 9 — die Adresse steht neu aussen auf dem Umschlag.** `Mcp-Method` und
+  `Mcp-Name` sind Pflichtheader auf Streamable-HTTP-POSTs, eine Abweichung ist
+  `HeaderMismatchError` mit Code `-32020`. Der Gewinn ist, dass eine Schicht
+  ohne Body-Parsing weiss, was durchläuft; genau daraus entsteht der Angriff.
+  Entscheidet ein Gateway am Header und der Server am Body, haben zwei Instanzen
+  über zwei verschiedene Anfragen entschieden — `Mcp-Name: search_datasets` im
+  Header, `delete_record` im Body. Der Vergleich ist deshalb eine
+  Sicherheitsgrenze und muss serverseitig stattfinden, weil nur dort beide
+  Seiten vorliegen. Inklusive des Auslassungsfalls: Wer nur vergleicht, *wenn*
+  beide Header da sind, hat eine Prüfung gebaut, die man durch Weglassen umgeht.
+
+  Dazu die zweite Doku-Pflicht dieses Skills, Schwester der `MCP_HOST`-Pflicht
+  aus Regel 2: Im README gehört, auf welche Header-Werte das Deployment routet
+  und limitiert. Ein Gateway, das auf `Mcp-Name` allow-listet, ist Teil der
+  Sicherheitsarchitektur des Servers und steht nirgends in seinem Code.
+
+- **Regel 10 — Legacy HTTP+SSE hat jetzt ein Datum: `2027-07-28`.** Deprecated
+  ist der Pfad seit `2025-03-26`; was `2026-07-28` ändert, ist nicht die
+  Empfehlung, sondern ihre Verbindlichkeit — Feature-Lifecycle-Politik, Fenster
+  von mindestens zwölf Monaten, frühester Entfernungstermin damit `2027-07-28`.
+  Dieselbe Frist gilt für Roots, Sampling und Logging. Eine Empfehlung ohne
+  Termin erzeugt keinen Vorgang, sondern einen Kompatibilitätspfad, den niemand
+  abschaltet, weil er niemanden stört — und dieser zweite Netzweg erbt die
+  Härtung des ersten nicht, was Regel 3 mit Ablaufdatum ist.
+
+  Mit Erkennungsrezept über drei Orte, weil jeder für sich sauber sein kann,
+  während ein anderer es nicht ist: Code, was das Deployment tatsächlich
+  startet, und der Draht. Nur der dritte ist ein Beweis.
+
+- **Regel 11 — MRTR: der Server antwortet und hält nichts offen, dafür läuft die
+  Arbeit mehrfach.** Serverinitiierte `roots/list`, `sampling/createMessage` und
+  `elicitation/create` sind ersatzlos gestrichen. Stattdessen: `resultType:
+  "input_required"` plus `inputRequests`, der Client wiederholt den
+  ursprünglichen Request mit `inputResponses`. Die Umkehrung ist das Teure — aus
+  einem Dialog *innerhalb* einer Bearbeitung wird eine Bearbeitung, die von vorn
+  läuft, und alles vor dem Rückfragepunkt passiert bei jedem Retry erneut. Damit
+  wandert das Thema aus «Bedienoberfläche» in «Korrektheit».
+
+  Zwei Anschlüsse an Bestehendes: Korrelation läuft ohne Sitzung nur noch über
+  `requestState`, mit denselben Eigenschaften wie ein Handle aus Regel 8; und ein
+  offengehaltener Stream ist die Hänger-Klasse aus Regel 7 mit neuer Ursache,
+  weshalb der Retry-Test unter Timeout laufen muss.
+
+- **Regel 12 — Auth-Härten, mit ausgeschriebenem Negativbefund.**
+  RFC-9207-`iss`-Validierung vor dem Einlösen des Authorization Code inklusive
+  der «present»-Falle: Die Pflicht gilt für einen *vorhandenen* `iss`, wer nur
+  dann prüft, erfüllt den Buchstaben und wird durch Weglassen angegriffen — was
+  der Autorisierungsserver kann, steht in seinen Metadaten und muss nicht
+  geraten werden. Dazu CIMD statt DCR und issuer-geschlüsselte Credentials als
+  Speicherseite desselben Mix-up-Angriffs.
+
+  Für dieses Portfolio ist die Regel **nicht anwendbar**, und genau das steht
+  jetzt da statt einer Auslassung: Die Server sind read-only, führen
+  `auth_model: none` und lösen keinen Authorization Code ein. Ausgeschrieben,
+  weil ein weggelassener Abschnitt von einem übersehenen nicht zu unterscheiden
+  ist — dieselbe Logik, aus der Regel 5 besteht. Die Bedingung, die den Befund
+  aufhebt, ist benannt: CIMD und Issuer-Bindung greifen ab jedem Auth-Modell,
+  die `iss`-Pflicht ab dem OAuth-Proxy.
+
+- **Abgrenzungstabelle «was hier steht, was der Katalog prüft, was der Auditor
+  live exerziert».** Die drei Repos berühren dieselben Gegenstände; ohne die
+  Trennung entsteht Duplikation, und Duplikation altert auseinander. Die
+  Faustregel steht jetzt ausgeschrieben: *Hier steht, wie man es verdrahtet und
+  woran man sieht, dass es trägt. Der Katalog fragt, ob es da ist. Der Auditor
+  fragt, ob es heute noch da ist.* Mit `transport_boot_probe.py` und
+  `spec_probe.py` aus `mcp-continuous-auditor` namentlich in der Spalte «im
+  Betrieb», inklusive der Status `SPEC_DRIFT` und `LEGACY_TRANSPORT`.
+
+- **Ein Abschnitt, der benennt, was dieser Skill bewusst *nicht* abdeckt.**
+  `resultType` auf allen Results (`ARCH-018`), die Frist für Roots, Sampling und
+  Logging (`ARCH-019`), `ttlMs`/`cacheScope` und deterministische Reihenfolge
+  (`ARCH-020`), versionierte Extensions (`ARCH-021`). Das sind Fragen an die
+  Form der Antwort, nicht an den Transport. Sie hier zu wiederholen würde den
+  Skill verlängern, ohne dass er etwas entscheidet.
+
+- **Patterns für die Regeln 8–12 in `reference/patterns.py`** — `mint_handle` /
+  `decode_handle` mit Signatur und Ablauf, `server_discover`, der
+  Zwei-Aufrufer-Test, `require_matching_headers` mit dem Auslassungsfall,
+  `LEGACY_SSE_REMOVAL_EARLIEST` samt dem dreiteiligen Erkennungsrezept als
+  Kommentar, `submit_with_mrtr` mit Idempotenzschlüssel und `requestState`,
+  `redeem_authorization_code` mit `iss`-Prüfung und issuer-geschlüsselten
+  Credentials, und der Negativbefund als Kommentarblock daneben. Der
+  ✗-Gegenpart zu Regel 8 — der prozesslokale Cursor-Dict — steht bewusst als
+  auskommentiertes Muster da, wie schon der `evil.example.com`-Test bei Regel 5.
+
+### Changed
+
+- **Die Zuordnung Regel → Check ist gegen `mcp-audit` v2.0.0 nachgeführt.** Der
+  Stand im Text lautete «v1.7.0, 97 Checks in zwölf Kategorien»; er lautet jetzt
+  «v2.0.0, 112 Checks in zwölf Kategorien auf zwei Spec-Baselines». Neu
+  zugeordnet: Regel 8 auf `ARCH-015`, `ARCH-016` und `ARCH-017` — drei Checks
+  für eine Regel, weil ein Server den ersten bestehen und am dritten scheitern
+  kann, also zustandslos verdrahtet und trotzdem zustandsbehaftet gebaut ist;
+  Regel 9 auf `SCALE-008` mit `SEC-027` daneben; Regel 10 auf `SCALE-009` und
+  `SCALE-010`; Regel 11 auf `HITL-006`; Regel 12 auf `SEC-025` und `SEC-026`.
+  Regel 1 führt zusätzlich `DEP-001` für den Versions-Cap.
+
+  Dazu die Gegenrichtung, die vorher nirgends stand: **Fünf Checks messen einen
+  Gegenstand, den `2026-07-28` entfernt hat** — `SCALE-002`, `SCALE-003`,
+  `SCALE-007`, `SDK-004`, `SEC-009`. Für einen migrierten Server sind sie nicht
+  mehr anwendbar. `SEC-009` hat in `ARCH-017` eine Ersatzdimension: Die
+  Sitzungs-ID gibt es nicht mehr, die Frage nach der Ratbarkeit der Referenz
+  schon — sie ist in die Tool-Signatur gewandert, wo kein Auth-Layer mehr
+  hinschaut.
+
+- **Regel 1 bekommt die dritte Achse: der Cap ist eine Weiche, keine
+  Formalie.** Das eigenständige `fastmcp` pinnt seinerseits `mcp<2.0`, ein
+  Server auf diesem Paket kann also nicht nebenbei auf die 2er-Linie des
+  offiziellen SDK wandern, und `fastmcp` 4.0 ist ein eigener Bruch daneben. Wer
+  beide im selben Environment auflösen lässt, bekommt keinen Fehler, sondern
+  einen Resolver-Entscheid. Dazu die untere Grenze als tragender Teil: `2.0.0`
+  hat `mcp.server.fastmcp` ersatzlos entfernt, eine `>=1.x`-Range lässt einen
+  Resolver eine Version wählen, die am Import stirbt (`DEP-001`).
+
+- **Regel 2 bekommt die PaaS-Variante der uvicorn-Falle.** Wo die Plattform den
+  Port beim Start injiziert und den Hostnamen generiert, ist ein im Code
+  stehender Port nicht bloss unschön, sondern falsch: Regel 4 verlangt
+  Portgenauigkeit, und eine portgenaue Liste mit dem falschen Port ist dasselbe
+  421. Die Allow-List muss aus dem gelesenen Wert zusammengesetzt werden.
+
+- **Regel 3 nennt den SSE-Pfad nicht mehr «deprecated, aber erreichbar».** Er
+  trägt jetzt ein Abschaltdatum und verweist auf Regel 10. Und seit
+  `2026-07-28` reist auf jedem Pfad noch etwas mit: die Header-Prüfung aus
+  Regel 9, dieselbe Art Kontrolle wie `transport_security`, mit demselben
+  Fehlerbild, wenn nur ein Pfad sie bekommt.
+
+- **Regel 4 hält fest, dass sie den Wegfall der Sitzung unbeschadet überlebt —
+  und dadurch wichtiger wird.** Wo es keine Sitzung mehr gibt, an die sich
+  etwas binden liesse, ist die Host-Prüfung die einzige Kontrolle, die vor der
+  Bearbeitung jeder einzelnen Anfrage steht. Sie ersetzt keine
+  Authentifizierung; sie ist nur die einzige, die nicht mit dem Lebenszyklus
+  verschwunden ist.
+
+- **Regel 7(a) sagt «Transport-Manager» statt «Session-Manager».** Die
+  Formulierung setzte eine Sitzung voraus, die es nicht mehr gibt. Der Befund
+  selbst bleibt unverändert gültig, und das gehört dazugesagt: Was
+  `2026-07-28` entfernt, ist die *Protokoll*-Sitzung, nicht der Aufbau der App
+  im Lifespan. Ein blanker `httpx.ASGITransport` liefert weiterhin 500 auf
+  alles.
+
+- **Der Trigger im Frontmatter deckt die neue Welt ab** — Migration auf Spec
+  `2026-07-28`, Ablösung eines Legacy-HTTP+SSE-Pfads, `-32020` neben dem 421,
+  und die Begriffe `initialize`, `Mcp-Session-Id`, `server/discover`,
+  `Mcp-Method`/`Mcp-Name`, `input_required`, `iss`/CIMD/DCR. Der Schlusssatz
+  «Nicht nötig für Server, die ausschliesslich über stdio laufen» war falsch
+  geworden und lautet jetzt: Für reine stdio-Server entfallen die Bind- und
+  Header-Regeln, nicht die Stateless-Regeln.
+
+- **Die Checkliste hat einen dritten Block.** «Die Stateless-Welt (Regeln
+  8–12)» mit zwölf Punkten, und der Beweisblock trägt zwei neue Zeilen — dass
+  die Stateless-Kontrollen mit **zwei** Aufrufern getestet sind, weil einer in
+  beiden Zuständen grün ist.
+
+- **Der Abschnitt «Woher diese Regeln stammen» sagt, was die neuen Regeln nicht
+  haben.** Die Regeln 1–7 stammen aus drei Pull Requests mit einem
+  eingetretenen Schaden. Die Regeln 8–12 haben **keine Narbe, sondern ein
+  Datum** — ein externes, datiertes Ereignis, dessen Änderungen nachlesbar
+  statt plausibel sind. Das steht ausgeschrieben, weil der Contributing-Abschnitt
+  von jeder neuen Regel einen konkreten Schaden verlangt; die Latte wird dort
+  entsprechend auf «Schaden **oder** datierte, zitierbare Änderung von aussen,
+  und gesagt werden muss, welches von beidem» präzisiert.
+
+  Zwei Dinge sind daran gemessen und nicht angenommen, beide an
+  `zurich-opendata-mcp`: dass ein mcp-2.x-Prozess den Legacy-Handshake mit Cap
+  `2025-11-25` und den per-request-Umschlag mit `2026-07-28` **nebeneinander**
+  bedient — weshalb ein Stateless-Fehler für jeden Client auf der alten Ära
+  unsichtbar ist —, und dass das Erkennungsrezept aus Regel 10 dort an allen
+  drei Orten negativ zurückkommt. Der negative Befund steht bewusst als
+  Beispiel: Wer nur den positiven Fall kennt, weiss nicht, wann er fertig ist.
+
+- **CI: die Regelzahl-Prüfung kennt Zahlwörter bis `fifteen` und meldet ein
+  unbekanntes Wort als eigenen Fehler.** Das `WORDS`-Dict endete bei `ten`. Beim
+  Sprung auf zwölf hätte `WORDS.get("twelve")` `None` ergeben und dieselbe
+  Meldung erzeugt wie ein echter Zahlendreher — der Befund hätte auf
+  `reference/patterns.py` gezeigt, während die Lücke im Prüfskript lag. Das ist
+  derselbe Fehler, den `1.1.1` beim Version-Badge behoben hat: Die Meldung muss
+  sagen, welche Seite sich bewegt hat. Die Überschriften-Literale der READMEs
+  sind mitgezogen (`The twelve rules` / `Die zwölf Regeln`).
+
 ## [1.4.0] - 2026-08-03
 
 Sieben Regeln, unverändert — dieses Release ändert nichts an dem, was der Skill

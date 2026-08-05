@@ -124,8 +124,8 @@ jobs:
                   sys.exit(f"{path}: section '## {heading}' not found")
               return len(re.findall(r"^\d+\. ", m.group(1), re.M))
 
-          for path, heading in [("README.md", "The seven rules"),
-                                ("README.de.md", "Die sieben Regeln")]:
+          for path, heading in [("README.md", "The twelve rules"),
+                                ("README.de.md", "Die zwölf Regeln")]:
               got = listed(path, heading)
               if got != expected:
                   sys.exit(f"{path}: lists {got} rules, SKILL.md defines {expected}")
@@ -136,8 +136,14 @@ jobs:
           # it. Both were correct when written — which is exactly how a sibling
           # repository went on describing "five rules" for two weeks after the
           # sixth was added.
+          # Bis "fifteen", damit die naechsten Regeln den Wortschatz nicht
+          # sprengen: ein Zahlwort, das hier fehlt, ergibt `None` und meldet
+          # dieselbe Meldung wie ein echter Zahlendreher — der Befund zeigte
+          # dann auf die falsche Datei.
           WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-                   "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+                   "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+                   "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+                   "fifteen": 15}
           patterns = pathlib.Path("reference/patterns.py").read_text(encoding="utf-8")
 
           m = re.search(r"patterns for the (?P<word>\w+) [\w-]+ rules", patterns)
@@ -145,7 +151,13 @@ jobs:
               sys.exit("reference/patterns.py: the phrase 'patterns for the <word> "
                        "... rules' is gone — anchor removed or reworded, so this "
                        "check would silently stop checking")
-          claimed = WORDS.get(m.group("word"))
+          if m.group("word") not in WORDS:
+              sys.exit(f"reference/patterns.py: docstring says "
+                       f"{m.group('word')!r}, which is not a number word this "
+                       "check knows — extend WORDS in ci.yml, otherwise the "
+                       "comparison below reports a mismatch that is really a "
+                       "gap in this script")
+          claimed = WORDS[m.group("word")]
           if claimed != expected:
               sys.exit(f"reference/patterns.py: docstring says {m.group('word')!r} "
                        f"rules, SKILL.md defines {expected}")
