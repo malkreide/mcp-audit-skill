@@ -329,7 +329,7 @@ Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihe
 |---|---|---|
 | vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | liefert die Ground Truth, gegen die `FID-002` misst |
 | im Bau | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | [`FID-001`–`FID-006`](./checks/) |
-| im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | [`SDK-006`](./checks/SDK-006.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md) |
+| im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | [`SDK-006`](./checks/SDK-006.md) + [`DEP-001`](./checks/DEP-001.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md); seit seiner v2.0.0 zusätzlich [`ARCH-015`](./checks/ARCH-015.md)–[`ARCH-017`](./checks/ARCH-017.md), [`SCALE-008`](./checks/SCALE-008.md), [`SCALE-009`](./checks/SCALE-009.md)/[`SCALE-010`](./checks/SCALE-010.md), [`HITL-006`](./checks/HITL-006.md), [`SEC-025`](./checks/SEC-025.md)/[`SEC-026`](./checks/SEC-026.md) |
 | nach dem Bau | **`mcp-audit-skill`** | **Dieser Skill** — der Katalog selbst |
 | im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | der Vorfall hinter [`OPS-005`](./checks/OPS-005.md) — eine Testsuite, die kein Workflow je ausgeführt hat ([#29](https://github.com/malkreide/mcp-continuous-auditor/pull/29)) |
 
@@ -337,11 +337,18 @@ Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/ski
 
 Die Mitgliedschaft steht an einer Stelle: [`docs/quality-chain.json`](./docs/quality-chain.json). [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) prüft wöchentlich, ob alle fünf das Topic auf GitHub tatsächlich tragen — Metadaten, die keine Arbeitskopie testen kann, und genau deshalb hatten die fünf bis zum ersten Hinsehen kein einziges Topic gemeinsam.
 
-Zwei der Transport-Hardening-Regeln haben hier kein Gegenstück: die über den
-Bind, der die App erreichen muss, und die drei zur Beweisführung (Negativtests,
-Mutationstest, Harness-Fallen). Das erste ist eine echte Lücke, das zweite eine
-Bereichsgrenze — dieser Katalog prüft, ob eine Kontrolle vorhanden ist, nicht ob
-ihr Nachweis trägt.
+Jener Skill ist mit seiner v2.0.0 auf zwölf Regeln gegangen, entlang der Spec
+`2026-07-28` — die beiden Seiten überlappen sich damit fast überall. Drei der
+zwölf haben hier weiterhin kein Gegenstück: die über den Bind, der die App
+erreichen muss — `SEC-016` sieht danach aus und ist der umgekehrte Fall, ein
+*unbeabsichtigtes* `0.0.0.0` —, und zwei der drei zur Beweisführung,
+Mutationstest und Harness-Fallen. Eine vierte, die Regel über Negativtests, ist
+nur teilweise abgedeckt: `DRIFT-003` fängt die Klasse, einen Test der aus dem
+falschen Grund besteht, aber nicht den Transportfall.
+
+Das erste ist eine echte Lücke, der Rest eine Bereichsgrenze. Jener Skill sagt,
+wie man eine Kontrolle verdrahtet und woran man sieht, dass sie trägt; dieser
+Katalog prüft, ob sie da ist.
 
 ### Portfolio und Tracker
 
