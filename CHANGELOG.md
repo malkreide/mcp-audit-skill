@@ -62,6 +62,28 @@ Die Regeln 7 und 8 aus `mcp-data-fidelity-skill` v1.6.0 (deterministische Reihen
 
 Damit löst diese Änderung **keinen** §5-Auslöser aus: Die Reichweite bleibt, wo sie war. Hätte sie sich bewegt, wäre es §5b gewesen — und selbst dann folgenlos, weil `ARCH-020` `medium` und `advisory` ist und Punkt 5 erst ab `high` greift. Festgehalten, damit die Nicht-Auslösung eine geprüfte Aussage ist und keine Auslassung.
 
+### Geändert — `ARCH-020` prüft den Wertevorrat von `cacheScope`, nicht nur seine Angemessenheit
+
+Der Check fragte, ob `"public"` an der richtigen Stelle steht. Er fragte nie, ob der gesendete Wert überhaupt einer der **zwei** ist, die SEP-2549 definiert. Ein Server, der `cacheScope: "session"` ausliefert, bestand deshalb sämtliche Kriterien: Er ist nicht `"public"` an falscher Stelle, und `resources/read` liefert nicht `"public"` — mehr wurde nicht gefragt. Die Description nannte den Wertevorrat seit v2.0.0 im ersten Absatz; kein Kriterium las ihn.
+
+**Belegfall (Portfolio, 2026-08).** `mcp-data-fidelity-skill` lieferte in `reference/patterns.py` einen Copy-Paste-Baustein mit `Literal["public", "session"]` aus, samt Testrezept `assert result.cache_scope == "session"` — der Einstieg für die datenabfragenden Server des Portfolios. Dort in PR #10 korrigiert. Hier zählt die andere Hälfte: Ein Server, der dem Baustein gefolgt wäre, hätte dieses Audit sauber bestanden. Damit ist es kein hergeleiteter Vorschlag, sondern ein eingetretener Fall.
+
+**Warum die Wirkung die Gegenrichtung der Absicht ist.** «Session» meint enger als öffentlich. Eine Zwischeninstanz, die den Wert nicht kennt, behandelt ihn wie ein fehlendes Feld — also **weiter** als `"private"`. Der vorsichtig gemeinte Wert ist der laxere. Genau deshalb genügt es nicht, ihn als Stilfrage zu führen.
+
+**§2.5 geprüft, Ausgang Frage 2.** Nicht Frage 1: `applies_when` ist `always`, kein Server war ausgeschlossen. Nicht Frage 3: Es ist keine eigene Prüfdimension — es ist dasselbe Feld, dieselbe Codezeile, derselbe Fix wie beim bestehenden `cacheScope`-Kriterium. Der Check prüfte die richtige Sache am zu schmalen Umfang: die Angemessenheit des Wertes, nicht seine Zulässigkeit. Verification erweitert, kein `ARCH-022`.
+
+**Gegenfehler geprüft, hält.** Kein sachfremdes «oder» in den Pass-Criteria — die Erweiterung hängt am selben Feld, und der Fix bleibt ein Handgriff an einer Stelle («`"session"` → `"private"`»).
+
+**`evidence_required` bleibt bei 3.** Die Werteprüfung braucht keine neue Beobachtung: Modus 2 holt `cacheScope` ohnehin ab und bekommt nur ein zusätzliches `scopeOk`-Feld im `jq`. Eine Anhebung auf 4 verlangte eine Beobachtung, die im selben Aufruf schon enthalten ist.
+
+**§2.6 mitgeführt — und einmal am eigenen Rezept vorgeführt.** Der erste Entwurf von Modus 1 filterte die `cacheScope`-Zeile auf ein festes Fenster und meldete beim Belegfall **nichts**: In der Signatur steht `"session"` hinter dem Fenster, und in der `return`-Zeile kommt der Feldname gar nicht vor. Ein Grep, der genau dort schweigt, wo der einzige gemessene Fall liegt, ist die Fehlerklasse dieses Paragraphen. Modus 1 zeigt jetzt Kontext statt zu filtern, sagt ausdrücklich, dass er den Wertevorrat **ansieht und nicht entscheidet**, und führt den Belegfall als Beispiel mit. Entschieden wird in Modus 2, mit drei unterscheidbaren Ausgängen als Tabelle: Feld fehlt, Wert unzulässig, Wert zulässig. Ohne jeden Treffer in Modus 1 ist der Ausgang `todo`, nicht `pass`.
+
+**Gegenrichtung als Test:** `tests/test_catalog_criteria.py` bekommt eine dritte Klasse. Sie hält den Katalog daran, in seinen **Remediation**-Blöcken keinen unzulässigen `cacheScope` zu lehren — das ist die Copy-Paste-Fläche, und genau über eine solche kam der Belegfall zustande. Nur die Remediation wird gelesen: Anti-Patterns *gehören* in Description, Verification und Common Failures, wo `ARCH-020` `"session"` ab jetzt absichtlich nennt; sie mitzuscannen würde eine korrekte Warnung als Fehler melden. Dazu ein zweiter Test, der das neue Kriterium selbst festnagelt — verschwindet es, muss der Wächter mit ihm verschwinden und nicht still davor. Beide Gegenproben sind gelaufen und haben angeschlagen.
+
+**Kein §5-Auslöser** — obwohl es der Sache nach §5c ist: Der Check hat die falsche Sache als bestanden ausgewiesen. Punkt 5 greift erst ab `high`, `ARCH-020` ist `medium` und `advisory`, und ein Verdikt hat sich damit nie auf diesen Check gestützt. `docs/re-audit-queue.md` bleibt unverändert. Festgehalten, damit die Nicht-Auslösung eine geprüfte Aussage ist und keine Auslassung — und mit der Gegenrechnung dazu: Wäre `ARCH-020` `high`, stünde hier eine Warteschlange.
+
+Keine Katalogzahl bewegt sich: 113 Checks, zwölf Kategorien, kein neuer Check.
+
 ### Geändert — `FID-003` kennt den dritten Ausgang: die Rückfrage
 
 Der Abschnitt «Diese Abgrenzung gilt in beide Richtungen» kannte zwei Ausgänge: Leermenge und Transport-/Autorisierungsfehler. MRTR (`HITL-006`, Baseline `2026-07-28`) hat einen dritten dazugestellt, und er ist der gefährlichste, weil er **erfolgreich aussieht**: HTTP 200, wohlgeformtes Result, keine Treffer darin.
