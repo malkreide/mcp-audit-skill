@@ -7,6 +7,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-08-05
+
+Die MCP-Spec 2026-07-28 macht zwei Dinge zu Entscheiden, die bisher Nebenprodukte
+waren: gegen welche Spec-Version ein Server gebaut wird, und wie lange ein Client
+seine Antworten behalten darf. Beide werden hier dort verankert, wo das Vorgehen
+Entscheide ohnehin trifft — der eine neben A/B/C, der andere als eigener
+Probe-Schritt. Bestehende Probe-Regeln bleiben unverändert.
+
+### Added
+
+- **1.7 Aktualisierungsrhythmus messen — die Grundlage für `ttlMs` und
+  `cacheScope`.** Die Spec verlangt beide Felder auf `tools/list`,
+  `prompts/list`, `resources/list` und `resources/read`. Woher die Zahl kommt,
+  sagt sie nicht — und geschätzt ist sie entweder ein Cache, der einen ganzen
+  Zyklus verschweigt, oder einer, der nie greift, während der Verkehr bleibt.
+  Der Rhythmus der Quelle ist messbar, solange man ohnehin an der API hängt:
+  eine `HEAD`-Serie auf `Last-Modified`/`ETag` über mindestens zwei erwartete
+  Zyklen, mit vier Fallback-Quellen, wenn die Header fehlen.
+
+  Der Abschnitt trennt zwei `ttlMs`-Familien, die regelmässig dieselbe Zahl
+  bekommen und zwei verschiedene Uhren haben: `resources/*` veraltet mit den
+  **Daten** — das misst 1.7 —, `tools/list` und `prompts/list` veralten mit der
+  **Oberfläche** des Servers, also mit dem Deployment. Wer beiden dasselbe gibt,
+  hält entweder eine Tool-Liste über ein Release hinweg fest oder wirft stündlich
+  einen Katalog weg, der sich zweimal im Jahr ändert.
+
+  Die Ableitungstabelle deckt vier Rhythmus-Klassen ab. Für den Normalfall —
+  periodisch mit bekanntem Zeitpunkt, Beispiel MADD mit täglich gegen 05:30 CET —
+  wird `ttlMs` pro Response als Rest bis zum nächsten Lauf plus Karenz berechnet,
+  und die Karenz kommt aus der grössten beobachteten Verspätung der Messreihe,
+  nicht aus einem runden Wert: Ein Lauf, der an manchen Tagen 37 Minuten später
+  fertig ist, kostet bei einem TTL, das exakt um 05:30 abläuft, nicht 37 Minuten,
+  sondern einen ganzen Tag. Dieselbe Logik wie bei der untersten Staffelstufe in
+  1.5 — die brauchbare Zahl steht in der Quelle, nicht in der Formel.
+
+  `cacheScope` wird auf eine einzige Frage zurückgeführt: Hängt diese Antwort
+  davon ab, wer fragt? Für Phase-1-No-Auth-Quellen lautet die Antwort nein, und
+  ein geteilter Cache ist genau das Erwünschte; sobald Auth oder ein Handle als
+  Tool-Argument den Ausschnitt bestimmt, kippt sie — pro Response, nicht pro
+  Server.
+
+  Dazu der Merksatz fürs Portfolio: *«Frische innen (`source_freshness`),
+  Haltbarkeit aussen (`ttlMs`).»* Die eine Zahl blickt zurück und gilt den Daten,
+  die andere blickt nach vorn und gilt der Antwort; sie sind nie dieselbe.
+  Ebenfalls in 1.7: die deterministische Reihenfolge der List-Responses, ohne die
+  ein `ttlMs` eine Momentaufnahme cacht statt eines Zustands.
+
+- **2.4 Spec-Ziel-Entscheid — welche `mcp_spec_version` der Server spricht.** Ein
+  zweiter Pflicht-Entscheid neben A/B/C, gleich behandelt: hier getroffen, im
+  README begründet, in `portfolio.json` und auf der Notion-Karte eingetragen.
+  Standard ist neu `2026-07-28`; die Tier-1-SDKs sprechen die Version, für
+  Variante A des Portfolios gibt es damit keinen technischen Abweichungsgrund.
+  Zulässig sind zwei Gründe — ein blockierender SDK-Pin (standalone `fastmcp` 3.x
+  hält `mcp` unterhalb 2.0, `fastmcp` 4.0 bringt Breaking Changes) und eine
+  belegte Upstream-Abhängigkeit. «Wir migrieren später ohnehin» ist keiner: Der
+  Grund stimmt und ist trotzdem falsch, weil ein neuer Server auf altem Stand
+  genau die Welle vergrössert, deren Ende er abwarten will.
+
+  Dazu das Bausteinverbot für neue Server — Roots, Sampling, Logging und Legacy
+  HTTP+SSE stehen im 12-Monats-Fenster, das eine Frist für Bestehendes ist und
+  kein Budget für Neues. Die Tabelle nennt zu jedem den Ersatz: explizite Handles
+  statt Roots, MRTR mit `resultType: "input_required"` und Retry über
+  `inputResponses` statt serverinitiiertem Sampling und Elicitation,
+  maschinenlesbarer Status im Envelope statt Logging — was 3.5 ohnehin verlangt —,
+  und Streamable HTTP mit den Pflicht-Headern `Mcp-Method` und `Mcp-Name`.
+  Stateless Core, Extensions (`io.modelcontextprotocol/*`, für Phase 1: nicht
+  bauen) und die Auth-Härtung für Phase 2 je in einem Absatz.
+
+- **Zwei Anti-Patterns (13, 14)** — «Die Spec-Version ergibt sich aus dem SDK»
+  und «`ttlMs` schätze ich» —, die zugehörigen Checklistenpunkte in Schritt 1 und
+  2, eine Zeile in «Soll ich diesen Schritt überspringen?», und in Schritt 4 zwei
+  Übergabepunkte an den `github-repo`-Skill.
+
+### Changed
+
+- **2.3 nennt Spec-Ziel und zugesagte Haltbarkeit in den Konsequenzen.** Das
+  Beispiel-README im Abschnitt trug bereits die **interne** Cache-TTL und den
+  Absatz darüber, dass dieselbe TTL unter `stdio` und `streamable-http` zwei
+  verschiedene Dinge bedeutet. Daneben steht jetzt das `ttlMs`, das nach aussen
+  zugesagt wird — mit der Regel, die beide verbindet: Eine interne TTL, die
+  länger ist als das zugesagte `ttlMs`, bedient die neue Anfrage aus demselben
+  alten Cache und bricht die Zusage, ohne dass es irgendwo auffällt.
+
+- **Schritt 5 nennt die `portfolio.json`.** Bisher war die Notion-Karte der
+  einzige Portfolio-Ablageort im ganzen Skill; die maschinenlesbare Hälfte im
+  Index-Repo kam nicht vor. Ein neuer Server wird auf dem Ziel geboren und trägt
+  trotzdem alle Migrationsfelder — sonst fehlt er in jeder Auswertung, die über
+  sie läuft, und «fehlt» liest sich dort wie «noch nicht migriert».
+
+- **«Welchen Transport-Modus unterstützen?» nennt `sse` nicht mehr.** Die
+  Schnellreferenz führte `streamable-http` / `sse` als Paar. Legacy HTTP+SSE
+  steht im 12-Monats-Fenster und ist für einen neuen Server kein Ziel mehr — die
+  Zeile hätte sonst dem widersprochen, was 2.4 zwei Abschnitte weiter oben
+  verbietet.
+
 ## [1.5.0] - 2026-08-03
 
 Zwei Messungen kommen in Schritt 1 dazu. Beide sind billig, solange man ohnehin

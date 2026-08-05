@@ -1,6 +1,6 @@
 # mcp-data-source-probe-skill
 
-![Version](https://img.shields.io/badge/version-1.5.0-blue)
+![Version](https://img.shields.io/badge/version-1.6.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
@@ -18,8 +18,8 @@ The fourth discipline — **ground truth before self-confidence** — was added 
 
 ## Features
 
-- **Step 1 — Live probe before design.** Five probe calls per endpoint, a default matrix for every optional parameter, a coverage matrix recording which part of the holdings no planned tool reaches, recall ground truth against the source's own web UI, a measured widening schedule, dump availability.
-- **Step 2 — Architecture decision.** A decision tree that picks live-API / hybrid / dump-only from the probe findings, plus a portfolio-synergy check (new server or tool extension?).
+- **Step 1 — Live probe before design.** Five probe calls per endpoint, a default matrix for every optional parameter, a coverage matrix recording which part of the holdings no planned tool reaches, recall ground truth against the source's own web UI, a measured widening schedule, dump availability, and the source's refresh rhythm measured over at least two cycles — the number the advertised `ttlMs` is derived from.
+- **Step 2 — Architecture decision.** A decision tree that picks live-API / hybrid / dump-only from the probe findings, a portfolio-synergy check (new server or tool extension?), and a second mandatory decision: which `mcp_spec_version` the server targets — `2026-07-28` by default, with a written reason for any deviation and no new server built on deprecated building blocks.
 - **Step 3 — Non-negotiable resilience defaults.** Retry with backoff, provenance and attribution in every response, anchor demo query, error-state tests, graceful degradation, and empty results that carry a next step instead of an excuse.
 - **Steps 4–5 — Handover.** Inputs for repository creation and the portfolio card.
 - **Findings culture.** Non-obvious discoveries are recorded so the next server inherits them rather than rediscovering them.
@@ -110,6 +110,8 @@ build guidance and these rules apply together.
 2. Dump fallback **before** API dependency
 3. Retry **before** defeatism
 4. Ground truth **before** self-confidence
+
+And the portfolio's mnemonic for the two time values that get confused most often — freshness inside, shelf life outside: *«Frische innen (`source_freshness`), Haltbarkeit aussen (`ttlMs`).»* One says how old the data is and looks backwards, at whoever reads the answer. The other says how long the answer stays valid and looks forwards, at the client's cache. They are never the same number.
 
 ## Related repositories
 

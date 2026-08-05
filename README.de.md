@@ -1,6 +1,6 @@
 # mcp-data-source-probe-skill
 
-![Version](https://img.shields.io/badge/version-1.5.0-blue)
+![Version](https://img.shields.io/badge/version-1.6.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
@@ -18,8 +18,8 @@ Die vierte Disziplin — **Ground Truth vor Selbstvertrauen** — kam nach einem
 
 ## Funktionen
 
-- **Schritt 1 — Live-Probe vor dem Design.** Fünf Probe-Calls pro Endpoint, Default-Matrix für jeden optionalen Parameter, Abdeckungs-Matrix mit dem Teil des Bestands, den kein geplantes Tool erreicht, Recall-Ground-Truth gegen das Web-UI der Quelle, gemessene Widening-Staffel, Dump-Verfügbarkeit.
-- **Schritt 2 — Architektur-Entscheid.** Entscheidungsbaum von den Probe-Befunden zu Live-API / Hybrid / Dump-only, plus Portfolio-Synergie-Check (neuer Server oder Tool-Erweiterung?).
+- **Schritt 1 — Live-Probe vor dem Design.** Fünf Probe-Calls pro Endpoint, Default-Matrix für jeden optionalen Parameter, Abdeckungs-Matrix mit dem Teil des Bestands, den kein geplantes Tool erreicht, Recall-Ground-Truth gegen das Web-UI der Quelle, gemessene Widening-Staffel, Dump-Verfügbarkeit — und der über mindestens zwei Zyklen gemessene Aktualisierungsrhythmus der Quelle, aus dem das zugesagte `ttlMs` abgeleitet wird.
+- **Schritt 2 — Architektur-Entscheid.** Entscheidungsbaum von den Probe-Befunden zu Live-API / Hybrid / Dump-only, Portfolio-Synergie-Check (neuer Server oder Tool-Erweiterung?) und ein zweiter Pflicht-Entscheid: welche `mcp_spec_version` der Server spricht — Standard `2026-07-28`, jede Abweichung schriftlich begründet, kein neuer Server auf deprecated Bausteinen.
 - **Schritt 3 — Nicht verhandelbare Resilienz-Defaults.** Retry mit Backoff, Provenance und Attribution in jeder Response, Anchor Demo Query, Tests gegen Fehlerzustände, Graceful Degradation — und Leermengen, die einen nächsten Schritt tragen statt einer Ausrede.
 - **Schritte 4–5 — Übergabe.** Eingaben für die Repo-Erstellung und die Portfolio-Karte.
 - **Fundstück-Kultur.** Nicht offensichtliche Funde werden festgehalten, damit der nächste Server sie erbt, statt sie neu zu entdecken.
@@ -109,6 +109,8 @@ generische Bauanleitung und diese Regeln zusammen.
 2. Dump-Fallback **vor** API-Abhängigkeit
 3. Retry **vor** Defaitismus
 4. Ground Truth **vor** Selbstvertrauen
+
+Dazu der Merksatz fürs Portfolio, für die beiden Zeitangaben, die am häufigsten verwechselt werden: *«Frische innen (`source_freshness`), Haltbarkeit aussen (`ttlMs`).»* Die eine sagt, wie alt die Daten sind, und blickt zurück — an den Leser der Antwort. Die andere sagt, wie lange die Antwort gültig bleibt, und blickt nach vorn — an den Cache des Clients. Sie sind nie dieselbe Zahl.
 
 ## Verwandte Repos
 
