@@ -1,0 +1,34 @@
+# CODEOWNERS — Review-Pflicht für Vorlagen-Code
+#
+# WARUM DIESE DATEI EXISTIERT
+#
+# Der Code unter reference/ wird in Server-Repos kopiert. Ein Defekt dort
+# vervielfältigt sich, und keiner der Kopien sieht man ihn an — im Zielrepo
+# ist nur der Ausschnitt sichtbar, nicht die Herkunft. Für checks/ gilt
+# dasselbe eine Ebene höher: ein falscher Check verteilt sein Urteil über
+# jedes Audit, das ihn anwendet.
+#
+# Belegfall 3.8.2026 (aus dem Schwester-Repo mcp-data-source-probe-skill,
+# gleiche Vorlagen-Mechanik, deshalb hier genauso einschlägig):
+# reference/retry_backoff.py enthielt fünf Defekte (kein Jitter, kein
+# Retry-After, kein Deckel, kein Gesamtbudget, und eine Fehlermeldung, die
+# bei leerem str(exc) nach dem Doppelpunkt aufhört). Dieselben fünf wurden
+# zuvor einzeln in elf Servern behoben, ohne dass jemand die Vorlage
+# anfasste.
+#
+# WIRKSAMKEIT — BITTE LESEN, BEVOR MAN SICH DARAUF VERLÄSST
+#
+# CODEOWNERS allein erzwingt nichts. Die Review-Anforderung entsteht erst
+# durch Branch-Protection auf main mit aktiviertem
+# "Require review from Code Owners".
+# Stand 5.8.2026: für main NICHT aktiviert — bis dahin ist diese Datei
+# Dokumentation, keine Kontrolle.
+
+# Vorlagen-Code, der nach draussen kopiert wird
+/reference/              @malkreide
+
+# Der Prüfkatalog — sein Urteil wird in jedes Audit übernommen
+/checks/                 @malkreide
+
+# Die Schutzregel selbst — damit sie nicht unbemerkt entfernt wird
+/.github/CODEOWNERS      @malkreide
