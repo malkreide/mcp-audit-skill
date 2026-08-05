@@ -14,6 +14,17 @@ as «description is fine», closing an open issue on the strength of a compariso
 that never happened. A check that did not run is not a pass (SKILL.md §2.6), so
 `unchecked` is its own outcome and touches nothing.
 
+**Why the body asks the human to re-run the workflow.** The guard closes its
+own issue as soon as a run finds the description correct — but nothing makes
+that run happen. Editing repo metadata produces no push, and the workflow's
+`push` trigger only watches `checks/**` and two files. Observed: the description
+was corrected, the issue stayed open, and the next event that would have closed
+it was the Monday cron. The guard does not notice a repair; it notices the next
+occasion. So the body names the one action that turns a repair into an event —
+Actions tab, `repo-description`, «Run workflow» — and says what happens without
+it. The trigger already exists (`workflow_dispatch`); what was missing was
+anyone telling the reader to press it.
+
 State word on stdout, for the workflow to branch on:
   drift     — description and catalogue disagree; body written, open or update
   ok        — they agree; close any open issue
@@ -88,6 +99,13 @@ def render_body(result: dict) -> str:
         "Eintragen auf der Repo-Startseite, rechte Spalte **About**, "
         "Zahnrad-Symbol. *Nicht* in den Settings — dort steht die Description "
         "nicht.",
+        "",
+        "**Danach den Workflow von Hand anstossen:** Tab **Actions**, links "
+        "den Workflow `repo-description` wählen, dann **Run workflow**. Eine "
+        "geänderte Description erzeugt keinen Push und damit kein Ereignis — "
+        "der Guard merkt die Reparatur nicht, er merkt erst den nächsten "
+        "Anlass. Ohne diesen Anstoss bleibt das Issue hier bis zum "
+        "wöchentlichen Lauf am Montag offen, obwohl die Sache erledigt ist.",
         "",
         "Der Guard schreibt bewusst nicht: Repo-Metadaten zu ändern gehört "
         "einem Menschen. Dieses Issue schliesst sich selbst, sobald der "
