@@ -1,6 +1,6 @@
 ---
 name: mcp-transport-hardening
-description: Transport-, Bind- und Stateless-Härtung für MCP-Server mit Netz-Transport, über beide Spec-Baselines (2025-11-25 und 2026-07-28). Verwende ihn ergänzend zu mcp-builder wenn (1) ein Server auf eine neue SDK-Major oder auf Spec 2026-07-28 migriert wird, (2) ein Server von stdio auf streamable-http umgestellt oder ein Legacy-HTTP+SSE-Pfad abgelöst wird, (3) Host, Port oder Bind-Adresse konfiguriert, durchgereicht oder in einer ASGI-Factory gelesen werden, (4) jemand meldet, ein Server antworte mit HTTP 421 oder JSON-RPC -32020, starte nicht oder sei «nur lokal erreichbar», (5) eine eingehende Host- oder Origin-Allow-List entworfen oder gegen CORS und Auth-Token abgewogen wird, (6) `initialize`, `Mcp-Session-Id`, `server/discover`, `Mcp-Method`/`Mcp-Name`, MRTR-`input_required` oder OAuth-`iss`/CIMD/DCR berührt werden, oder (7) Transport-Tests per Mutationstest abgenommen werden oder eine Suite hängt statt zu scheitern. Für reine stdio-Server entfallen die Bind- und Header-Regeln, nicht die Stateless-Regeln.
+description: Transport-, Bind- und Stateless-Härtung für MCP-Server mit Netz-Transport, über beide Spec-Baselines (2025-11-25 und 2026-07-28). Ergänzend zu mcp-builder, wenn (1) ein Server auf eine neue SDK-Major oder auf Spec 2026-07-28 migriert wird, (2) von stdio auf streamable-http umgestellt oder ein Legacy-HTTP+SSE-Pfad abgelöst wird, (3) Host, Port oder Bind konfiguriert, durchgereicht oder in einer ASGI-Factory gelesen werden, (4) ein Server mit HTTP 421 oder JSON-RPC -32020 antwortet, nicht startet oder «nur lokal erreichbar» ist, (5) eine eingehende Host-/Origin-Allow-List entworfen oder gegen CORS und Auth-Token abgewogen wird, (6) `initialize`, `Mcp-Session-Id`, `server/discover`, `Mcp-Method`/`Mcp-Name`, MRTR-`input_required` oder OAuth-`iss`/CIMD/DCR berührt werden, (7) Transport-Tests per Mutationstest abgenommen werden oder eine Suite hängt statt zu scheitern, oder (8) ein neuer Guard oder CI-Check gemergt wird. Für reine stdio-Server entfallen die Bind- und Header-Regeln, nicht die Stateless-Regeln.
 ---
 
 # MCP Transport Hardening — kommt der Server hoch, weist er ab wen er abweisen muss, und bleibt er zustandslos?
@@ -15,15 +15,15 @@ Eine Schicht höher fallen die beiden Klassen allerdings zusammen: Wer das 421 n
 
 **Die zweite Leitfrage, seit Spec `2026-07-28`:** *Wenn zwei Aufrufer nichts mehr teilen — keinen Handshake, keine Sitzung, keine Verbindung —, sieht der eine dann noch etwas vom anderen, und wird ein Test rot, wenn er es tut?* Ist die Antwort ja, greift eine der Regeln 8–12.
 
-## Wie die zwölf Regeln geordnet sind
+## Wie die dreizehn Regeln geordnet sind
 
 | Block | Regeln | Frage |
 |---|---|---|
 | Bind und Verdrahtung | 1–4 | Kommt er hoch, und weist er richtig ab? |
-| Der Beweis | 5–7 | Woran erkennt man, dass es trägt? Gilt auch für 8–12 |
+| Der Beweis | 5–7, 13 | Woran erkennt man, dass es trägt, und wen deckt der Beweis ab? Gilt auch für 8–12 |
 | Die Stateless-Welt `2026-07-28` | 8–12 | Hält er ohne Sitzung, und spricht er den neuen Umschlag? |
 
-Der Beweisblock steht in der Mitte und nicht am Ende, weil er älter ist als der dritte Block und weil dieses Repo, sein eigenes CHANGELOG und vier Nachbar-Repos «Regel 6» und «Regeln 5–7» namentlich zitieren. Eine Umnummerierung würde die eigene Historie rückwirkend falsch machen — die neuen Regeln werden deshalb angehängt, nicht eingeschoben.
+Der Beweisblock steht in der Mitte und nicht am Ende, weil er älter ist als der dritte Block und weil dieses Repo, sein eigenes CHANGELOG und vier Nachbar-Repos «Regel 6» und «Regeln 5–7» namentlich zitieren. Eine Umnummerierung würde die eigene Historie rückwirkend falsch machen — neue Regeln werden deshalb angehängt, nicht eingeschoben. Regel 13 ist der Grund, warum diese Zeile nicht zusammenhängend ist: Sie gehört zum Beweis, kam aber nach 8–12 dazu, und eine ordentliche Nummer war es nicht wert, dieselbe Historie zu brechen.
 
 Der zweite Teil bleibt der teurere: Transportregeln kann man nachschlagen, die Beweisführung nicht. Genau deshalb bekommt jede der Regeln 8–12 ihren Nachweis in der Form der Regeln 5–7 — Mutation benennen, anwenden, protokollieren.
 
@@ -67,7 +67,21 @@ Das Entscheidende daran: **das Drahtformat ist unverändert.** camelCase überle
 
 Der Versions-Cap wandert mit: `mcp[cli]>=1.0.0,<2` wird zu `>=2.0.0,<3`. Der Bound bleibt, nur am anderen Ende verankert. Ein `<2`-Cap kauft Zeit, indem er auf der letzten 1.x pinnt — ein Ziel ist er nie. Die untere Grenze ist dabei genauso tragend wie die obere: `2.0.0` hat `mcp.server.fastmcp` ersatzlos entfernt, eine `>=1.x`-Range lässt einen Resolver also eine Version wählen, die am Import stirbt. Im Katalog ist das [`DEP-001`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/DEP-001.md).
 
-**Nachweis:** Die 1.x-Settings-Zuweisung zurückbauen — ein Test muss mit `ValueError` scheitern, nicht das Deployment. Für (c): beide Schreibweisen serialisieren und die JSON vergleichen; sind sie identisch, ist es ein reines Lesethema und der Client bleibt aussen vor. Für den Cap: in einer leeren Umgebung installieren und den Import ausführen — eine Range, die im Lockfile funktioniert, sagt nichts über die Auflösung von morgen.
+**Und der Bound wirkt erst im Lock.** Der Auslöser dieses ganzen Sprungs war ein **unbeschränkter Resolve** — kein Cap, also nahm die nächste Auflösung die neue Major mit. Die Lehre daraus wird falsch gezogen, wenn sie beim Bound in `pyproject.toml` stehen bleibt: Die Deklaration sagt, was gelten *soll*. Installiert wird, was der Lock sagt.
+
+```toml
+# ✗ Bound gesetzt, Lock unberührt — das Deployment installiert weiter die alte Auflösung
+dependencies = ["mcp[cli]>=2.0.0,<3"]      # pyproject.toml, allein committet
+
+# ✓ derselbe Bound, und der Lock im selben Commit neu aufgelöst
+#   uv lock && git add uv.lock
+```
+
+`uv sync` löst zwar von sich aus neu auf, wenn `pyproject.toml` sich bewegt hat — aber genau die Pfade, die zählen, tun das nicht: `--frozen`, ein bereits gebautes Environment, ein Container-Image aus dem committeten Lock. Der Bound steht dann korrekt in der Datei, in der ihn ein Review liest, und ist im Prozess folgenlos. Das ist derselbe Riss wie in Regel 2, nur eine Ebene tiefer: Die Deklaration und der Ort, an dem sie wirken müsste, sind zwei verschiedene Dateien, und niemand prüft die Naht dazwischen.
+
+Beide Richtungen sind nötig, und sie widersprechen sich nicht: Der Lock verdeckt die schlechte Auflösung von morgen (deshalb prüft man frisch), und er verdeckt den guten Bound von heute (deshalb muss man ihn mitführen).
+
+**Nachweis:** Die 1.x-Settings-Zuweisung zurückbauen — ein Test muss mit `ValueError` scheitern, nicht das Deployment. Für (c): beide Schreibweisen serialisieren und die JSON vergleichen; sind sie identisch, ist es ein reines Lesethema und der Client bleibt aussen vor. Für den Cap: in einer leeren Umgebung installieren und den Import ausführen — eine Range, die im Lockfile funktioniert, sagt nichts über die Auflösung von morgen. Und für den Lock nicht die Deklaration lesen, sondern die Installation messen: den Installationspfad fahren, den die CI fährt, dann `importlib.metadata.version("mcp")` ausgeben. Steht dort die alte Version, wurde der Lock nicht mitgeführt — und der Bound ist Dekoration.
 
 ## Regel 2 — `host` ist die Saat der Allow-List, kein kosmetischer Parameter
 
@@ -154,7 +168,7 @@ Ohne Konfiguration auf einem Nicht-Loopback-Bind bleibt der Schutz **aus — fai
 
 ## Regel 5 — Ein Negativtest muss aus deinem Grund scheitern, nicht aus dem eines Defaults
 
-Die Regeln 1–4 sagen, was verdrahtet sein muss. Die Regeln 5–7 sagen, woran man erkennt, dass es verdrahtet **ist** — und sie sind der teurere Teil, weil man sie nicht nachschlagen kann. Sie gelten unverändert für die Regeln 8–12: jede der neuen Kontrollen hat einen zweiten Grund, aus dem ihr Negativtest grün werden könnte.
+Die Regeln 1–4 sagen, was verdrahtet sein muss. Die Regeln 5–7 sagen, woran man erkennt, dass es verdrahtet **ist** (und Regel 13, für wen dieser Nachweis dann gilt) — und sie sind der teurere Teil, weil man sie nicht nachschlagen kann. Sie gelten unverändert für die Regeln 8–12: jede der neuen Kontrollen hat einen zweiten Grund, aus dem ihr Negativtest grün werden könnte.
 
 Ein Negativtest behauptet: «Diese Anfrage wird abgewiesen.» Grün heisst aber nur, dass sie abgewiesen *wurde* — nicht, dass **deine** Kontrolle sie abgewiesen hat. Überall dort, wo ein Default, ein Fallback oder eine vorgelagerte Schicht dieselbe Anfrage ebenfalls ablehnt, ist der Test mit der Kontrolle und ohne sie grün. Er misst dann die Umgebung, nicht den Code.
 
@@ -180,9 +194,26 @@ def test_right_host_wrong_port_is_rejected(client):
 
 ## Regel 6 — Der Mutationstest ist das Abnahmekriterium für jede Sicherheitskontrolle
 
-Nicht «Tests schreiben». Sondern: **Mutation benennen, anwenden, protokollieren, welche Tests fallen.** Eine Kontrolle, deren Entfernung nichts rot macht, ist unbewiesen — unabhängig davon, wie viele grüne Tests daneben stehen.
+Nicht «Tests schreiben». Sondern: **Mutation benennen, anwenden, prüfen dass sie angekommen ist, protokollieren, welche Tests fallen.** Eine Kontrolle, deren Entfernung nichts rot macht, ist unbewiesen — unabhängig davon, wie viele grüne Tests daneben stehen.
 
-In den drei PRs unten hat dieser Handgriff dreimal etwas gefunden, das sonst durchgegangen wäre. Der teuerste Fall zuerst:
+**Der dritte Schritt ist kein Formalismus: die Mutation muss mutieren.** Eine Ersetzung, die ihr Ziel verfehlt, hinterlässt eine unveränderte Datei und eine grüne Suite — dasselbe Bild wie eine echte Lücke im Guard. Null in der Spalte heisst dann nicht «Kontrolle unbewiesen», sondern «nichts passiert», und die beiden sind am Ergebnis nicht zu unterscheiden. Der Fall, in dem das zuschlug: Das Suchmuster stand in einem umbrochenen Absatz, `5 partial` lag im Text als `5\npartial` — die Ersetzung traf nichts, und der scheinbar überlebende Mutant war ein No-op. Dieselbe Ursache wie in [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) §4.1 («Whitespace normalisieren, bevor auf Text geprüft wird»): *Wer auf Zeilenumbrüche prüft, prüft den Zeilenumbruch — nicht den Satz.* Dort geht ein Check-Treffer verloren, hier eine Mutation, und beide Ergebnisse sehen aus wie eine Aussage über den Code.
+
+Eine Zeile mehr, und der Fall ist ausgeschlossen:
+
+```bash
+# ✗ angewandt geglaubt — traf die Ersetzung nichts, sieht das aus wie ein überlebender Mutant
+sed -i 's/transport_security=policy//' src/server.py
+pytest                                    # 0 rot → Befund? Oder gar keine Mutation?
+
+# ✓ erst beweisen, dass sich etwas geändert hat, dann erst testen
+sed -i 's/transport_security=policy//' src/server.py
+git diff --exit-code src/server.py && { echo "Mutation war ein No-op"; exit 1; }
+pytest
+```
+
+`git diff --exit-code` endet mit 0, wenn **nichts** geändert wurde — der `&&`-Zweig ist also genau der Fehlerfall. Bei einer Mutation von Hand tut derselbe Blick in `git diff` es auch; ungeprüft bleiben darf es nicht. Und beim Zurücksetzen zwischen zwei Mutationen: aus einer Kopie des Arbeitsbaums, nicht mit `git checkout --` — das restauriert HEAD und wirft jede uncommittete Änderung derselben Datei weg.
+
+In den drei PRs unten hat der Handgriff dreimal etwas gefunden, das sonst durchgegangen wäre. Der teuerste Fall zuerst:
 
 ```python
 # ✗ stellt selbst die Bedingung her, unter der der Fehler nicht auftreten kann
@@ -204,7 +235,7 @@ Die drei Funde, jeder mit seinem Merksatz:
 
 Der erste Merksatz gilt über den Transport hinaus: In `mcp-data-fidelity` (Regel 5) bildet ein Mock die eigene Annahme ab — ist sie falsch, ist der Mock falsch, und der Test bestätigt den Fehler, statt ihn zu finden. Derselbe Fehler, ein Spezialfall davon: Dort ist die hergestellte Bedingung die ganze Antwort.
 
-**Nachweis:** Die Tabelle selbst — sie entsteht nur, wenn jede Mutation tatsächlich angewandt und die Suite tatsächlich gelaufen ist. Eine Zeile mit null roten Tests ist ein Befund, kein Nebenergebnis: Entweder fehlt der Test, oder die Kontrolle tut nichts. Die Tabelle gehört in den PR.
+**Nachweis:** Die Tabelle selbst — sie entsteht nur, wenn jede Mutation tatsächlich angewandt und die Suite tatsächlich gelaufen ist. Eine Zeile mit null roten Tests ist ein Befund, kein Nebenergebnis: Entweder fehlt der Test, oder die Kontrolle tut nichts — oder die Mutation ist nie angekommen. Die dritte Möglichkeit wird zuerst ausgeschlossen, mit einem Diff, sonst untersucht man einen Befund, den es nicht gibt. Die Tabelle gehört in den PR.
 
 | Mutation | scheiternde Tests |
 |---|---|
@@ -418,6 +449,36 @@ Das steht hier ausgeschrieben, weil ein weggelassener Abschnitt von einem übers
 
 **Nachweis:** Zwei Negativtests, und beide brauchen einen korrekten `state`, sonst prüfen sie die falsche Kontrolle (Regel 5): (1) ein Code mit fremdem `iss` wird abgelehnt; (2) ein Code **ohne** `iss` von einem Autorisierungsserver, dessen Metadaten ihn ankündigen, wird ebenfalls abgelehnt. Dazu der positive Zwilling mit passendem `iss`. Der Mutationstest: die `iss`-Prüfung entfernen — beide müssen rot werden; wird nur der erste rot, ist die Auslassung ungeprüft. Für den Negativbefund selbst gilt ein anderer Nachweis: Er ist an `auth_model` gebunden und muss neu bewertet werden, sobald das Feld eines Servers nicht mehr `none` ist.
 
+## Regel 13 — Ein Guard prüft nicht, was vor ihm abgezweigt wurde
+
+Diese Regel gehört inhaltlich zum Beweisblock 5–7 und steht trotzdem hier hinten, aus demselben Grund wie 8–12: angehängt, nicht eingeschoben. Die Regeln 5–7 sorgen dafür, dass ein Guard trägt. Diese sagt, **wen er trägt**: Ab dem Merge-Commit gilt er, und nur dort vorwärts. Zwei Mengen liegen ausserhalb, beide unsichtbar, weil sie ein grünes CI-Signal zeigen:
+
+- **der Stand, der schon auf `main` liegt.** Der Guard entstand, weil etwas falsch war — geprüft hat er bisher nur den PR, der ihn eingeführt hat.
+- **jeder Zweig, der vor dem Merge geschnitten wurde.** Dessen CI kennt den Guard nicht. Er wird gemergt, ohne ihn je gelaufen zu sein.
+
+Der Schaden, der zu dieser Regel führte: Ein Versions-Sync-Check — Badge gegen oberste CHANGELOG-Überschrift — landete auf `main`, nachdem der Release-Branch für `0.20.0` bereits geschnitten war. Dessen Pipeline lief ihn nie, der Release ging durch, und danach prüfte niemand `main` nach. Die README-Badges waren **zwei Releases lang falsch** — gedeckt von einem Guard, der genau dafür geschrieben worden war und in der Zwischenzeit auf jedem grünen Lauf mit draufstand.
+
+Das mechanische Stück ist ein Trigger:
+
+```yaml
+# ✗ der Guard sieht ausschliesslich, was nach ihm kommt
+on:
+  pull_request:
+
+# ✓ er läuft auch auf dem Stand, den er nie geprüft hat
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:        # damit man ihn nach dem Merge einmal von Hand anwirft
+```
+
+Der Rest ist Handarbeit und steht in keinem YAML: **nach dem Merge einmal gegen `main` laufen lassen und hinsehen** — nicht annehmen, dass es gutgeht, weil der einführende PR grün war. Und die offenen Zweige, die vorher geschnitten wurden, auf `main` nachziehen; sonst mergen sie an dem Guard vorbei, der sie prüfen sollte.
+
+Für die Kontrollen dieses Skills ist das der Normalfall, nicht der Sonderfall: Der portgenaue Allow-List-Test entsteht in dem Repo, das gerade den 421 hatte; der Zwei-Aufrufer-Test aus Regel 8 in dem, das gerade migriert wird. Die übrige Flotte läuft sie später — oder nie. Es ist dieselbe Form wie beim verschachtelten Server unten in «Woher diese Regeln stammen»: Die Abdeckung hat eine Grenze, die niemand absichtlich gezogen hat, und sie fällt niemandem auf, weil ausserhalb davon nichts rot wird.
+
+**Nachweis:** Regel 6 auf den Guard selbst angewandt, aber auf `main` statt im PR: die Verletzung, gegen die er geschrieben wurde, dort herstellen und den Lauf ansehen. Wird er nicht rot, war jeder bisherige grüne Lauf ein «nicht gelaufen» und kein «bestanden» — den Unterschied misst [`OPS-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-005.md). Dazu die Zweige benennen, die den Guard nicht kennen: `git branch -r --no-contains <merge-sha>` zählt sie auf. Diese Liste ist der Umfang der Nacharbeit; solange sie nicht leer ist, ist der Guard eingeführt, aber nicht durchgesetzt.
+
 ---
 
 ## Checkliste vor dem Release eines netzgebundenen Servers
@@ -429,6 +490,7 @@ Das steht hier ausgeschrieben, weil ein weggelassener Abschnitt von einem übers
 - [ ] TypeScript-Server nicht «mitmigriert» — dort bleibt camelCase korrekt
 - [ ] `fastmcp` (PyPI) und `mcp.server.fastmcp` (SDK) nicht verwechselt; `fastmcp` 3.x pinnt `mcp<2.0`
 - [ ] Versions-Cap an beiden Enden verankert (`>=2.0.0,<3`), auch in verschachtelten Subprojekten
+- [ ] Cap und Lock im selben Commit — die installierte Version gemessen, nicht die Deklaration gelesen
 - [ ] Jede ASGI-Factory erhält Host **und** Port aus derselben Konfiguration wie `main()`
 - [ ] uvicorn-`--factory`-Pfad liest den Bind selbst; README begründet, warum `MCP_HOST`/`MCP_PORT` neben den Flags nicht redundant sind
 - [ ] Auf einer PaaS wird die Allow-List aus dem injizierten `$PORT` zusammengesetzt, nicht aus einem Literal
@@ -451,19 +513,22 @@ Das steht hier ausgeschrieben, weil ein weggelassener Abschnitt von einem übers
 - [ ] Reserviertes wird ohne Abschlussereignis wieder frei — kein Retry ist garantiert (Regel 11)
 - [ ] Auth: `iss` geprüft inklusive Auslassung, CIMD statt DCR, Credentials nach Issuer geschlüsselt — **oder** der Negativbefund ist mit `auth_model` begründet festgehalten (Regel 12)
 
-**Der Beweis (Regeln 5–7, gilt für alle Regeln)**
+**Der Beweis (Regeln 5–7 und 13, gilt für alle Regeln)**
 
 - [ ] Zu jedem Negativtest die zweite mögliche Ursache benannt und ausgeschlossen (Regel 5)
 - [ ] Tragender Fall: richtiger Hostname, **falscher Port** — ein fremder Hostname allein beweist nichts (Regel 5)
 - [ ] Jeder Negativtest hat seinen positiven Zwilling (Regel 5)
 - [ ] Kein Test stellt selbst die Bedingung her, unter der der Fehler nicht auftreten kann (Regel 6)
 - [ ] Getestet wird die Naht, an der der Wert reist, nicht die Funktion, die ihn schon hat (Regel 6)
+- [ ] Jede Mutation vor dem Testlauf per Diff belegt — eine Ersetzung, die nichts trifft, sieht aus wie ein überlebender Mutant (Regel 6)
 - [ ] Mutationstabelle im PR: jede Kontrolle einzeln entfernt, jede Zeile mit mindestens einem roten Test (Regel 6)
 - [ ] Die Stateless-Kontrollen sind mit **zwei** Aufrufern getestet — ein Aufrufer ist in beiden Zuständen grün (Regeln 5, 8)
 - [ ] Gegen den echten ASGI-Stack geprüft (`TestClient`), nicht gegen blankes `ASGITransport` (Regel 7)
 - [ ] Patch-Ebene im ganzen Repo einheitlich — Instanz oder Klasse, nicht gemischt (Regel 7)
 - [ ] Jeder Zweig-Test behauptet, welcher Zweig lief (Regel 7)
 - [ ] Suite läuft unter Timeout; jeder Zweig-Test zusätzlich einzeln **und** in der vollen Suite (Regel 7)
+- [ ] Jeder neue Guard läuft auch auf `main`, nicht nur auf Pull Requests — und ist dort nach dem Merge einmal angesehen worden (Regel 13)
+- [ ] Zweige, die vor dem Merge des Guards geschnitten wurden, auf `main` nachgezogen (`git branch -r --no-contains <merge-sha>`) (Regel 13)
 
 ## Woher diese Regeln stammen
 
@@ -487,6 +552,14 @@ Sechs Dinge daran sind übertragbar:
 **Die Regeln 8–12 haben keine Narbe, sondern ein Datum.** Das ist ein Unterschied, der hier ausgeschrieben gehört, weil der Contributing-Abschnitt dieses Repos von jeder neuen Regel einen konkreten Schaden verlangt. Ihr Anlass ist die Spec-Revision `2026-07-28`: ein externes, datiertes Ereignis, dessen Änderungen nicht plausibel klingen, sondern nachlesbar sind. Was sie mit den ersten sieben teilt, ist die Form — jede trägt ein ✗/✓-Paar und einen Nachweis, und jeder Nachweis benennt die Mutation, unter der er rot wird.
 
 Was am Portfolio dazu **gemessen** ist und nicht angenommen: Der Legacy-`initialize`-Handshake cappt unter mcp 2.x weiter bei `2025-11-25`, während derselbe Prozess daneben einen per-request-Umschlag bedient, der `2026-07-28` erreicht (festgehalten in `zurich-opendata-mcp`s `pyproject.toml`). Und das Erkennungsrezept aus Regel 10, an demselben Server angewandt, kommt an allen drei Orten negativ zurück. Beides sind Messungen an einem Repo, keine Verallgemeinerungen — mehr behaupten die Regeln an dieser Stelle auch nicht.
+
+**Regel 13 und zwei Nachträge stammen aus dem Betrieb der Kette selbst (2026-08).** Sie haben untereinander dieselbe Form wie Punkt 3 oben, der verschachtelte Server: Etwas ist eingeführt, aber nicht dort angekommen, wo es hätte wirken müssen — und weil ausserhalb der Reichweite nichts rot wird, sieht der Zustand von innen aus wie Erfolg.
+
+- **Regel 13.** Ein Versions-Sync-Check landete auf `main`, nachdem der `0.20.0`-Release-Branch geschnitten war. Dessen CI kannte ihn nicht, danach prüfte niemand `main` nach, und die README-Badges waren zwei Releases lang falsch.
+- **Regel 6, der Diff-Schritt.** Eine Ersetzung lief ins Leere, weil das gesuchte Literal im umbrochenen Text über eine Zeilengrenze fiel. Die Datei blieb unverändert, die Suite grün — und das las sich als überlebender Mutant.
+- **Regel 1, die Lock-Hälfte.** Der Auslöser des SDK-Major-Sprungs war ein unbeschränkter Resolve. Die Bounds danach in `pyproject.toml` zu setzen genügt nicht: Ohne neu aufgelösten Lock installiert das Deployment weiter, was vorher galt — was zu diesem Zeitpunkt auf einer `main` des Portfolios genau so lag.
+
+Regel 13 hat sich beim Schreiben dieses Abschnitts selbst bestätigt: Der Zweig, auf dem sie entstand, war vor dem Merge von `2.0.0` geschnitten. Sieben Regeln wurden zwölf, während er offen lag — und die neue Regel trug bis zum Rebase die Nummer 8, die inzwischen vergeben war.
 
 **Zur Benennung:** Zwei der drei PRs führen im Titel `SEC-005`, implementieren aber die **eingehende** Kontrolle — im Audit-Katalog `SEC-024`. `SEC-005` ist die ausgehende Richtung (DNS-Pinning gegen TOCTOU). Zwei Angriffe, ein Name: Wer «DNS-Rebinding» ohne Richtungsangabe zitiert, meint mit einiger Wahrscheinlichkeit den anderen.
 
@@ -539,7 +612,8 @@ Stand des Katalogs: [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) 
 | 10 — Legacy-SSE mit Datum | [`SCALE-009`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SCALE-009.md) — «Legacy HTTP+SSE abgeschaltet, mit Datum»; [`SCALE-010`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SCALE-010.md) für den entfallenen GET-Endpunkt |
 | 11 — MRTR | [`HITL-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/HITL-006.md) — «MRTR statt serverinitiierter Requests: `input_required`, Retry, Idempotenz» |
 | 12 — Auth-Härten | [`SEC-025`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-025.md) (RFC-9207-`iss`, greift ab `auth_model == "OAuth-Proxy"`), [`SEC-026`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-026.md) (CIMD statt DCR, greift ab `auth_model != "none"`) |
+| 13 — der Guard und die Zweige vor ihm | **teilweise.** Wieder [`OPS-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-005.md), und diesmal näher: Er führt ausdrücklich den Guard, der nie gegen `main` gelaufen ist — «167 Workflow-Runs in der Repo-Historie, kein einziger ein Test». Das ist die eine Hälfte dieser Regel. Die andere steht nicht darin: der Zweig, der vor dem Merge geschnitten wurde und den Guard deshalb nie ausführt, obwohl er auf `main` seit Wochen grün läuft |
 
-Wer nach den Regeln 1, 3, 4 und 8–12 baut, besteht die dort genannten Checks. Für die Regeln 2, 6 und 7 gilt das nicht: Sie beschreiben Fehler, die dieser Katalog derzeit nicht sieht. Bei Regel 5 fängt `DRIFT-003` die Klasse, aber nicht den Transportfall — ein bestandenes Audit ist auch dort kein Beleg, dass der Nachweis trägt.
+Wer nach den Regeln 1, 3, 4 und 8–12 baut, besteht die dort genannten Checks. Für die Regeln 2 und 6 gilt das nicht: Sie beschreiben Fehler, die dieser Katalog derzeit nicht sieht. Bei den Regeln 5, 7 und 13 liegt je ein Check daneben oder deckt eine Hälfte — `DRIFT-003` fängt bei Regel 5 die Klasse, aber nicht den Transportfall, und `OPS-005` bei Regel 13 den Guard, der nie gegen `main` lief, aber nicht den Zweig, der vor ihm abzweigte. Ein bestandenes Audit ist dort kein Beleg, dass der Nachweis trägt.
 
 **Fünf Checks messen einen Gegenstand, den `2026-07-28` entfernt hat**, und sind für einen Server auf der neuen Baseline nicht mehr anwendbar: `SCALE-002` (Stateful Load Balancing), `SCALE-003` (`Mcp-Session-Id`-Routing im Edge-LB), `SCALE-007` (Stream-Wiederaufnahme via `Last-Event-ID`), `SDK-004` (CORS-Exposure von `Mcp-Session-Id`), `SEC-009` (kryptografische Bindung der Session-ID). Der letzte hat in `ARCH-017` eine Ersatzdimension: Die Sitzungs-ID gibt es nicht mehr, die Frage nach der Ratbarkeit der Referenz schon — sie ist in die Tool-Signatur gewandert, und dort schaut kein Auth-Layer mehr hin. Das ist der Grund, warum ein Server nach der Migration nicht automatisch *weniger* zu prüfen hat.

@@ -7,6 +7,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Dreizehn Regeln statt zwölf, und zwei der bestehenden lernen dazu. Diese drei
+Änderungen stammen weder aus den drei PRs von 2026-07 noch aus der Spec-Revision,
+sondern aus dem Betrieb der Kette selbst. Sie haben untereinander dieselbe Form:
+Etwas ist eingeführt, aber nicht dort angekommen, wo es hätte wirken müssen —
+und ausserhalb der Reichweite wird nichts rot, also sieht der Zustand von innen
+aus wie Erfolg.
+
+### Added
+
+- **Regel 13 — «Ein Guard prüft nicht, was vor ihm abgezweigt wurde.»** Ein
+  frisch gemergter Guard gilt ab dem Merge-Commit und nur vorwärts. Zwei Mengen
+  liegen ausserhalb und zeigen beide grünes CI: der Stand, der schon auf `main`
+  liegt, und jeder Zweig, der vor dem Merge geschnitten wurde.
+
+  Der Schaden dahinter: Ein Versions-Sync-Check — Badge gegen oberste
+  CHANGELOG-Überschrift — landete auf `main`, nachdem der Release-Branch für
+  `0.20.0` bereits geschnitten war. Dessen Pipeline lief ihn nie, der Release
+  ging durch, und danach prüfte niemand `main` nach. Die README-Badges waren
+  zwei Releases lang falsch, gedeckt von einem Guard, der genau dafür
+  geschrieben worden war.
+
+  Das mechanische Stück ist der `push`-Trigger auf `main` plus
+  `workflow_dispatch`; der Rest ist Handarbeit — den Lauf auf `main` nach dem
+  Merge einmal ansehen und die vorher geschnittenen Zweige nachziehen
+  (`git branch -r --no-contains <merge-sha>`). Der Nachweis ist Regel 6 auf den
+  Guard selbst angewandt, auf `main` statt im PR.
+
+  **Angehängt statt eingeschoben**, obwohl die Regel inhaltlich zum Beweisblock
+  5–7 gehört — dieselbe Begründung wie bei 8–12: Eine Umnummerierung machte die
+  eigene Historie und vier Nachbar-Repos rückwirkend falsch. Die Blocktabelle im
+  Kopf führt den Beweisblock deshalb als «5–7, 13».
+
+  Die Regel hat sich beim Entstehen selbst bestätigt: Ihr Zweig war vor dem
+  Merge von `2.0.0` geschnitten, lief dessen CI nie, und die neue Regel trug
+  bis zum Rebase die Nummer 8 — die inzwischen vergeben war.
+
+### Changed
+
+- **Regel 6 verlangt jetzt drei Schritte statt zwei: Mutation anwenden, per Diff
+  belegen, dass sie angekommen ist, erst dann testen.** Eine Ersetzung lief ins
+  Leere, weil das gesuchte Literal im umbrochenen Text über eine Zeilengrenze
+  fiel — die Datei blieb unverändert, die Suite grün, und das las sich als
+  überlebender Mutant. Ein No-op und eine echte Lücke im Guard sind am Ergebnis
+  nicht zu unterscheiden: Beide Male steht null in der Spalte. Getrennt werden
+  sie nur vorher, mit `git diff --exit-code` vor dem Testlauf. Dieselbe Ursache
+  wie `mcp-audit` §4.1: Wer auf Zeilenumbrüche prüft, prüft den Zeilenumbruch
+  und nicht den Satz.
+
+  Dazu die zweite Falle desselben Handgriffs, aus demselben Lauf: Zwischen zwei
+  Mutationen wird aus einer Kopie des Arbeitsbaums zurückgesetzt, nicht mit
+  `git checkout --` — das restauriert HEAD und verwirft jede uncommittete
+  Änderung derselben Datei.
+
+- **Regel 1 führt den Bound bis in den Lock.** Auslöser des SDK-Major-Sprungs
+  war ein unbeschränkter Resolve, und die Lehre daraus wird falsch gezogen, wenn
+  sie beim Bound in `pyproject.toml` stehen bleibt. `uv sync` löst zwar von sich
+  aus neu auf — aber die Pfade, die zählen, tun das nicht: `--frozen`, ein
+  bereits gebautes Environment, ein Container-Image aus dem committeten Lock.
+  Beide Richtungen stehen jetzt nebeneinander, weil sie sich nicht
+  widersprechen: Der Lock verdeckt die schlechte Auflösung von morgen (deshalb
+  frisch installieren und importieren) und den guten Bound von heute (deshalb
+  `importlib.metadata.version("mcp")` messen statt die Deklaration lesen).
+
+- **Die Zuordnung Regel → Audit-Check führt Regel 13 mit,** gegen `mcp-audit`
+  v2.0.0: [`OPS-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-005.md)
+  deckt die eine Hälfte — den Guard, der nie gegen `main` gelaufen ist — und
+  nicht die andere: den Zweig, der vor dem Merge geschnitten wurde.
+
+- **Die Abdeckungsprüfung für `reference/patterns.py` zählt nur noch einzelne
+  Regel-Nennungen.** Ein Mutationstest dieses PRs hat gezeigt, warum: Das
+  Löschen des ganzen Regel-13-Blocks blieb grün, weil die Sammelüberschrift
+  darüber die Nummer mitzählte. Eine Sammelüberschrift benennt einen Abschnitt
+  und belegt kein Muster, das jemand kopieren kann. Bereiche werden weiterhin
+  expandiert, aber nur noch für die ausgegebene Abdeckungszeile.
+
 ## [2.0.0] - 2026-08-05
 
 Sieben Regeln werden zwölf. Anlass ist die Spec-Revision `2026-07-28`, und sie
