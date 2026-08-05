@@ -97,6 +97,39 @@ Workaround für eine vorhandene Funktion — dann Wildcard statt Widening.
 Gemessene unterste Stufe als Kommentar am Code (mit Begriff und Datum)? ☐
 Live-Test, der den gemessenen Begriff über die Staffel schickt? ☐
 
+## Aktualisierungsrhythmus und Haltbarkeit (Schritt 1.7)
+
+Eine Zeile pro Ressource, die eine List-, Read- oder Discover-Response bedient.
+Der dokumentierte Rhythmus ist die Behauptung, die Serie ist die Messung —
+`freshness_probe` im `probe_template.sh`, über mindestens zwei erwartete Zyklen.
+
+| Ressource | dokumentierter Rhythmus | gemessene Serie | grösste Verspätung | empfohlenes `ttlMs` | `cacheScope` | Reihenfolge stabil |
+|---|---|---|---|---|---|---|
+| z. B. Tages-Dump | «täglich» | 05:28 / 05:31 / 06:07 CET | +37 min | bis 05:30 + 45 min, dynamisch | `"public"` | ✅ upstream nach `id` |
+| z. B. Katalog-Endpoint | «laufend» | 4 Änderungen in 14 Tagen | – | 300'000 | `"public"` | ⚠️ Server sortiert nach `id` |
+| | | | | | | |
+
+**Ableitung nach Rhythmus-Klasse:** periodisch mit bekanntem Zeitpunkt → Rest bis
+zum nächsten Lauf plus Karenz, pro Response berechnet · periodisch ohne Zeitpunkt
+→ halbe Periode, statisch · unregelmässig → Minuten, und die Kürze begründet ·
+selten bis statisch → lang, aber auf 86'400'000 gedeckelt. Die **Karenz** ist die
+grösste beobachtete Verspätung, kein runder Wert.
+
+**Zwei Familien, zwei Uhren:** `resources/list`, `resources/templates/list` und
+`resources/read` veralten mit den **Daten** — das misst diese Tabelle.
+`tools/list`, `prompts/list` und `server/discover` veralten mit der **Oberfläche**
+des Servers, also mit dem Deployment; Tagesdeckel. `CallToolResult` trägt die
+Felder nicht.
+
+`cacheScope` ist `"public"`, wenn die Antwort in jedem Autorisierungskontext
+dieselbe ist (No-Auth-Quellen der Phase 1), sonst `"private"`. Der Entscheid
+fällt pro Response-Typ, nicht pro Server.
+
+Zugesagtes `ttlMs` ≥ interne Cache-TTL des Servers? ☐
+Reihenfolge upstream garantiert, sonst serverseitig sortiert (Schlüssel notiert)? ☐
+
+*Merksatz: «Frische innen (`source_freshness`), Haltbarkeit aussen (`ttlMs`).»*
+
 ## Datenstruktur-Findings
 
 **Feld-Überraschungen** (z. B. Bool-Kodierung, Timestamp-Format, Nested-vs-Flat):
@@ -115,6 +148,19 @@ Live-Test, der den gemessenen Begriff über die Staffel schickt? ☐
 Begründung:
 - ...
 
+## Spec-Ziel (Schritt 2.4)
+
+**Gewählt: `mcp_spec_version` = {2026-07-28 | abweichend}**
+
+Standard ist `2026-07-28`. Bei Abweichung genau einer der zwei zulässigen Gründe,
+plus die Bedingung, unter der die Abweichung endet:
+
+- [ ] SDK-Pin blockiert — welcher: `{paket}{constraint}`, Ende der Abweichung: ...
+- [ ] belegte Upstream-Abhängigkeit — Beleg: ...
+
+Kein deprecated Baustein im Entwurf? ☐ (Roots, Sampling, Logging, Legacy HTTP+SSE)
+Unter Streamable HTTP: `Mcp-Method` und `Mcp-Name` als Pflicht-Header gesetzt? ☐
+
 ## Blocker / Escalation
 
 - ...
@@ -123,8 +169,9 @@ Begründung:
 
 - [ ] Scaffold via `github-repo`-Skill bauen
 - [ ] Anchor Demo Query definieren: *"..."*
-- [ ] README-Abschnitt «Architecture decision» schreiben, inkl. Scope-Absatz aus der Abdeckungs-Matrix
+- [ ] README-Abschnitt «Architecture decision» schreiben, inkl. Scope-Absatz aus der Abdeckungs-Matrix und Spec-Ziel
 - [ ] Default-Matrix, Abdeckungs-Matrix und Recall-Ground-Truth ins README unter «Known Limitations»
 - [ ] Recall-Canary als Live-Test festschreiben
 - [ ] Widening-Staffel auf die gemessene unterste Stufe setzen (falls Widening gebaut wird)
-- [ ] Notion-Portfolio-Karte anlegen
+- [ ] `ttlMs`/`cacheScope` je Response-Familie aus der Rhythmus-Tabelle setzen
+- [ ] `portfolio.json` im Index-Repo nachführen; menschenlesbare Darstellung daraus ableiten

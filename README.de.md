@@ -1,6 +1,6 @@
 # mcp-data-source-probe-skill
 
-![Version](https://img.shields.io/badge/version-1.6.0-blue)
+![Version](https://img.shields.io/badge/version-1.7.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
@@ -21,7 +21,7 @@ Die vierte Disziplin — **Ground Truth vor Selbstvertrauen** — kam nach einem
 - **Schritt 1 — Live-Probe vor dem Design.** Fünf Probe-Calls pro Endpoint, Default-Matrix für jeden optionalen Parameter, Abdeckungs-Matrix mit dem Teil des Bestands, den kein geplantes Tool erreicht, Recall-Ground-Truth gegen das Web-UI der Quelle, gemessene Widening-Staffel, Dump-Verfügbarkeit — und der über mindestens zwei Zyklen gemessene Aktualisierungsrhythmus der Quelle, aus dem das zugesagte `ttlMs` abgeleitet wird.
 - **Schritt 2 — Architektur-Entscheid.** Entscheidungsbaum von den Probe-Befunden zu Live-API / Hybrid / Dump-only, Portfolio-Synergie-Check (neuer Server oder Tool-Erweiterung?) und ein zweiter Pflicht-Entscheid: welche `mcp_spec_version` der Server spricht — Standard `2026-07-28`, jede Abweichung schriftlich begründet, kein neuer Server auf deprecated Bausteinen.
 - **Schritt 3 — Nicht verhandelbare Resilienz-Defaults.** Retry mit Backoff, Provenance und Attribution in jeder Response, Anchor Demo Query, Tests gegen Fehlerzustände, Graceful Degradation — und Leermengen, die einen nächsten Schritt tragen statt einer Ausrede.
-- **Schritte 4–5 — Übergabe.** Eingaben für die Repo-Erstellung und die Portfolio-Karte.
+- **Schritte 4–5 — Übergabe.** Eingaben für die Repo-Erstellung und ein Portfolio-Register, dessen normative Hälfte eine `portfolio.json` im Index-Repo ist — versioniert, im Diff, ohne Konto bei irgendwem. Die menschenlesbare Hälfte ist eine Darstellung nach Wahl: Notion-Datenbank, generierte Markdown-Tabelle oder gar keine.
 - **Fundstück-Kultur.** Nicht offensichtliche Funde werden festgehalten, damit der nächste Server sie erbt, statt sie neu zu entdecken.
 
 ## Voraussetzungen
@@ -68,8 +68,10 @@ BASE="https://api.example.ch/v2" OUTDIR=/tmp/probe bash reference/probe_template
 .
 ├── SKILL.md                              # das Vorgehen selbst
 ├── reference/
-│   ├── probe_template.sh                 # lauffähiges Probe-Gerüst inkl. scope_probe()
-│   ├── befund_tabelle_template.md        # Befund-Tabelle: Default-Matrix, Recall-Ground-Truth
+│   ├── probe_template.sh                 # lauffähiges Probe-Gerüst: Scope, Abdeckung,
+│   │                                     #   Widening, Frische, Reihenfolge
+│   ├── befund_tabelle_template.md        # Befund-Tabelle: Default-Matrix, Recall-Ground-
+│   │                                     #   Truth, Aktualisierungsrhythmus, Spec-Ziel
 │   ├── response_envelope.py              # Pydantic-v2-Envelope mit source + provenance
 │   └── retry_backoff.py                  # Referenz-Implementation für exponentielles Backoff
 ├── companion/

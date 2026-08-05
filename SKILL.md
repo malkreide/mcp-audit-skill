@@ -332,12 +332,25 @@ Liefert die Quelle weder `Last-Modified` noch `ETag`, trägt eine andere Stelle 
 
 Der Vorbehalt aus 1.2c gilt hier besonders: **aggregierte Endpoints hinken nach.** Ein Katalogeintrag, der die Aktualisierung meldet, bevor der Dump sie hat, ist für `ttlMs` schlimmer als gar keine Angabe — er verspricht eine Frische, die der ausgelieferte Datenstand nicht hat.
 
-**Zwei `ttlMs`-Familien, nicht eine.** Die Spec verlangt `ttlMs` und `cacheScope` auf `tools/list`, `prompts/list`, `resources/list` und `resources/read`. Das sind zwei Haltbarkeiten mit zwei verschiedenen Uhren:
+**Wo die Felder sitzen.** `ttlMs` und `cacheScope` stehen auf der **obersten Ebene des Result-Objekts**, nicht in `_meta`. Die Spec bündelt sie in `CacheableResult`:
+
+```typescript
+export interface CacheableResult extends Result {
+  ttlMs: number;
+  cacheScope: "public" | "private";
+}
+```
+
+Sechs Result-Typen erben davon: `ListToolsResult`, `ListPromptsResult`, `ListResourcesResult`, `ListResourceTemplatesResult`, `ReadResourceResult` und `DiscoverResult` — Letzterer für den optionalen `server/discover`-RPC aus 2.4. **`CallToolResult` gehört nicht dazu:** Ein Tool-Ergebnis trägt keine Cache-Angabe, und wer eine hineinschreibt, hat sie erfunden.
+
+`ttlMs` ist in dieser Schnittstelle **nicht optional**. Es gibt kein Weglassen und Offenlassen — jede List-, Read- und Discover-Antwort nennt eine Zahl. Damit ist diese Messung keine Kür: Die Alternative zur gemessenen Zahl ist nicht «keine Zahl», sondern eine geratene.
+
+**Zwei `ttlMs`-Familien, nicht eine.** Die sechs Typen zerfallen in zwei Haltbarkeiten mit zwei verschiedenen Uhren:
 
 | Response | Was veraltet | Uhr | Woher die Zahl kommt |
 |---|---|---|---|
-| `resources/list`, `resources/read` | die **Daten** | Aktualisierungsrhythmus der Quelle | diese Messung |
-| `tools/list`, `prompts/list` | die **Oberfläche** des Servers | Deployment-Rhythmus | Release-Kadenz, nicht die Quelle |
+| `resources/list`, `resources/templates/list`, `resources/read` | die **Daten** | Aktualisierungsrhythmus der Quelle | diese Messung |
+| `tools/list`, `prompts/list`, `server/discover` | die **Oberfläche** des Servers | Deployment-Rhythmus | Release-Kadenz, nicht die Quelle |
 
 Wer beiden dieselbe Zahl gibt, trifft eine von zwei Fehlentscheidungen: Er hält eine Tool-Liste über ein Release hinweg fest, oder er wirft stündlich einen Katalog weg, der sich zweimal im Jahr ändert. Für die Oberfläche ist ein Tagesdeckel die brauchbare Faustregel — sie ändert sich beim Deployment, und ein Deployment kündigt sich einem Client nicht an.
 
@@ -352,12 +365,12 @@ Wer beiden dieselbe Zahl gibt, trifft eine von zwei Fehlentscheidungen: Er hält
 
 **Die Karenz kommt aus der Serie, nicht aus einem runden Wert.** Ein Nachtlauf, der meist um 05:30 fertig ist, ist an manchen Tagen um 06:07 fertig. Ein `ttlMs`, das exakt um 05:30 abläuft, holt an diesen Tagen den alten Stand und hält ihn einen ganzen Zyklus — der Fehler ist nicht 37 Minuten gross, sondern 24 Stunden. Die Karenz ist deshalb die grösste in der Messreihe beobachtete Verspätung, aufgerundet; dieselbe Logik wie bei der untersten Staffelstufe in 1.5, wo die brauchbare Zahl auch in der Quelle steht und nicht in der Formel.
 
-**`cacheScope` beantwortet eine einzige Frage:** Hängt diese Antwort davon ab, **wer** fragt? Zwei Fälle, und der Unterschied ist nicht graduell:
+**`cacheScope` hat zwei Werte, und dahinter steht eine einzige Frage:** Darf diese Antwort über **Autorisierungskontexte hinweg** geteilt werden? Die Semantik ist die von HTTP `Cache-Control`, mitsamt der Falle, die dort dieselbe ist — der Wert sagt nicht, wie vertraulich die Daten sind, sondern wer die gecachte Kopie zu sehen bekommt.
 
-- **Für jeden Aufrufer dieselbe Antwort.** Öffentliche Behördendaten ohne Auth — der Normalfall in Phase 1. Ein Cache darf über Aufrufer hinweg geteilt werden, und genau das soll er: Ein 17-MB-Dump, den jede Sitzung neu zieht, ist die Kostenseite von 2.3.
-- **Antwort hängt am Aufrufer.** Sobald Auth im Spiel ist oder ein Handle als Tool-Argument den Ausschnitt bestimmt (Stateless Core, siehe 2.4), ist die Antwort nicht mehr allgemein. Das ist eine Eigenschaft der einzelnen Response, nicht des Servers — derselbe Server kann beides ausliefern.
+- **`"public"`** — die Antwort ist in jedem Autorisierungskontext dieselbe und darf von einem gemeinsamen Zwischenspeicher geteilt werden. Öffentliche Behördendaten ohne Auth: der Normalfall in Phase 1, und genau das Erwünschte. Ein 17-MB-Dump, den jede Sitzung neu zieht, ist die Kostenseite von 2.3.
+- **`"private"`** — die Antwort hängt am Autorisierungskontext und bleibt in ihm. Sobald Auth im Spiel ist (Phase 2), ist das der Default, auch wenn der Inhalt zufällig für alle gleich aussieht: Die Frage ist nicht, ob die Daten geheim sind, sondern ob der Server garantieren kann, dass jeder Kontext dieselbe Antwort bekäme.
 
-Den Wert selbst nimmt man aus der Werte-Tabelle der Spec zu `cacheScope`; hier steht die Ableitung, nicht die Schreibweise. Wer die Frage falsch beantwortet, baut den einen Fehler, den ein Cache machen kann und den kein TTL repariert: die Antwort für den falschen Aufrufer.
+Der Entscheid fällt **pro Response-Typ, nicht pro Server**: Eine öffentliche Tool-Liste und eine auth-abhängige Resource-Liste im selben Server sind kein Widerspruch. Handles als Tool-Argumente (Stateless Core, 2.4) ändern daran nichts — Tool-Ergebnisse tragen die Felder gar nicht. Wer die Frage falsch beantwortet, baut den einen Fehler, den ein Cache machen kann und den kein TTL repariert: die Antwort für den falschen Aufrufer.
 
 **Frische innen, Haltbarkeit aussen.** Zwei Zahlen, zwei Richtungen, und sie werden regelmässig verwechselt:
 
@@ -372,11 +385,11 @@ Sie sind nie dieselbe Zahl, und die eine ersetzt die andere nicht. Ein `ttlMs` v
 
 **Was ins Protokoll geht** — eine Zeile pro Ressource, die eine List- oder Read-Response bedient:
 
-| Ressource | dokumentierter Rhythmus | gemessene Serie | grösste Verspätung | empfohlenes `ttlMs` | aufruferabhängig? | Reihenfolge stabil |
+| Ressource | dokumentierter Rhythmus | gemessene Serie | grösste Verspätung | empfohlenes `ttlMs` | `cacheScope` | Reihenfolge stabil |
 |---|---|---|---|---|---|---|
-| Tages-Dump | «täglich» | 05:28 / 05:31 / 06:07 CET | +37 min | bis 05:30 + 45 min, dynamisch | nein | ✅ upstream nach `id` |
-| Katalog-Endpoint | «laufend» | 4 Änderungen in 14 Tagen | – | 300'000 | nein | ⚠️ Server sortiert nach `id` |
-| Nomenklatur | «jährlich» | unverändert über 14 Tage | – | 86'400'000 (Deckel) | nein | ✅ upstream |
+| Tages-Dump | «täglich» | 05:28 / 05:31 / 06:07 CET | +37 min | bis 05:30 + 45 min, dynamisch | `"public"` | ✅ upstream nach `id` |
+| Katalog-Endpoint | «laufend» | 4 Änderungen in 14 Tagen | – | 300'000 | `"public"` | ⚠️ Server sortiert nach `id` |
+| Nomenklatur | «jährlich» | unverändert über 14 Tage | – | 86'400'000 (Deckel) | `"public"` | ✅ upstream |
 
 **Wohin das Ergebnis geht:** in die Konsequenzen des Architektur-Entscheids (2.3), zusammen mit der internen Cache-TTL, die dort schon steht — die beiden sind nicht dasselbe und stehen bewusst nebeneinander. Die interne TTL sagt, wann der Server neu holt; `ttlMs` sagt, wann der Client neu fragt. Ein Server, dessen interne TTL länger ist als das `ttlMs`, das er verspricht, beantwortet die neue Anfrage aus demselben alten Cache und hat die Zusage gebrochen, ohne dass es jemand merkt.
 
@@ -507,7 +520,7 @@ Nicht zulässig: «das Beispiel im Tutorial sah anders aus», «der letzte Serve
 
 1. **README**, im selben Abschnitt «Architecture decision». Der Spec-Entscheid ist Teil derselben Begründung und kein zweiter Abschnitt darunter: Wer die Architektur liest, liest auch, wogegen sie gebaut ist.
 2. **`portfolio.json`** im Index-Repo `swiss-public-data-mcp`: `mcp_spec_version`, dazu `sdk_flavour`, `sdk_constraint`, `migration_wave` und `migration_status`. Ein neuer Server wird auf dem Ziel geboren und trägt trotzdem alle fünf Felder — sonst fehlt er in jeder Auswertung, die über sie läuft, und «fehlt» liest sich dort wie «noch nicht migriert».
-3. **Notion-Portfolio-Karte** (Schritt 5).
+3. **Die menschenlesbare Hälfte des Portfolio-Registers** (5.2) — bei diesem Portfolio die Notion-Karte, anderswo, was dort dieselbe Rolle spielt.
 
 ---
 
@@ -652,23 +665,41 @@ Nach Abschluss der Probe (Schritt 1-3) erfolgt die Repo-Erstellung via [`github-
 
 ---
 
-## Schritt 5: Notion-Portfolio-Karte anlegen
+## Schritt 5: Portfolio-Register nachführen
 
-Nach Release (Tag `v0.1.0`) wird die Karte in der Notion-Datenbank `aa6b672a-e5e3-4608-b4e4-b380dc735b9e` angelegt. Pflichtfelder:
+Nach Release (Tag `v0.1.0`) wird der Server im Portfolio-Register eingetragen. Das Register hat zwei Hälften, und nur eine davon ist normativ.
 
-- Name
-- Cluster (Transport / Environment / Legal / Statistics / Education / Economics / Culture / Health / Registers / Parliament)
-- Status (Phase 1 / Phase 2 / Phase 3 / Deprecated)
-- Datenquelle-URL
-- Lizenz (CC BY 4.0 / CC BY-SA 4.0 / OGD-CH / proprietary)
-- Anchor Demo Query
-- Architektur (A / B / C)
-- Spec-Ziel (`mcp_spec_version`, Standard `2026-07-28`; bei Abweichung der Grund in einem Satz)
-- GitHub-URL
-- PyPI-Status
-- Notizen zu Known Limitations
+### 5.1 `portfolio.json` — die normative Hälfte
 
-**Die Karte ist die menschenlesbare Hälfte.** Die maschinenlesbare steht in der `portfolio.json` des Index-Repos `swiss-public-data-mcp` und trägt die Felder aus 2.4 — `mcp_spec_version`, `sdk_flavour`, `sdk_constraint`, `migration_wave`, `migration_status` — plus `pypi_package` und `requires_credentials`. Beide werden zusammen angelegt: Eine Karte ohne Eintrag ist ein Server, den keine Migrationsauswertung sieht.
+Liegt im Index-Repo `swiss-public-data-mcp`, maschinenlesbar und versioniert:
+
+| Feld | Inhalt |
+|---|---|
+| `name` | Repo-Name nach dem Muster `{quelle}-mcp` |
+| `cluster` | Transport / Environment / Legal / Statistics / Education / Economics / Culture / Health / Registers / Parliament |
+| `status` | Phase 1 / Phase 2 / Phase 3 / Deprecated |
+| `mcp_spec_version` | Spec-Ziel aus 2.4, Standard `2026-07-28` |
+| `sdk_flavour`, `sdk_constraint` | erhobene SDK-Lage, samt Pin, falls er das Spec-Ziel bestimmt |
+| `migration_wave`, `migration_status` | auch bei einem neuen Server gesetzt — ein leeres Feld liest sich in jeder Auswertung wie «noch nicht migriert» |
+| `pypi_package` | Paketname, oder leer, wenn kein Release vorgesehen ist |
+| `requires_credentials` | bei Phase-1-Servern `false`; steht dort `true`, ist Anti-Pattern 6 zu prüfen |
+
+**Warum diese Hälfte normativ ist:** Sie liegt im Repo, also im Diff, im Review und in der CI. Ein Feld, das jemand still ändert, ist ein Commit. Ein Feld, das fehlt, ist ein roter Check. Und sie braucht kein Konto bei niemandem — wer dieses Vorgehen ausserhalb dieses Portfolios anwendet, übernimmt sie unverändert.
+
+### 5.2 Die menschenlesbare Hälfte — Darstellung, frei wählbar
+
+Dieses Portfolio führt zusätzlich eine Karte in der Notion-Datenbank `aa6b672a-e5e3-4608-b4e4-b380dc735b9e`, mit Name, Cluster, Status, Datenquelle-URL, Lizenz (CC BY 4.0 / CC BY-SA 4.0 / OGD-CH / proprietary), Anchor Demo Query, Architektur (A / B / C), Spec-Ziel, GitHub-URL, PyPI-Status und Notizen zu Known Limitations.
+
+**Notion ist dabei eine Wahl und keine Anforderung.** Gleichwertig, je nach Werkzeuglage:
+
+| Variante | Wofür sie taugt | Was sie kostet |
+|---|---|---|
+| Notion-Datenbank | Ansichten, Filter, Kommentare, Zugriff für Nicht-Techniker | Konto und Vendor-Bindung, und der Inhalt steht in keinem Diff |
+| generierte Markdown-Tabelle im README des Index-Repos | öffentlich lesbar, im Diff, kein zusätzliches Werkzeug | keine Ansichten, keine Filter |
+| GitHub Issues oder Projects, ein Label pro Cluster | Diskussion am Objekt, Benachrichtigungen inklusive | jenseits von ein paar Dutzend Servern unübersichtlich |
+| gar keine zweite Hälfte | bei wenigen Servern völlig ausreichend | ab etwa zehn Servern fehlt der Überblick, den 2.2 voraussetzt |
+
+**Die Regel, die für alle Varianten gilt:** genau eine normative Quelle, und das ist `portfolio.json`. Jede Darstellung wird daraus abgeleitet, im Idealfall generiert, und nie parallel gepflegt. Zwei von Hand gepflegte Register driften, und ein gedriftetes Register ist schlechter als gar keines: Es beantwortet die Frage «welche Server stehen noch auf der alten Spec?» falsch, statt sie offen zu lassen. Dieselbe Überlegung wie bei den Checks dieses Repos, wo die CI `scripts/validate.sh` aufruft, statt die Prüfungen ein zweites Mal hinzuschreiben.
 
 ---
 
@@ -724,7 +755,7 @@ Nach Release (Tag `v0.1.0`) wird die Karte in der Notion-Datenbank `aa6b672a-e5e
 11. **«Was wir nicht abdecken, ist offensichtlich»** — beim Bauen ja, beim Begründen nicht mehr. Wer den Scope erst im Audit begründet, rekonstruiert ihn und erfindet dabei Gründe, die die Quelle kleiner machen, als sie ist. Die Abdeckungs-Matrix wird geprobt, nicht erinnert. Siehe 1.3b.
 12. **«Die Staffel ist eine Formel»** — 30 % pro Schritt ist eine Annahme über die Matching-Granularität der Quelle, kein Messwert. Ab welcher Präfixlänge Treffer kommen, sagt nur die Quelle, und sie sagt es für ein paar Calls. Siehe 1.5.
 13. **«Die Spec-Version ergibt sich aus dem SDK»** — sie ergibt sich aus einem Entscheid, den jemand trifft und begründet. Das SDK ist eine Randbedingung, kein Entscheider: Ein Pin, der `mcp` unterhalb 2.0 hält, ist ein Abweichungsgrund, den man aufschreibt — kein Zustand, in den man hineinrutscht und der später niemandem gehört. Siehe 2.4.
-14. **«`ttlMs` schätze ich»** — dieselbe Fehlerklasse wie die geratene Staffel, eine Ebene höher. Zu lang, und der Cache verschweigt einen ganzen Zyklus, ohne dass irgendwo ein Fehler auftaucht; zu kurz, und er greift nie, während der Verkehr bleibt. Der Rhythmus der Quelle ist messbar, und zwar bevor gebaut wird. Siehe 1.7.
+14. **«`ttlMs` schätze ich»** — dieselbe Fehlerklasse wie die geratene Staffel, eine Ebene höher. Zu lang, und der Cache verschweigt einen ganzen Zyklus, ohne dass irgendwo ein Fehler auftaucht; zu kurz, und er greift nie, während der Verkehr bleibt. Weglassen ist keine dritte Möglichkeit: Das Feld ist in `CacheableResult` nicht optional, die Wahl steht also nur zwischen gemessen und geraten. Der Rhythmus der Quelle ist messbar, und zwar bevor gebaut wird. Siehe 1.7.
 
 ---
 
@@ -776,7 +807,8 @@ Vor `v0.1.0`-Tag alle folgenden Punkte abhaken:
 - [ ] CI grün (`pytest -m "not live"` + ruff)
 
 **Schritt 5 – Portfolio**
-- [ ] Notion-Portfolio-Karte angelegt
+- [ ] `portfolio.json` im Index-Repo nachgeführt, alle Felder gesetzt (5.1)
+- [ ] Menschenlesbare Darstellung nachgeführt oder bewusst weggelassen — aus `portfolio.json` abgeleitet, nicht parallel gepflegt (5.2)
 - [ ] Known Limitations offen dokumentiert
 - [ ] PyPI-Veröffentlichung via OIDC Trusted Publisher
 

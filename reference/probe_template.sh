@@ -215,6 +215,103 @@ DUMP_URL="${DUMP_URL:-https://cms.example.ch/exports/all.json.zip}"
 echo "    $DUMP_URL"
 curl -sLI "$DUMP_URL" | grep -E "^HTTP|^Content-Length|^Last-Modified|^Content-Type" | sed 's/^/    /'
 
+# ----------------------------------------------------------------------
+# Refresh rhythm (skill section 1.7) — where ttlMs comes from.
+#
+# ttlMs is not optional in CacheableResult: every list, read and discover
+# response names a number. The choice is therefore never between a number and
+# no number, only between a measured one and a guessed one.
+#
+# One question, one variable: the TIME. Same URL, same parameters, several
+# points across at least two expected cycles. A single call shows a timestamp,
+# never a period — and the period is what is being looked for.
+#
+# Run this block once a day (cron or by hand), keep the log, and read two
+# things off it: the rhythm, and the LARGEST delay. A nightly job that is
+# usually done at 05:30 and occasionally at 06:07 costs a TTL expiring at
+# 05:30 not 37 minutes but a full cycle.
+# ----------------------------------------------------------------------
+
+freshness_probe() {
+    # $1 = URL of the resource whose rhythm you need (dump, list endpoint, …)
+    printf '    %s  ' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    curl -sLI "$1" | python3 -c "
+import sys
+h = {k.strip().lower(): v.strip()
+     for k, v in (l.split(':', 1) for l in sys.stdin.read().splitlines() if ':' in l)}
+lm, et = h.get('last-modified'), h.get('etag')
+if not lm and not et:
+    print('no Last-Modified, no ETag -> fall back, in this order: a date field '
+          'in the payload, the dump file date, the catalogue entry, the '
+          'official UI. Mind that aggregated endpoints lag (1.2c).')
+else:
+    print('last-modified:', lm or '—', '| etag:', et or '—')
+"
+}
+
+echo ""
+echo "=== Refresh rhythm ==="
+freshness_probe "$DUMP_URL"
+echo "    -> repeat across >= 2 expected cycles, then derive ttlMs:"
+echo "       periodic, time known    -> until next run + grace, computed per response"
+echo "       periodic, time unknown  -> half the period, static"
+echo "       irregular               -> minutes (e.g. 300000), and justify the shortness"
+echo "       rare to static          -> long, but capped at 86400000"
+echo "    -> grace = the LARGEST delay observed, not a round number"
+echo "    -> cacheScope: \"public\" if the answer is the same in every"
+echo "       authorization context (no-auth public data), \"private\" otherwise"
+
+# ----------------------------------------------------------------------
+# Deterministic order (also 1.7) — the same list call twice, IDs compared.
+# Without a stable order a ttlMs caches a snapshot instead of a state.
+# ----------------------------------------------------------------------
+
+first_ids() {
+    # Identity must come from the ROW, never from its position — falling back to
+    # the index would compare 0,1,2 against 0,1,2 and call every source stable.
+    curl -sL "$1" | python3 -c "
+import hashlib, json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception as exc:
+    print('PARSE ERROR:', exc); raise SystemExit(0)
+rows = d if isinstance(d, list) else (d.get('data') or d.get('result') or [])
+KEYS = ('id', 'uri', 'name', 'identifier', 'uuid', 'slug', 'key')
+def ident(r):
+    if isinstance(r, dict):
+        for k in KEYS:
+            if r.get(k) is not None:
+                return str(r[k])
+    blob = json.dumps(r, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha1(blob.encode('utf-8')).hexdigest()[:8]
+print(','.join(ident(r) for r in rows[:20]))"
+}
+
+order_probe() {
+    # $1 = full URL of a list endpoint
+    local a b
+    a=$(first_ids "$1"); b=$(first_ids "$1")
+    echo ""
+    echo "=== ORDER ==="
+    # 1.2c applied to this probe itself: two identical EMPTY reads are identical
+    # for the wrong reason. An error body, a wrong nesting and a genuinely empty
+    # list all land here, and none of them says anything about ordering.
+    if [ -z "$a" ] || [ "${a#PARSE ERROR}" != "$a" ]; then
+        echo "    ⚠️  no rows read — confirm the response shape first (1.2c)."
+        echo "        This is NOT a finding about ordering."
+        return
+    fi
+    if [ "$a" = "$b" ]; then
+        echo "    ✅ identical across two calls — necessary, not sufficient:"
+        echo "       confirm an ORDER BY / sort parameter, or sort server-side anyway"
+    else
+        echo "    ⚠️  two identical calls returned different orders. The server has to"
+        echo "        sort, and the sort key belongs in the findings table."
+    fi
+}
+
+# order_probe "${BASE}/table/entity/list?limit=20"
+
 echo ""
 echo "---"
-echo "Next: fill the Befund-Tabelle and decide architecture (A/B/C)."
+echo "Next: fill the Befund-Tabelle and decide architecture (A/B/C) and spec target."
