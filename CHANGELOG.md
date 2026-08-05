@@ -6,6 +6,24 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `line-length` steht jetzt in `ruff.toml`, und zwar auf 88
+
+`ruff.toml` trug keinen `line-length`-Eintrag und lief damit auf dem ruff-Default 88. Von aussen ist eine Abwesenheit nicht von einer Entscheidung zu unterscheiden — und weil 24 der 32 in `SKILL.md` gezählten Portfolio-Repos auf 100 stehen, liest sich ausgerechnet das Repo, das die Regel formuliert, wie der Ausreisser.
+
+**Die naheliegende Korrektur wäre die falsche gewesen.** Die Regel in «Portfolio-Hygiene» lautet nicht «wie die Mehrheit», sondern *«der schmalste Wert im Portfolio schreibt den Code»*. Der schmalste konfigurierte Wert ist 88 (`swiss-snb-mcp`). Gemessen mit ruff 0.15.8 über den ganzen Baum: bei 88 sind alle 58 Dateien formatgerecht, bei 100 würden **42 von 58** umformatiert (110: 43, 120: 44). Diese 42 Dateien enthalten Ausdrücke, die bei 88 umgebrochen sind und bei 100 zusammengezogen würden — ein Wechsel auf 100 brächte sie auf Zeilen bis 100 Spalten, und jede davon ist in einem 88er-Repo ein Umbruch. Der Wechsel würde den Bruch aus `OPS-005`, fünfte Ausprägung, also **erzeugen** statt beseitigen.
+
+Deshalb Variante (b): 88 bleibt, steht aber explizit da, mit Messung und Begründung im Kommentar darüber. `tests/test_ruff_line_length.py` bindet den Wert an die Prüfschleife in `SKILL.md` — geprüft wird nicht «ist 88», sondern «ist der schmalste der dort geprüften Breiten». Sinkt der Boden im Portfolio, wird der Test rot, statt eine überholte Zahl zu zementieren.
+
+Was der Eintrag **nicht** leistet, steht ausdrücklich dabei: Kopiertauglichkeit. Eine hier bei 88 umgebrochene Zeile will ein 100er-Repo zusammenziehen; der Bruch bleibt, nur in der anderen Richtung. Die Konfiguration entscheidet den lokalen Boden, die Schleife über alle Breiten (`OPS-005` Modus 3) entscheidet die Kopierbarkeit.
+
+### Geändert — Das Description-Issue sagt, wie man den Guard über die Reparatur informiert
+
+Real beobachtet: Die Repo-Description wurde korrigiert, und das Issue blieb offen. Der Guard schliesst es beim nächsten Lauf, der die Description korrekt findet — aber eine Description-Änderung erzeugt keinen Push, und der `push`-Auslöser des Workflows hört nur auf `checks/**` und zwei Dateien. Das nächste Ereignis wäre der Montags-Cron gewesen. **Der Guard merkt keine Reparatur, er merkt erst den nächsten Anlass.**
+
+Der Auslöser fehlte nicht — `workflow_dispatch` ist seit jeher konfiguriert. Es fehlte der Satz, der jemandem sagt, dass er ihn drücken soll. `render_body()` nennt jetzt Tab, Workflow und Schaltfläche und beziffert, was das Auslassen kostet: offen bis Montag, obwohl erledigt.
+
+Zwei Tests dazu, weil der Text allein nur die halbe Aussage trägt: einer verlangt den Hinweis im Body, einer prüft, dass `repo-description.yml` den manuellen Auslöser überhaupt anbietet. Ohne den zweiten könnte der Body auf einen Knopf verweisen, den es nicht gibt.
+
 ### Geändert — Die Ketten-Tabelle führt zehn Checks für `mcp-transport-hardening-skill` statt drei
 
 Jener Skill ist auf **v2.0.0** gegangen und von sieben auf zwölf Regeln gewachsen, entlang der Spec `2026-07-28`. Die Tabelle nannte weiterhin drei Checks — `SDK-006`, `ARCH-013`, `SEC-024` — und beschrieb damit den Stand vor dem Migrations-Layer, den dieses Repo mit `v2.0.0` selbst eingeführt hat. Beide Seiten waren einzeln aktuell und zusammen falsch.

@@ -10,6 +10,7 @@ any test here is ever dropped, it should not be that one.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -90,6 +91,43 @@ class TestBody:
     def test_the_body_says_the_guard_does_not_write(self):
         """Changing repo metadata belongs to a person; the issue must say so."""
         assert "schreibt bewusst nicht" in render_body(DRIFT_RESULT)
+
+    def test_the_body_asks_for_the_workflow_to_be_re_run(self):
+        """A repair produces no event, so the issue outlives the fix.
+
+        Observed: the description was corrected and the issue stayed open,
+        because editing repo metadata triggers no push and the guard's only
+        other event is the Monday cron. The guard does not notice a repair, it
+        notices the next occasion. The body has to name the manual trigger —
+        and say what it costs to skip it, or it reads as optional.
+        """
+        body = render_body(DRIFT_RESULT)
+        assert "Run workflow" in body, "the button needs its label"
+        assert "Actions" in body, "and the tab it lives in"
+        assert "repo-description" in body, "and which workflow to pick"
+        assert "Montag" in body, "and what waiting instead would cost"
+
+
+class TestTheInstructionMatchesTheWorkflow:
+    """The body sends a person to a button. The button has to exist.
+
+    This is the half a text test cannot cover: `render_body` would happily
+    describe a trigger the workflow does not offer, and the reader would find
+    out in the Actions tab. Cheap to bind, so bound.
+    """
+
+    def test_the_workflow_can_actually_be_dispatched_by_hand(self):
+        workflow = (
+            Path(__file__).resolve().parent.parent
+            / ".github"
+            / "workflows"
+            / "repo-description.yml"
+        )
+        assert workflow.is_file(), f"{workflow} fehlt"
+        assert "workflow_dispatch:" in workflow.read_text(encoding="utf-8"), (
+            "Das Issue verweist auf «Run workflow», aber der Workflow bietet "
+            "keinen manuellen Auslöser an."
+        )
 
 
 class TestCLI:

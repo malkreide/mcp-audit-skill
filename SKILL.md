@@ -1016,6 +1016,8 @@ Alle vier müssen still bleiben. Bleibt eine übrig, ist der Patch noch nicht po
 
 **Eselsbrücke:** *«Der schmalste Wert im Portfolio schreibt den Code.»*
 
+**Und dieses Repo steht bei 88 — ausgeschrieben, nicht vergessen.** `ruff.toml` trug lange keinen `line-length`-Eintrag und lief damit auf dem ruff-Default. Von aussen ist das nicht von einem Versäumnis zu unterscheiden, und weil 24 der 32 gezählten Repos auf 100 stehen, liest sich die Abwesenheit wie ein Ausreisser. Sie ist das Gegenteil: 88 ist der schmalste im Portfolio konfigurierte Wert, also genau der, den die Regel oben verlangt. Ein Angleichen an die Mehrheit würde 42 der 58 Dateien dieses Repos auf Zeilen bis 100 Spalten bringen — jede davon ein Umbruch in jedem 88er-Repo, also der Bruch aus `OPS-005` neu erzeugt statt beseitigt. Der Wert steht deshalb jetzt explizit in `ruff.toml`, samt Messung und Begründung; `tests/test_ruff_line_length.py` hält ihn am schmalsten Wert der Prüfschleife oben fest. Was der Eintrag *nicht* leistet: Kopiertauglichkeit. Die entsteht erst, wenn die zusammengezogene Form in 88 Spalten passt, und nachweisen kann sie nur die Schleife, nicht die Konfiguration.
+
 **Und die Regel braucht einen Ort, an dem sie rot wird.** Diese Sektion ist Anleitung für den, der ausrollt — sie wirkt nur, solange sie jemand liest. Derselbe Bruch kam prompt zurück, diesmal aus der Gegenrichtung: eine 99 Zeichen lange Zeile, in einem 100er-Repo geschrieben, formatgerecht dort und nicht im 88er-Repo. Erzwungen wird die Regel erst durch einen Pipeline-Schritt, der die Prüfschleife oben ausführt — als Kriterium ist das `OPS-005`, fünfte Ausprägung.
 
 ### Ein mechanischer Eingriff braucht einen mechanischen Nachweis

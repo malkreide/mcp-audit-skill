@@ -7,6 +7,48 @@
 # Die Test-Matrix in .github/workflows/test.yml faehrt 3.11 und 3.13.
 target-version = "py311"
 
+# Zeilenbreite: bewusst 88, und bewusst ausgeschrieben.
+#
+# 88 ist der ruff-Default, dieser Eintrag aendert also nichts an der
+# Formatierung. Er aendert, dass die Breite eine *Entscheidung* ist statt einer
+# Abwesenheit. Ohne Eintrag ist von aussen nicht unterscheidbar, ob hier jemand
+# 88 gewaehlt oder nur niemand etwas eingetragen hat — und genau diese
+# Ununterscheidbarkeit ist der Grund, dass die Frage ueberhaupt aufkam.
+#
+# Warum nicht 100, wie in 24 der 32 Portfolio-Repos (Zaehlung in SKILL.md,
+# «Portfolio-Hygiene»)? Weil die dort formulierte Regel nicht «wie die
+# Mehrheit» lautet, sondern **«der schmalste Wert im Portfolio schreibt den
+# Code»**. Der schmalste konfigurierte Wert ist 88 (`swiss-snb-mcp`). Ein
+# Angleichen nach oben wuerde die Regel nicht erfuellen, sondern brechen — und
+# zwar hier, wo sie steht.
+#
+# Gemessen, mit ruff 0.15.8 ueber den ganzen Baum (58 Dateien):
+#
+#     line-length  88 → 58 bereits formatiert
+#     line-length 100 → 42 von 58 wuerden umformatiert
+#     line-length 110 → 43 von 58
+#     line-length 120 → 44 von 58
+#
+# Diese 42 Dateien enthalten Ausdruecke, die bei 88 umgebrochen sind und bei
+# 100 zusammengezogen wuerden. Auf 100 zu gehen hiesse, 42 Dateien auf Zeilen
+# von bis zu 100 Spalten zu bringen — jede davon ist in einem 88er-Repo ein
+# Umbruch und damit ein roter `ruff format --check`. Der Wechsel wuerde also
+# genau den Bruch *erzeugen*, den `OPS-005` in seiner fuenften Auspraegung
+# beschreibt, statt ihn zu beseitigen.
+#
+# Was dieser Eintrag NICHT leistet: Er macht kopierte Dateien nicht
+# portfoliotauglich. Eine hier bei 88 umgebrochene Zeile will ein 100er-Repo
+# zusammenziehen — der Bruch bleibt, nur in der anderen Richtung. Kopiertauglich
+# ist eine Datei erst, wenn ihre *zusammengezogene* Form in 88 Spalten passt;
+# nachweisbar allein durch die Schleife ueber alle genutzten Breiten aus
+# `OPS-005` Modus 3. Die Konfiguration entscheidet den lokalen Boden, der Guard
+# entscheidet die Kopierbarkeit. Zwei verschiedene Dinge, und nur das erste
+# steht hier.
+#
+# Gebunden an SKILL.md durch tests/test_ruff_line_length.py: Der Wert hier muss
+# der schmalste der dort geprueften Breiten bleiben.
+line-length = 88
+
 [lint]
 # Expliziter Regelsatz, gleichgezogen mit dem uebrigen Portfolio. Ein `select`
 # in der Konfiguration ersetzt die eingebauten Defaults vollstaendig; damit ist
