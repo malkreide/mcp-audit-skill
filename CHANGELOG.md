@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-08-05
+
+Neun Regeln, unverändert — dieses Release ändert nichts an dem, was der Skill
+lehrt. Es korrigiert, wohin er zeigt, und zwar an derselben Stelle wie 1.4.0:
+der Zuordnung Regel → Audit-Check. Sie stand seit heute Vormittag auf
+Katalogstand v1.7.0 und behauptete für die Regeln 7, 8 und 9 «kein Check». Der
+Katalog steht aber seit dem 4. August auf **v2.0.0**, 112 Checks auf zwei
+Spec-Baselines, und drei dieser vier Lücken sind dort längst geschlossen.
+
+Zwischen v1.7.0 und v2.0.0 lagen vier Tage. Genau deshalb steht unter der
+Tabelle jetzt ein Satz zu ihrer Haltbarkeit: Der Katalog bewegt sich schneller
+als dieser Skill, und der teuerste Zeitpunkt für eine falsche Zuordnung ist
+der, an dem jemand ein Finding beheben will.
+
+### Changed
+
+- **Die Regeln 7 und 8 liegen auf [`ARCH-020`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-020.md), Regel 9 auf [`HITL-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/HITL-006.md)** —
+  beide `spec_baseline: 2026-07-28`, beide `adoption: advisory`, dazu
+  `ARCH-018` für `resultType`. `ARCH-020` trägt Reihenfolge und Caching
+  bewusst als *einen* Check, weil beide Anforderungen einzeln wertlos sind und
+  derselbe Handgriff sie behebt. Sein Reihenfolge-Test ist schärfer als das
+  Rezept in diesem Skill: zwei **Prozesse** statt zweier Aufrufe, mit
+  `PYTHONHASHSEED=random` — die häufigste Ursache instabiler Ordnung ist
+  Iteration über ein `set`, und dessen Ordnung ist innerhalb eines Prozesses
+  konstant. Ein Test im selben Interpreter bestätigt eine Stabilität, die es
+  über Neustarts nicht gibt.
+
+- **Jede der drei Zeilen nennt jetzt ihre Reichweite — was der Check *nicht*
+  abdeckt.** Eine Zuordnung, die nur den Treffer nennt, liest sich als
+  vollständige Abdeckung, und dann ersetzt ein bestandenes Audit die Regel.
+  `ARCH-020` misst die fünf `CacheableResult`-Methoden, nicht den
+  Pagination-Schnitt auf Query-Resultaten und nicht die Ableitung eines
+  `ttlMs` aus `source_freshness`; `HITL-006` prüft die Retry-Idempotenz, nicht
+  die Disjunktheit von Rückfrage und Leermenge. Diese Reste sind die
+  Datentreue-Hälfte der drei Regeln — sie gehören nach `FID` und stehen dort
+  noch nicht.
+
+- **Regel 6 ist die einzige ohne Check, und die Zeile sagt jetzt auch, was
+  danebenliegt.** `DRIFT-002` («Fallback verengt, erweitert nie») behandelt die
+  stille Substitution — ein *anderer* Datensatz. Regel 6 behandelt den Fall, in
+  dem *keiner* geliefert wird, weil die Struktur nicht so aussieht wie
+  angenommen. Verwandt, aber nicht dasselbe, und ohne den Hinweis sucht man
+  beim falschen Check.
+
+- **Der Katalogstand in der Kopfzeile der Tabelle steht auf v2.0.0, 112 Checks,
+  zwei Spec-Baselines** — vorher v1.7.0 und 97. Beide READMEs ziehen die
+  Kurzfassung nach.
+
 ## [1.5.0] - 2026-08-05
 
 Drei neue Regeln, und zum ersten Mal keine davon aus einem Schaden. Die
