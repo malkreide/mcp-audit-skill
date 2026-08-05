@@ -138,6 +138,13 @@ class TestRealCatalogUnchanged:
         #
         # They leave advisory as the closing gate of migration wave D, not one
         # by one.
+        #
+        # FID-006 (v2.1.0) takes the ordinary bridge, not the migration one: it
+        # is baseline-independent, so it does not leave with the cohort. Its
+        # fail pattern — `payload.get("servers", [])` — is the normal idiom, so
+        # enforced at `high` on merge day would have failed almost every
+        # data-source server for a property none of them was ever asked to
+        # have. Advisory until a portfolio run says how many confirm the shape.
         assert advisory_ids(parse_catalog(CHECKS_DIR)) == [
             "ARCH-015",
             "ARCH-016",
@@ -146,6 +153,7 @@ class TestRealCatalogUnchanged:
             "ARCH-019",
             "ARCH-020",
             "ARCH-021",
+            "FID-006",
             "HITL-006",
             "OPS-005",
             "OPS-006",
@@ -302,6 +310,7 @@ class TestReadmesNameTheAdvisorySet:
             4: ("four", "vier"),
             5: ("five", "fünf"),
             18: ("eighteen", "achtzehn"),
+            19: ("nineteen", "neunzehn"),
         }
         assert expected in words, (
             f"{expected} advisory checks — extend the number words in this test"
