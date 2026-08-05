@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-08-05
+
+1.6.0 hat zwei Lücken bewusst offen gelassen — die zulässigen `cacheScope`-Werte
+und die Platzierung von `ttlMs` — statt sie zu raten. Sie sind jetzt an der
+autoritativen Stelle geprobt (`schema/2026-07-28/schema.ts`) und stehen konkret
+im Text. Dazu bekommen die Referenzdateien die Messungen, die 1.7 verlangt, und
+Schritt 5 hört auf, ein bestimmtes Werkzeug vorauszusetzen.
+
+### Added
+
+- **`freshness_probe()` und `order_probe()` in `reference/probe_template.sh`.**
+  Die erste ist eine `HEAD`-Abfrage mit Fallback-Hinweis, wenn weder
+  `Last-Modified` noch `ETag` vorhanden sind, gedacht für den täglichen Lauf über
+  mindestens zwei Zyklen; der Block gibt die Ableitungsregeln und die
+  `cacheScope`-Frage direkt aus. Die zweite schickt denselben Listen-Call zweimal
+  und vergleicht die Zeilen-Identitäten — mit dem Vorbehalt, dass Gleichheit
+  notwendig und nicht hinreichend ist.
+
+  Beim Testlauf hat `order_probe` zweimal die eigene Regel verletzt, bevor sie
+  stand, und beide Male auf dieselbe Art: Die Identität kam zuerst aus der
+  Position der Zeile, womit `0,1,2` gegen `0,1,2` verglichen wurde und jede
+  Quelle als stabil galt — auch eine, die bei jedem Aufruf mischt. Und zwei
+  identische *Fehlerantworten* ergaben zwei leere Listen, also ebenfalls
+  «identisch». Jetzt kommt die Identität aus der Zeile (`id`, `uri`, `name`, …,
+  sonst ein Kurz-Hash), und bei null gelesenen Zeilen verweigert die Funktion die
+  Aussage und zeigt auf 1.2c. Dieselbe Regel, die der Skill für Proben aufstellt,
+  gilt für seine eigenen Werkzeuge.
+
+- **`reference/befund_tabelle_template.md`: Abschnitt «Aktualisierungsrhythmus
+  und Haltbarkeit» und Abschnitt «Spec-Ziel».** Ersterer trägt die
+  Rhythmus-Tabelle, die vier Ableitungsklassen, die Trennung der beiden
+  `ttlMs`-Familien und zwei Häkchen (zugesagtes `ttlMs` ≥ interne Cache-TTL,
+  Reihenfolge stabil). Letzterer die Zielversion mit den zwei zulässigen
+  Abweichungsgründen und dem Häkchen gegen deprecated Bausteine. Bisher verlangte
+  1.7 eine Messung, für die das mitgelieferte Protokoll keine Zeile hatte.
+
+### Changed
+
+- **1.7 nennt `cacheScope`-Werte und Platzierung konkret.** Beide Felder stehen
+  auf oberster Ebene des Result-Objekts, nicht in `_meta`, gebündelt in
+  `CacheableResult`; `cacheScope` ist `"public"` oder `"private"` mit der Semantik
+  von HTTP `Cache-Control` — geteilt über Autorisierungskontexte hinweg oder auf
+  einen beschränkt. Sechs Result-Typen erben davon, darunter
+  `ListResourceTemplatesResult` und `DiscoverResult`, die in 1.6.0 noch fehlten;
+  `CallToolResult` gehört nicht dazu. Die Familien-Tabelle ist entsprechend
+  korrigiert.
+
+  Zwei Punkte aus 1.6.0 waren damit ungenau und sind es nicht mehr: `ttlMs` ist in
+  `CacheableResult` **nicht optional** — die Wahl steht nur zwischen gemessen und
+  geraten, nicht zwischen Zahl und keiner Zahl —, und ein Handle als
+  Tool-Argument ändert am `cacheScope` nichts, weil Tool-Ergebnisse die Felder
+  gar nicht tragen. Der Entscheid fällt pro Response-Typ, nicht pro Server.
+
+- **Schritt 5 heisst «Portfolio-Register nachführen» und trennt zwei Hälften.**
+  Normativ ist die `portfolio.json` im Index-Repo: versioniert, im Diff, im
+  Review, in der CI — und ohne Konto bei irgendwem, was für ein öffentlich
+  installierbares Skill der Punkt ist. Die menschenlesbare Hälfte ist eine
+  Darstellung nach Wahl; die Notion-Datenbank dieses Portfolios steht als eine
+  Variante neben generierter Markdown-Tabelle, GitHub Issues und «gar keine», mit
+  Nutzen und Kosten je Variante. Dazu die Regel, die alle teilen: genau eine
+  normative Quelle, jede Darstellung daraus abgeleitet statt parallel gepflegt.
+  Ein gedriftetes Register ist schlechter als keines — es beantwortet «welche
+  Server stehen noch auf der alten Spec?» falsch, statt die Frage offen zu lassen.
+
+- **Anti-Pattern 14** nennt jetzt auch die dritte Möglichkeit, die keine ist:
+  `ttlMs` weglassen.
+
 ## [1.6.0] - 2026-08-05
 
 Die MCP-Spec 2026-07-28 macht zwei Dinge zu Entscheiden, die bisher Nebenprodukte
