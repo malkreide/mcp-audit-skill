@@ -300,6 +300,86 @@ Parallel zu den API-Probes **immer** prüfen, ob die Quelle einen Bulk-Download 
 
 **Faustregel:** Jede Schweizer Behörden- oder NGO-Datenquelle, die «seriös» ist, bietet einen Dump. Wenn keiner auffindbar ist, gezielt nachfragen oder in GitHub-Issues suchen.
 
+### 1.7 Aktualisierungsrhythmus messen — die Grundlage für `ttlMs` und `cacheScope`
+
+**Ziel:** Festhalten, **wann** sich der Bestand ändert. Diese eine Beobachtung entscheidet später, wie lange ein Client eine Antwort behalten darf — und sie ist nach dem Bau nicht mehr billig zu bekommen, weil sie eine Serie über Tage ist und kein einzelner Call.
+
+Der Schritt fragt genau eine Frage und variiert genau eine Grösse: die Zeit. Endpoint, Parameter und Abfrage bleiben über alle Messpunkte identisch — sonst misst man Parameterwirkung statt Rhythmus. Deshalb ist er ein eigener Schritt und kein Anhängsel an 1.6: Dort geht es darum, **ob** es einen Dump gibt, hier darum, **wann** die Quelle neu ist, und das gilt für Dump und Live-API gleichermassen.
+
+**Die Behauptung steht in der Doku, die Messung im Header.** «Täglich aktualisiert» im Katalogeintrag ist derselbe Typ Aussage wie ein dokumentierter Parameter-Default aus 1.2b: plausibel, oft richtig, nie belegt. Belegt wird sie mit einer Serie — dieselbe Ressource, mehrfach, über mindestens zwei erwartete Zyklen:
+
+```bash
+# Eine Zeile pro Messpunkt. Ein einzelner Abruf zeigt einen Zeitstempel,
+# keine Periode — und die Periode ist das Gesuchte.
+freshness_probe() {
+    printf '%s  ' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    curl -sI "$1" | python3 -c "
+import sys
+h = {k.strip().lower(): v.strip()
+     for k, v in (l.split(':', 1) for l in sys.stdin.read().splitlines() if ':' in l)}
+print('last-modified:', h.get('last-modified', '—'), '| etag:', h.get('etag', '—'))
+"
+}
+freshness_probe "$BASE/dump/current.json"
+```
+
+Liefert die Quelle weder `Last-Modified` noch `ETag`, trägt eine andere Stelle dieselbe Information — in dieser Reihenfolge, weil sie unterschiedlich nah an der Wahrheit sind:
+
+1. ein Datums- oder Versionsfeld **im Payload** (`stand`, `updated_at`, `data_version`),
+2. das Dateidatum des Bulk-Dumps oder der Verzeichnisindex, der ihn listet,
+3. der Katalogeintrag (opendata.swiss, CKAN `metadata_modified`),
+4. die Angabe der offiziellen Oberfläche — dieselbe Ground Truth wie in 1.4, eine andere Frage gestellt.
+
+Der Vorbehalt aus 1.2c gilt hier besonders: **aggregierte Endpoints hinken nach.** Ein Katalogeintrag, der die Aktualisierung meldet, bevor der Dump sie hat, ist für `ttlMs` schlimmer als gar keine Angabe — er verspricht eine Frische, die der ausgelieferte Datenstand nicht hat.
+
+**Zwei `ttlMs`-Familien, nicht eine.** Die Spec verlangt `ttlMs` und `cacheScope` auf `tools/list`, `prompts/list`, `resources/list` und `resources/read`. Das sind zwei Haltbarkeiten mit zwei verschiedenen Uhren:
+
+| Response | Was veraltet | Uhr | Woher die Zahl kommt |
+|---|---|---|---|
+| `resources/list`, `resources/read` | die **Daten** | Aktualisierungsrhythmus der Quelle | diese Messung |
+| `tools/list`, `prompts/list` | die **Oberfläche** des Servers | Deployment-Rhythmus | Release-Kadenz, nicht die Quelle |
+
+Wer beiden dieselbe Zahl gibt, trifft eine von zwei Fehlentscheidungen: Er hält eine Tool-Liste über ein Release hinweg fest, oder er wirft stündlich einen Katalog weg, der sich zweimal im Jahr ändert. Für die Oberfläche ist ein Tagesdeckel die brauchbare Faustregel — sie ändert sich beim Deployment, und ein Deployment kündigt sich einem Client nicht an.
+
+**Die Ableitung für die Datenseite:**
+
+| Rhythmus der Quelle | Beispiel | Empfohlenes `ttlMs` | Warum |
+|---|---|---|---|
+| periodisch, Zeitpunkt bekannt | MADD, täglich gegen 05:30 CET | Rest bis zum nächsten Lauf **plus Karenz**, pro Response berechnet | die Antwort weiss, wo im Zyklus sie steht — ein fixer Wert weiss es nie |
+| periodisch, Zeitpunkt unbekannt | «wöchentlich», ohne Wochentag | halbe Periode, statisch (wöchentlich → 302'400'000) | ohne Zeitpunkt ist die halbe Periode der schlechteste Fall, den man garantieren kann |
+| unregelmässig, ereignisgetrieben | Meldungsstrom, Störungsmeldungen | kurz, Minuten (z. B. 300'000) — und die Kürze begründet | es gibt keine Periode; ein langes TTL wäre eine Behauptung über die Zukunft |
+| selten bis statisch | Jahresstatistik, Nomenklatur | lang, aber gedeckelt (86'400'000) | jenseits eines Tages hängt die Gültigkeit am Deployment, nicht mehr an der Quelle |
+
+**Die Karenz kommt aus der Serie, nicht aus einem runden Wert.** Ein Nachtlauf, der meist um 05:30 fertig ist, ist an manchen Tagen um 06:07 fertig. Ein `ttlMs`, das exakt um 05:30 abläuft, holt an diesen Tagen den alten Stand und hält ihn einen ganzen Zyklus — der Fehler ist nicht 37 Minuten gross, sondern 24 Stunden. Die Karenz ist deshalb die grösste in der Messreihe beobachtete Verspätung, aufgerundet; dieselbe Logik wie bei der untersten Staffelstufe in 1.5, wo die brauchbare Zahl auch in der Quelle steht und nicht in der Formel.
+
+**`cacheScope` beantwortet eine einzige Frage:** Hängt diese Antwort davon ab, **wer** fragt? Zwei Fälle, und der Unterschied ist nicht graduell:
+
+- **Für jeden Aufrufer dieselbe Antwort.** Öffentliche Behördendaten ohne Auth — der Normalfall in Phase 1. Ein Cache darf über Aufrufer hinweg geteilt werden, und genau das soll er: Ein 17-MB-Dump, den jede Sitzung neu zieht, ist die Kostenseite von 2.3.
+- **Antwort hängt am Aufrufer.** Sobald Auth im Spiel ist oder ein Handle als Tool-Argument den Ausschnitt bestimmt (Stateless Core, siehe 2.4), ist die Antwort nicht mehr allgemein. Das ist eine Eigenschaft der einzelnen Response, nicht des Servers — derselbe Server kann beides ausliefern.
+
+Den Wert selbst nimmt man aus der Werte-Tabelle der Spec zu `cacheScope`; hier steht die Ableitung, nicht die Schreibweise. Wer die Frage falsch beantwortet, baut den einen Fehler, den ein Cache machen kann und den kein TTL repariert: die Antwort für den falschen Aufrufer.
+
+**Frische innen, Haltbarkeit aussen.** Zwei Zahlen, zwei Richtungen, und sie werden regelmässig verwechselt:
+
+- `retrieved_at` und `source_freshness` im Response-Envelope — neben `source` und `provenance` aus 3.2 — sagen, **wie alt die Daten sind**. Eine Aussage über die Vergangenheit, gerichtet an den Leser der Antwort.
+- `ttlMs` sagt, **wie lange die Antwort gültig bleibt**. Eine Aussage über die Zukunft, gerichtet an den Cache des Clients.
+
+**Merksatz fürs Portfolio:** *«Frische innen (`source_freshness`), Haltbarkeit aussen (`ttlMs`).»*
+
+Sie sind nie dieselbe Zahl, und die eine ersetzt die andere nicht. Ein `ttlMs` von zwölf Stunden auf einem Datenstand von gestern ist kein Widerspruch — es heisst «diese Antwort bleibt zwölf Stunden korrekt, und korrekt ist: Stand gestern». Fehlt die innere Angabe, liest der Client die äussere als Datenalter und irrt sich um einen ganzen Zyklus.
+
+**Deterministische Reihenfolge gehört in dieselbe Messung.** Die Spec verlangt sie für List-Responses, und ohne sie ist ein `ttlMs` wertlos: Wer bei jedem Aufruf eine andere Reihenfolge bekommt, kann zwei Antworten nicht vergleichen und cacht eine Momentaufnahme statt eines Zustands. Quellen ohne `ORDER BY` (SQL-über-HTTP, Solr ohne `sort`, viele SPARQL-Endpoints) garantieren upstream nichts — dann sortiert der Server, und der Sortierschlüssel gehört ins Protokoll. Die Probe dazu ist eine Zeile: denselben Listen-Call zweimal, die IDs vergleichen.
+
+**Was ins Protokoll geht** — eine Zeile pro Ressource, die eine List- oder Read-Response bedient:
+
+| Ressource | dokumentierter Rhythmus | gemessene Serie | grösste Verspätung | empfohlenes `ttlMs` | aufruferabhängig? | Reihenfolge stabil |
+|---|---|---|---|---|---|---|
+| Tages-Dump | «täglich» | 05:28 / 05:31 / 06:07 CET | +37 min | bis 05:30 + 45 min, dynamisch | nein | ✅ upstream nach `id` |
+| Katalog-Endpoint | «laufend» | 4 Änderungen in 14 Tagen | – | 300'000 | nein | ⚠️ Server sortiert nach `id` |
+| Nomenklatur | «jährlich» | unverändert über 14 Tage | – | 86'400'000 (Deckel) | nein | ✅ upstream |
+
+**Wohin das Ergebnis geht:** in die Konsequenzen des Architektur-Entscheids (2.3), zusammen mit der internen Cache-TTL, die dort schon steht — die beiden sind nicht dasselbe und stehen bewusst nebeneinander. Die interne TTL sagt, wann der Server neu holt; `ttlMs` sagt, wann der Client neu fragt. Ein Server, dessen interne TTL länger ist als das `ttlMs`, das er verspricht, beantwortet die neue Anfrage aus demselben alten Cache und hat die Zusage gebrochen, ohne dass es jemand merkt.
+
 ---
 
 ## Schritt 2: Architektur-Entscheid
@@ -360,10 +440,15 @@ Scope (measured, see coverage matrix in step 1.3b):
   source, not covered by any tool of this server.
 - Out of reach: debt-enforcement records — the endpoint requires authentication.
 
+Spec target: MCP 2026-07-28 (portfolio default, no deviation — see step 2.4).
+
 Consequences:
 - Transports: stdio and streamable-http.
 - Dump is cached on disk with Z hours TTL — one cache per process under stdio,
   one shared cache per instance under streamable-http.
+- Cache lifetime advertised to clients: ttlMs is derived from the source's daily
+  05:30 CET refresh and computed per response; the same answer is served to
+  every caller. Measured in step 1.7, not estimated.
 - Library functions / retry / provenance behaviour: see docstrings.
 ```
 
@@ -389,6 +474,40 @@ für jemand anderen geholt». Den Zeitstempel des letzten erfolgreichen Abrufs
 verlangt 3.5 bereits — dort für den Ausfall. Bei geteiltem Cache braucht ihn
 auch die erfolgreiche Antwort, sonst hängt das Alter der Daten an der
 Deployment-Konfiguration statt an der Antwort.
+
+### 2.4 Spec-Ziel-Entscheid — welche `mcp_spec_version` der Server spricht
+
+**Ziel:** Neben A/B/C trägt jeder neue Server einen zweiten Pflicht-Entscheid: gegen welche MCP-Spec-Version er gebaut wird. Er wird gleich behandelt wie der Architektur-Entscheid — hier getroffen, im README begründet, im Portfolio eingetragen. Ein Entscheid, der nur im Code steht, ist kein Entscheid, sondern ein Zustand.
+
+**Standard neu: `2026-07-28`.** Das ist kein Vorschlag, sondern der Default. Die Tier-1-SDKs (Python, TypeScript, Go, C#) sprechen die Version; für Variante A des Portfolios (`mcp` 2.x mit `MCPServer`) gibt es damit keinen technischen Abweichungsgrund.
+
+**Die zulässigen Abweichungsgründe, abschliessend:**
+
+1. **Ein SDK-Pin blockiert.** Standalone `fastmcp` 3.x pinnt `mcp` unterhalb 2.0, `fastmcp` 4.0 ist erschienen und bringt Breaking Changes. Wer auf dieser Variante baut, trägt drei Dinge ein: die Version, die das SDK tatsächlich spricht, den Pin, der sie erzwingt, und die Bedingung, unter der die Abweichung endet.
+2. **Eine belegte Upstream-Abhängigkeit.** Ein Client oder eine Deployment-Plattform, die nachweislich noch nicht so weit ist — mit Beleg, nicht mit Vermutung.
+
+Nicht zulässig: «das Beispiel im Tutorial sah anders aus», «der letzte Server im Portfolio macht es so», «wir migrieren später ohnehin». Der dritte ist der teuerste, weil er stimmt und trotzdem falsch ist: Ein neuer Server auf altem Stand vergrössert genau die Migrationswelle, deren Ende er abwarten will.
+
+**Kein neuer Server auf deprecated Bausteinen.** Vier Bausteine stehen im 12-Monats-Fenster. Ein bestehender Server darf sie tragen, bis seine Welle dran ist; ein neuer fängt nicht damit an. Das Fenster ist eine Frist für Bestehendes, kein Budget für Neues.
+
+| Deprecated | Ersatz | Was das konkret heisst |
+|---|---|---|
+| Roots | explizite Handles als Tool-Argumente | Der Server fragt den Kontext nicht ab, er bekommt ihn übergeben |
+| Sampling (und serverinitiierte Elicitation) | MRTR: `resultType: "input_required"` plus Retry mit `inputResponses` | Der Server initiiert nichts; er meldet, was ihm fehlt, und wird erneut gerufen |
+| Logging | maschinenlesbarer Status im Response-Envelope | 3.5 verlangt ihn ohnehin: Die Fehlerklasse gehört in die Antwort, nicht in einen Nebenkanal |
+| Legacy HTTP+SSE | Streamable HTTP mit `Mcp-Method` und `Mcp-Name` | Beide Header sind Pflicht, nicht optional — fehlen sie, ist der Aufruf keiner. Die Umsetzung im Einstiegspunkt gehört in `mcp-transport-hardening` |
+
+**Stateless Core schärft 2.3, es weicht ihn nicht auf.** `initialize`/`initialized` und `Mcp-Session-Id` sind abgeschafft; jede Anfrage trägt Protokollversion, `clientInfo` und Capabilities im `_meta`, und Anwendungszustand existiert nur als explizites Handle in einem Tool-Argument. Für einen Dump-Cache (ARCH B und C) heisst das: Der Cache ist ein Prozess-Detail, kein Sitzungszustand. Die Unterscheidung aus 2.3 — eine Sitzung unter `stdio`, eine Instanz unter `streamable-http` — bleibt richtig; sie darf nur nicht über eine Session-ID modelliert werden, die es nicht mehr gibt. Wer den optionalen `server/discover`-RPC anbietet, behandelt ihn wie eine List-Response: `ttlMs` und `cacheScope` aus 1.7, deterministische Reihenfolge.
+
+**Extensions sind nicht Teil der Basis.** Tasks, MCP Apps und Enterprise Managed Authorization laufen als versionierte Extensions unter `io.modelcontextprotocol/*`. Für einen neuen Portfolio-Server der Phase 1 heisst das: nicht bauen. «Keine neuen Features während der Migration» gilt für sie zuerst — sie sehen wie Spec aus, sind aber eine zusätzliche Abhängigkeit mit eigener Version und eigenem Lebenszyklus.
+
+**Auth-Härtung — der Vorbehalt für Phase 2.** Phase 1 ist No-Auth (1.1), der Punkt bleibt deshalb meist theoretisch. Sobald ein Server Auth trägt, gelten drei Dinge sofort: `iss`-Validierung nach RFC 9207, CIMD statt Dynamic Client Registration, und issuer-gebundene Client-Credentials. Ein Server, der Auth «nur ein bisschen» dazunimmt, ist Anti-Pattern 6 — daran ändert die neue Spec nichts.
+
+**Wo der Entscheid landet — drei Orte, wie beim Architektur-Entscheid:**
+
+1. **README**, im selben Abschnitt «Architecture decision». Der Spec-Entscheid ist Teil derselben Begründung und kein zweiter Abschnitt darunter: Wer die Architektur liest, liest auch, wogegen sie gebaut ist.
+2. **`portfolio.json`** im Index-Repo `swiss-public-data-mcp`: `mcp_spec_version`, dazu `sdk_flavour`, `sdk_constraint`, `migration_wave` und `migration_status`. Ein neuer Server wird auf dem Ziel geboren und trägt trotzdem alle fünf Felder — sonst fehlt er in jeder Auswertung, die über sie läuft, und «fehlt» liest sich dort wie «noch nicht migriert».
+3. **Notion-Portfolio-Karte** (Schritt 5).
 
 ---
 
@@ -528,6 +647,8 @@ Nach Abschluss der Probe (Schritt 1-3) erfolgt die Repo-Erstellung via [`github-
 5. **Abdeckungs-Matrix** aus Schritt 1.3b → ins README unter «Scope» bzw. «Known limitations»; sie ist die Quelle für jede spätere Scope-Begründung
 6. **Architektur-Entscheid** aus Schritt 2.3 → ins README
 7. **Anchor Demo Query** aus Schritt 3.3 → prominent ins README
+8. **Spec-Ziel** aus Schritt 2.4 → in denselben README-Abschnitt wie der Architektur-Entscheid, samt Begründung bei Abweichung vom Standard
+9. **`ttlMs`/`cacheScope`-Empfehlung** aus Schritt 1.7 → in die Konsequenzen des Entscheids und in den Code, der die List-Responses baut
 
 ---
 
@@ -542,9 +663,12 @@ Nach Release (Tag `v0.1.0`) wird die Karte in der Notion-Datenbank `aa6b672a-e5e
 - Lizenz (CC BY 4.0 / CC BY-SA 4.0 / OGD-CH / proprietary)
 - Anchor Demo Query
 - Architektur (A / B / C)
+- Spec-Ziel (`mcp_spec_version`, Standard `2026-07-28`; bei Abweichung der Grund in einem Satz)
 - GitHub-URL
 - PyPI-Status
 - Notizen zu Known Limitations
+
+**Die Karte ist die menschenlesbare Hälfte.** Die maschinenlesbare steht in der `portfolio.json` des Index-Repos `swiss-public-data-mcp` und trägt die Felder aus 2.4 — `mcp_spec_version`, `sdk_flavour`, `sdk_constraint`, `migration_wave`, `migration_status` — plus `pypi_package` und `requires_credentials`. Beide werden zusammen angelegt: Eine Karte ohne Eintrag ist ein Server, den keine Migrationsauswertung sieht.
 
 ---
 
@@ -562,6 +686,7 @@ Nach Release (Tag `v0.1.0`) wird die Karte in der Notion-Datenbank `aa6b672a-e5e
 - Der Suchindex matcht auf ganzen Wörtern, Komposita bleiben unauffindbar → nur 1.4b fängt das ab
 - Ein ganzer Bestandsteil wird von keinem geplanten Tool berührt und fällt deshalb nirgends auf → nur 1.3b fängt das ab
 - Die Quelle liefert erst ab einer kürzeren Präfixlänge Treffer, als jede geschätzte Staffel erreicht → nur 1.5 fängt das ab
+- Die Quelle aktualisiert nachts um 05:30, der Server verspricht seinen Clients 24 Stunden Haltbarkeit → nur 1.7 fängt das ab
 
 **Eselsbrücke:** *«Dokumentation ist ein Foto, Live-Probe ist der aktuelle Zustand. Wir bauen auf dem aktuellen Zustand.»*
 
@@ -580,7 +705,7 @@ Nach Release (Tag `v0.1.0`) wird die Karte in der Notion-Datenbank `aa6b672a-e5e
 
 ### Welchen Transport-Modus unterstützen?
 
-**Immer beide:** `stdio` (Claude Desktop) + `streamable-http` / `sse` (Cloud, Railway, Render). Was das für den Cache bedeutet, steht in 2.3. Die Umsetzung im Einstiegspunkt und das Abweis-Verhalten gehören in `mcp-transport-hardening`.
+**Immer beide:** `stdio` (Claude Desktop) + `streamable-http` (Cloud, Railway, Render). Legacy HTTP+SSE steht im 12-Monats-Fenster und ist für einen neuen Server kein Ziel mehr (2.4); unter Streamable HTTP sind `Mcp-Method` und `Mcp-Name` Pflicht-Header. Was die Transportwahl für den Cache bedeutet, steht in 2.3, was sie für die zugesagte Haltbarkeit bedeutet, in 1.7. Die Umsetzung im Einstiegspunkt und das Abweis-Verhalten gehören in `mcp-transport-hardening`.
 
 ---
 
@@ -598,6 +723,8 @@ Nach Release (Tag `v0.1.0`) wird die Karte in der Notion-Datenbank `aa6b672a-e5e
 10. **«Ein Endpoint reicht»** — aggregierte Endpoints hinken hinter den autoritativen her. Welcher befragt wurde, gehört ins Protokoll. Siehe 1.2c.
 11. **«Was wir nicht abdecken, ist offensichtlich»** — beim Bauen ja, beim Begründen nicht mehr. Wer den Scope erst im Audit begründet, rekonstruiert ihn und erfindet dabei Gründe, die die Quelle kleiner machen, als sie ist. Die Abdeckungs-Matrix wird geprobt, nicht erinnert. Siehe 1.3b.
 12. **«Die Staffel ist eine Formel»** — 30 % pro Schritt ist eine Annahme über die Matching-Granularität der Quelle, kein Messwert. Ab welcher Präfixlänge Treffer kommen, sagt nur die Quelle, und sie sagt es für ein paar Calls. Siehe 1.5.
+13. **«Die Spec-Version ergibt sich aus dem SDK»** — sie ergibt sich aus einem Entscheid, den jemand trifft und begründet. Das SDK ist eine Randbedingung, kein Entscheider: Ein Pin, der `mcp` unterhalb 2.0 hält, ist ein Abweichungsgrund, den man aufschreibt — kein Zustand, in den man hineinrutscht und der später niemandem gehört. Siehe 2.4.
+14. **«`ttlMs` schätze ich»** — dieselbe Fehlerklasse wie die geratene Staffel, eine Ebene höher. Zu lang, und der Cache verschweigt einen ganzen Zyklus, ohne dass irgendwo ein Fehler auftaucht; zu kurz, und er greift nie, während der Verkehr bleibt. Der Rhythmus der Quelle ist messbar, und zwar bevor gebaut wird. Siehe 1.7.
 
 ---
 
@@ -616,6 +743,9 @@ Vor `v0.1.0`-Tag alle folgenden Punkte abhaken:
 - [ ] **Recall-Ground-Truth**: 3–5 Referenzbegriffe gegen das offizielle Web-UI, jedes Delta erklärt (1.4b)
 - [ ] **Widening-Schedule**: kürzestes Treffer-Präfix pro Testbegriff gemessen, Wildcard-Alternative geprüft (1.5)
 - [ ] Dump-Verfügbarkeit geprüft
+- [ ] **Aktualisierungsrhythmus**: über mindestens zwei erwartete Zyklen gemessen, nicht nur der Doku entnommen (1.7)
+- [ ] **`ttlMs`/`cacheScope`-Paar** je Response-Familie abgeleitet und begründet, Karenz aus der Messreihe statt gerundet (1.7)
+- [ ] Reihenfolge der List-Responses deterministisch — upstream garantiert oder serverseitig sortiert, Sortierschlüssel im Protokoll (1.7)
 
 **Schritt 2 – Architektur**
 - [ ] Architektur-Entscheid (A/B/C) explizit getroffen
@@ -623,6 +753,10 @@ Vor `v0.1.0`-Tag alle folgenden Punkte abhaken:
 - [ ] Entscheid im README dokumentiert
 - [ ] **Scope-Absatz** im Entscheid, mit den Zahlen aus der Abdeckungs-Matrix statt aus dem Gedächtnis (2.3)
 - [ ] **Transport**: beide unterstützt, und bei ARCH B/C die Cache-Lebensdauer pro Transport im Entscheid benannt (2.3)
+- [ ] **Spec-Ziel** explizit entschieden; Standard `2026-07-28`, jede Abweichung mit einem der zwei zulässigen Gründe (2.4)
+- [ ] Kein deprecated Baustein im Entwurf — Roots, Sampling, Logging, Legacy HTTP+SSE (2.4)
+- [ ] Zugesagtes `ttlMs` nie kürzer als die interne Cache-TTL des Servers (1.7, 2.3)
+- [ ] **`portfolio.json`** im Index-Repo trägt `mcp_spec_version` samt SDK- und Wellenfeldern (2.4)
 
 **Schritt 3 – Resilienz**
 - [ ] Retry mit exponentiellem Backoff für alle HTTP
