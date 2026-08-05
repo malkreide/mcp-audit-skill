@@ -238,7 +238,9 @@ async def test_pagination_is_disjoint():
 
 Das ist **dieselbe Klasse wie ein verlorener Filter-Parameter**. Regel 1 verliert Treffer im Raum — der Bestand, der ausserhalb des Default-Scopes liegt. Regel 8 verliert sie in der Zeit — die Datensätze, die nach dem Abruf dazugekommen sind. In beiden Fällen ist die Antwort formal einwandfrei, inhaltlich unvollständig und für den Aufrufer nicht als solche erkennbar. Ein zu grosszügiges `ttlMs` ist ausserdem schlimmer als gar keines: Ohne Angabe fragt der Client neu, mit falscher Angabe fragt er begründet nicht.
 
-`ttlMs` wird **abgeleitet, nicht geschätzt** — aus derselben Frische-Information, die der Response-Envelope nach den Portfolio-Konventionen ohnehin führt (`source_freshness`): publizierte Update-Kadenz, `Last-Modified`, `Cache-Control` der Quelle. Ist die Kadenz unbekannt, ist das kein Argument für einen grosszügigen Wert, sondern für einen kleinen oder für `ttlMs: 0`. Eine Quelle, die unangekündigt aktualisiert, hat keine lange Frische — sie hat eine unbekannte, und Nichtwissen wird konservativ aufgelöst.
+`ttlMs` wird **abgeleitet, nicht geschätzt** — aus derselben Frische-Information, die der Response-Envelope nach den Portfolio-Konventionen ohnehin führt (`source_freshness`): publizierte Update-Kadenz, `Last-Modified`, `Cache-Control` der Quelle. Ist die Kadenz unbekannt, ist das kein Argument für einen grosszügigen Wert, sondern für einen kurzen — den Boden, nicht die Null. Eine Quelle, die unangekündigt aktualisiert, hat keine lange Frische — sie hat eine unbekannte, und Nichtwissen wird konservativ aufgelöst.
+
+**`ttlMs: 0` ist nicht die konservative Auflösung, als die es aussieht.** Es schaltet das Feld ab, statt kurz die Wahrheit zu sagen: Jeder Aufruf trifft die Quelle, und der Zweck von SEP-2549 verpufft. `ARCH-020` führt es aus genau diesem Grund als Anti-Pattern («`ttlMs: 0` als «sicherer Wert»») und verlangt einen begründeten Wert. Eine Null gehört an eine einzige Stelle: als **abgeleitetes** Ergebnis, wenn die Quelle ihre eigene Publikation bereits überschritten hat — dann ist die verbleibende Frist tatsächlich null. Das ist eine Messung, keine Wahl, und so rechnet `ttl_from_freshness` in `reference/patterns.py`.
 
 ```python
 # ✗ eine Zahl, die sich sicher anfühlt und nichts über die Quelle weiss
@@ -253,6 +255,8 @@ ttl_ms = ttl_from_freshness(
 ```
 
 `cacheScope` gehört zur selben Entscheidung und hat schärfere Folgen. Hängt das Resultat von den Credentials des Aufrufers ab — jeder Server mit `requires_credentials: true` —, dann ist ein zu weiter `cacheScope` kein Frischeproblem mehr, sondern ein Datenleck: Antwort A wird an Aufrufer B ausgeliefert. Öffentlich cachebar ist nur, was für alle Aufrufer identisch ist.
+
+Das Feld kennt nach SEP-2549 **genau zwei Werte**: `"public"` und `"private"`. Einen dritten, enger klingenden gibt es nicht — wer «nur für diesen einen Aufrufer» meint, schreibt `"private"`. Ein erfundener Wert ist kein vorsichtiger Wert: Er fällt an der Schema-Validierung, und bis dahin liest ihn eine Zwischeninstanz als unbekannt.
 
 **Nachweis / Test (respx offline).** Zwei Fälle, beide mit fixierter Uhr — die Kadenz ist bekannt, also ist der Sollwert berechenbar:
 
@@ -273,7 +277,7 @@ async def test_ttl_falls_back_to_the_floor_without_freshness():
     respx.get(SEARCH_URL).mock(return_value=httpx.Response(200, json=_PAGE))
     result = await client.search("Steuer")
     assert result.ttl_ms <= TTL_FLOOR_MS
-    assert result.cache_scope == "session"                  # nie weiter als nötig
+    assert result.cache_scope == "private"                  # nie weiter als nötig
 ```
 
 **`@pytest.mark.live`.** Als Obergrenzen-Canary, gespiegelt zur Untergrenze aus Regel 5 — und aus demselben Grund grosszügig: gegen den echten Header der Quelle prüfen, nicht gegen eine erwartete Zahl.
@@ -382,8 +386,8 @@ async def test_input_required_resolves_against_the_live_source():
 - [ ] Eine Strukturabweichung upstream endet als Fehler, nicht als leeres Resultat (Regel 6)
 - [ ] Sortierschlüssel ist total (eindeutiges letztes Glied), dokumentiert in Description und Envelope (Regel 7)
 - [ ] Zwei aufeinanderfolgende Seiten sind überschneidungsfrei und decken die Gesamtmenge (Regel 7)
-- [ ] `ttlMs` aus `source_freshness` abgeleitet, nie über die nächste Publikation hinaus; unbekannte Kadenz → Boden statt Default (Regel 8)
-- [ ] `cacheScope` gegen `requires_credentials` geprüft — credential-abhängige Resultate nie über den Aufrufer hinaus (Regel 8)
+- [ ] `ttlMs` aus `source_freshness` abgeleitet, nie über die nächste Publikation hinaus; unbekannte Kadenz → Boden statt Default, und `ttlMs: 0` nur abgeleitet, nie gewählt (Regel 8)
+- [ ] `cacheScope` gegen `requires_credentials` geprüft — credential-abhängige Resultate nie über den Aufrufer hinaus, und nur die beiden Werte `"public"` / `"private"` (Regel 8)
 - [ ] `input_required` und Leermenge sind disjunkt: kein `hint` auf einer Rückfrage, kein `inputRequests` auf einem Null-Treffer (Regel 9)
 - [ ] Die beantwortete Rückfrage liefert im Retry tatsächlich Treffer (Regel 9)
 - [ ] Gegen die offizielle Oberfläche der Quelle verglichen, jedes Delta erklärt

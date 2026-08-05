@@ -386,15 +386,19 @@ def ttl_from_freshness(
     return max(0, min(remaining_ms, int(cadence.total_seconds() * 1000)))
 
 
-def cache_scope(*, requires_credentials: bool) -> Literal["public", "session"]:
+def cache_scope(*, requires_credentials: bool) -> Literal["public", "private"]:
     """The other half of rule 8, with sharper consequences.
 
     If the result depends on the caller's credentials — every server marked
     ``requires_credentials: true`` — then too wide a cacheScope stops being a
     freshness problem and becomes a data leak: A's answer served to B. Public is
     only for what is identical for every caller.
+
+    SEP-2549 defines exactly two values, ``"public"`` and ``"private"``. There is
+    no narrower-sounding third one; an invented value is not a cautious value, it
+    fails schema validation.
     """
-    return "session" if requires_credentials else "public"
+    return "private" if requires_credentials else "public"
 
 
 async def test_ttl_does_not_outlive_the_next_publication() -> None:
@@ -402,7 +406,7 @@ async def test_ttl_does_not_outlive_the_next_publication() -> None:
 
     Freeze the clock, mock ``Last-Modified``, assert the TTL ends *before* the
     next publication — plus a second case: no freshness header at all must land
-    on ``TTL_FLOOR_MS`` and a ``session`` scope, not on a comfortable default.
+    on ``TTL_FLOOR_MS`` and a ``private`` scope, not on a comfortable default.
     """
     ...
 
