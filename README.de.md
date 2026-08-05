@@ -1,6 +1,6 @@
 # mcp-data-fidelity-skill
 
-![Version](https://img.shields.io/badge/version-1.5.0-blue)
+![Version](https://img.shields.io/badge/version-1.6.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
@@ -89,14 +89,14 @@ Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihe
 | vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6). Hat diesen Skill unter `companion/` ausgeliefert, bis dieses Repo sein Zuhause wurde. |
 | im Bau | **`mcp-data-fidelity-skill`** | **Dieser Skill:** liefert er, was die Quelle hat? |
 | im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
-| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–5 liegen auf den fünf `FID`-Checks — nicht eins zu eins: Regeln 3 und 4 teilen sich `FID-003`, Regel 5 braucht `FID-005` und `FID-002`. Die Regeln 6–9 haben keinen Check; Katalogstand v1.7.0 ist vor 2026-07-28 geschnitten. Vollständige Tabelle in `SKILL.md`. |
+| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–5 liegen auf den fünf `FID`-Checks — nicht eins zu eins: Regeln 3 und 4 teilen sich `FID-003`, Regel 5 braucht `FID-005` und `FID-002`. Die Regeln 7–9 liegen ausserhalb von `FID`, in `ARCH-020` und `HITL-006` (Katalogstand v2.0.0, `advisory` auf Baseline 2026-07-28). Regel 6 hat keinen Check. Vollständige Tabelle samt der Reichweite, die jeder Check *nicht* abdeckt, in `SKILL.md`. |
 | im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Seine Recall-Floors sind Regel 5, laufend gegen die echte Quelle gemessen. |
 
 Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
 Dazu der Server, aus dem dieser Skill stammt: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die Regeln 1–5 hervorgebracht hat.
 
-Wer nach den Regeln 1–5 baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet hier die Behebung. Die Regeln 6–9 stehen nicht im Katalog — ein sauberes Audit sagt über sie nichts aus. Diese vier Lücken zu schliessen ist Folgearbeit in `mcp-audit-skill`, nicht hier.
+Wer nach den Regeln 1–5 baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet hier die Behebung. Die Regeln 7–9 sind ausserhalb von `FID` abgedeckt und nur `advisory`, jede mit einer ausgewiesenen Lücke; Regel 6 hat gar keinen Check, ein sauberes Audit sagt über sie also nichts aus. Das zu schliessen ist Folgearbeit in `mcp-audit-skill`, nicht hier.
 
 ## Changelog
 
