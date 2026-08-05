@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Ein Guard auf die GitHub-Description, und Regel 13 bekommt ihre räumliche
+  Hälfte.** Der Zählguard deckt `SKILL.md`, beide READMEs und
+  `reference/patterns.py` ab — und war korrekt, während die Description des
+  Repos noch «twelve transport-hardening rules» sagte. Sie liegt ausserhalb des
+  Repos, also erreicht sie kein Check, der Dateien liest. Das ist Regel 13
+  räumlich statt zeitlich: dieselbe ungezogene Grenze, nur nicht zwischen
+  vorher und nachher, sondern zwischen drinnen und draussen.
+
+  Regel 13 nennt die Klasse jetzt ausdrücklich — Description, Topics,
+  Registry-Eintrag, Deployment-Manifest, Marketplace-Text tragen oft genau die
+  Behauptung, die im Repo geprüft wird — mit zwei tragenden Eigenschaften für
+  den Guard: Der Sollwert kommt aus derselben Quelle wie bei den übrigen
+  Prüfungen (hier das Zahlwort aus dem `patterns.py`-Docstring, das der Schritt
+  davor bereits an die Regelzahl bindet, statt eines zweiten Wortschatzes), und
+  ein fehlgeschlagener Abruf ist ein Fehler, kein Skip — sonst meldet der Check
+  «bestanden», wo «nicht gelaufen» richtig wäre (`OPS-005`).
+
+  Der neue CI-Schritt ist **rot, bis die Description gesetzt ist**: Sie lässt
+  sich nicht per Commit korrigieren, sie hängt am Repo. Die Fehlermeldung nennt
+  den Befehl.
+
 Dreizehn Regeln statt zwölf, und zwei der bestehenden lernen dazu. Diese drei
 Änderungen stammen weder aus den drei PRs von 2026-07 noch aus der Spec-Revision,
 sondern aus dem Betrieb der Kette selbst. Sie haben untereinander dieselbe Form:

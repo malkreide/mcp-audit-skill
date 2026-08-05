@@ -193,6 +193,67 @@ jobs:
           print(f"ok — {expected} rules, consistent everywhere")
           PY
 
+      # Die GitHub-Description steht ausserhalb des Repos und faellt damit durch
+      # jede Pruefung, die Dateien liest. Genau dort ist die Regelzahl zuletzt
+      # haengengeblieben: «twelve», als SKILL.md schon dreizehn fuehrte. Das ist
+      # Regel 13 raeumlich statt zeitlich — die Abdeckung hatte eine Grenze, die
+      # niemand absichtlich gezogen hat, und ausserhalb davon wurde nichts rot.
+      #
+      # Kein zweiter WORDS-Wortschatz: Verglichen wird gegen das Zahlwort aus
+      # dem Docstring von reference/patterns.py, und der Schritt darueber hat
+      # bereits belegt, dass dieses Wort der Regelzahl entspricht. Zwei Stellen
+      # mit derselben Tabelle waeren genau das, was hier auseinanderlaeuft.
+      #
+      # Ein fehlgeschlagener API-Aufruf ist ein FEHLER, kein Skip (`curl -f`,
+      # kein `|| true`): Ein Check, der bei einem Netzproblem gruen durchlaeuft,
+      # meldet «bestanden», wo «nicht gelaufen» richtig waere — OPS-005.
+      - name: GitHub description names the current rule count
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONUTF8: "1"
+        run: |
+          curl -sS -f \
+               -H "Authorization: Bearer $GH_TOKEN" \
+               -H "Accept: application/vnd.github+json" \
+               "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY" \
+               > "$RUNNER_TEMP/repo.json"
+          python - <<'PY'
+          import json, os, pathlib, re, sys
+
+          patterns = pathlib.Path("reference/patterns.py").read_text(encoding="utf-8")
+          m = re.search(r"patterns for the (?P<word>\w+) [\w-]+ rules", patterns)
+          if not m:
+              sys.exit("reference/patterns.py: number word gone — the step above "
+                       "should have caught this first; without it there is nothing "
+                       "to compare the description against")
+          word = m.group("word")
+
+          repo = json.loads(
+              pathlib.Path(os.environ["RUNNER_TEMP"], "repo.json").read_text(encoding="utf-8")
+          )
+          description = repo.get("description") or ""
+
+          found = re.search(r"(?P<word>\w+) transport-hardening rules", description)
+          if not found:
+              sys.exit(
+                  "GitHub description does not carry the phrase '<word> "
+                  f"transport-hardening rules' — got {description!r}.\n"
+                  "  Either it was reworded (then adjust this anchor in the same "
+                  "commit) or the count was dropped from it. An anchor that is "
+                  "gone makes this check stop checking without saying so."
+              )
+          if found.group("word") != word:
+              sys.exit(
+                  f"GitHub description says {found.group('word')!r} rules, the repo "
+                  f"has {word!r}.\n"
+                  "  The description lives outside the repository, so no commit "
+                  "fixes it — set it on the repo itself:\n"
+                  f"    gh repo edit {os.environ['GITHUB_REPOSITORY']} "
+                  f'--description "..."'
+              )
+          print(f"ok — GitHub description says {found.group('word')}, matching the repo")
+          PY
+
       - name: Referenced files exist
         run: |
           for f in SKILL.md reference/patterns.py README.md README.de.md \
