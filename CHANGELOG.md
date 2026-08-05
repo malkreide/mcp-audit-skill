@@ -7,6 +7,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Neun Regeln, unverändert — auch dieses Mal ändert sich nichts an dem, was der
+Skill lehrt. Es ändert sich, was die Zuordnung Regel → Audit-Check behaupten
+darf. `mcp-audit` hat mit PR #98 drei Dinge bewegt (dort unter `[Unreleased]`,
+eingestuft als v2.1.0), und alle drei machen Sätze hier falsch: Regel 6 hat
+einen Check bekommen, und zwei Reichweite-Sätze sind von «prüft er nicht» auf
+«prüft er» gekippt.
+
+**Einstufung: minor, nicht patch.** Eine Tabellenkorrektur, die eine Zahl
+richtigstellt, wäre patch. Hier kippt die operative Aussage: Wer Regel 6 gebaut
+hat, konnte sich bisher darauf verlassen, dass ein Audit dazu schweigt — jetzt
+gibt es dafür ein `FID-006`-Finding. Und Regel 9 zeigt auf einen Check mehr.
+Der Leser handelt danach anders, und das ist die Grenze zwischen patch und
+minor; die Releases 1.4.0 und 1.6.0 haben dieselbe Art Korrektur ebenso
+eingestuft. Dazu kommt ein neuer CI-Wächter, also additiv.
+
+Alle Angaben sind gegen die Check-Dateien in `mcp-audit-skill` geprüft, nicht
+gegen deren Changelog: `FID-003.md`, `FID-006.md`, `ARCH-020.md`, `HITL-006.md`.
+
+### Added
+
+- **Ein CI-Schritt hält die Zuordnungstabelle gegen die Regelliste** — jede
+  Regel genau eine Zeile, jede Zeile mindestens eine Check-ID, plus die
+  Anker-Prüfung auf die Überschrift. Beide Gegenproben sind gelaufen (Zeile
+  entfernt, Überschrift umbenannt) und haben angeschlagen. **Seine Grenze
+  gehört dazu:** Er hätte den Anlass dieses Eintrags *nicht* gefangen. «Ein
+  `FID-006` existiert nicht» nennt eine Check-ID und wäre grün durchgelaufen.
+  Was drüben im Katalog steht, ist von hier aus nicht prüfbar — der Wächter
+  fängt die nächste Regel ohne Zeile, nicht die nächste veraltete Zeile.
+
+### Changed
+
+- **Regel 6 zeigt auf [`FID-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-006.md)**
+  («Antwortstruktur bestätigen, bevor gezählt wird», `high`,
+  `spec_baseline: beide`, `adoption: advisory`, `evidence_required: 2`) — vorher
+  stand dort «kein Check. Ein `FID-006` existiert nicht». Der Belegfall ist
+  derselbe wie in der Regel: MCP Registry, Felder unter `servers[].server.*`,
+  gelesen eine Ebene höher. Die Zeile nennt Fail- und Pass-Pattern und die
+  Reichweite: ausdrücklich **keine** vollständige Schema-Validierung, nur was
+  der Code anfasst. `DRIFT-002` bleibt als Nachbar stehen, weil die Verwechslung
+  ohne den Hinweis wiederkommt; neu dazu der Querverweis auf `DRIFT-004` — Mocks
+  fangen diese Klasse prinzipiell nicht.
+
+- **Regel 7: Der Pagination-Schnitt wird jetzt geprüft — die Baseline nicht.**
+  `ARCH-020` hat einen Modus 4 bekommen: zwei aufeinanderfolgende Seiten, leere
+  Schnittmenge **und** vollständige Vereinigung, gegen einen Bestand grösser als
+  eine Seite. Der Satz «Den Pagination-Schnitt prüft er nicht» ist damit weg.
+  An seine Stelle tritt die Teil-Lücke, statt die Spalte leer zu lassen:
+  `ARCH-020` trägt `spec_baseline: 2026-07-28`, der Pagination-Verlust existiert
+  aber auch auf `2025-11-25` — er hängt an der Quelle und am Sortierschlüssel,
+  nicht am Protokollstand. Regel 7 gilt in diesem Skill ausdrücklich unabhängig
+  von der Spec-Version, ein Server der alten Baseline wird drüben aber nicht
+  dagegen gemessen. Genau deshalb steht dieser Satz bei Regel 7 und nicht bei
+  8 oder 9: Die setzen `2026-07-28` ohnehin voraus, für sie ist die Baseline
+  des Checks keine Lücke.
+
+- **Regel 8: Die Ableitung aus `source_freshness` wird abgefragt, bedingt.**
+  `ARCH-020` verlangt sie jetzt für Datenresultate — gedeckelt auf die nächste
+  Publikation, unbekannte Kadenz kurz statt komfortabel. Das Kriterium greift
+  aber nur, «sofern der Server Datenresultate mit `ttlMs` versieht». Ein
+  Datenresultat ganz **ohne** `ttlMs` fällt drüben nicht auf; dass eines
+  hingehört, verlangt weiterhin nur diese Regel. Das steht als Rest in der
+  Spalte.
+
+- **Regel 9 zeigt zusätzlich auf [`FID-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-003.md)** —
+  nachträglich geprüft, nicht aus dem Anlass übernommen. Der bisherige Satz
+  «Die Abgrenzung gegen den Null-Treffer steht in keinem der beiden» ist über
+  `HITL-006` und `ARCH-018` wörtlich noch wahr und liest sich trotzdem falsch,
+  seit `FID-003` sie trägt. Die Aufteilung steht drüben in beiden Checks
+  ausgeschrieben: `HITL-006` prüft Retry-Idempotenz und die Abgrenzung gegen
+  gewöhnliche **Fehler**, `FID-003` die Disjunktheit gegen die **Leermenge**.
+  Reichweite neu: Die drei `FID-003`-Kriterien sind doppelt bedingt (auf
+  `2026-07-28` und darauf, dass das Tool `input_required` zurückgeben kann), und
+  dass der beantwortete Retry tatsächlich Treffer liefert, verlangt drüben nur
+  der Idempotenz-Test bei `write_capable: true` — für lesende Server steht
+  dieser Nachweis allein hier.
+
+- **Der Katalogstand in der Kopfzeile steht auf 113 Checks in zwölf Kategorien,
+  davon sechs in `FID`** — vorher 112 und fünf. Die Kategorienzahl bleibt bei
+  zwölf, `FID-006` ist in eine bestehende Kategorie gegangen. Ausgewiesen ist
+  auch, dass geschnitten weiterhin v2.0.0 ist und die drei Änderungen drüben
+  unter `[Unreleased]` stehen; ein Katalogstand «v2.1.0» wäre eine Version, die
+  es noch nicht gibt.
+
+- **Die Sätze unter der Tabelle folgen nach.** «Ohne Check ist einzig Regel 6»
+  ist weg; offen ist jetzt Reichweite, nicht Abdeckung. Der Absatz «Warum die
+  Zeilen 7–9 nicht in `FID` liegen» sagt nicht mehr, die Datentreue-Hälfte
+  fehle im Katalog — sie ist dort, nur nicht als neuer `FID`-Check: `ARCH-020`
+  hat sie aufgenommen, weil sie an denselben zwei Grössen hängt, und die
+  Disjunktheit ist nach `FID-003` gegangen, weil sie an der Leermenge hängt und
+  nicht am Rückfrageprotokoll. Der Haltbarkeitssatz bekommt den neuen Datenpunkt:
+  zwischen v2.0.0 und diesem Stand liegt **ein** Tag.
+
+- **Beide READMEs ziehen die Kurzfassung nach** — Regeln 1–6 auf sechs
+  `FID`-Checks, Regel 9 zusätzlich auf `FID-003`, Katalogstand 113, und statt
+  «Regel 6 hat keinen Check» der Hinweis, dass offen nur noch Reichweite ist,
+  am weitesten bei Regel 7.
+
 ## [1.6.0] - 2026-08-05
 
 Neun Regeln, unverändert — dieses Release ändert nichts an dem, was der Skill
