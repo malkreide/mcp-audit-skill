@@ -1,4 +1,4 @@
-"""Copy-paste patterns for the twelve transport-hardening rules (MCP SDK 2.x / ASGI / uvicorn).
+"""Copy-paste patterns for the thirteen transport-hardening rules (MCP SDK 2.x / ASGI / uvicorn).
 
 Each block is self-contained and annotated with the rule it implements. Adapt the
 names; keep the shape. The comments are deliberately verbose — they are the part
@@ -48,6 +48,29 @@ from mcp.server.transport_security import TransportSecuritySettings
 #
 # Two projects, one name. Renaming the first because of the second breaks
 # working code.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Rule 1, the dependency half — a bound only bites once the lock is re-resolved.
+#
+#   dependencies = ["mcp[cli]>=2.0.0,<3"]     # pyproject.toml
+#
+# That line says what SHOULD hold. What gets installed is whatever the lock
+# says, so both files move in the same commit:
+#
+#   uv lock && git add uv.lock
+#
+# `uv sync` does re-resolve on its own when pyproject moved — but the paths that
+# matter do not: `--frozen`, an environment that already exists, a container
+# image built from the committed lock. The bound then reads correctly in review
+# and has no effect in the process.
+#
+# The Nachweis is a measurement, not a reading. Run the install path CI runs,
+# then:
+#
+#   python -c "from importlib.metadata import version; print(version('mcp'))"
+#
+# Old version printed => the lock was not carried along, the bound is decoration.
 # ---------------------------------------------------------------------------
 
 log = logging.getLogger(__name__)
@@ -288,8 +311,22 @@ def serve_http(settings: Any) -> None:
 # Rules 5-7 — the tests, and the ways they lie
 #
 # Rule 6's mutation table, as it belongs in the PR. A row with zero red tests is
-# a finding, not a footnote: either the test is missing or the control does
-# nothing.
+# a finding, not a footnote: either the test is missing, or the control does
+# nothing — or the mutation never landed, which is the possibility to rule out
+# first, because it produces the same zero:
+#
+#   sed -i 's/transport_security=policy//' src/server.py
+#   git diff --exit-code src/server.py && { echo "no-op mutation"; exit 1; }
+#   pytest
+#
+# `git diff --exit-code` exits 0 when NOTHING changed, so the && branch is the
+# error case. The way this bit: the literal being replaced fell across a line
+# break in wrapped text, the file never changed, and the green suite read as a
+# surviving mutant.
+#
+# Restore between mutations from a copy of the working tree, not with
+# `git checkout --` — that restores HEAD and silently discards every
+# uncommitted edit in the same file, which is a bigger no-op than the one above.
 #
 #   | mutation                                        | failing tests |
 #   |-------------------------------------------------|---------------|
@@ -895,3 +932,34 @@ def test_a_code_without_iss_is_refused(auth_client: Any) -> None:
     redeem_authorization_code(
         _callback(state=recorded.state, iss=recorded.issuer), recorded
     )
+
+
+# ---------------------------------------------------------------------------
+# Rule 13 — every test above holds from the merge commit onward, and only forward.
+#
+# Two sets sit outside a freshly merged guard, both showing green CI: the state
+# already on main (never run against it) and every branch cut before the merge
+# (merges without ever having run it).
+#
+# The mechanical part is the trigger — .github/workflows/*.yml:
+#
+#   on:
+#     pull_request:
+#     push:
+#       branches: [main]     # <- so the guard also sees the state it never saw
+#     workflow_dispatch:     # <- so it can be fired once by hand after merging
+#
+# The rest is not YAML. After merging a guard:
+#
+#   1. run it against main once and LOOK at the run — a green PR says nothing
+#      about the branch the PR went into;
+#   2. list the branches that do not know it yet, and pull them up to main:
+#
+#        git branch -r --no-contains <merge-sha>
+#
+#      While that list is non-empty the guard is introduced, not enforced.
+#
+# The Nachweis is rule 6 applied to the guard itself, on main rather than in the
+# PR: create the violation it was written against and watch the run. If it does
+# not go red, every green run so far was "did not run", not "passed".
+# ---------------------------------------------------------------------------

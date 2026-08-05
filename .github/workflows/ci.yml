@@ -124,8 +124,8 @@ jobs:
                   sys.exit(f"{path}: section '## {heading}' not found")
               return len(re.findall(r"^\d+\. ", m.group(1), re.M))
 
-          for path, heading in [("README.md", "The twelve rules"),
-                                ("README.de.md", "Die zwölf Regeln")]:
+          for path, heading in [("README.md", "The thirteen rules"),
+                                ("README.de.md", "Die dreizehn Regeln")]:
               got = listed(path, heading)
               if got != expected:
                   sys.exit(f"{path}: lists {got} rules, SKILL.md defines {expected}")
@@ -162,20 +162,33 @@ jobs:
               sys.exit(f"reference/patterns.py: docstring says {m.group('word')!r} "
                        f"rules, SKILL.md defines {expected}")
 
-          # «Rule 4», «Rules 2 + 3», «Rules 5-7», «rule 1(c)» — ranges expanded.
-          mentioned = set()
+          # «Rule 4», «Rules 2 + 3», «Rules 5-7», «rule 1(c)».
+          #
+          # Nur EINZELNE Nennungen zaehlen als Abdeckung. Eine Sammelueberschrift
+          # wie «Rules 8-12» benennt einen Abschnitt; sie belegt nicht, dass es
+          # fuer Regel 12 ein Muster gibt, das jemand kopieren koennte. Dieser
+          # Check expandierte frueher Bereiche, und ein Mutationstest hat gezeigt,
+          # was das kostet: Den ganzen Regel-13-Block zu loeschen liess die Datei
+          # gruen, weil die Abschnittsueberschrift darueber die 13 mitzaehlte.
+          # Bereiche werden weiterhin expandiert — aber nur fuer die Zeile, die
+          # ausgegeben wird, nicht fuer das Urteil.
+          mentioned, singular = set(), set()
           for mm in re.finditer(r"[Rr]ules?\s+(\d+(?:\s*(?:[-–+,]|and)\s*\d+)*)", patterns):
               nums = [int(n) for n in re.findall(r"\d+", mm.group(1))]
+              if len(nums) == 1:
+                  singular.update(nums)
               if re.search(r"[-–]", mm.group(1)) and len(nums) == 2:
                   mentioned.update(range(nums[0], nums[1] + 1))
               else:
                   mentioned.update(nums)
-          missing = sorted(set(range(1, expected + 1)) - mentioned)
+          missing = sorted(set(range(1, expected + 1)) - singular)
           if missing:
               sys.exit(f"reference/patterns.py: nothing for rule(s) {missing} — "
-                       "a rule without a pattern is a rule nobody can copy")
+                       "a rule without a pattern is a rule nobody can copy. A "
+                       "collective «Rules N-M» heading does not count; the rule "
+                       "needs a block that names it on its own")
           print(f"ok — reference/patterns.py: says {m.group('word')}, covers "
-                f"{sorted(mentioned)}")
+                f"{sorted(mentioned)}, each named singly")
 
           print(f"ok — {expected} rules, consistent everywhere")
           PY
