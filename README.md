@@ -89,14 +89,14 @@ Five repositories, one lifecycle. Each answers a different question, in the orde
 | before the build | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Is the source usable, and what does it hold? Default matrix (1.2b), recall ground truth (1.4), empty results (3.6). Distributed this skill under `companion/` until this repository became its home. |
 | in the build | **`mcp-data-fidelity-skill`** | **This skill:** does it return what the source actually holds? |
 | in the build | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Does it come up, and does it turn away the right callers? The same silent class one layer down — not what the answer contains, but whether one arrives at all |
-| after the build | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Does it hold up against the catalogue? Rules 1–5 map onto the five `FID` checks — not one to one: rules 3 and 4 share `FID-003`, rule 5 needs `FID-005` and `FID-002`. Rules 7–9 sit outside `FID`, in `ARCH-020` and `HITL-006` (catalogue v2.0.0, advisory on baseline 2026-07-28). Rule 6 has no check. Full table, with what each check does *not* cover, in `SKILL.md`. |
+| after the build | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Does it hold up against the catalogue? Rules 1–6 map onto the six `FID` checks — not one to one: rules 3 and 4 share `FID-003`, rule 5 needs `FID-005` and `FID-002`, rule 6 is `FID-006`. Rules 7–9 sit outside `FID`, in `ARCH-020`, `HITL-006` and `ARCH-018`, with rule 9's boundary against the empty set in `FID-003` (catalogue: 113 checks on `main`, v2.0.0 cut; every one of these checks is advisory). Full table, with what each check does *not* cover, in `SKILL.md`. |
 | in operation | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Does it still hold up tomorrow? Its recall floors are rule 5 kept running against the live source. |
 
 Alongside, not part of the chain: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — Anthropic's generic build guidance, complemented rather than replaced. It is someone else's repository and cannot carry the topic.
 
 Plus the server this skill came from: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), whose [issue #11](https://github.com/malkreide/termdat-mcp/issues/11) produced rules 1–5.
 
-Build by rules 1–5 and you pass the `FID` checks; fail them in an audit and the remediation is here. Rules 7–9 are covered outside `FID` and only as `advisory`, each with a stated gap; rule 6 has no check at all, so a clean audit says nothing about it. Closing that is follow-up work in `mcp-audit-skill`, not here.
+Build by rules 1–6 and you pass the `FID` checks; fail them in an audit and the remediation is here. Rules 7–9 are covered outside `FID`, and all of these checks are `advisory` — they are counted, not enforced. Every rule now has a check; what remains open is scope, not coverage, and the widest of those is rule 7: its check measures on baseline `2026-07-28`, while pagination loss also happens on `2025-11-25`. The gaps are named per row in `SKILL.md`.
 
 ## Changelog
 

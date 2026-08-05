@@ -144,6 +144,68 @@ jobs:
           print(f"ok — {expected} rules, consistent everywhere")
           PY
 
+      # Die Zuordnung Regel -> Audit-Check ist die Stelle, an der dieses Repo
+      # zweimal falsch stand (1.4.0 und 1.6.0), und sie zeigt auf ein fremdes
+      # Repo, dessen Katalog sich schneller bewegt. Was von hier aus pruefbar
+      # ist, ist nicht der Inhalt einer Zeile — dafuer muesste man den Katalog
+      # abrufen —, sondern dass jede Regel ueberhaupt eine Zeile hat und jede
+      # Zeile mindestens eine Check-ID nennt.
+      #
+      # Grenze, ausdruecklich: Der Wächter haette den Anlass fuer diesen Schritt
+      # NICHT gefangen. «Ein `FID-006` existiert nicht» nennt eine Check-ID und
+      # haette ihn gruen passiert. Er faengt die naechste Regel ohne Zeile, nicht
+      # die naechste veraltete Zeile.
+      - name: Every rule has a row in the rule-to-check table
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          python - <<'PY'
+          import pathlib, re, sys
+
+          HEADING = "### Welche Regel welcher Check ist"
+          skill = pathlib.Path("SKILL.md").read_text(encoding="utf-8")
+
+          expected = len(re.findall(r"^## Regel (\d+)", skill, re.M))
+          if not expected:
+              sys.exit("SKILL.md: no '## Regel N' headings found")
+
+          m = re.search(rf"^{re.escape(HEADING)}\n(.*?)(?=^#{{2,3}} |\Z)",
+                        skill, re.M | re.S)
+          if not m:
+              sys.exit(f"SKILL.md: section {HEADING!r} not found — anchor gone or "
+                       "reworded, so this check would silently stop checking")
+          section = m.group(1)
+
+          rows = {}
+          for line in section.splitlines():
+              rm = re.match(r"^\|\s*(\d+)\s*—\s*(.*?)\s*\|(.*)\|\s*$", line)
+              if not rm:
+                  continue
+              n = int(rm.group(1))
+              if n in rows:
+                  sys.exit(f"SKILL.md: rule {n} has more than one row in the table")
+              rows[n] = rm.group(3)
+
+          missing = sorted(set(range(1, expected + 1)) - set(rows))
+          if missing:
+              sys.exit(f"SKILL.md: no table row for rule(s) {missing} — a rule "
+                       "without a row reads as if the catalogue had nothing to say "
+                       "about it")
+          extra = sorted(set(rows) - set(range(1, expected + 1)))
+          if extra:
+              sys.exit(f"SKILL.md: table row for rule(s) {extra}, which SKILL.md "
+                       f"does not define ({expected} rules)")
+
+          CHECK_ID = re.compile(r"\b[A-Z]{2,6}-\d{3}\b")
+          silent = sorted(n for n, cell in rows.items() if not CHECK_ID.search(cell))
+          if silent:
+              sys.exit(f"SKILL.md: row(s) {silent} name no check at all — say which "
+                       "check covers the rule, or say in check IDs what does not")
+
+          print(f"ok — SKILL.md: {expected} rules, {len(rows)} rows, each naming "
+                "at least one check")
+          PY
+
       - name: Referenced files exist
         run: |
           for f in SKILL.md reference/patterns.py README.md README.de.md \
