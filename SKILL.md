@@ -1,19 +1,33 @@
 ---
 name: mcp-transport-hardening
-description: Transport- und Bind-Härtung für MCP-Server mit Netz-Transport — damit ein Server unter dem konfigurierten Transport überhaupt hochkommt und abweist, wen er abweisen muss. Verwende diesen Skill ergänzend zu mcp-builder immer wenn (1) ein Server auf eine neue SDK-Major-Version migriert wird (mcp 1.x → 2.x, FastMCP → MCPServer), (2) ein Server von stdio auf streamable-http oder SSE umgestellt wird, (3) Host, Port oder Bind-Adresse konfiguriert, durchgereicht oder in einer ASGI-Factory gelesen werden, (4) jemand meldet, ein Server antworte mit HTTP 421, starte im Deployment nicht oder sei «nur lokal erreichbar», (5) eine eingehende Host- oder Origin-Allow-List entworfen wird oder DNS-Rebinding, CORS und Auth-Token gegeneinander abgewogen werden, (6) ein Server hinter uvicorn mit `--factory` betrieben wird, oder (7) Tests für den Transport-Pfad geschrieben, per Mutationstest abgenommen werden oder eine Suite hängt statt zu scheitern. Nicht nötig für Server, die ausschliesslich über stdio laufen.
+description: Transport-, Bind- und Stateless-Härtung für MCP-Server mit Netz-Transport, über beide Spec-Baselines (2025-11-25 und 2026-07-28). Verwende ihn ergänzend zu mcp-builder wenn (1) ein Server auf eine neue SDK-Major oder auf Spec 2026-07-28 migriert wird, (2) ein Server von stdio auf streamable-http umgestellt oder ein Legacy-HTTP+SSE-Pfad abgelöst wird, (3) Host, Port oder Bind-Adresse konfiguriert, durchgereicht oder in einer ASGI-Factory gelesen werden, (4) jemand meldet, ein Server antworte mit HTTP 421 oder JSON-RPC -32020, starte nicht oder sei «nur lokal erreichbar», (5) eine eingehende Host- oder Origin-Allow-List entworfen oder gegen CORS und Auth-Token abgewogen wird, (6) `initialize`, `Mcp-Session-Id`, `server/discover`, `Mcp-Method`/`Mcp-Name`, MRTR-`input_required` oder OAuth-`iss`/CIMD/DCR berührt werden, oder (7) Transport-Tests per Mutationstest abgenommen werden oder eine Suite hängt statt zu scheitern. Für reine stdio-Server entfallen die Bind- und Header-Regeln, nicht die Stateless-Regeln.
 ---
 
-# MCP Transport Hardening — kommt der Server hoch, und weist er ab, wen er abweisen muss?
+# MCP Transport Hardening — kommt der Server hoch, weist er ab wen er abweisen muss, und bleibt er zustandslos?
 
-Companion zu `mcp-builder`. Dessen Best Practices decken ab, ob ein Server **korrekt gebaut** ist — Naming, Annotations, Pagination, Transport, Fehlerbehandlung. Dieser Skill deckt die Frage daneben ab: **kommt er unter dem konfigurierten Transport überhaupt hoch, und weist er ab, wen er abweisen muss?**
+Companion zu `mcp-builder`. Dessen Best Practices decken ab, ob ein Server **korrekt gebaut** ist — Naming, Annotations, Pagination, Transport, Fehlerbehandlung. Dieser Skill deckt die Frage daneben ab: **kommt er unter dem konfigurierten Transport überhaupt hoch, weist er ab wen er abweisen muss, und hält er das auch ohne Sitzung durch?**
 
 Das ist eine eigene Fehlerklasse, weil sie ebenfalls still ist — nur anders still als bei `mcp-data-fidelity`. Dort liefert der Server eine plausible Antwort, die inhaltlich falsch ist. Hier liefert er gar keine: grüne Unit-Tests, sauberer Linter, und in Produktion startet der Prozess nicht oder beantwortet jede Anfrage unter einem echten Hostnamen mit HTTP 421. Der Transport-Pfad ist genau der Teil, den eine Testsuite über stdio nie berührt.
 
 Eine Schicht höher fallen die beiden Klassen allerdings zusammen: Wer das 421 nur daran misst, dass keine Datensätze zurückkommen, reicht es als Leermenge weiter — und dann ist es doch wieder eine plausible, inhaltlich falsche Antwort ([`mcp-data-fidelity`](https://github.com/malkreide/mcp-data-fidelity-skill) Regel 3, `FID-003`). Verlass dich also nicht darauf, dass ein 421 auffällt; sichtbar wird es nur dort, wo der Transport-Pfad selbst geprüft wird.
 
-**Die Leitfrage bei jedem Server mit Netz-Transport:** *Wenn ich den Bind ändere — folgt die eingehende Allow-List mit, auf jedem Pfad, der eine App baut, und wird ein Test rot, wenn sie es nicht tut?* Ist die Antwort nein, greift eine der sieben Regeln unten.
+**Die Leitfrage bei jedem Server mit Netz-Transport:** *Wenn ich den Bind ändere — folgt die eingehende Allow-List mit, auf jedem Pfad, der eine App baut, und wird ein Test rot, wenn sie es nicht tut?* Ist die Antwort nein, greift eine der Regeln 1–4.
 
-Die Regeln 1–4 betreffen den Server, die Regeln 5–7 den Beweis. Der zweite Teil ist der teurere: Transportregeln kann man nachschlagen, die Beweisführung nicht.
+**Die zweite Leitfrage, seit Spec `2026-07-28`:** *Wenn zwei Aufrufer nichts mehr teilen — keinen Handshake, keine Sitzung, keine Verbindung —, sieht der eine dann noch etwas vom anderen, und wird ein Test rot, wenn er es tut?* Ist die Antwort ja, greift eine der Regeln 8–12.
+
+## Wie die zwölf Regeln geordnet sind
+
+| Block | Regeln | Frage |
+|---|---|---|
+| Bind und Verdrahtung | 1–4 | Kommt er hoch, und weist er richtig ab? |
+| Der Beweis | 5–7 | Woran erkennt man, dass es trägt? Gilt auch für 8–12 |
+| Die Stateless-Welt `2026-07-28` | 8–12 | Hält er ohne Sitzung, und spricht er den neuen Umschlag? |
+
+Der Beweisblock steht in der Mitte und nicht am Ende, weil er älter ist als der dritte Block und weil dieses Repo, sein eigenes CHANGELOG und vier Nachbar-Repos «Regel 6» und «Regeln 5–7» namentlich zitieren. Eine Umnummerierung würde die eigene Historie rückwirkend falsch machen — die neuen Regeln werden deshalb angehängt, nicht eingeschoben.
+
+Der zweite Teil bleibt der teurere: Transportregeln kann man nachschlagen, die Beweisführung nicht. Genau deshalb bekommt jede der Regeln 8–12 ihren Nachweis in der Form der Regeln 5–7 — Mutation benennen, anwenden, protokollieren.
+
+**Zwei Baselines gleichzeitig.** Die Regeln 1–7 gelten unverändert auf beiden Ständen: Bind, Verdrahtung, Host-Allow-List und Beweisführung hängen am Transport, nicht am Lebenszyklus. Die Regeln 8–12 gelten auf `2026-07-28`. Und die beiden Stände stehen nicht nacheinander, sondern nebeneinander — im selben Prozess. Am Portfolio nachgemessen und in `zurich-opendata-mcp`s `pyproject.toml` festgehalten: Der Legacy-`initialize`-Handshake cappt weiter bei `2025-11-25` (ein Client, der `2026-07-28` verlangt, bekommt `2025-11-25` zurück), während derselbe Server daneben einen per-request-Umschlag bedient, der `2026-07-28` erreicht. Ein Stateless-Fehler ist damit für jeden Client unsichtbar, der noch auf der alten Ära spricht.
 
 ---
 
@@ -49,9 +63,11 @@ Das Entscheidende daran: **das Drahtformat ist unverändert.** camelCase überle
 
 **Abgrenzung, die genauso wichtig ist:** Das eigenständige PyPI-Paket `fastmcp` ist ein **anderes Projekt** als `mcp.server.fastmcp` im offiziellen SDK. `from fastmcp import FastMCP` bleibt dort gültig und wird von dieser Regel nicht berührt. Zwei Projekte, ein Name — wer sie verwechselt, macht funktionierenden Code kaputt.
 
-Der Versions-Cap wandert mit: `mcp[cli]>=1.0.0,<2` wird zu `>=2.0.0,<3`. Der Bound bleibt, nur am anderen Ende verankert. Ein `<2`-Cap kauft Zeit, indem er auf der letzten 1.x pinnt — ein Ziel ist er nie.
+**Die dritte Achse, seit `2026-07-28`: der Cap ist keine Formalie mehr, sondern eine Weiche.** `fastmcp` 3.x pinnt seinerseits `mcp<2.0`. Ein Server auf dem eigenständigen Paket kann deshalb nicht nebenbei auf die 2er-Linie des offiziellen SDK wandern — und `fastmcp` 4.0 ist ein eigener Bruch daneben. Wer beide Pakete im selben Environment auflösen lässt, bekommt keinen Fehler, sondern einen Resolver-Entscheid.
 
-**Nachweis:** Die 1.x-Settings-Zuweisung zurückbauen — ein Test muss mit `ValueError` scheitern, nicht das Deployment. Für (c): beide Schreibweisen serialisieren und die JSON vergleichen; sind sie identisch, ist es ein reines Lesethema und der Client bleibt aussen vor.
+Der Versions-Cap wandert mit: `mcp[cli]>=1.0.0,<2` wird zu `>=2.0.0,<3`. Der Bound bleibt, nur am anderen Ende verankert. Ein `<2`-Cap kauft Zeit, indem er auf der letzten 1.x pinnt — ein Ziel ist er nie. Die untere Grenze ist dabei genauso tragend wie die obere: `2.0.0` hat `mcp.server.fastmcp` ersatzlos entfernt, eine `>=1.x`-Range lässt einen Resolver also eine Version wählen, die am Import stirbt. Im Katalog ist das [`DEP-001`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/DEP-001.md).
+
+**Nachweis:** Die 1.x-Settings-Zuweisung zurückbauen — ein Test muss mit `ValueError` scheitern, nicht das Deployment. Für (c): beide Schreibweisen serialisieren und die JSON vergleichen; sind sie identisch, ist es ein reines Lesethema und der Client bleibt aussen vor. Für den Cap: in einer leeren Umgebung installieren und den Import ausführen — eine Range, die im Lockfile funktioniert, sagt nichts über die Auflösung von morgen.
 
 ## Regel 2 — `host` ist die Saat der Allow-List, kein kosmetischer Parameter
 
@@ -69,6 +85,8 @@ def create_http_app():
 ```
 
 **Die uvicorn-Falle:** uvicorn ruft eine `--factory` **ohne Argumente** auf. `--host` konfiguriert nur den Listener und erreicht die App nie. Die Factory muss den Bind deshalb selbst aus derselben Konfiguration lesen wie `main()` — sonst hört der Prozess auf `0.0.0.0` und die App glaubt weiterhin, sie sei Loopback.
+
+**Die PaaS-Variante derselben Falle.** Auf einer Plattform, die den Port beim Start injiziert (`$PORT`) und den Hostnamen generiert, ist der Bind erst zur Laufzeit bekannt. Ein im Code stehender Port ist dort nicht bloss unschön, er ist falsch: Regel 4 verlangt Portgenauigkeit, und eine portgenaue Liste mit dem falschen Port ist dasselbe 421 wie hier. Der Bind muss also aus derselben Quelle stammen, die die Plattform tatsächlich setzt — und die Allow-List aus dem gelesenen Wert zusammengesetzt werden, nicht aus einem Literal.
 
 Daraus folgt eine Doku-Pflicht: Im README muss stehen, **warum `MCP_HOST`/`MCP_PORT` neben den uvicorn-Flags nicht redundant sind.** Das ist im Code unsichtbar, sieht wie eine Verdopplung aus, und hat genau deshalb ein reales Deployment getroffen.
 
@@ -94,6 +112,8 @@ else:
 ```
 
 **Der Port reist mit.** Ein Repo reichte dem Builder nur den Host durch und liess ihn den Port defaulten — die Loopback-Einträge der Allow-List nannten damit einen Port, den niemand bedient. Host ohne Port ist eine halbe Verdrahtung.
+
+**Seit `2026-07-28` reist noch etwas mit:** die Header-Prüfung aus Regel 9. Sie ist dieselbe Art Kontrolle wie `transport_security` und macht denselben Fehler mit — ein Pfad ohne sie ist ein Pfad ohne Sicherheitsgrenze. Und der SSE-Pfad ist nicht mehr bloss «deprecated, aber erreichbar», sondern trägt ein Abschaltdatum; siehe Regel 10.
 
 **Nachweis:** `transport_security` **einzeln** aus jedem Pfad entfernen; jede Entfernung muss mindestens einen Test zum Scheitern bringen. Dasselbe für den Port an der Naht zwischen Serve-Funktion und App-Builder: in einem Repo scheiterte dabei **kein einziger** Test, weil der Port-Test nur den Builder abdeckte — und der wird mit explizitem Port gerufen.
 
@@ -126,13 +146,15 @@ Vier Eigenschaften, jede mit einem Grund: **portgenau**, weil Einträge wörtlic
 
 Ohne Konfiguration auf einem Nicht-Loopback-Bind bleibt der Schutz **aus — fail-open, aber sichtbar, mit Startwarnung.** Auf `0.0.0.0` ist der erreichbare Name im Prozess unbekannt, und eine geratene Liste ist schlechter als keine: sie weist das Deployment ab, das sie schützen soll. Das ist dasselbe 421 wie in Regel 2, nur selbst verschuldet.
 
+**Diese Regel überlebt den Wegfall der Sitzung unbeschadet — und wird dadurch wichtiger.** Wo es keine Sitzung mehr gibt, an die sich irgendetwas binden liesse (Regel 8), ist die Host-Prüfung die einzige Kontrolle, die *vor* der Bearbeitung jeder einzelnen Anfrage steht. Sie ersetzt keine Authentifizierung; sie ist nur die einzige, die nicht mit dem Lebenszyklus verschwunden ist.
+
 **Nachweis:** **Richtiger Hostname, falscher Port** muss abgewiesen werden — ein `evil.example.com` allein beweist nichts, weil eine zurückfallende Loopback-Policy ihn ebenfalls abweist. Dazu: ein gültiges `Bearer`-Token darf einen fremden Host nicht retten.
 
 ---
 
 ## Regel 5 — Ein Negativtest muss aus deinem Grund scheitern, nicht aus dem eines Defaults
 
-Die Regeln 1–4 sagen, was verdrahtet sein muss. Die Regeln 5–7 sagen, woran man erkennt, dass es verdrahtet **ist** — und sie sind der teurere Teil, weil man sie nicht nachschlagen kann.
+Die Regeln 1–4 sagen, was verdrahtet sein muss. Die Regeln 5–7 sagen, woran man erkennt, dass es verdrahtet **ist** — und sie sind der teurere Teil, weil man sie nicht nachschlagen kann. Sie gelten unverändert für die Regeln 8–12: jede der neuen Kontrollen hat einen zweiten Grund, aus dem ihr Negativtest grün werden könnte.
 
 Ein Negativtest behauptet: «Diese Anfrage wird abgewiesen.» Grün heisst aber nur, dass sie abgewiesen *wurde* — nicht, dass **deine** Kontrolle sie abgewiesen hat. Überall dort, wo ein Default, ein Fallback oder eine vorgelagerte Schicht dieselbe Anfrage ebenfalls ablehnt, ist der Test mit der Kontrolle und ohne sie grün. Er misst dann die Umgebung, nicht den Code.
 
@@ -192,14 +214,16 @@ Der erste Merksatz gilt über den Transport hinaus: In `mcp-data-fidelity` (Rege
 | Allow-List nicht portgenau | 3 |
 | Port reist nicht bis zum Builder | 1 |
 
+Für die Regeln 8–12 gilt dieselbe Form. Die Mutationen stehen dort jeweils unter «Nachweis» — Handle-Argument entfernen, Header-Vergleich entfernen, Idempotenzschlüssel entfernen, `iss`-Prüfung entfernen.
+
 ## Regel 7 — Die Test-Harness ist bei HTTP-Transporten selbst eine Fehlerquelle
 
 Drei Fallen, die alle dasselbe Symptom haben: Der Befund sieht aus wie ein Infrastrukturproblem und wird als Rauschen abgetan.
 
-**(a) Ein blanker `httpx.ASGITransport` liefert 500 auf jede Anfrage.** Streamable HTTP startet seinen Session-Manager im **App-Lifespan**, und dieser Transport führt den Lifespan nie aus. Wer den 500er für einen Befund hält, debuggt den falschen Code.
+**(a) Ein blanker `httpx.ASGITransport` liefert 500 auf jede Anfrage.** Streamable HTTP baut seinen Transport-Manager im **App-Lifespan** auf, und dieser Transport führt den Lifespan nie aus. Wer den 500er für einen Befund hält, debuggt den falschen Code. Das gilt unabhängig von der Baseline: Was `2026-07-28` entfernt, ist die *Protokoll*-Sitzung, nicht der Aufbau der App.
 
 ```python
-# ✗ kein Lifespan → kein Session-Manager → 500 auf alles
+# ✗ kein Lifespan → kein Transport-Manager → 500 auf alles
 transport = httpx.ASGITransport(app=build_http_app(settings))
 client = httpx.AsyncClient(transport=transport, base_url="http://test")
 
@@ -225,9 +249,174 @@ assert len(calls) == 1, "der Builder-Zweig lief — dieser Test behauptet den ru
 assert calls[0]["transport_security"] is not None
 ```
 
-Warum der SSE-Fall hängt, verbindet (a) und (c): Ohne Allow-List wird ein SSE-GET unter fremdem Host **zugelassen** und öffnet einen endlosen Event-Stream, auf den der `TestClient` beim Verlassen wartet. Die fehlende Kontrolle äussert sich also nicht als roter Test, sondern als stehende Suite — und ein Hänger wird routinemässig als Flake abgetan.
+Warum der SSE-Fall hängt, verbindet (a) und (c): Ohne Allow-List wird ein SSE-GET unter fremdem Host **zugelassen** und öffnet einen endlosen Event-Stream, auf den der `TestClient` beim Verlassen wartet. Die fehlende Kontrolle äussert sich also nicht als roter Test, sondern als stehende Suite — und ein Hänger wird routinemässig als Flake abgetan. Regel 11 fügt dieser Klasse eine zweite Ursache hinzu, die nichts mit SSE zu tun hat.
 
 **Nachweis:** Ein Timeout auf die Suite (`pytest --timeout=30`) macht aus jedem Hänger einen Fehlschlag mit Stacktrace, und die Stelle ist damit benannt statt gemutmasst. Dazu jeden Zweig-Test **einzeln und in der vollen Suite** laufen lassen: Die Instanz-Patch-Falle aus (b) zeigt sich ausschliesslich im zweiten Fall.
+
+---
+
+## Regel 8 — Ohne Sitzung teilt sich Zustand still, statt zu fehlen
+
+Mit `2026-07-28` fällt der Lebenszyklus weg, um den herum bisher gebaut wurde: `initialize` und `notifications/initialized` sind entfernt, der `Mcp-Session-Id`-Header ebenfalls. Jede Anfrage trägt Protokollversion, `clientInfo` und Capabilities selbst, in `_meta` unter `io.modelcontextprotocol/*`. Zustand über Aufrufe hinweg läuft nur noch über **explizite, server-geprägte Handles als gewöhnliche Tool-Argumente**.
+
+Der gefährliche Fall ist nicht der Server, der abstürzt — der fällt beim ersten Aufruf auf. Der gefährliche Fall ist der Server, der **weiterläuft und still degradiert**: Er hält seinen Zustand in einer prozesslokalen Struktur, die per Konvention über die Sitzung adressiert war. Ohne Sitzung landet jeder Request im selben Eimer. Bei einem Nutzer merkt das niemand; bei zweien ist es ein Datenleck zwischen Aufrufern, das keinen Fehler wirft.
+
+```python
+# ✗ prozesslokaler Zustand, adressiert über etwas, das es nicht mehr gibt
+_CURSORS: dict[str, int] = {}          # war: pro Sitzung — jetzt: pro Prozess
+
+@mcp.tool()
+async def next_page() -> str:
+    offset = _CURSORS.get("current", 0)     # jeder Aufrufer liest denselben Eintrag
+    _CURSORS["current"] = offset + 50
+    return await fetch(offset)
+
+# ✓ der Zustand steht im Argument, ist server-geprägt und läuft ab
+@mcp.tool()
+async def next_page(page_handle: str | None = None) -> str:
+    offset = _decode_handle(page_handle)    # signiert, opak, mit Ablauf
+    return await fetch(offset, next_handle=_mint_handle(offset + 50))
+```
+
+Drei Worte der Spec tragen die Last. **Explicit:** Der Handle steht im Schema des Tools, ein Modell sieht ihn. **Server-minted:** Der Server prägt ihn, der Client denkt ihn sich nicht aus — ein Handle namens `cursor=42` ist eine ratbare Referenz auf fremden Zustand und verschiebt die Angriffsfläche bloss in die Tool-Signatur, wo kein Auth-Layer mehr hinschaut. **As ordinary tool arguments:** Er reist im Argument, nicht in einem Header und nicht in einer Tabelle neben dem Request.
+
+**Der zweite Fehler ist leiser: ein Handle ohne Ablauf ist Zustand ohne Ende.** Bei der Sitzung erledigte das Aufräumen der Verbindungsabbruch. Ohne Sitzung gibt es kein Ereignis mehr, an dem irgendetwas aufräumt — ein Dict voller Handles ist ein Leck, das keine Testsuite bemerkt, weil es sich in Tagen zeigt und nicht in Sekunden.
+
+**`server/discover` ist serverseitig Pflicht, nicht Kür.** Die Spec ist hier asymmetrisch: Server **MÜSSEN** den RPC implementieren, um Protokollversionen, Capabilities und Identität bekanntzugeben; Clients **DÜRFEN** ihn vor jeder anderen Anfrage rufen. Genau diese Asymmetrie ist die Falle — weil kein Client ihn rufen muss, funktioniert ein Server ohne ihn im Alltag scheinbar tadellos, und auf stdio, wo er als Rückwärtskompatibilitäts-Sonde dient, kann ein Client danach nicht unterscheiden, ob er einen alten Server vor sich hat oder einen neuen mit einer Lücke. Ein fehlendes `server/discover` ist kein fehlendes Feature, sondern eine falsche Auskunft über die eigene Protokollversion.
+
+**Nachweis:** **Zwei Aufrufer, kein gemeinsamer Kontext.** Zwei unabhängige Requests absetzen und behaupten, dass der zweite nichts vom ersten sieht. Der Mutationstest dazu: das Handle-Argument entfernen und auf den prozesslokalen Eimer zurückfallen — ein Test mit *einem* Aufrufer bleibt dabei grün, ein Test mit *zweien* muss rot werden. Das ist Regel 5 auf diese Regel angewandt: Der Einzelaufruf-Test hat einen zweiten Grund, grün zu sein, nämlich dass er die Bedingung gar nicht herstellt. Für `server/discover`: den RPC tatsächlich aufrufen — eine grüne Tool-Suite beweist nichts, weil sie ihn nie ruft. Für den Ablauf: einen Handle mit abgelaufenem Zeitstempel einreichen und die Ablehnung behaupten.
+
+## Regel 9 — Die Adresse steht neu aussen auf dem Umschlag, und beide Seiten müssen dasselbe lesen
+
+Streamable HTTP verlangt auf jedem POST zwei Header: `Mcp-Method` mit der JSON-RPC-Methode und `Mcp-Name` mit dem Namen des adressierten Tools, Prompts oder der Ressource. Weichen Header und Body voneinander ab, ist die Antwort `HeaderMismatchError` — JSON-RPC-Code **`-32020`**.
+
+Der Gewinn ist offensichtlich: Bisher musste jede Instanz zwischen Client und Server den Body parsen, um zu wissen, was durchläuft — ein Gateway, das nur ein bestimmtes Werkzeug durchlassen soll, ein Rate-Limiter mit Grenzen je Tool, ein Logpfad, der Methoden zählt. Jetzt steht das im Klartext an der Anfrage.
+
+**Und genau daraus entsteht der Angriff.** Wenn eine Zwischenschicht am Header entscheidet und der Server am Body, entscheiden zwei Instanzen über zwei verschiedene Anfragen. Ein Client schickt `Mcp-Name: search_datasets` im Header und `delete_record` im Body: Das Gateway erlaubt, der Server führt aus. Die Header sind deshalb keine Metadaten — **die Prüfung ihrer Übereinstimmung ist eine Sicherheitsgrenze**, und sie muss serverseitig stattfinden, weil nur dort beide Seiten vorliegen.
+
+```python
+# ✗ Header als Metadatum behandelt — geloggt, geroutet, nie gegen den Body gehalten
+log.info("mcp.request", method=request.headers.get("Mcp-Method"))
+return await dispatch(body["method"], body["params"])
+
+# ✓ Übereinstimmung ist eine Vorbedingung, und ein fehlender Header ist keine Ausnahme
+declared_method = request.headers.get("Mcp-Method")
+declared_name = request.headers.get("Mcp-Name")
+if declared_method is None or declared_name is None:
+    raise HeaderMismatchError(-32020, "Mcp-Method/Mcp-Name required")
+if (declared_method, declared_name) != (body["method"], _addressed_name(body)):
+    raise HeaderMismatchError(-32020, "header does not match body")
+return await dispatch(body["method"], body["params"])
+```
+
+Der fehlende Header ist der Teil, den man am ehesten weglässt, und der die Kontrolle aushebelt: Wer nur vergleicht, *wenn* beide Header da sind, hat eine Prüfung gebaut, die man durch Auslassen umgeht. Dieselbe Form wie die «present»-Klausel in Regel 12.
+
+**Daraus folgt die zweite Doku-Pflicht dieses Skills** — Schwester der `MCP_HOST`-Pflicht aus Regel 2. Im README gehört, **auf welche Header-Werte das Deployment routet und limitiert**: Ein Gateway, das auf `Mcp-Name` allow-listet, ist Teil der Sicherheitsarchitektur des Servers, steht aber nirgends in seinem Code. Wer das nicht aufschreibt, hat eine Kontrolle, die niemand pflegt, weil niemand von ihr weiss.
+
+**Nachweis:** Drei Fälle, und der dritte ist der, den man vergisst. (1) Header und Body stimmen überein → durchgelassen, der positive Zwilling. (2) `Mcp-Name` nennt ein anderes Tool als der Body → `-32020`. (3) Header fehlen ganz → ebenfalls `-32020`, nicht durchgelassen. Der Mutationstest: den Vergleich durch ein reines Logging ersetzen — Fall 2 und 3 müssen rot werden. Wird nur Fall 2 rot, prüft niemand die Auslassung.
+
+## Regel 10 — Legacy HTTP+SSE hat jetzt ein Datum: 2027-07-28
+
+Der HTTP+SSE-Transport ist seit `2025-03-26` deprecated. Was `2026-07-28` ändert, ist nicht die Empfehlung, sondern ihre Verbindlichkeit: Der Pfad steht unter der Feature-Lifecycle-Politik und trägt damit den formalen Zustand **Deprecated** mit einem Fenster von mindestens zwölf Monaten — frühester Entfernungstermin **`2027-07-28`**. Dieselbe Frist gilt für Roots, Sampling und Logging.
+
+**Warum es das braucht, obwohl «deprecated seit 2025-03» seit anderthalb Jahren im Raum steht.** Genau deswegen. Eine Empfehlung ohne Termin erzeugt keinen Vorgang, sondern einen Kompatibilitätspfad, den niemand abschaltet, weil er niemanden stört.
+
+Der Legacy-Pfad ist dabei nicht neutral. Er ist ein zweiter Netzweg mit eigener Verdrahtung — und die Erfahrung aus Regel 3 ist, dass der zweite Pfad die Härtung des ersten nicht mitbekommt. Ein Server, dessen Streamable-HTTP-Endpunkt Host-Allow-Listing (Regel 4) und Header-Prüfung (Regel 9) durchsetzt, während der SSE-Endpunkt daneben weiterläuft, hat beides nicht. Auf `2026-07-28` verschärft sich das zusätzlich: Dort ist auch der GET-Endpunkt weg, ein verbliebener SSE-Pfad spricht also ein Protokoll, das der Server nach eigener Aussage nicht mehr führt.
+
+**Erkennungsrezept — drei Orte, weil jeder für sich sauber sein kann, während ein anderer es nicht ist:**
+
+1. **Code.** `create_sse_app`, `transport="sse"`, ein Mount auf `/sse`, ein `sse_app()`-Aufruf. Grep über das ganze Paket, nicht nur über das Servermodul.
+2. **Start.** Was die Plattform tatsächlich startet: `[project.scripts]`, Procfile, `CMD`, die Argv im Deployment. Ein im Code vorhandener Zweig, den nie jemand aufruft, ist etwas anderes als ein Zweig, den das Deployment wählt — und umgekehrt kann eine Konfiguration einen Transport wählen, den man im Code übersehen hat.
+3. **Draht.** Ein GET auf den Endpunkt. Öffnet sich ein Event-Stream oder kommt ein `Mcp-Session-Id` zurück, ist der Pfad live — unabhängig davon, was der Code nahelegt. Nur das hier ist ein Beweis; die ersten beiden sind Indizien.
+
+```python
+# ✗ «bleibt für Kompatibilität» — ohne Datum, ohne Signal, unbefristet
+if settings.transport == "sse":
+    uvicorn.run(mcp.create_sse_app(...), host=..., port=...)
+
+# ✓ befristet, sichtbar, und bis zur Entfernung gleich hart verdrahtet wie der Rest
+if settings.transport == "sse":
+    log.warning(
+        "transport.legacy_sse_selected removal_earliest=2027-07-28 — "
+        "migrate to streamable-http; this path speaks a protocol 2026-07-28 dropped",
+    )
+    uvicorn.run(
+        mcp.create_sse_app(host=..., port=..., transport_security=policy), ...
+    )
+```
+
+**Angewandtes Rezept, gemessen: `zurich-opendata-mcp` v0.7.0.** Alle drei Orte negativ — kein `create_sse_app` und kein `transport="sse"` im Paket; ein einziger Netzpfad, `mcp.run(transport="streamable-http", host=…, port=…, transport_security=…)` in `src/zurich_opendata_mcp/server.py`; kein Deploy-Manifest im Repo, das einen zweiten Pfad starten könnte. So sieht ein sauberer Befund aus. Das ist der nützlichere Teil des Rezepts: Wer nur den positiven Fall kennt, weiss nicht, wann er fertig ist. Den positiven Fall liefert der Dreier-Zyklus unten — dort stand der SSE-Pfad neben den beiden anderen und bekam die Härtung nicht mit.
+
+**Nachweis:** Die Abwesenheit ist beweisbar zu machen, nicht bloss zu behaupten — ein Test, der scheitert, sobald wieder eine SSE-App gebaut wird. Solange der Pfad existiert, gilt die Mutation aus Regel 3 auch für ihn: `transport_security` einzeln daraus entfernen, mindestens ein Test muss rot werden. Und der Beweis der Abschaltung ist der Draht, nicht der Code: ein GET, das keinen Stream öffnet. Achtung auf den zweiten Grund im Sinne von Regel 5 — ein GET, das scheitert, weil der Server gar nicht läuft, beweist nichts; der positive Zwilling auf dem Streamable-HTTP-Endpunkt muss danebenstehen.
+
+## Regel 11 — MRTR: der Server antwortet und hält nichts offen — dafür läuft die Bearbeitung mehrfach
+
+Bis `2025-11-25` konnte ein Server mitten in der Bearbeitung selbst einen Request an den Client stellen: `roots/list`, `sampling/createMessage`, `elicitation/create`. `2026-07-28` streicht das ersatzlos und setzt **MRTR** an seine Stelle:
+
+1. Der Server merkt, dass ihm etwas fehlt, und **antwortet** — `resultType: "input_required"` plus ein Feld `inputRequests`, das benennt, was er braucht.
+2. Der Client beschafft es und **wiederholt den ursprünglichen Request**, diesmal mit `inputResponses`.
+3. Der Server bearbeitet ihn erneut, jetzt vollständig.
+
+**Die Umkehrung, die alles daran schwierig macht:** Aus einem Dialog *innerhalb* einer Bearbeitung wird eine Bearbeitung, die **von vorn läuft**. Alles vor dem Rückfragepunkt passiert bei jedem Retry noch einmal. Damit wandert das Thema aus «Bedienoberfläche» in «Korrektheit»: Ein Tool, das erst etwas anlegt, dann nachfragt und im Retry wieder von vorn beginnt, legt es zweimal an.
+
+```python
+# ✗ Nebenwirkung vor dem Rückfragepunkt — jeder Retry wiederholt sie
+async def submit(params):
+    record = await api.create(params)              # läuft beim Retry erneut
+    if params.confirm is None:
+        return {"resultType": "input_required", "inputRequests": [CONFIRM]}
+    return await api.finalise(record.id)
+
+# ✓ erst vollständig werden, dann wirken — und die Wirkung trägt einen Schlüssel
+async def submit(params):
+    if params.confirm is None:
+        return {
+            "resultType": "input_required",
+            "inputRequests": [CONFIRM],
+            "requestState": _mint_state(params),   # Korrelation ohne Sitzung
+        }
+    return await api.create(params, idempotency_key=_key_from(params.request_state))
+```
+
+**Korrelation ohne Sitzung.** `elicitationId` und `notifications/elicitation/complete` sind entfernt. Wer einen ausserhalb laufenden Vorgang über Retries hinweg wiedererkennen muss, kodiert seine eigene Kennung in `requestState` — einen anderen Kanal gibt es nicht mehr. Es gelten dieselben Eigenschaften wie für Handles in Regel 8: server-geprägt, opak, mit Ablauf.
+
+**Keine hängenden Streams.** Der Server *antwortet* und schliesst ab. Wer stattdessen die Verbindung offenhält und auf die Antwort des Clients wartet, hat das alte Modell nachgebaut, und zwar in der Form, die Regel 7 beschreibt: Der Fehler äussert sich nicht als roter Test, sondern als stehende Suite. Der Retry kann ausserdem **nie kommen** — ein Client ist zu nichts verpflichtet. Was vor dem Rückfragepunkt reserviert wurde, muss deshalb ohne ein Abschlussereignis wieder freigegeben werden, genau wie ein Handle ohne Ablauf in Regel 8 eines ist.
+
+**Nachweis:** Den Retry **tatsächlich ausführen** — Aufruf ohne Eingabe, dann derselbe Aufruf mit `inputResponses` — und behaupten, dass die Nebenwirkung **einmal** eingetreten ist. Der zweite Grund im Sinne von Regel 5: Ein Test, der nur den Rückgabewert des zweiten Aufrufs prüft, ist auch bei doppelter Nebenwirkung grün; behauptet wird die Wirkung, nicht die Antwort. Der Mutationstest: den Idempotenzschlüssel entfernen — der Zwei-Aufruf-Test muss rot werden, der Ein-Aufruf-Test bleibt grün. Und die Suite läuft unter Timeout (Regel 7), sonst zeigt sich ein offengehaltener Stream als Flake statt als Befund.
+
+## Regel 12 — Auth-Härten, und warum dieses Portfolio hier einen Negativbefund einträgt
+
+Drei Änderungen an derselben Stelle, die nur zusammen einen behebbaren Zustand ergeben:
+
+- **RFC-9207-`iss`-Validierung.** Autorisierungsserver **SOLLEN** einen `iss`-Parameter in die Authorization-Response legen; die einlösende Partei **MUSS** ihn gegen den erfassten Issuer prüfen, bevor sie den Code einlöst. Der Angriff dahinter ist Mix-up: Ein Code, der bei Server A ausgestellt wurde, wird auf den Callback von Server B umgeleitet und dort mit *dessen* Zugangsdaten eingelöst.
+- **CIMD statt DCR.** Dynamic Client Registration ist abgekündigt zugunsten von Client ID Metadata Documents: Der Client veröffentlicht seine Metadaten unter einer URL, und diese URL **ist** die `client_id`. DCR bleibt für Autorisierungsserver, die CIMD nicht können — und wer dort bleibt, muss `application_type` setzen, sonst defaultet OpenID Connect auf `web` und ein nativer Client mit `http://127.0.0.1:…` wird abgelehnt.
+- **Issuer-gebundene Credentials.** Persistierte Zugangsdaten werden nach Issuer-Identifier geschlüsselt, nie bei einem anderen Autorisierungsserver wiederverwendet, und beim Wechsel wird neu registriert. Das ist die Speicherseite desselben Angriffs, dessen Netzseite die `iss`-Prüfung abwehrt.
+
+```python
+# ✗ state geprüft, iss ignoriert — und die Credentials liegen flach in der Konfiguration
+if callback.state != recorded.state:
+    raise AuthError("state mismatch")
+token = await httpx.post(recorded.token_endpoint, data={
+    "code": callback.code, "client_id": CLIENT_ID, "client_secret": CLIENT_SECRET,
+})
+
+# ✓ iss gehört zur Vorbedingung, auch wenn er fehlt — und die Credentials hängen am Issuer
+if callback.state != recorded.state:
+    raise AuthError("state mismatch")
+if callback.iss is None and recorded.metadata.iss_parameter_supported:
+    raise AuthError("iss absent although this issuer advertises it")
+if callback.iss is not None and callback.iss != recorded.issuer:
+    raise AuthError("iss mismatch — this code was not issued by the recorded issuer")
+creds = CREDENTIALS_BY_ISSUER[recorded.issuer]      # nie über Issuer hinweg wiederverwendet
+```
+
+**Die «present»-Klausel ist die Falle.** Die Pflicht gilt für einen *vorhandenen* `iss`. Wer nur prüft, wenn der Parameter da ist, erfüllt den Buchstaben und lässt sich angreifen, indem der Parameter weggelassen wird. Was der Autorisierungsserver kann, steht in seinen Metadaten (`authorization_response_iss_parameter_supported`) — es ist also bekannt und muss nicht geraten werden. Dieselbe Auslassungsfalle wie beim fehlenden Header in Regel 9.
+
+**Der Negativbefund, ausgeschrieben statt weggelassen.** Für das Swiss-Public-Data-Portfolio ist diese Regel **derzeit nicht anwendbar**, und zwar aus einem benennbaren Grund: Die Server sind read-only, führen `auth_model: none` und lösen keinen Authorization Code ein — es gibt keine einlösende Partei, die `iss` prüfen könnte, und keine persistierten Client-Credentials, die man nach Issuer schlüsseln müsste. Die einzige eingehende Kontrolle bleibt die Host-Allow-List aus Regel 4.
+
+Das steht hier ausgeschrieben, weil ein weggelassener Abschnitt von einem übersehenen nicht zu unterscheiden ist — dieselbe Logik, aus der Regel 5 besteht: Grün, weil nichts geprüft wurde, sieht aus wie Grün, weil alles stimmt. Und weil die Bedingung, die den Befund aufhebt, präzise ist: Die CIMD- und Issuer-Bindungspflicht greift, **sobald ein Server irgendein Auth-Modell trägt**; die `iss`-Pflicht, **sobald er als OAuth-Proxy auftritt**. Ab dem ersten Server mit einer Zugangsberechtigung ist der Satz aus Regel 4 — «ein Auth-Token sagt nur, *wer* fragt» — nicht mehr die ganze Auth-Geschichte.
+
+**Nachweis:** Zwei Negativtests, und beide brauchen einen korrekten `state`, sonst prüfen sie die falsche Kontrolle (Regel 5): (1) ein Code mit fremdem `iss` wird abgelehnt; (2) ein Code **ohne** `iss` von einem Autorisierungsserver, dessen Metadaten ihn ankündigen, wird ebenfalls abgelehnt. Dazu der positive Zwilling mit passendem `iss`. Der Mutationstest: die `iss`-Prüfung entfernen — beide müssen rot werden; wird nur der erste rot, ist die Auslassung ungeprüft. Für den Negativbefund selbst gilt ein anderer Nachweis: Er ist an `auth_model` gebunden und muss neu bewertet werden, sobald das Feld eines Servers nicht mehr `none` ist.
 
 ---
 
@@ -238,15 +427,31 @@ Warum der SSE-Fall hängt, verbindet (a) und (c): Ohne Allow-List wird ein SSE-G
 - [ ] Kein `mcp.settings.<feld> = ...` mehr im Code; der Bind geht als Kwargs an `run()`
 - [ ] Annotations werden snake_case gelesen; Drahtformat gegen beide Schreibweisen verglichen
 - [ ] TypeScript-Server nicht «mitmigriert» — dort bleibt camelCase korrekt
-- [ ] `fastmcp` (PyPI) und `mcp.server.fastmcp` (SDK) nicht verwechselt
-- [ ] Versions-Cap am anderen Ende verankert (`>=2.0.0,<3`), auch in verschachtelten Subprojekten
+- [ ] `fastmcp` (PyPI) und `mcp.server.fastmcp` (SDK) nicht verwechselt; `fastmcp` 3.x pinnt `mcp<2.0`
+- [ ] Versions-Cap an beiden Enden verankert (`>=2.0.0,<3`), auch in verschachtelten Subprojekten
 - [ ] Jede ASGI-Factory erhält Host **und** Port aus derselben Konfiguration wie `main()`
 - [ ] uvicorn-`--factory`-Pfad liest den Bind selbst; README begründet, warum `MCP_HOST`/`MCP_PORT` neben den Flags nicht redundant sind
+- [ ] Auf einer PaaS wird die Allow-List aus dem injizierten `$PORT` zusammengesetzt, nicht aus einem Literal
 - [ ] Jeder App-bauende Pfad (eigener Builder, SDK-`run()`, SSE) bekommt dieselbe Transport-Security
 - [ ] Allow-List portgenau, Loopback drin, CORS-Origins aufgenommen, kein `*`
 - [ ] Fail-open auf Nicht-Loopback ist sichtbar — Startwarnung im Log
 
-**Der Beweis (Regeln 5–7)**
+**Die Stateless-Welt (Regeln 8–12)**
+
+- [ ] Kein `initialize`-Handshake, kein `Mcp-Session-Id`, keine serverseitige Sitzungstabelle (Regel 8)
+- [ ] Kein prozesslokaler Zustand, der über etwas adressiert wird, das es nicht mehr gibt (Regel 8)
+- [ ] Handles sind server-geprägt, opak, im Tool-Schema sichtbar und laufen ab (Regel 8)
+- [ ] `server/discover` implementiert und **aufgerufen** getestet — MUSS für Server, MAY für Clients (Regel 8)
+- [ ] `Mcp-Method`/`Mcp-Name` serverseitig gegen den Body geprüft; fehlender Header wird abgewiesen, nicht übersprungen (Regel 9)
+- [ ] README nennt, auf welche Header-Werte das Deployment routet und limitiert (Regel 9)
+- [ ] Legacy-SSE-Pfad: Erkennungsrezept über Code, Start und Draht gelaufen; Befund festgehalten (Regel 10)
+- [ ] Existiert der Pfad noch, trägt er das Datum `2027-07-28` in einer Startwarnung und dieselbe Härtung wie der Rest (Regel 10)
+- [ ] MRTR: `input_required` beendet die Bearbeitung, der Server hält keinen Stream offen (Regel 11)
+- [ ] Nebenwirkungen liegen hinter dem Rückfragepunkt oder tragen einen Idempotenzschlüssel; der Retry ist getestet (Regel 11)
+- [ ] Reserviertes wird ohne Abschlussereignis wieder frei — kein Retry ist garantiert (Regel 11)
+- [ ] Auth: `iss` geprüft inklusive Auslassung, CIMD statt DCR, Credentials nach Issuer geschlüsselt — **oder** der Negativbefund ist mit `auth_model` begründet festgehalten (Regel 12)
+
+**Der Beweis (Regeln 5–7, gilt für alle Regeln)**
 
 - [ ] Zu jedem Negativtest die zweite mögliche Ursache benannt und ausgeschlossen (Regel 5)
 - [ ] Tragender Fall: richtiger Hostname, **falscher Port** — ein fremder Hostname allein beweist nichts (Regel 5)
@@ -254,6 +459,7 @@ Warum der SSE-Fall hängt, verbindet (a) und (c): Ohne Allow-List wird ein SSE-G
 - [ ] Kein Test stellt selbst die Bedingung her, unter der der Fehler nicht auftreten kann (Regel 6)
 - [ ] Getestet wird die Naht, an der der Wert reist, nicht die Funktion, die ihn schon hat (Regel 6)
 - [ ] Mutationstabelle im PR: jede Kontrolle einzeln entfernt, jede Zeile mit mindestens einem roten Test (Regel 6)
+- [ ] Die Stateless-Kontrollen sind mit **zwei** Aufrufern getestet — ein Aufrufer ist in beiden Zuständen grün (Regeln 5, 8)
 - [ ] Gegen den echten ASGI-Stack geprüft (`TestClient`), nicht gegen blankes `ASGITransport` (Regel 7)
 - [ ] Patch-Ebene im ganzen Repo einheitlich — Instanz oder Klasse, nicht gemischt (Regel 7)
 - [ ] Jeder Zweig-Test behauptet, welcher Zweig lief (Regel 7)
@@ -261,7 +467,7 @@ Warum der SSE-Fall hängt, verbindet (a) und (c): Ohne Allow-List wird ein SSE-G
 
 ## Woher diese Regeln stammen
 
-Aus drei Pull Requests desselben Zyklus (2026-07):
+**Die Regeln 1–7 stammen aus drei Pull Requests desselben Zyklus (2026-07):**
 
 | PR | Ausgangslage |
 |---|---|
@@ -278,6 +484,10 @@ Sechs Dinge daran sind übertragbar:
 5. **Ein Test, der hängt statt zu scheitern, ist schlimmer als keiner** — daraus Regel 7. Dass er *hängt* und nicht *scheitert*, ist der Regelfall: Ohne Kontrolle wird die verbotene Anfrage zugelassen, und zugelassen heisst bei einem Stream warten.
 6. **Der Testaufbau selbst ist eine Fehlerquelle.** Ein blanker `httpx.ASGITransport` liefert auf jede Anfrage 500, weil er den App-Lifespan nie ausführt. Wer den 500er für einen Befund hält, debuggt den falschen Code.
 
+**Die Regeln 8–12 haben keine Narbe, sondern ein Datum.** Das ist ein Unterschied, der hier ausgeschrieben gehört, weil der Contributing-Abschnitt dieses Repos von jeder neuen Regel einen konkreten Schaden verlangt. Ihr Anlass ist die Spec-Revision `2026-07-28`: ein externes, datiertes Ereignis, dessen Änderungen nicht plausibel klingen, sondern nachlesbar sind. Was sie mit den ersten sieben teilt, ist die Form — jede trägt ein ✗/✓-Paar und einen Nachweis, und jeder Nachweis benennt die Mutation, unter der er rot wird.
+
+Was am Portfolio dazu **gemessen** ist und nicht angenommen: Der Legacy-`initialize`-Handshake cappt unter mcp 2.x weiter bei `2025-11-25`, während derselbe Prozess daneben einen per-request-Umschlag bedient, der `2026-07-28` erreicht (festgehalten in `zurich-opendata-mcp`s `pyproject.toml`). Und das Erkennungsrezept aus Regel 10, an demselben Server angewandt, kommt an allen drei Orten negativ zurück. Beides sind Messungen an einem Repo, keine Verallgemeinerungen — mehr behaupten die Regeln an dieser Stelle auch nicht.
+
 **Zur Benennung:** Zwei der drei PRs führen im Titel `SEC-005`, implementieren aber die **eingehende** Kontrolle — im Audit-Katalog `SEC-024`. `SEC-005` ist die ausgehende Richtung (DNS-Pinning gegen TOCTOU). Zwei Angriffe, ein Name: Wer «DNS-Rebinding» ohne Richtungsangabe zitiert, meint mit einiger Wahrscheinlichkeit den anderen.
 
 ## Verwandte Skills
@@ -288,26 +498,48 @@ Fünf Repos, ein Lebenszyklus — gemeinsames GitHub-Topic [`mcp-quality-chain`]
 |---|---|---|
 | vor dem Bau | [`mcp-data-source-probe`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? |
 | im Bau | [`mcp-data-fidelity`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? Dieselbe stille Fehlerklasse eine Schicht höher — nicht ob eine Antwort kommt, sondern was sie enthält |
-| im Bau | **`mcp-transport-hardening`** | **Dieser Skill:** kommt er hoch, weist er richtig ab? |
+| im Bau | **`mcp-transport-hardening`** | **Dieser Skill:** kommt er hoch, weist er richtig ab, bleibt er zustandslos? |
 | nach dem Bau | [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Zuordnung Regel → Check steht unten |
 | im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? |
 
 Daneben, nicht Teil der Kette: `mcp-builder` — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
+### Was hier steht, was der Katalog prüft, was der Auditor live exerziert
+
+Die drei Repos berühren dieselben Gegenstände und stellen verschiedene Fragen. Ohne diese Trennung entsteht Duplikation, und Duplikation altert auseinander:
+
+| Gegenstand | **Hier** (im Bau) | **`mcp-audit`** (nach dem Bau) | **`mcp-continuous-auditor`** (im Betrieb) |
+|---|---|---|---|
+| Bind, Verdrahtung, Host-Allow-List | Wie der Bind bis in jede App-Factory reist und woran ein Test rot wird | `ARCH-013`, `SEC-024`: existiert die Kontrolle | `transport_boot_probe.py` startet den Server über **seinen eigenen** Entrypoint und spricht MCP mit ihm |
+| Stateless (Regel 8) | Die Naht, an der prozesslokaler Zustand still geteilt wird, und der Zwei-Aufrufer-Test | `ARCH-015`, `ARCH-016`, `ARCH-017` | `spec_probe.py`: `code`, `artifact`, `portfolio`, `wire` gegeneinander — Status `SPEC_DRIFT` |
+| Header-Pflicht (Regel 9) | Der serverseitige Vergleich als Sicherheitsgrenze, inklusive Auslassungsfall | `SCALE-008`; `SEC-027` für `x-mcp-header` | — |
+| Legacy-SSE (Regel 10) | Erkennungsrezept über drei Orte, Migrationspfad, Frist | `SCALE-009`, `SCALE-010` | `spec_probe.py`: Status `LEGACY_TRANSPORT` am Draht |
+| MRTR (Regel 11) | Idempotenz über Retries und der Hänger, den es neu erzeugt | `HITL-006` | — |
+| Auth (Regel 12) | Die Auslassungsfalle und der begründete Negativbefund | `SEC-025`, `SEC-026` | — |
+
+Faustregel: **Hier steht, wie man es verdrahtet und woran man sieht, dass es trägt. Der Katalog fragt, ob es da ist. Der Auditor fragt, ob es heute noch da ist.** Wer eine Zeile in zwei Repos schreibt, hat zwei Stellen, die auseinanderlaufen können.
+
+**Was dieser Skill bewusst nicht abdeckt**, obwohl `2026-07-28` es ändert: `resultType` auf allen Results ([`ARCH-018`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-018.md)), das Fristdatum für Roots, Sampling und Logging ([`ARCH-019`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-019.md)), `ttlMs`/`cacheScope` und deterministische Reihenfolge auf List- und Read-Ergebnissen ([`ARCH-020`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-020.md)), und die Deklaration versionierter Extensions ([`ARCH-021`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-021.md)). Das sind Fragen an die *Form der Antwort*, nicht an den Transport — sie gehören in den Katalog und, was `ttlMs` betrifft, in die Nachbarschaft von `mcp-data-fidelity`. Sie hier zu wiederholen würde den Skill verlängern, ohne dass er etwas entscheidet.
+
 ### Welche Regel welcher Check ist
 
-Stand des Katalogs: [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) v1.7.0, 97 Checks in zwölf Kategorien. Er deckt drei der sieben Regeln ab, fängt bei einer vierten die Fehlerklasse und liegt bei zwei weiteren nur daneben. Die Lücken sind hier benannt, statt sie durch eine ungefähre Zuordnung zu verdecken:
+Stand des Katalogs: [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) v2.0.0, 112 Checks in zwölf Kategorien auf **zwei Spec-Baselines**. Die Zuordnung ist durch Lesen der Check-Dateien belegt, nicht aus den Titeln geschlossen; die Lücken sind benannt, statt sie durch eine ungefähre Zuordnung zu verdecken:
 
 | Regel | Check |
 |---|---|
-| 1 — SDK-Major-Sprung | [`SDK-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SDK-006.md) — «SDK-Major-Migration vollständig abgeschlossen» |
+| 1 — SDK-Major-Sprung | [`SDK-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SDK-006.md) — «SDK-Major-Migration vollständig abgeschlossen»; für den Cap zusätzlich [`DEP-001`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/DEP-001.md) |
 | 2 — `host` als Saat der Allow-List | **kein Check.** [`SEC-016`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-016.md) liegt daneben, adressiert aber den umgekehrten Fall: `0.0.0.0` als *unbeabsichtigten* Bind (NeighborJack). Regel 2 setzt ein gewolltes `0.0.0.0`-Deployment voraus und fragt, ob der Bind die App erreicht |
 | 3 — jeder Pfad identisch verdrahtet | [`ARCH-013`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-013.md) — «Alle Netz-Transportpfade identisch verdrahtet» |
 | 4 — eingehende Host-Allow-List | [`SEC-024`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-024.md); [`SEC-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-005.md) ist die ausgehende Gegenrichtung |
-| 5 — der Negativtest muss aus dem eigenen Grund rot werden | **teilweise.** [`DRIFT-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/DRIFT-003.md) — «Kein Test-Assert wird vom Degradationspfad erfüllt» — ist dieselbe Klasse: ein Test, der aus dem falschen Grund besteht. Die dort geführten Ausprägungen sind andere (Degradationsantwort, zu weite Koordinaten-Box, `match=` als Regex statt als Literal); der Transportfall — `evil.example.com` wird auch von einer Loopback-Fallback-Policy abgewiesen — steht nicht darin |
+| 5 — der Negativtest muss aus dem eigenen Grund rot werden | **teilweise.** [`DRIFT-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/DRIFT-003.md) — «Kein Test-Assert wird vom Degradationspfad erfüllt» — ist dieselbe Klasse: ein Test, der aus dem falschen Grund besteht. Die dort geführten Ausprägungen sind andere; der Transportfall — `evil.example.com` wird auch von einer Loopback-Fallback-Policy abgewiesen — steht nicht darin |
 | 6 — der Mutationstest ist das Abnahmekriterium | **kein Check.** Der Katalog kennt keinen Check, der einen Mutationstest verlangt; er prüft, ob eine Kontrolle vorhanden ist, nicht ob ihr Nachweis trägt |
-| 7 — die Testharness als eigene Fehlerquelle | **kein Check**, aber ein benachbarter: [`OPS-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-005.md) — «Pipeline unterscheidet ‹bestanden› von ‹nicht gelaufen›» — teilt die Frage, wie viel ein grüner Lauf belegt, und führt unter anderem den Skip wegen fehlender Abhängigkeit. Die Harness-Fälle dieser Regel sind aber andere: `ASGITransport` ohne Lifespan liefert überall 500, ein instanzweiter `monkeypatch` überschattet `mcp.run` dauerhaft, und ein Branch-Test ohne Assertion auf seinen Branch hängt statt zu scheitern — keiner davon steht in `OPS-005` |
+| 7 — die Testharness als eigene Fehlerquelle | **kein Check**, aber ein benachbarter: [`OPS-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-005.md) — «Pipeline unterscheidet ‹bestanden› von ‹nicht gelaufen›» — teilt die Frage, wie viel ein grüner Lauf belegt. Die Harness-Fälle dieser Regel stehen nicht darin |
+| 8 — ohne Sitzung teilt sich Zustand still | **drei Checks, eine Regel:** [`ARCH-015`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-015.md) (kein Handshake, keine Sitzung), [`ARCH-016`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-016.md) (`server/discover`), [`ARCH-017`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-017.md) (handle-basierter Zustand). Der Katalog trennt sie, weil ein Server den ersten bestehen und am dritten scheitern kann — zustandslos verdrahtet und trotzdem zustandsbehaftet gebaut |
+| 9 — Header-Pflicht | [`SCALE-008`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SCALE-008.md) — «`Mcp-Method` und `Mcp-Name` sind Pflichtheader»; daneben [`SEC-027`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-027.md) für `x-mcp-header` aus Tool-Parametern, den diese Regel nicht führt |
+| 10 — Legacy-SSE mit Datum | [`SCALE-009`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SCALE-009.md) — «Legacy HTTP+SSE abgeschaltet, mit Datum»; [`SCALE-010`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SCALE-010.md) für den entfallenen GET-Endpunkt |
+| 11 — MRTR | [`HITL-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/HITL-006.md) — «MRTR statt serverinitiierter Requests: `input_required`, Retry, Idempotenz» |
+| 12 — Auth-Härten | [`SEC-025`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-025.md) (RFC-9207-`iss`, greift ab `auth_model == "OAuth-Proxy"`), [`SEC-026`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-026.md) (CIMD statt DCR, greift ab `auth_model != "none"`) |
 
-Wer nach den Regeln 1, 3 und 4 baut, besteht `SDK-006`, `ARCH-013` und `SEC-024`. Wer sie beim Audit reisst, findet hier die Behebung. Für die Regeln 2, 6 und 7 gilt das nicht: Sie beschreiben Fehler, die dieser Katalog derzeit nicht sieht. Bei Regel 5 fängt `DRIFT-003` die Klasse, aber nicht den Transportfall — ein bestandenes Audit ist auch dort kein Beleg, dass der Nachweis trägt.
+Wer nach den Regeln 1, 3, 4 und 8–12 baut, besteht die dort genannten Checks. Für die Regeln 2, 6 und 7 gilt das nicht: Sie beschreiben Fehler, die dieser Katalog derzeit nicht sieht. Bei Regel 5 fängt `DRIFT-003` die Klasse, aber nicht den Transportfall — ein bestandenes Audit ist auch dort kein Beleg, dass der Nachweis trägt.
 
-Die Zuordnung ist durch Lesen der Check-Dateien belegt, nicht aus den Titeln geschlossen. Sie war zuvor zu grob: Die Regeln 5–7 standen in einer Zeile als «kein Check», obwohl `DRIFT-003` (Katalog v1.2.0) und `OPS-005` (v1.3.0) schon existierten, als die Tabelle geschrieben wurde. Eine zusammengefasste Zeile verdeckt genau das, was diese Tabelle sichtbar machen soll — die drei Regeln stehen deshalb jetzt einzeln, auch wenn zwei davon leer bleiben.
+**Fünf Checks messen einen Gegenstand, den `2026-07-28` entfernt hat**, und sind für einen Server auf der neuen Baseline nicht mehr anwendbar: `SCALE-002` (Stateful Load Balancing), `SCALE-003` (`Mcp-Session-Id`-Routing im Edge-LB), `SCALE-007` (Stream-Wiederaufnahme via `Last-Event-ID`), `SDK-004` (CORS-Exposure von `Mcp-Session-Id`), `SEC-009` (kryptografische Bindung der Session-ID). Der letzte hat in `ARCH-017` eine Ersatzdimension: Die Sitzungs-ID gibt es nicht mehr, die Frage nach der Ratbarkeit der Referenz schon — sie ist in die Tool-Signatur gewandert, und dort schaut kein Auth-Layer mehr hin. Das ist der Grund, warum ein Server nach der Migration nicht automatisch *weniger* zu prüfen hat.

@@ -1,37 +1,55 @@
 # mcp-transport-hardening-skill
 
-![Version](https://img.shields.io/badge/version-1.4.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
-> Claude Skill for MCP servers on a network transport — so that a server comes up at all under the transport it is configured for, and turns away who it must turn away.
+> Claude Skill for MCP servers on a network transport — so that a server comes up at all under the transport it is configured for, turns away who it must turn away, and holds up once the session is gone.
 
 🇩🇪 [Deutsche Version](README.de.md)
 
 ## Overview
 
-Companion to Anthropic's `mcp-builder`. That skill covers whether a server is *built* correctly — naming, annotations, pagination, transport, error handling. This one covers the question next to it: **does it come up under the configured transport, and does it turn away who it must turn away?**
+Companion to Anthropic's `mcp-builder`. That skill covers whether a server is *built* correctly — naming, annotations, pagination, transport, error handling. This one covers the question next to it: **does it come up under the configured transport, does it turn away who it must turn away, and does that survive the removal of the session?**
 
 That is a class of bug in its own right, because it is silent — differently silent from [`mcp-data-fidelity`](https://github.com/malkreide/mcp-data-fidelity-skill). There, the server returns a plausible answer that is wrong in substance. Here it returns none at all: green unit tests, a clean linter, and in production the process does not start, or answers every request under a real hostname with HTTP 421. The transport path is exactly the part a stdio test suite never touches.
 
-The guiding question for every server on a network transport: *if I change the bind, does the inbound allow-list follow — on every path that builds an app — and does a test go red when it doesn't?*
+Two guiding questions, one per era:
 
-Rules 1–4 concern the server, rules 5–7 the proof. The second half is the more expensive one: transport rules can be looked up, the way you prove them cannot.
+- *If I change the bind, does the inbound allow-list follow — on every path that builds an app — and does a test go red when it doesn't?* (rules 1–4)
+- *If two callers share nothing — no handshake, no session, no connection — does one still see the other's state, and does a test go red when it does?* (rules 8–12)
 
-## The seven rules
+## How the twelve rules are ordered
 
-1. **The SDK major bump breaks three things, only one of them mechanically.** Module and class rename is search-and-replace; `mcp.settings` turning read-only stops the process from starting at all; annotations moving to snake_case breaks only Python-side reads, because the wire format is unchanged — which is why camelCase stays correct in TypeScript servers.
-2. **`host` is the seed of the allow-list, not a cosmetic parameter.** It defaults to `127.0.0.1`, and the SDK derives the inbound allow-list from it. Not passing it through means HTTP 421 on exactly the `0.0.0.0` deployment the server is documented for. uvicorn calls a `--factory` with no arguments, so `--host` never reaches the app.
-3. **Every path that builds an ASGI app is wired identically.** A custom builder used only when auth or CORS happens to be set, the SDK-served `run()` path, a deprecated SSE path — wire one and arming a security control silently depends on unrelated configuration. The port travels with the host.
-4. **The inbound host allow-list is its own control.** CORS does not help (same-origin from the browser's view), a token does not help (the attacking page holds one), the egress allow-list is the opposite direction. Port-exact, loopback always in, CORS origins included, no `*`, and fail-open on non-loopback made visible with a startup warning.
+| Block | Rules | Question |
+|---|---|---|
+| Bind and wiring | 1–4 | Does it come up, and does it refuse correctly? |
+| The proof | 5–7 | How do you know it holds? Applies to 8–12 as well |
+| The stateless world, spec `2026-07-28` | 8–12 | Does it hold without a session, and does it speak the new envelope? |
+
+The proof block sits in the middle rather than at the end because it is older than the third block, and because this repository, its own CHANGELOG and four sibling repositories cite "rule 6" and "rules 5–7" by number. Renumbering would make that history retroactively wrong, so the new rules are appended rather than inserted.
+
+Rules 1–7 hold on **both** spec baselines: bind, wiring, the host allow-list and the way you prove them hang off the transport, not off the lifecycle. Rules 8–12 apply on `2026-07-28`. And the two baselines stand next to each other, not one after the other — measured in the portfolio, one process can serve a legacy `initialize` handshake capped at `2025-11-25` while also serving a per-request envelope that reaches `2026-07-28`. A stateless bug is therefore invisible to every client still on the old era.
+
+## The twelve rules
+
+1. **The SDK major bump breaks three things, only one of them mechanically.** Module and class rename is search-and-replace; `mcp.settings` turning read-only stops the process from starting at all; annotations moving to snake_case breaks only Python-side reads, because the wire format is unchanged — which is why camelCase stays correct in TypeScript servers. The version cap is load-bearing at both ends, and the standalone `fastmcp` package pins `mcp<2.0`, so it is a fork in the road rather than a formality.
+2. **`host` is the seed of the allow-list, not a cosmetic parameter.** It defaults to `127.0.0.1`, and the SDK derives the inbound allow-list from it. Not passing it through means HTTP 421 on exactly the `0.0.0.0` deployment the server is documented for. uvicorn calls a `--factory` with no arguments, so `--host` never reaches the app; on a PaaS the port arrives at boot, so the allow-list has to be composed from it rather than written as a literal.
+3. **Every path that builds an ASGI app is wired identically.** A custom builder used only when auth or CORS happens to be set, the SDK-served `run()` path, a deprecated SSE path — wire one and arming a security control silently depends on unrelated configuration. The port travels with the host, and since `2026-07-28` so does the header check from rule 9.
+4. **The inbound host allow-list is its own control.** CORS does not help (same-origin from the browser's view), a token does not help (the attacking page holds one), the egress allow-list is the opposite direction. Port-exact, loopback always in, CORS origins included, no `*`, and fail-open on non-loopback made visible with a startup warning. It is the one inbound control that did not disappear with the lifecycle.
 5. **A negative test must fail for *your* reason, not a default's.** Green only means the request was rejected — not that your control rejected it. `evil.example.com` is refused in every state, including a fallback loopback policy; right hostname with the *wrong port* is the case only a port-exact list decides correctly. Every negative test needs its positive twin.
 6. **The mutation test is the acceptance criterion for a security control.** Not "write tests" — name the mutation, apply it, record which tests fall, and put the table in the PR. A row with zero red tests is a finding: either the test is missing or the control does nothing.
 7. **The test harness is itself a source of error on HTTP transports.** A bare `httpx.ASGITransport` returns 500 on everything because it never runs the app lifespan; an instance-level `monkeypatch` can shadow `mcp.run` permanently and start real uvicorn mid-suite; and a branch test that does not assert its branch hangs instead of failing.
+8. **Without a session, state is shared silently rather than missing.** `initialize` and `Mcp-Session-Id` are gone; every request carries protocol version, client info and capabilities in `_meta`. The dangerous server is not the one that crashes but the one that keeps running with process-local state that used to be addressed per session — one caller notices nothing, two get a data leak that raises no error. State travels as explicit, server-minted, expiring handles in ordinary tool arguments, and `server/discover` is a MUST for servers even though it is a MAY for clients.
+9. **The address is now written on the outside of the envelope, and both sides must read the same one.** `Mcp-Method` and `Mcp-Name` are mandatory on Streamable-HTTP POSTs, and a mismatch is `-32020`. A gateway deciding on the header while the server decides on the body means two parties ruling on two different requests, so comparing them server-side is a security boundary — including the omission case, because a check that only runs when the headers are present is bypassed by leaving them out.
+10. **Legacy HTTP+SSE now has a date: `2027-07-28`.** Deprecated since `2025-03-26`, but only now under the feature-lifecycle policy with a twelve-month window. A recommendation without a date produces no work item, only a compatibility path nobody switches off — and that second network path does not inherit the first one's hardening. The detection recipe runs over three places: code, what the deployment actually starts, and the wire.
+11. **MRTR: the server answers and holds nothing open — in exchange, the work runs more than once.** `resultType: "input_required"` ends the processing; the client repeats the whole request with `inputResponses`. Everything before the question point happens again on every retry, which turns a UI concern into a correctness one: side effects belong behind the question point or behind an idempotency key. And no retry is guaranteed, so nothing may be reserved without a way to release it.
+12. **Auth hardening — and the negative finding this portfolio records instead of omitting.** RFC-9207 `iss` validated before the code is redeemed (including a *missing* `iss` from an issuer that advertises it), CIMD instead of DCR, credentials keyed by issuer. For this read-only portfolio the rule does not apply, for a nameable reason: no server redeems an authorization code. Written out rather than left out, because an omitted section is indistinguishable from an overlooked one.
 
 ## Prerequisites
 
 - Claude Code, Claude Desktop, or claude.ai with skill support
-- The concrete code targets the Python MCP SDK 2.x (`mcp.server.mcpserver`) behind an ASGI server; the reasoning in rules 3–5 is stack-independent
+- The concrete code targets the Python MCP SDK 2.x (`mcp.server.mcpserver`) behind an ASGI server; the reasoning in rules 3–12 is stack-independent
 
 ## Installation
 
@@ -44,25 +62,26 @@ The directory name must be `mcp-transport-hardening` — skill discovery uses it
 
 ## Usage / Quickstart
 
-The skill triggers on its own when a server is migrated to a new SDK major, switched from stdio to a network transport, or reported to answer with HTTP 421. To invoke it explicitly:
+The skill triggers on its own when a server is migrated to a new SDK major or to spec `2026-07-28`, switched from stdio to a network transport, or reported to answer with HTTP 421. To invoke it explicitly:
 
 ```
-> Migrier diesen Server auf mcp 2.x
+> Migrier diesen Server auf Spec 2026-07-28
 > Warum antwortet mein Server mit 421, obwohl der Bind auf 0.0.0.0 steht?
+> Hat dieser Server noch einen Legacy-SSE-Pfad?
 ```
 
 ## Project Structure
 
 ```
 .
-├── SKILL.md                  # the seven rules, with the release checklist
+├── SKILL.md                  # the twelve rules, with the release checklist
 └── reference/
     └── patterns.py           # copy-paste MCP SDK 2.x / ASGI / uvicorn patterns
 ```
 
 ## Where these rules come from
 
-Three pull requests from the same cycle (2026-07):
+**Rules 1–7 come from three pull requests of the same cycle (2026-07):**
 
 | PR | Starting point |
 |---|---|
@@ -78,6 +97,10 @@ What generalises:
 4. **The mutation test corrected the tests in two of three repos, not the code** — which is where rule 6 comes from.
 5. **A test that hangs instead of failing is worse than none** — which is where rule 7 comes from. Without the control the forbidden request is *allowed*, and for a stream, allowed means waiting.
 
+**Rules 8–12 have no scar, they have a date.** That distinction is stated rather than glossed over, because the contributing section below asks every new rule for a concrete failure that actually happened. Their occasion is spec revision `2026-07-28` — an external, dated event whose changes are not plausible-sounding but citable. What they share with the first seven is the form: a ✗/✓ pair and a Nachweis naming the mutation that turns it red.
+
+Two things about them are *measured* rather than assumed, both on `zurich-opendata-mcp`: that one mcp 2.x process serves the legacy handshake and the new per-request envelope side by side, and that the rule 10 detection recipe comes back negative on all three places for a server that has no legacy path. Both are measurements on one repository, and the rules claim no more than that.
+
 **On naming:** two of the three PRs carry `SEC-005` in the title but implement the *inbound* control, which is `SEC-024` in the audit catalogue. `SEC-005` is the outbound direction (DNS pinning against TOCTOU). Two attacks, one name.
 
 ## Related repositories
@@ -90,16 +113,19 @@ Five repositories, one lifecycle. Each answers a different question, in the orde
 |---|---|---|
 | before the build | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Is the source usable, and what does it hold? |
 | in the build | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Does it return what the source actually holds? |
-| in the build | **`mcp-transport-hardening-skill`** | **This skill:** does it come up, and does it turn away the right callers? |
+| in the build | **`mcp-transport-hardening-skill`** | **This skill:** does it come up, turn away the right callers, and stay stateless? |
 | after the build | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Does it hold up against the catalogue? |
 | in operation | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Does it still hold up tomorrow? |
 
 Alongside, not part of the chain: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — Anthropic's generic build guidance, complemented rather than replaced. It is someone else's repository and cannot carry the topic.
 
-The audit catalogue covers three of the seven rules: rule 1 is `SDK-006`, rule 3 is
-`ARCH-013`, rule 4 is `SEC-024` (with `SEC-005` as its outbound counterpart).
-Rules 2 and 5–7 have no check — see the mapping in [SKILL.md](SKILL.md), which
-names the gaps rather than papering over them.
+### Boundary: this skill, the catalogue, the live probe
+
+The three repositories touch the same subjects and ask different questions. Without that separation there is duplication, and duplication ages apart.
+
+**Here is how you wire it and how you see that it holds. The catalogue asks whether it is there. The auditor asks whether it is still there today.**
+
+Against `mcp-audit` v2.0.0 (112 checks in twelve categories, two spec baselines): rule 1 is `SDK-006` plus `DEP-001`, rule 3 is `ARCH-013`, rule 4 is `SEC-024` (with `SEC-005` as its outbound counterpart), rule 8 is `ARCH-015`/`ARCH-016`/`ARCH-017`, rule 9 is `SCALE-008`, rule 10 is `SCALE-009`/`SCALE-010`, rule 11 is `HITL-006`, rule 12 is `SEC-025`/`SEC-026`. Rules 2, 6 and 7 have no check and rule 5 only a partial one — the full mapping in [SKILL.md](SKILL.md) names the gaps rather than papering over them, together with the five checks that measure something `2026-07-28` removed and the spec changes this skill deliberately leaves to the catalogue.
 
 ## Changelog
 
@@ -110,10 +136,11 @@ See [CHANGELOG.md](CHANGELOG.md)
 Corrections are welcome: a rule that is wrong, a case it decides badly, an SDK
 detail that has moved on.
 
-New rules have a higher bar. Every rule here comes from a specific failure that
-actually happened, and that is the only reason the set is worth reading — a
-plausible-sounding guideline without a scar behind it makes the skill longer and
-weaker. A proposal should name the incident, carry a ✗/✓ pair, and state its
+New rules have a higher bar. A rule earns its place through a specific failure
+that actually happened, or through a dated external change that can be cited —
+and which of the two it is has to be stated, as it is for rules 8–12. A
+plausible-sounding guideline with neither behind it makes the skill longer and
+weaker. A proposal should name its occasion, carry a ✗/✓ pair, and state its
 **Nachweis**: how someone would demonstrate the rule holds, and what they would
 break to see it fail. CI enforces that shape.
 
@@ -136,6 +163,12 @@ unconfigured server on `0.0.0.0` has no inbound Host check. The startup warning
 is the signal that this is the state you are in. And the inbound allow-list does
 not replace authentication or an egress allow-list — it answers a different
 question, as the rule sets out.
+
+Rule 12 records a **negative finding** rather than guidance: this portfolio is
+read-only and redeems no authorization code, so RFC-9207 `iss` validation, CIMD
+and issuer-bound credentials do not currently apply. The condition that lifts
+it is named in the rule. Anyone reusing this material with an authenticating
+server should treat rule 12 as in scope from the first credential onwards.
 
 Found an error in the rules, or a case they get wrong? Please open an issue.
 

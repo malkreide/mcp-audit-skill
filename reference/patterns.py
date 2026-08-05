@@ -1,8 +1,15 @@
-"""Copy-paste patterns for the seven transport-hardening rules (MCP SDK 2.x / ASGI / uvicorn).
+"""Copy-paste patterns for the twelve transport-hardening rules (MCP SDK 2.x / ASGI / uvicorn).
 
 Each block is self-contained and annotated with the rule it implements. Adapt the
 names; keep the shape. The comments are deliberately verbose — they are the part
 that survives into the target codebase and explains *why* to the next reader.
+
+Rules 1-7 apply on BOTH spec baselines: bind, wiring, the inbound host allow-list
+and the way you prove them hang off the transport, not off the lifecycle. Rules
+8-12 apply on spec 2026-07-28, which removes the handshake and the session. The
+two baselines coexist inside one process — a legacy `initialize` still caps at
+2025-11-25 while the per-request envelope reaches 2026-07-28 — so a stateless
+fault is invisible to every client that stayed on the old era.
 
 `get_settings()`, `mcp` and the concrete settings fields stand in for whatever the
 target project already calls them. Likewise the `settings` and `tool` fixtures in
@@ -305,11 +312,14 @@ def client(settings: Any) -> Any:
         transport = httpx.ASGITransport(app=build_http_app(settings))
         client = httpx.AsyncClient(transport=transport, base_url="http://test")
 
-    Streamable HTTP starts its session manager in the app LIFESPAN, and
+    Streamable HTTP builds its transport manager in the app LIFESPAN, and
     `ASGITransport` never runs a lifespan. Every request then comes back 500 —
     including the ones that should be 421, which makes a broken allow-list and a
     working one look identical. Reading that 500 as a finding costs an afternoon
     in the wrong file.
+
+    This is unaffected by the 2026-07-28 baseline: what that revision removes is
+    the PROTOCOL session, not the construction of the app.
 
     `TestClient` used as a context manager runs startup and shutdown.
     """
@@ -492,3 +502,396 @@ def test_the_sse_path_is_wired(settings: Any, monkeypatch: Any) -> None:
 # And run each branch test alone AND in the full suite. The instance-patch trap
 # in `_patch_run` only ever shows up in the second — passing alone is precisely
 # the symptom.
+
+
+# ===========================================================================
+# Rules 8-12 — the stateless world of spec 2026-07-28
+#
+# Everything above survives the revision unchanged. What follows is what the
+# revision adds: no handshake, no session, two mandatory headers, a dated end
+# for the legacy transport, a request that runs more than once, and an auth
+# layer this portfolio records a NEGATIVE FINDING against rather than omitting.
+#
+# The proof rules 5-7 are not superseded here, they are applied. Every Nachweis
+# below names the mutation it goes red under, and every negative test below has
+# a second reason it could have been green — which is the reason it is written
+# the way it is.
+# ===========================================================================
+
+
+# --- Rule 8: without a session, state is shared silently ---------------------
+#
+# NOT written here, on purpose — this is the shape the rule exists against:
+#
+#     _CURSORS: dict[str, int] = {}      # was: per session. Now: per PROCESS.
+#
+#     @mcp.tool()
+#     async def next_page() -> str:
+#         offset = _CURSORS.get("current", 0)   # every caller reads the same key
+#         _CURSORS["current"] = offset + 50
+#         return await fetch(offset)
+#
+# This does not raise. With one caller it is indistinguishable from correct;
+# with two it is a data leak between callers that produces no error at all.
+
+_HANDLE_TTL_SECONDS = 900
+
+
+def mint_handle(payload: dict, *, now: float) -> str:
+    """Return an opaque, server-minted, expiring handle for cross-call state.
+
+    Three words in the spec carry the load, and each maps to one property here:
+
+      * EXPLICIT       — the handle appears in the tool's schema, so a model
+                         sees it. It is not an ambient value.
+      * SERVER-MINTED  — the server produces it; the client does not invent one.
+                         A handle spelled `cursor=42` is a guessable reference
+                         to somebody else's state. Removing the session without
+                         this property does not remove the attack surface, it
+                         moves it into the tool signature — where no auth layer
+                         looks at it any more.
+      * ORDINARY ARG   — it travels in the arguments, not in a header and not in
+                         a table kept beside the request.
+
+    The expiry is the quiet half. A session used to be cleaned up when the
+    connection dropped; without a session there is no event left that cleans up
+    anything, so a dict of handles is a leak that shows up in days rather than
+    in seconds — long after any test suite has finished.
+    """
+    body = {**payload, "exp": now + _HANDLE_TTL_SECONDS}
+    return _sign(body)  # opaque to the caller, verifiable by this server
+
+
+def decode_handle(handle: str | None, *, now: float) -> dict:
+    """Verify signature and expiry, or reject. Never trust an unsigned handle."""
+    if handle is None:
+        return {}
+    body = _verify(handle)  # raises on a forged or tampered handle
+    if body["exp"] < now:
+        raise ValueError("handle expired — mint a new one, do not extend this")
+    return body
+
+
+async def server_discover() -> dict:
+    """`server/discover` — a MUST for servers, a MAY for clients.
+
+    That asymmetry is the whole trap. Because no client is obliged to call it, a
+    server without it looks perfectly healthy in day-to-day use: tools run, calls
+    arrive, nothing is red. It surfaces when a client wants to select a version —
+    or on stdio, where the RPC doubles as the backwards-compatibility probe. The
+    client then gets "method not found" and cannot tell an old server from a new
+    one with a hole in it.
+
+    A missing `server/discover` is therefore not a missing feature. It is a false
+    statement about your own protocol version.
+    """
+    return {
+        "protocolVersions": ["2026-07-28"],
+        "serverInfo": {"name": "example", "version": "2.0.0"},
+        "capabilities": {"tools": {}},
+    }
+
+
+def test_two_callers_do_not_share_state(client: Any) -> None:
+    """Rule 8's Nachweis, and rule 5 applied to it.
+
+    The mutation is: drop the handle argument and fall back to the process-local
+    bucket. Under that mutation a ONE-caller test stays green — it never
+    establishes the condition under which the fault can appear, which is exactly
+    the defect rule 6 names. Only a test with TWO independent callers goes red.
+
+    "Independent" means no shared connection context: two separate requests, in
+    the stateless era the only thing they may have in common is what they pass in
+    their arguments.
+    """
+    first = client.post("/mcp", json=_call("next_page", {}))
+    second = client.post("/mcp", json=_call("next_page", {}))
+    assert first.json()["result"] == second.json()["result"], (
+        "the second caller saw the first caller's cursor — process-local state "
+        "that used to be addressed per session now lands in one bucket"
+    )
+
+
+def test_expired_handle_is_rejected() -> None:
+    """State without an end is the second, quieter half of rule 8."""
+    handle = mint_handle({"offset": 50}, now=0.0)
+    with pytest.raises(ValueError):
+        decode_handle(handle, now=_HANDLE_TTL_SECONDS + 1)
+
+
+# --- Rule 9: the address is on the outside of the envelope now ---------------
+
+
+def require_matching_headers(request: Any, body: dict) -> None:
+    """Compare `Mcp-Method` / `Mcp-Name` against the body, server-side.
+
+    The headers exist so that a layer which does not parse the body can still
+    tell what is passing through: a gateway allow-listing one tool, a rate
+    limiter with per-tool budgets, a log path counting methods.
+
+    And that is precisely where the attack comes from. If an intermediary rules
+    on the header while the server rules on the body, two parties have ruled on
+    two different requests: `Mcp-Name: search_datasets` in the header,
+    `delete_record` in the body — the gateway permits, the server executes.
+    Comparing them is therefore a SECURITY BOUNDARY, and it has to happen here,
+    because this is the only place where both sides are present.
+
+    The missing-header branch is the one most likely to be left out, and leaving
+    it out is what disarms the control: a check that only runs when the headers
+    are present is bypassed by omitting them. Same shape as the "present" clause
+    in rule 12.
+    """
+    declared_method = request.headers.get("Mcp-Method")
+    declared_name = request.headers.get("Mcp-Name")
+    if declared_method is None or declared_name is None:
+        raise HeaderMismatchError(-32020, "Mcp-Method/Mcp-Name required")
+    if (declared_method, declared_name) != (body["method"], _addressed_name(body)):
+        raise HeaderMismatchError(-32020, "header does not match body")
+
+
+# Rule 9 also carries a documentation duty, the sibling of the MCP_HOST one in
+# rule 2: the README must say WHICH header values the deployment routes and
+# rate-limits on. A gateway allow-listing `Mcp-Name` is part of this server's
+# security architecture and appears nowhere in this server's code. Undocumented,
+# it is a control nobody maintains, because nobody knows it is there.
+
+
+def test_header_body_mismatch_is_refused(client: Any) -> None:
+    """Three cases, and the third is the one that gets forgotten."""
+    ok = client.post(
+        "/mcp",
+        json=_call("search_datasets", {}),
+        headers={"Mcp-Method": "tools/call", "Mcp-Name": "search_datasets"},
+    )
+    assert ok.status_code == 200, "the positive twin — rule 5"
+
+    mismatch = client.post(
+        "/mcp",
+        json=_call("delete_record", {}),
+        headers={"Mcp-Method": "tools/call", "Mcp-Name": "search_datasets"},
+    )
+    assert mismatch.json()["error"]["code"] == -32020
+
+    # The omission case. Replace the comparison with plain logging and this is
+    # the assertion that stays green if you only wrote the one above.
+    absent = client.post("/mcp", json=_call("delete_record", {}))
+    assert absent.json()["error"]["code"] == -32020
+
+
+# --- Rule 10: legacy HTTP+SSE has a date ------------------------------------
+
+# Deprecated since 2025-03-26, but only 2026-07-28 puts it under the feature
+# lifecycle policy: formal state Deprecated, twelve-month window, earliest
+# removal on the date below. A recommendation without a date produces no work
+# item — it produces a compatibility path nobody switches off, because it
+# bothers nobody. The same window applies to Roots, Sampling and Logging.
+LEGACY_SSE_REMOVAL_EARLIEST = "2027-07-28"
+
+# The detection recipe runs over THREE places, because each can be clean while
+# another is not:
+#
+#   1. code       `create_sse_app`, `transport="sse"`, a mount on `/sse`, an
+#                 `sse_app()` call. Grep the whole package, not just the server
+#                 module.
+#   2. start      what the platform actually launches: [project.scripts], a
+#                 Procfile, CMD, the argv in the deployment. A branch present in
+#                 code that nothing ever selects is a different situation from a
+#                 branch the deployment picks — and the reverse happens too.
+#   3. wire       a GET on the endpoint. If an event stream opens or an
+#                 Mcp-Session-Id comes back, the path is live regardless of what
+#                 the code suggests. Only this one is proof; 1 and 2 are
+#                 indications.
+
+
+def serve_http_with_dated_legacy_path(settings: Any) -> None:
+    """Rule 10 on top of rule 3: while the path exists, it is wired like the rest.
+
+    The legacy path is not neutral. It is a second network route with its own
+    wiring, and the lesson of rule 3 is that the second route does not inherit
+    the first one's hardening. A server enforcing the host allow-list (rule 4)
+    and the header check (rule 9) on streamable-http while an SSE endpoint runs
+    beside it has neither.
+    """
+    policy = _policy_for(settings)
+    if settings.transport == "sse":
+        log.warning(
+            "transport.legacy_sse_selected removal_earliest=%s — migrate to "
+            "streamable-http; this path speaks a protocol 2026-07-28 dropped",
+            LEGACY_SSE_REMOVAL_EARLIEST,
+        )
+        uvicorn.run(
+            mcp.create_sse_app(
+                host=settings.host,
+                port=settings.port,
+                transport_security=policy,
+            ),
+            host=settings.host,
+            port=settings.port,
+        )
+        return
+    serve_http(settings)
+
+
+def test_no_legacy_sse_app_is_built(settings: Any, monkeypatch: Any) -> None:
+    """Make the ABSENCE provable instead of merely asserted.
+
+    Applied and measured on zurich-opendata-mcp v0.7.0, all three places came
+    back negative: no `create_sse_app` and no `transport="sse"` in the package, a
+    single network path `mcp.run(transport="streamable-http", ...)`, and no
+    deploy manifest in the repository that could start a second one. That is what
+    a clean result looks like — the more useful half of the recipe, because
+    somebody who only knows the positive case cannot tell when they are done.
+    """
+    built: list[Any] = []
+    monkeypatch.setattr(mcp, "create_sse_app", lambda **kw: built.append(kw))
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **kw: None)
+    calls = _patch_run(monkeypatch)
+
+    serve_http(settings)
+
+    assert not built, "a legacy SSE app was built — see LEGACY_SSE_REMOVAL_EARLIEST"
+    assert calls, "and this is the positive twin: the modern path did run (rule 5)"
+
+
+# --- Rule 11: MRTR — the server answers, and the work runs more than once ----
+
+
+async def submit_with_mrtr(params: Any) -> dict:
+    """Answer with `input_required` instead of asking the client mid-request.
+
+    Until 2025-11-25 a server could raise its own request in the middle of
+    handling one: `roots/list`, `sampling/createMessage`, `elicitation/create`.
+    2026-07-28 removes that outright. The server RESPONDS with
+    `resultType: "input_required"` and an `inputRequests` field; the client
+    obtains what is needed and REPEATS the original request with
+    `inputResponses`; the server handles it again, now completely.
+
+    The inversion is what makes it hard: a dialogue INSIDE one handling becomes a
+    handling that RUNS FROM THE START AGAIN. Everything before the question point
+    happens once per retry. A tool that creates something, then asks for
+    confirmation, then starts over on retry, creates it twice — which moves this
+    out of "user interface" and into "correctness".
+
+    Two further consequences:
+
+      * No held-open stream. The server answers and finishes. Holding the
+        connection open while waiting for the client rebuilds the old model in
+        exactly the form rule 7 describes: the fault shows up as a standing suite
+        rather than a red test.
+      * The retry may NEVER ARRIVE — a client is obliged to nothing. Whatever was
+        reserved before the question point has to come back without a completion
+        event, the same problem as a handle without an expiry in rule 8.
+    """
+    if params.confirm is None:
+        return {
+            "resultType": "input_required",
+            "inputRequests": [_CONFIRM_REQUEST],
+            # Correlation without a session: `elicitationId` and
+            # notifications/elicitation/complete are gone, so a server that has
+            # to recognise an out-of-band operation across retries encodes its
+            # own identifier here. There is no other channel left. Same
+            # properties as a handle in rule 8: server-minted, opaque, expiring.
+            "requestState": mint_handle({"params": params.digest()}, now=_now()),
+        }
+    return await api.create(params, idempotency_key=_key_from(params.request_state))
+
+
+async def test_the_retry_does_not_duplicate_the_effect(api_spy: Any) -> None:
+    """Rule 11's Nachweis — and the second reason it could pass without meaning it.
+
+    Run the retry FOR REAL: once without the input, once with `inputResponses`.
+    Then assert on the EFFECT, not on the answer. A test that only checks the
+    second call's return value is green even when the side effect happened twice,
+    which is rule 5's question — "is there a second reason this passes?" — applied
+    to a case that has nothing to do with the network.
+
+    The mutation: remove the idempotency key. This test goes red; a single-call
+    test stays green.
+    """
+    first = await submit_with_mrtr(_params(confirm=None))
+    assert first["resultType"] == "input_required"
+
+    await submit_with_mrtr(_params(confirm=True, request_state=first["requestState"]))
+
+    assert api_spy.create_calls == 1, (
+        "the effect ran twice — everything before the question point repeats on "
+        "every retry, so it belongs behind the question point or behind a key"
+    )
+
+
+# --- Rule 12: auth hardening, and this portfolio's documented negative finding
+
+
+def redeem_authorization_code(callback: Any, recorded: Any) -> Any:
+    """Validate `iss` per RFC 9207 before redeeming, and key credentials by issuer.
+
+    The attack is mix-up: a code issued by authorization server A is redirected
+    to the callback belonging to server B and redeemed there with B's
+    credentials. `state` does not catch it — the proxy set `state` itself, so it
+    only says the round is ours, not who answered it.
+
+    THE "PRESENT" CLAUSE IS THE TRAP. The obligation covers a PRESENT `iss`. A
+    proxy that validates only when the parameter is there satisfies the letter
+    and is attacked by leaving it out. What the authorization server can do is
+    knowable — it is in its metadata — so the absent case is decidable, not a
+    guess. Same shape as the missing header in rule 9.
+    """
+    if callback.state != recorded.state:
+        raise AuthError("state mismatch")
+    if callback.iss is None and recorded.metadata.iss_parameter_supported:
+        raise AuthError("iss absent although this issuer advertises it")
+    if callback.iss is not None and callback.iss != recorded.issuer:
+        raise AuthError("iss mismatch — not issued by the recorded issuer")
+
+    # The storage side of the same attack. Credentials MUST be keyed by issuer
+    # identifier and MUST NOT be reused against a different authorization server;
+    # a flat client_id/client_secret in configuration presents itself to every
+    # server it talks to. Registration itself is CIMD now — the client publishes
+    # its metadata at a URL and that URL IS the client_id. DCR remains only for
+    # authorization servers that cannot do CIMD, and there `application_type`
+    # has to be set, or OpenID Connect defaults to `web` and refuses a native
+    # client's http://127.0.0.1 redirect URI.
+    return CREDENTIALS_BY_ISSUER[recorded.issuer]
+
+
+# THE NEGATIVE FINDING, WRITTEN OUT RATHER THAN LEFT OUT.
+#
+# For the Swiss Public Data portfolio rule 12 does NOT currently apply, for a
+# nameable reason: the servers are read-only, carry `auth_model: none`, and
+# redeem no authorization code. There is no redeeming party that could validate
+# `iss`, and no persisted client credentials to key by issuer. The only inbound
+# control is the host allow-list from rule 4.
+#
+# It is spelled out because an omitted section cannot be told apart from an
+# overlooked one — the same logic rule 5 is made of. And the condition that
+# lifts it is precise: the CIMD and issuer-binding obligation applies as soon as
+# a server carries ANY auth model; the `iss` obligation as soon as it acts as an
+# OAuth proxy. From the first credential onwards, rule 4's "a token only says
+# WHO is asking" stops being the whole auth story.
+
+
+def test_a_code_without_iss_is_refused(auth_client: Any) -> None:
+    """Both negative tests need a CORRECT state, or they test the wrong control.
+
+    With a wrong state the request is refused either way, and the test reports on
+    `state` validation while claiming to report on `iss`. That is rule 5 in an
+    OAuth flow: name the second reason, then remove it.
+
+    The mutation: delete the `iss` checks. Both of these go red — and if only the
+    mismatch one does, the omission case is untested.
+    """
+    recorded = _recorded_flow(iss_parameter_supported=True)
+
+    with pytest.raises(AuthError):
+        redeem_authorization_code(_callback(state=recorded.state, iss=None), recorded)
+
+    with pytest.raises(AuthError):
+        redeem_authorization_code(
+            _callback(state=recorded.state, iss="https://evil.example.com"), recorded
+        )
+
+    # The positive twin, without which "refused" cannot be told from "everything
+    # is refused".
+    redeem_authorization_code(
+        _callback(state=recorded.state, iss=recorded.issuer), recorded
+    )
