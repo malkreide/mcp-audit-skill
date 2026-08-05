@@ -6,6 +6,86 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `FID-006`: Antwortstruktur bestätigen, bevor gezählt wird
+
+Der Abgleich gegen `mcp-data-fidelity-skill` v1.6.0 (neun Regeln) hat gezeigt: Regel 6 — die Antwortstruktur bestätigen, bevor gezählt wird — hatte im Katalog **keinen** Check. Die §2.5-Prüfung ist damit bei Frage 3 gelandet, nicht bei 1 oder 2:
+
+- `FID-003` behandelt die Leermenge bei **korrekter** Abfrage. Hier war die Abfrage korrekt und der **Leser** falsch.
+- `DRIFT-002` liegt daneben, nicht darauf: Dort wird ein **anderer** Datensatz geliefert, hier **keiner**.
+- Keine Klausel war zu eng, keine Verification zu schmal. Eine eigene Prüfdimension.
+
+**Belegfall** (MCP Registry, 2026-07): Eine Abfrage lieferte konsequent nichts. Die Felder liegen unter `servers[].server.*`, gelesen wurde eine Ebene höher — syntaktisch einwandfrei, semantisch blind. `payload.get("servers", [])` macht aus jeder Strukturänderung stillschweigend ein gültiges leeres Ergebnis; für das Modell nicht von «die Quelle kennt das nicht» zu unterscheiden, also dieselbe Konfabulations-Einladung wie in `FID-003` — nur mit einer Ursache, gegen die kein Hinweis-Text hilft.
+
+Der Check verlangt ausdrücklich **keine** vollständige Schema-Validierung, sondern nur die Bestätigung dessen, was der Code tatsächlich anfasst. Alles darüber hinaus bricht bei jeder harmlosen Erweiterung upstream, und ein Wächter, der nach dem zweiten Fehlalarm abgeschaltet wird, ist keiner. Querverweis auf `DRIFT-004`: Mocks fangen diese Klasse prinzipiell nicht, weil das Fixture die angenommene Struktur abbildet — sie fällt nur gegen die echte Antwort auf.
+
+#### Entscheidung: `adoption: advisory`, und warum der «Handvoll»-Satz nicht dagegen steht
+
+Nach §2.3 startet ein neuer Check `advisory`. Dagegen stand der Satz in beiden READMEs, die Brücke solle «eine Handvoll neuer Checks tragen, nicht volllaufen» — sie trug achtzehn. Nachgerechnet trägt das Argument nicht:
+
+**Achtzehn sind nicht achtzehn gewöhnliche Checks.** Vierzehn davon sind die Migrations-Kohorte mit benanntem Ausgang (Abschluss-Gate Welle D), vier sind gewöhnlich — und vier weitere (`DEP-001`, `DRIFT-006`, `OBS-007`, `ARCH-014`) sind bereits hinübergegangen. Der Satz beschreibt die Gegenmassnahme, und die funktioniert. Der eigene Wächter misst es genauso: `test_the_mechanism_is_not_a_blanket_demotion` zählt den Rest **ohne** die Kohorte — aktuell vier, Schwelle elf. `FID-006` macht fünf.
+
+**Sachlich wäre `enforced` der Fehler, gegen den §2.3 existiert.** Das Fail-Pattern `payload.get("servers", [])` ist das normale Idiom, nicht die Ausnahme. `high` auf `tools_make_external_requests == true` am Merge-Tag hätte fast jeden Datenquellen-Server rot gefärbt — für eine Eigenschaft, nach der nie jemand gefragt hat. So werden Checks zurückgenommen statt übernommen.
+
+`FID-006` gehört **nicht** zur Migrations-Kohorte und geht nicht mit ihr ab. Er verlässt `advisory` nach dem ersten Portfolio-Durchlauf, der zeigt, wie viele Server die Antwortstruktur bestätigen. Die Promotion wird nach §2.3 Schritt 2 auf **ausgewertete Advisory-Findings** gestützt, nicht auf «Rückstand bewusst akzeptiert».
+
+**Kein §5-Auslöser.** Ein neuer Check ist weder a) noch b), c), d) oder e), und `advisory` blockiert ohnehin nichts. `docs/re-audit-queue.md` bleibt unverändert.
+
+`spec_baseline: beide` steht im Frontmatter **ausdrücklich**, obwohl es der Vorgabewert ist und die übrigen `FID`-Checks das Feld weglassen: Der Fund stammt aus dem Juli 2026, mitten aus der Migration, und ohne die Angabe liest er sich wie ein Migrations-Check. Er ist keiner — die Fehlerklasse hängt an der Struktur der Quelle, nicht am Protokollstand.
+
+### Geändert — `ARCH-020` misst dieselben zwei Grössen auch auf Datenresultaten
+
+Die Regeln 7 und 8 aus `mcp-data-fidelity-skill` v1.6.0 (deterministische Reihenfolge, ehrliches `ttlMs`) sind von `ARCH-020` bislang nur zur **Protokoll-Hälfte** abgedeckt. Die Datentreue-Hälfte fehlte. Bewusst **kein** eigenes `FID-007`: Nach §2.5 ist das Frage 2 — die richtige Sache am zu kleinen Umfang.
+
+**a) Der Pagination-Schnitt.** `ARCH-020` prüfte die Reihenfolge von `tools/list` über Prozessgrenzen. Dieselbe Ursache trifft Query-Resultate härter: Bei instabiler Ordnung erscheint ein Datensatz, der zwischen dem Abruf von Seite 1 und Seite 2 die Position wechselt, doppelt oder gar nicht. Das ist Recall-Verlust — dieselbe stille Unvollständigkeit wie `FID-001`, nur beim Blättern statt beim Filtern, und bei korrekt gesendeten Parametern. Neuer Modus 4: zwei aufeinanderfolgende Seiten, `set(ids1) & set(ids2)` leer **und** die Vereinigung so gross wie die Summe. Beide Assertions, weil die Schnittmenge nur den doppelten Datensatz fängt und der verlorene der stille ist.
+
+**b) `ttlMs` aus der Quellen-Frische.** Das bestehende Kriterium «kein Wert oberhalb der Änderungsfrequenz der Quelle» bezog sich auf die fünf `CacheableResult`-Methoden. Für Datenresultate gilt es schärfer: abgeleitet aus `source_freshness` (publizierte Kadenz, `Last-Modified`, `Cache-Control`), gedeckelt auf die nächste Publikation. Unbekannte Kadenz heisst **kurzer** Wert, nicht komfortabler — die andere Richtung liefert veraltete Daten unter dem Anschein von Frische.
+
+**§2.5-Gegenfehler geprüft, hält.** Beide Punkte hängen an genau den zwei Grössen des bestehenden Checks: **ein totaler Sortierschlüssel** und **ein begründeter `ttlMs`**. Kein drittes Thema, kein sachfremdes «oder» in den Pass-Criteria, der Fix bleibt derselbe Handgriff an derselben Stelle. Wäre beim Schreiben ein drittes Thema aufgegangen, wäre es ein eigener Check geworden.
+
+**`evidence_required` bleibt bei 3.** Der Reflex wäre gewesen, es mit zwei neuen Modi anzuheben. Beide neuen Kriterien sind aber **bedingt** — sie greifen nur, wo paginiert wird beziehungsweise wo Datenresultate ein `ttlMs` tragen. Ein harter Boden von 4 verlangte von Servern ohne Pagination eine Beobachtung, die es nicht geben kann, und zwänge damit zu einer erfundenen: die `OPS-005`-Fehlerklasse in Gegenrichtung.
+
+#### Baseline-Spannung: benannt statt still geschlossen
+
+`ARCH-020` trägt `spec_baseline: 2026-07-28`, der Pagination-Verlust existiert aber auch auf `2025-11-25` — er hängt an der Quelle und am Sortierschlüssel, nicht am Protokollstand. Ein Server der alten Baseline wird also nicht dagegen gemessen, obwohl der Fehler dort auftreten kann.
+
+**Entscheidung: als bekannte Lücke in die Description, nicht `beide`.** Nicht aus Bequemlichkeit — «nur die Reihenfolge-Hälfte auf `beide`» ist im Schema gar nicht ausdrückbar: `spec_baseline` gilt pro Datei, nicht pro Kriterium. Den ganzen Check auf `beide` zu ziehen würde `ttlMs` und `cacheScope` gegen Server messen, deren Protokoll diese Felder nicht kennt, und dort einen Falsch-Fail erzeugen — genau dort, wo der Check schweigen soll. Die Lücke steht deshalb ausgeschrieben in der Description, samt Schlusszug: Verdient die Reihenfolge-Hälfte eine eigene Reichweite, wird sie beim Abschluss von Welle D ein eigener Check, wenn ohnehin über den Verbleib der Kohorte entschieden wird — und nicht als stille Ausweitung heute.
+
+Damit löst diese Änderung **keinen** §5-Auslöser aus: Die Reichweite bleibt, wo sie war. Hätte sie sich bewegt, wäre es §5b gewesen — und selbst dann folgenlos, weil `ARCH-020` `medium` und `advisory` ist und Punkt 5 erst ab `high` greift. Festgehalten, damit die Nicht-Auslösung eine geprüfte Aussage ist und keine Auslassung.
+
+### Geändert — `FID-003` kennt den dritten Ausgang: die Rückfrage
+
+Der Abschnitt «Diese Abgrenzung gilt in beide Richtungen» kannte zwei Ausgänge: Leermenge und Transport-/Autorisierungsfehler. MRTR (`HITL-006`, Baseline `2026-07-28`) hat einen dritten dazugestellt, und er ist der gefährlichste, weil er **erfolgreich aussieht**: HTTP 200, wohlgeformtes Result, keine Treffer darin.
+
+Drei disjunkte Zustände, unterscheidbar an genau einem Feld — neu als Tabelle im Check:
+
+| Zustand | Kennzeichen | Nächster Schritt |
+|---|---|---|
+| Rückfrage | `resultType: "input_required"`, `inputRequests`, `entries` **fehlt** | Eingabe beschaffen, Request wiederholen |
+| Null-Treffer | normales Result, `entries: []`, `hint` nach `FID-003` | Query verbreitern |
+| Fehler | `isError` | Konfiguration prüfen |
+
+`entries` **fehlt** bei der Rückfrage, statt leer zu sein: Ein leeres `entries` ist bereits die Aussage «nichts gefunden», und wer auf `len(entries)` prüft — die meisten Konsumenten — liest die Rückfrage sonst als Null-Treffer.
+
+Die beiden Vermischungen kosten in verschiedene Richtungen, und beide sind neu Pass-Criteria: Ein `hint` auf einer Rückfrage schickt das Modell zur Wildcard, **während gar nicht gesucht wurde**; ein `inputRequests` auf einer Leermenge lässt den Client ins Leere retryen. Dazu Modus 4 (Disjunktheits-Test mit Gegenprobe) und drei Zeilen in den Common Failures.
+
+`spec_baseline` von `FID-003` bleibt unverändert. Der dritte Ausgang gilt nur auf `2026-07-28` und steht deshalb als **Bedingung im Kriterium** («Auf `2026-07-28`, sofern das Tool `input_required` zurückgeben kann: …»), nicht als neue Klausel — dieselbe Form, in der der Check schon den Fehlerpfad führt.
+
+Querverweis in **beide** Richtungen zwischen `FID-003` und `HITL-006`: `HITL-006` prüft Retry-Idempotenz und die Abgrenzung gegen gewöhnliche **Fehler**, aber nicht die Disjunktheit gegen den **Null-Treffer**. Die gehört zu `FID-003`, weil sie an der Leermenge hängt und nicht am Rückfrageprotokoll.
+
+### Geändert — Katalogzahlen und Wächter auf 113
+
+`112 → 113` in `checks/MANIFEST.txt`, `SKILL.md` (Intro, `FID`-Zeile `5 / 5` → `6 / 6`, Total), beiden READMEs (Kurzbeschreibung, Badge, «~30 aus 113», Provenance-Zeile `FID-*`, Kategorien-Tabelle, Total mit `56 → 57 high`, Advisory-Absatz `achtzehn → neunzehn`, Katalog-Zeile) und der `Stand:`-Zeile in `docs/roadmap.md`. Die Kategorienliste in `.claude/commands/audit-mcp.md` bleibt bei zwölf und wurde geprüft — sie ist laut `tests/test_command_counts.py` die einzige Zahl im Repo, deren Fehler das Verhalten ändert.
+
+Drei Lock-Tests nachgezogen, alle drei mit dem Kommentar am Fundort: die `advisory_ids`-Liste und die Zahlwörter in `tests/test_adoption_stage.py` (`19: nineteen / neunzehn`), die Kategorienverteilung in `tests/test_parse_catalog.py`, die Katalog-Grösse in `tests/test_applicability.py`.
+
+**Die Obergrenze der `srgssr`-Anwendbarkeit wurde ausdrücklich *nicht* angehoben.** Sie steht bei 62, gemessen sind jetzt 61 — `FID-006` greift für dieses Profil (`tools_make_external_requests: true`), und die Schranke hat trotzdem noch Luft. Eine Grenze, die bei jedem neuen Check mitwandert, prüft die Katalog-Grösse statt der Grammatik-Drift, gegen die sie geschrieben wurde.
+
+`832 Tests grün`, darunter `test_skill_counts`, `test_readme_counts`, `test_command_counts`, `test_parse_catalog`, `test_catalog_criteria` und `test_repo_description`.
+
+Die GitHub-Repo-Description muss von Hand auf 113 gesetzt werden — `tools/check_repo_description.py` meldet die Abweichung absichtlich nur, statt sie zu schreiben.
+
+**Einstufung: minor, also `v2.1.0`.** Ein neuer Check erweitert den Katalog, ohne bestehende Reichweiten oder Profil-Felder zu ändern; die beiden Erweiterungen bleiben innerhalb ihrer Checks. Der Release wird wie schon bei `v2.0.0` in einem eigenen `chore(release)`-Commit geschnitten — dort wandert dieser Block unter die Versionsüberschrift und die `--skill-version`-Literale in `SKILL.md` sowie die `**Version:**`-Zeilen beider READMEs ziehen nach. Diese Änderung schneidet ihn nicht selbst: Unter `[Unreleased]` liegt bereits Arbeit aus anderen Strängen, und die gehört nicht rückwirkend in eine Version, die dieser Commit benennt.
+
 ### Hinzugefügt — `docs/re-audit-queue.md`: welche bestandenen Audits nicht mehr gelten
 
 `v2.0.0` hat zwei §5c-Auslöser ausgelöst und niemandem gesagt, wen sie treffen. Die Liste beantwortet das mit Datum, Auslöser je Server und Herkunft jeder Zahl.

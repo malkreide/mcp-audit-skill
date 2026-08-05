@@ -128,3 +128,4 @@ M für Read-only-Server: der Rückfragepunkt liegt vor allem Wesentlichen, der R
 - [SEP-2322](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2322)
 - [MRTR pattern](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr)
 - `HITL-005` (destruktive Bestätigung), `ARCH-010` (Idempotency-Keys), `ARCH-018`, `SEC-018`
+- `FID-003` — die Gegenrichtung derselben Grenze. Hier steht, dass `input_required` nicht für gewöhnliche **Fehler** benutzt werden darf; dort, dass es nicht mit dem **Null-Treffer** verschwimmen darf: kein `hint` auf einer Rückfrage, kein `inputRequests` auf einer Leermenge, und `entries` fehlt bei der Rückfrage statt leer zu sein

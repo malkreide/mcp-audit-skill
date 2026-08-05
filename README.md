@@ -1,9 +1,9 @@
 # mcp-audit-skill
 
-> Claude skill for systematic audits of MCP servers against a curated corpus of best-practice standards. **112 checks**, 12 categories, on a dual spec baseline (`2025-11-25` and `2026-07-28`), with a Swiss compliance layer for public administration and a data-fidelity layer for data-source servers.
+> Claude skill for systematic audits of MCP servers against a curated corpus of best-practice standards. **113 checks**, 12 categories, on a dual spec baseline (`2025-11-25` and `2026-07-28`), with a Swiss compliance layer for public administration and a data-fidelity layer for data-source servers.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Checks: 112](https://img.shields.io/badge/Checks-112-blue.svg)](./checks/)
+[![Checks: 113](https://img.shields.io/badge/Checks-113-blue.svg)](./checks/)
 [![Coverage: A1–A9, B1–B12, C1–C4](https://img.shields.io/badge/Best--Practice%20Coverage-A1%E2%80%93A9%2C%20B1%E2%80%93B12%2C%20C1%E2%80%93C4-success)](./CHANGELOG.md)
 [![MCP Spec: 2025-11-25 + 2026-07-28](https://img.shields.io/badge/MCP%20Spec-2025--11--25%20%2B%202026--07--28-orange)](https://modelcontextprotocol.io/specification/)
 
@@ -70,18 +70,18 @@ With the slash command installed:
 > /audit-mcp .
 ```
 
-Output: profile-driven selection of the ~30 applicable checks out of 112, automated verification of every `automated` / `config_check` / `documentation_check` mode, findings stubs for `code_review` / `runtime_test` modes, and a full audit report from the template — all under `<repo>/audits/YYYY-MM-DD-<server-name>/`.
+Output: profile-driven selection of the ~30 applicable checks out of 113, automated verification of every `automated` / `config_check` / `documentation_check` mode, findings stubs for `code_review` / `runtime_test` modes, and a full audit report from the template — all under `<repo>/audits/YYYY-MM-DD-<server-name>/`.
 
 ## Standards provenance
 
-The 112 checks come from two curated best-practice documents plus five layers of our own (Swiss compliance, data fidelity, identity, upstream drift, dependency resolution), in auditable form. Every check carries a `pdf_ref` reference to its source in the frontmatter.
+The 113 checks come from two curated best-practice documents plus five layers of our own (Swiss compliance, data fidelity, identity, upstream drift, dependency resolution), in auditable form. Every check carries a `pdf_ref` reference to its source in the frontmatter.
 
 | Source | Content | Derived checks |
 |---|---|---|
 | **Main catalogue** «MCP Server-Entwicklung — Best Practices & Standards» | Architecture, SDK patterns, security, scaling, observability, human-in-the-loop | 54 Checks (v0.1–v0.4) |
 | **Architecture appendix** «Architektur und Sicherheit von MCP-Servern» | Section A (architecture, A1–A9), section B (security, B1–B12), section C (operational practice, C1–C4); closes the lethal-trifecta, idempotency and egress-control gaps among others | 14 Checks (v0.5) |
 | **Swiss compliance layer** | revDSG, EDÖB notification duty, ISDS City of Zurich, OGD licence compliance, data-protection requirements specific to compulsory schooling | 8 Checks (`CH-*`) |
-| **Data-fidelity layer** | Scope defaults, recall against ground truth, empty result ≠ absence, query syntax. Derived from a real portfolio incident ([termdat-mcp#11](https://github.com/malkreide/termdat-mcp/issues/11)) | 5 Checks (`FID-*`) |
+| **Data-fidelity layer** | Scope defaults, recall against ground truth, empty result ≠ absence, query syntax, confirming the response shape before counting. Derived from a real portfolio incident ([termdat-mcp#11](https://github.com/malkreide/termdat-mcp/issues/11)) and from a registry query that read one level above the fields | 6 Checks (`FID-*`) |
 | **Identity layer** | User agent, `__version__`, manifest version, documented version — what a server claims to be from the outside; plus whether the published artefact still starts at all. Derived from a portfolio sweep across 30 servers and from two dead releases on the index | 7 Checks (`IDENT-*`) |
 | **Upstream-drift layer** | The contract with the source changes and nothing notices: retired endpoints, fallbacks that swap the dataset, assertions the failure case satisfies too — and prose in the repo that contradicts the code. Derived from a real portfolio incident ([meteoswiss-mcp#33](https://github.com/malkreide/meteoswiss-mcp/issues/33), #35, #37) and from a CHANGELOG that called merged work pending | 6 Checks (`DRIFT-*`) |
 | **Dependency layer** | A range without an upper bound hands the choice of major version to whoever publishes next: the published artefact changes without anyone publishing it. Derived from `mcp` 2.0.0 removing `mcp.server.fastmcp` on 2026-07-28 and killing two releases that had nothing wrong with them | 1 Check (`DEP-*`) |
@@ -231,11 +231,11 @@ Then, in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`. The workflow 
 | `HITL` | Sampling, human-in-the-loop, multi round-trip requests | Main catalogue sec 7 + spec 2026-07-28 | 6 | 2 critical · 3 high · 1 medium |
 | `CH` | DSG/EDÖB, ISDS City of Zurich, compulsory schooling | Custom | 8 | 2 critical · 4 high · 2 medium |
 | `OPS` | Test strategy, documentation standard, phase architecture, audit honesty, pipeline honesty, reproducible verdicts, executable instructions, testable guards | Appendix C + custom | 8 | — · 5 high · 3 medium |
-| `FID` | Data fidelity: scope defaults, recall, empty results, query syntax | Custom | 5 | 1 critical · 2 high · 2 medium |
+| `FID` | Data fidelity: scope defaults, recall, empty results, query syntax, response shape | Custom | 6 | 1 critical · 3 high · 2 medium |
 | `IDENT` | Identity: user agent, `__version__`, manifest, documented version, release gap, artefact health | Custom | 7 | — · 3 high · 3 medium · 1 low |
 | `DRIFT` | Upstream contract and repo prose: endpoint drift, fallback semantics, test quality, CHANGELOG vs code | Custom | 6 | — · 3 high · 3 medium |
 | `DEP` | Resolution space of the published artefact: upper bounds, major upgrades | Custom | 1 | — · 1 high |
-| **Total** | | | **112** | **16 critical · 56 high · 39 medium · 1 low** |
+| **Total** | | | **113** | **16 critical · 57 high · 39 medium · 1 low** |
 
 ## Severity levels
 
@@ -255,9 +255,13 @@ Severity says **how bad** a violation is. The adoption level says **whether the 
 | `enforced` | The catalogue holds the portfolio to it | A `fail` on `critical`/`high` blocks production readiness |
 | `advisory` | The check reports but does not yet judge | The finding is created, counted and carried at full severity — but does not block |
 
-The field is optional; when absent, `enforced` applies. Of 112 checks exactly eighteen are `advisory`: `OPS-005`, `OPS-006`, `OPS-007`, `OPS-008` — plus the fourteen migration checks `ARCH-015`, `ARCH-016`, `ARCH-017`, `ARCH-018`, `ARCH-019`, `ARCH-020`, `ARCH-021`, `HITL-006`, `SCALE-008`, `SCALE-009`, `SCALE-010`, `SEC-025`, `SEC-026` and `SEC-027`. `DEP-001`, `DRIFT-006`, `OBS-007` and `ARCH-014` took the same path and have since been promoted to `enforced` — the bridge is meant to carry a handful of new checks, not to fill up.
+The field is optional; when absent, `enforced` applies. Of 113 checks exactly nineteen are `advisory`: `FID-006`, `OPS-005`, `OPS-006`, `OPS-007`, `OPS-008` — plus the fourteen migration checks `ARCH-015`, `ARCH-016`, `ARCH-017`, `ARCH-018`, `ARCH-019`, `ARCH-020`, `ARCH-021`, `HITL-006`, `SCALE-008`, `SCALE-009`, `SCALE-010`, `SEC-025`, `SEC-026` and `SEC-027`. `DEP-001`, `DRIFT-006`, `OBS-007` and `ARCH-014` took the same path and have since been promoted to `enforced` — the bridge is meant to carry a handful of new checks, not to fill up.
+
+**Nineteen is not nineteen ordinary checks on the bridge.** Fourteen of them are the migration cohort, which leaves in one piece; five are ordinary, and four checks have already crossed to `enforced`. That is the mechanism working, not the bridge filling up — and the guard measures it that way: the ratio in `tests/test_adoption_stage.py` counts the non-migration remainder.
 
 The fourteen entered together because they measure a protocol the portfolio has not migrated to yet: migration waves A–D are only starting, so on the day they merged the catalogue's own example profiles were the only things speaking `2026-07-28`. The per-server distribution lives in `portfolio.json` (`mcp_spec_version`, `migration_wave`), not here — this file states the reason, not a count it cannot verify. They leave advisory as the closing gate of migration wave D, not one at a time.
+
+`FID-006` is not part of that cohort and does not leave with it. It is advisory for the ordinary reason: its failure pattern — `payload.get("servers", [])` — is the normal idiom, so `enforced` at `high` on the day it merged would have turned almost every data-source server red for a property nobody had ever been asked to have. It leaves advisory after the first portfolio run that shows how many servers confirm the response shape.
 
 **Advisory hides nothing.** Only the veto is dropped. An advisory finding at blocking severity is still named explicitly even when the verdict is green, so that a later promotion is a decision rather than a surprise.
 
@@ -271,7 +275,7 @@ python tools/aggregate_results.py aggregate verification-results.json \
 ## Audit workflow (short form)
 
 1. **Load the profile** — server properties from the Notion audit tracker, or inferred from the repo
-2. **Load the catalogue** — parse all 112 checks
+2. **Load the catalogue** — parse all 113 checks
 3. **Applicability filter** — select only the checks that fit (a stdio-only server skips the OAuth checks, for instance)
 4. **Run the checks** — automated (grep, AST, config scan) or as a code-review TODO per check
 5. **Document findings** — `templates/finding.md`
@@ -324,7 +328,7 @@ Five repositories, one lifecycle. Each answers a different question, in the orde
 | Stage | Repository | Its rules in this catalogue |
 |---|---|---|
 | before the build | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | supplies the ground truth `FID-002` measures against |
-| in the build | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | [`FID-001`–`FID-005`](./checks/) |
+| in the build | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | [`FID-001`–`FID-006`](./checks/) |
 | in the build | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | [`SDK-006`](./checks/SDK-006.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md) |
 | after the build | **`mcp-audit-skill`** | **This skill** — the catalogue itself |
 | in operation | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | the incident behind [`OPS-005`](./checks/OPS-005.md) — a test suite no workflow ever ran ([#29](https://github.com/malkreide/mcp-continuous-auditor/pull/29)) |
@@ -352,7 +356,7 @@ proof holds.
 **Completeness:**
 - ✅ Methodology (`SKILL.md`) and templates (finding, audit report)
 - ✅ Reference summary
-- ✅ Check catalogue: **112 checks, all 12 categories complete**
+- ✅ Check catalogue: **113 checks, all 12 categories complete**
 - ✅ Slash command for Claude Code (`/audit-mcp <repo>`)
 - ✅ Portfolio batch audit (`audit-portfolio.sh` for multi-server runs)
 - ✅ Inventory gate (`./audit-portfolio.sh --verify-inventory`) — finds servers missing from `portfolio.yaml`, including nested ones

@@ -25,6 +25,16 @@ Zwei Änderungen, die dieselbe Sache betreffen — was ein Client mit einer Antw
 
 **Der teure Fehler ist `cacheScope: "public"` an der falschen Stelle.** Bei einem Server mit `data_class != "Public Open Data"` erlaubt `"public"` einer Zwischeninstanz, die Antwort für andere Aufrufer aufzubewahren. Wenn `resources/read` mandantenbezogene Inhalte liefert, ist das kein Performance-Detail, sondern eine Freigabe. Das ist der Grund, warum dieser Check trotz `medium` eine `critical`-Nachbarschaft hat: Der Schaden liegt nicht in der Kategorie Caching, sondern in `CH-001` und `SEC-023`.
 
+### Dieselben zwei Grössen auf Datenresultaten — und dort schärfer
+
+Beide Anforderungen sind oben an den Protokoll-Methoden formuliert. Dieselben zwei Grössen — **ein totaler Sortierschlüssel** und **ein begründeter `ttlMs`** — entscheiden bei Query-Resultaten über die Vollständigkeit der Antwort, und dort kostet ihr Fehlen mehr als einen kalten Cache. Das ist keine zweite Regel, sondern derselbe Handgriff an derselben Stelle mit grösserer Wirkung; deshalb steht es hier und nicht in einem eigenen Check.
+
+**Der Pagination-Schnitt.** Bei instabiler Ordnung wechselt ein Datensatz zwischen dem Abruf von Seite 1 und dem von Seite 2 seine Position — und erscheint dadurch **doppelt oder gar nicht**. Das ist Recall-Verlust: dieselbe stille Unvollständigkeit wie in `FID-001`, nur beim Blättern statt beim Filtern, und sie tritt bei **korrekt gesendeten Parametern** auf. Kein Fehler wird gemeldet, keine Zahl sieht falsch aus; der fehlende Datensatz hinterlässt keine Spur. Ein Sortierschlüssel, der nicht total ist (`ORDER BY datum` bei mehreren Einträgen pro Tag), genügt dafür bereits — bei Gleichstand entscheidet die Quelle je Abruf neu.
+
+**`ttlMs` aus der Quellen-Frische.** Für Datenresultate reicht «kein Wert oberhalb der Änderungsfrequenz» nicht als Begründung, weil die Frequenz hier nicht geschätzt, sondern erhoben wird: aus `source_freshness` — publizierte Kadenz, `Last-Modified`, `Cache-Control` —, gedeckelt auf die **nächste Publikation**. Eine Quelle, die dienstags um 09:00 publiziert, verträgt am Montag einen langen und am Dienstag um 08:55 einen sehr kurzen Wert; ein fester Mittelwert ist an beiden Tagen falsch. **Unbekannte Kadenz heisst kurzer Wert, nicht komfortabler** — die andere Richtung liefert veraltete Daten unter dem Anschein von Frische.
+
+**Bekannte Lücke, ausdrücklich benannt.** Dieser Check trägt `spec_baseline: 2026-07-28`. Der Pagination-Verlust existiert aber auch auf `2025-11-25`: Er hängt an der Quelle und am Sortierschlüssel, nicht am Protokollstand. Ein Server der alten Baseline wird deshalb **nicht** dagegen gemessen, obwohl der Fehler dort auftreten kann. Die Lücke bleibt bewusst offen, statt sie durch `spec_baseline: beide` zu schliessen: Das Feld gilt pro Datei, nicht pro Kriterium — der ganze Check auf `beide` würde `ttlMs` und `cacheScope` gegen Server messen, deren Protokoll diese Felder nicht kennt, und dort einen Falsch-Fail erzeugen, genau wo der Check schweigen soll. Wenn die Reihenfolge-Hälfte eine eigene Reichweite verdient, wird sie ein eigener Check — beim Abschluss von Migrations-Welle D, wenn ohnehin über den Verbleib der Kohorte entschieden wird, und nicht als stille Ausweitung heute.
+
 ## Verification
 
 ### Modus 1: automated (Felder vorhanden)
@@ -60,6 +70,37 @@ b=$(... derselbe Aufruf, neuer Prozess ...)
 
 **Zwei getrennte Prozesse, nicht zwei Aufrufe im selben.** Die häufigste Ursache instabiler Reihenfolge ist Iteration über ein `set` oder ein Registry-Dict, dessen Ordnung von der Hash-Randomisierung abhängt — und die ist **innerhalb** eines Prozesses konstant. Ein Test, der zweimal im selben Interpreter fragt, bestätigt eine Stabilität, die es über Neustarts nicht gibt. Unter Python zusätzlich mit gesetztem `PYTHONHASHSEED=random` in beiden Läufen.
 
+### Modus 4: runtime_test (der Pagination-Schnitt)
+
+Nur anwendbar, wenn der Server Query-Resultate paginiert. Zwei aufeinanderfolgende Seiten holen und die beiden Mengen gegeneinander halten — der Befund steckt in der Überlappung und in der Summe, nicht im Statuscode.
+
+```python
+@pytest.mark.live
+async def test_two_pages_neither_repeat_nor_lose_a_record():
+    p1 = await client.search(QUERY, offset=0, limit=50)
+    p2 = await client.search(QUERY, offset=50, limit=50)
+    ids1, ids2 = {r.id for r in p1}, {r.id for r in p2}
+
+    assert not (ids1 & ids2), f"doppelt geblättert: {sorted(ids1 & ids2)}"
+    assert len(ids1 | ids2) == len(ids1) + len(ids2), "Datensätze verloren"
+```
+
+Beide Assertions sind nötig und messen Verschiedenes: Die Schnittmenge fängt den doppelt gelieferten Datensatz, die Vereinigung den verlorenen. Wer nur die erste schreibt, prüft die harmlosere Hälfte — ein Datensatz, den niemand je sieht, taucht in keiner Schnittmenge auf.
+
+**Gegen einen Bestand ausführen, der grösser ist als eine Seite.** Bei zwanzig Datensätzen und `limit=50` ist `p2` leer, beide Assertions sind erfüllt, und der Test hat nichts geprüft. Ist kein ausreichend grosser Bestand erreichbar, wird das `limit` verkleinert — nicht der Test weggelassen.
+
+### Modus 5: code_review (woher der `ttlMs` eines Datenresultats stammt)
+
+```bash
+# Jeder ttlMs-Wert auf einem Datenpfad — und die Frage, was ihn begründet.
+grep -rnE 'ttlMs|ttl_ms|max_age|cache_ttl' src/ --include="*.py" --include="*.ts"
+
+# Wird die Frische der Quelle überhaupt gelesen?
+grep -rniE 'source_freshness|last-modified|cache-control|publication|kadenz' src/
+```
+
+Ein literaler Wert ohne Kommentar, der die Kadenz nennt, ist ein Befund: Er mag zufällig richtig sein, aber niemand kann das prüfen, und beim nächsten Publikationswechsel merkt es niemand.
+
 ## Pass Criteria
 
 - [ ] `ttlMs` und `cacheScope` liegen auf allen fünf Methoden an, sofern der Server sie bedient
@@ -68,7 +109,10 @@ b=$(... derselbe Aufruf, neuer Prozess ...)
 - [ ] Bei `data_class != "Public Open Data"`: `resources/read` liefert `"private"`, und ein Test hält das fest
 - [ ] `tools/list` liefert eine deterministische Reihenfolge, über **Prozessgrenzen** hinweg geprüft
 - [ ] Die Reihenfolge stammt aus einer expliziten Sortierung, nicht aus der Registrierungsreihenfolge — letztere ändert sich mit jedem Refactoring des Imports
-- [ ] **Gegenprobe:** Der Reihenfolgetest ist einmal gegen eine Fassung mit `set`-Iteration gelaufen und hat dort angeschlagen
+- [ ] Sofern der Server Query-Resultate paginiert: Der Sortierschlüssel ist **total** — bei Gleichstand entscheidet ein eindeutiger Zusatzschlüssel, nicht die Quelle
+- [ ] Sofern paginiert: Ein Test über zwei aufeinanderfolgende Seiten belegt leere Schnittmenge **und** vollständige Vereinigung, gegen einen Bestand grösser als eine Seite
+- [ ] Sofern der Server Datenresultate mit `ttlMs` versieht: Der Wert ist aus `source_freshness` abgeleitet (publizierte Kadenz, `Last-Modified`, `Cache-Control`) und auf die nächste Publikation gedeckelt — bei unbekannter Kadenz kurz, nicht komfortabel
+- [ ] **Gegenprobe:** Der Reihenfolgetest ist einmal gegen eine Fassung mit `set`-Iteration gelaufen und hat dort angeschlagen; wo paginiert wird, ist der Seitentest einmal gegen einen nicht-totalen Sortierschlüssel gelaufen und hat dort angeschlagen
 
 ## Common Failures
 
@@ -80,6 +124,11 @@ b=$(... derselbe Aufruf, neuer Prozess ...)
 | Reihenfolge aus `set` oder Registry-Dict | Wechselt beim Neustart; Prompt-Cache trifft nie |
 | Stabilitätstest im selben Prozess | Bestätigt eine Stabilität, die es nicht gibt |
 | Nur `tools/list` versorgt | Die vier anderen Methoden bleiben schemawidrig |
+| Sortierschlüssel nicht total (`ORDER BY datum`) | Bei Gleichstand entscheidet die Quelle je Abruf neu — beim Blättern doppelt oder gar nicht |
+| Seitentest prüft nur die Schnittmenge | Fängt den doppelten Datensatz, nicht den verlorenen — und der ist der stille |
+| Seitentest gegen einen Bestand unter einer Seitenlänge | Zweite Seite leer, beide Assertions erfüllt, nichts geprüft |
+| `ttlMs` als literale Zahl ohne begründende Kadenz | Mag heute stimmen; beim nächsten Publikationswechsel merkt es niemand |
+| Unbekannte Kadenz mit einem grosszügigen Wert überbrückt | Veraltete Daten unter dem Anschein von Frische — die teure Richtung des Irrtums |
 
 ## Remediation
 
@@ -111,12 +160,34 @@ def test_tool_order_survives_a_restart(run_in_fresh_process):
     assert [t["name"] for t in a] == [t["name"] for t in b]
 ```
 
+Und dieselben zwei Grössen auf dem Datenpfad — ein totaler Schlüssel, ein aus der Quelle abgeleiteter Frischewert:
+
+```python
+# Total: der fachliche Schlüssel plus ein eindeutiger Zusatz für den Gleichstand.
+ORDER = ("publiziert_am", "id")
+
+
+async def search(query: str, offset: int, limit: int) -> QueryResult:
+    rows = await _impl.search(query, order_by=ORDER, offset=offset, limit=limit)
+    return QueryResult(
+        rows=rows,
+        # Aus source_freshness abgeleitet, nicht geschätzt: gedeckelt auf die
+        # nächste Publikation, bei unbekannter Kadenz bewusst kurz.
+        ttlMs=ttl_until_next_publication(SOURCE_FRESHNESS, fallback_ms=60_000),
+        cacheScope="public",     # Open Data, aufruferunabhängig
+    )
+```
+
 ## Effort
 
-S — eine Sortierung und zwei Felder je Methode. Die Entscheidung über `cacheScope` je Ressource kostet mehr Nachdenken als Code.
+S für die fünf Protokoll-Methoden — eine Sortierung und zwei Felder je Methode. Die Entscheidung über `cacheScope` je Ressource kostet mehr Nachdenken als Code.
+
+Auf dem Datenpfad ebenfalls S, solange die Quelle einen eindeutigen Schlüssel anbietet und ihre Kadenz publiziert. Bietet sie keinen, wird es M: Dann muss ein stabiler Zusatzschlüssel erst hergestellt werden, und das ist eine Entscheidung über die Abfrage, nicht über die Ausgabe.
 
 ## References
 
 - [Spec 2026-07-28 — Changelog, Minor #3 und #5](https://modelcontextprotocol.io/specification/2026-07-28/changelog)
 - [SEP-2549](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2549)
 - `CH-001` (Datenresidenz), `SEC-023` (DLP auf Outputs), `ARCH-008` (Resources)
+- `FID-001` — dieselbe stille Unvollständigkeit beim Filtern, die der Pagination-Schnitt beim Blättern erzeugt
+- `FID-004` — Parameter-Gruppen vollständig senden; `offset` und `limit` sind eine solche Gruppe, und dieser Check verlangt zusätzlich die Ordnung darunter
