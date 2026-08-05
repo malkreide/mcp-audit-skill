@@ -26,8 +26,8 @@
       "repo": "malkreide/mcp-transport-hardening-skill",
       "stage": "in the build",
       "stage_de": "im Bau",
-      "question": "Does it come up, and does it turn away the right callers?",
-      "question_de": "Kommt er hoch, weist er richtig ab?"
+      "question": "Does it come up, turn away the right callers, and stay stateless?",
+      "question_de": "Kommt er hoch, weist er richtig ab, bleibt er zustandslos?"
     },
     {
       "repo": "malkreide/mcp-audit-skill",

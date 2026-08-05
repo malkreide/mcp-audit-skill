@@ -329,7 +329,7 @@ Five repositories, one lifecycle. Each answers a different question, in the orde
 |---|---|---|
 | before the build | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | supplies the ground truth `FID-002` measures against |
 | in the build | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | [`FID-001`–`FID-006`](./checks/) |
-| in the build | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | [`SDK-006`](./checks/SDK-006.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md) |
+| in the build | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | [`SDK-006`](./checks/SDK-006.md) + [`DEP-001`](./checks/DEP-001.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md); since its v2.0.0 also [`ARCH-015`](./checks/ARCH-015.md)–[`ARCH-017`](./checks/ARCH-017.md), [`SCALE-008`](./checks/SCALE-008.md), [`SCALE-009`](./checks/SCALE-009.md)/[`SCALE-010`](./checks/SCALE-010.md), [`HITL-006`](./checks/HITL-006.md), [`SEC-025`](./checks/SEC-025.md)/[`SEC-026`](./checks/SEC-026.md) |
 | after the build | **`mcp-audit-skill`** | **This skill** — the catalogue itself |
 | in operation | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | the incident behind [`OPS-005`](./checks/OPS-005.md) — a test suite no workflow ever ran ([#29](https://github.com/malkreide/mcp-continuous-auditor/pull/29)) |
 
@@ -337,11 +337,17 @@ Alongside, not part of the chain: [`mcp-builder`](https://github.com/anthropics/
 
 Membership is declared once, in [`docs/quality-chain.json`](./docs/quality-chain.json). [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) verifies weekly that all five actually carry the topic on GitHub — that is metadata no working copy can test, which is exactly why the five had no topic in common until someone looked.
 
-Two of the transport-hardening rules have no counterpart here: the one about a
-bind reaching the app, and the three on how a control is proven (negative tests,
-mutation testing, harness traps). The first is a genuine gap; the second is a
-scope boundary — this catalogue checks whether a control exists, not whether its
-proof holds.
+That skill went to twelve rules with its v2.0.0, following spec `2026-07-28`,
+and the two sides now overlap almost everywhere. Three of the twelve still have
+no counterpart here: the one about a bind reaching the app — `SEC-016` looks
+like it and is the opposite case, an *unintended* `0.0.0.0` — and two of the
+three on how a control is proven, mutation testing and harness traps. A fourth,
+its rule on negative tests, is covered only in part: `DRIFT-003` catches the
+class, a test that passes for the wrong reason, but not the transport case.
+
+The first is a genuine gap; the rest are a scope boundary. That skill says how
+to wire a control and how to show it holds; this catalogue checks whether the
+control is there.
 
 ### Portfolio and trackers
 

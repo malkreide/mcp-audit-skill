@@ -6,6 +6,16 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — Die Ketten-Tabelle führt zehn Checks für `mcp-transport-hardening-skill` statt drei
+
+Jener Skill ist auf **v2.0.0** gegangen und von sieben auf zwölf Regeln gewachsen, entlang der Spec `2026-07-28`. Die Tabelle nannte weiterhin drei Checks — `SDK-006`, `ARCH-013`, `SEC-024` — und beschrieb damit den Stand vor dem Migrations-Layer, den dieses Repo mit `v2.0.0` selbst eingeführt hat. Beide Seiten waren einzeln aktuell und zusammen falsch.
+
+Nachgetragen: `DEP-001` neben `SDK-006` für den Versions-Cap, `ARCH-015`–`ARCH-017` für die Stateless-Regel, `SCALE-008` für die Pflichtheader, `SCALE-009`/`SCALE-010` für die Legacy-SSE-Ablöse, `HITL-006` für MRTR, `SEC-025`/`SEC-026` für die Auth-Härtung. In `README.md`, `README.de.md` und `SKILL.md`.
+
+**Und eine Zahl, die schon vorher nicht stimmte.** Der Absatz darunter begann mit «Zwei der Transport-Hardening-Regeln haben hier kein Gegenstück» und zählte dann «die über den Bind» **und** «die drei zur Beweisführung» auf — eins plus drei, angekündigt als zwei. Er zählte Kategorien und las sich wie Regeln. Korrigiert und zugleich nachgeführt, denn seit `DRIFT-003` (Katalog v1.2.0) stimmte auch der Inhalt nicht mehr: Es sind **drei** Regeln ohne Gegenstück (Bind, Mutationstest, Harness-Fallen) und **eine** nur teilweise abgedeckte (Negativtests — `DRIFT-003` fängt die Klasse, nicht den Transportfall). Dazu die Bereichsgrenze in einem Satz, der in beiden Repos gleich lautet: *Jener Skill sagt, wie man eine Kontrolle verdrahtet und woran man sieht, dass sie trägt; dieser Katalog prüft, ob sie da ist.*
+
+Die Frage im Manifest (`docs/quality-chain.json`) lautet neu «Does it come up, turn away the right callers, and stay stateless?» — der Zustandslosigkeits-Teil fehlte, und das Manifest ist die Quelle, aus der die Tabellen in allen fünf Repos gespeist werden. `docs/hub-readme.md` mitgezogen.
+
 ### Hinzugefügt — `FID-006`: Antwortstruktur bestätigen, bevor gezählt wird
 
 Der Abgleich gegen `mcp-data-fidelity-skill` v1.6.0 (neun Regeln) hat gezeigt: Regel 6 — die Antwortstruktur bestätigen, bevor gezählt wird — hatte im Katalog **keinen** Check. Die §2.5-Prüfung ist damit bei Frage 3 gelandet, nicht bei 1 oder 2:
