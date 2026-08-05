@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Neun Regeln, unverändert — auch dieses Mal ändert sich nichts an dem, was der
-Skill lehrt. Es ändert sich, was die Zuordnung Regel → Audit-Check behaupten
-darf. `mcp-audit` hat mit PR #98 drei Dinge bewegt (dort unter `[Unreleased]`,
-eingestuft als v2.1.0), und alle drei machen Sätze hier falsch: Regel 6 hat
-einen Check bekommen, und zwei Reichweite-Sätze sind von «prüft er nicht» auf
-«prüft er» gekippt.
+Neun Regeln — die Liste bleibt, aber Regel 8 sagt in zwei Punkten etwas
+anderes als vorher.
+
+Angefangen hat es bei der Zuordnung Regel → Audit-Check: `mcp-audit` hat mit
+PR #98 drei Dinge bewegt (dort unter `[Unreleased]`, eingestuft als v2.1.0),
+und alle drei machen Sätze hier falsch — Regel 6 hat einen Check bekommen, und
+zwei Reichweite-Sätze sind von «prüft er nicht» auf «prüft er» gekippt. Beim
+Abgleich gegen `ARCH-020` sind dann zwei Stellen aufgefallen, an denen **dieser
+Skill** einen Wert empfahl, den der Check und die Spec zurückweisen. Sie stehen
+unter `Fixed`.
 
 **Einstufung: minor, nicht patch.** Eine Tabellenkorrektur, die eine Zahl
 richtigstellt, wäre patch. Hier kippt die operative Aussage: Wer Regel 6 gebaut
@@ -20,10 +24,15 @@ hat, konnte sich bisher darauf verlassen, dass ein Audit dazu schweigt — jetzt
 gibt es dafür ein `FID-006`-Finding. Und Regel 9 zeigt auf einen Check mehr.
 Der Leser handelt danach anders, und das ist die Grenze zwischen patch und
 minor; die Releases 1.4.0 und 1.6.0 haben dieselbe Art Korrektur ebenso
-eingestuft. Dazu kommt ein neuer CI-Wächter, also additiv.
+eingestuft. Die beiden Korrekturen an Regel 8 wären für sich genommen patch —
+falsch war falsch — und ändern an der Einstufung nichts; dazu kommen zwei
+CI-Wächter, additiv.
 
 Alle Angaben sind gegen die Check-Dateien in `mcp-audit-skill` geprüft, nicht
 gegen deren Changelog: `FID-003.md`, `FID-006.md`, `ARCH-020.md`, `HITL-006.md`.
+Die beiden Werte-Fragen zusätzlich gegen die Spec selbst — das
+[Changelog zu 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/changelog),
+Minor #5 (SEP-2549).
 
 ### Added
 
@@ -35,6 +44,39 @@ gegen deren Changelog: `FID-003.md`, `FID-006.md`, `ARCH-020.md`, `HITL-006.md`.
   `FID-006` existiert nicht» nennt eine Check-ID und wäre grün durchgelaufen.
   Was drüben im Katalog steht, ist von hier aus nicht prüfbar — der Wächter
   fängt die nächste Regel ohne Zeile, nicht die nächste veraltete Zeile.
+
+- **Ein Zeitplan-Lauf hält die Tabelle gegen den echten Katalog**
+  (`.github/workflows/catalogue-drift.yml`, montags, dazu `workflow_dispatch`).
+  Er holt `checks/MANIFEST.txt` aus `mcp-audit-skill` und vergleicht: die
+  Katalog-Grösse, die Kategorienzahl und die Zahl der `FID`-Checks aus der
+  Kopfzeile, dass jeder **verlinkte** Check dort existiert, und dass kein
+  `FID`-Check unverlinkt bleibt. Das ist genau die Hälfte, die dem Wächter oben
+  strukturell fehlt — und der Punkt, an dem `FID-006` aufgefallen wäre,
+  während hier «kein Check» stand.
+
+  **Warum nicht im PR-Lauf.** Die veraltete Zeile ist keine Eigenschaft eines
+  Commits, sondern der verstrichenen Zeit — die Tabelle stand an einem Tag
+  zweimal falsch, ohne dass hier jemand etwas geändert hat. Ein Netz-Zugriff vor
+  dem Merge-Button würde ausserdem einen unbeteiligten Doku-PR rot färben, wenn
+  drüben ein Release läuft; was dann passiert, steht in Regel 5. Meldeweg ist
+  die Fehlermeldung des Zeitplan-Laufs, bewusst kein Issue-Opener.
+
+  «Nicht erreichbar» und «abgewichen» sind zwei verschiedene Ausgänge mit
+  verschiedenem Text, nach drei Versuchen — sonst sucht man beim nächsten
+  Netzaussetzer einen Fehler im Katalog, den es nicht gibt.
+
+  **Vier Gegenproben, alle angeschlagen:** Katalog um einen Check kürzer,
+  ein zusätzliches `FID-007`, `FID-006` umbenannt, Kopfzeile umformuliert. Die
+  ersten drei liefen zuerst *grün*, weil die Ersetzung der Manifest-URL im
+  Prüfstand nicht gegriffen hatte und sie gegen den echten Katalog gemessen
+  haben — die Fehlerform aus Regel 5, im eigenen Prüfstand. Der Prüfstand
+  verifiziert die Ersetzung jetzt, bevor er misst.
+
+  Der erste Lauf hat ausserdem einen **Fehlalarm** produziert: Er prüfte jede
+  genannte Check-ID und schlug auf `FID-007` an — eine ID, die ein Satz unter
+  der Tabelle absichtlich als *nicht existent* nennt. Geprüft wird deshalb der
+  Link, nicht die Erwähnung. Ein Wächter, der eine korrekte Gegenrede meldet,
+  wird abgeschaltet.
 
 ### Changed
 
@@ -103,6 +145,37 @@ gegen deren Changelog: `FID-003.md`, `FID-006.md`, `ARCH-020.md`, `HITL-006.md`.
   `FID`-Checks, Regel 9 zusätzlich auf `FID-003`, Katalogstand 113, und statt
   «Regel 6 hat keinen Check» der Hinweis, dass offen nur noch Reichweite ist,
   am weitesten bei Regel 7.
+
+### Fixed
+
+- **Regel 8 empfahl `ttlMs: 0` und `ARCH-020` führt es als Anti-Pattern.** Der
+  Satz «Ist die Kadenz unbekannt, … ein Argument für einen kleinen oder für
+  `ttlMs: 0`» ist beim Abgleich als Divergenz aufgefallen. Aufgelöst auf dieser
+  Seite, weil hier der Fehler liegt: Eine Null schaltet das Feld ab, statt kurz
+  die Wahrheit zu sagen — jeder Aufruf trifft die Quelle, und der Zweck von
+  SEP-2549 verpufft. Die Regel sagt jetzt «den Boden, nicht die Null» und
+  benennt die eine Stelle, an der eine Null richtig ist: als **abgeleitetes**
+  Ergebnis, wenn die Quelle ihre eigene Publikation überschritten hat. Genau
+  das rechnet `ttl_from_freshness` in `reference/patterns.py` seit jeher — die
+  Referenzimplementierung dieses Skills hat den eigenen Prosa-Satz nie befolgt,
+  und die Checkliste sprach schon vorher vom «Boden». Der Prosa-Satz war der
+  Ausreisser.
+
+- **`cacheScope: "session"` gibt es nicht.** `reference/patterns.py` gab
+  `Literal["public", "session"]` zurück, und das Testrezept in `SKILL.md`
+  behauptete `result.cache_scope == "session"`. SEP-2549 definiert **genau
+  zwei** Werte, `"public"` und `"private"` — nachgelesen im
+  [Spec-Changelog 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28/changelog),
+  Minor #5, und deckungsgleich mit `ARCH-020`. Wer den Baustein kopiert hat,
+  hat einen Wert ausgeliefert, der an der Schema-Validierung fällt; ein
+  erfundener Wert ist kein vorsichtiger Wert. Beide Stellen auf `"private"`,
+  und die Regel nennt die zwei zulässigen Werte jetzt ausdrücklich — gefehlt
+  hat genau das.
+
+  Gefunden beim Nachgehen der `ttlMs`-Divergenz, nicht gesucht. Das ist die
+  zweite Hälfte derselben Lehre: `ARCH-020` misst `cacheScope` gegen
+  `data_class`, aber kein Check dieses Portfolios prüft, ob der Wert überhaupt
+  aus dem erlaubten Vorrat stammt.
 
 ## [1.6.0] - 2026-08-05
 
