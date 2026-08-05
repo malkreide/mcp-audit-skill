@@ -1,6 +1,6 @@
 # mcp-data-fidelity-skill
 
-![Version](https://img.shields.io/badge/version-1.4.0-blue)
+![Version](https://img.shields.io/badge/version-1.5.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
@@ -14,9 +14,11 @@ Companion zu Anthropics `mcp-builder`. Dessen Best Practices decken ab, ob ein S
 
 Das ist eine eigene Fehlerklasse, weil sie still ist. HTTP 200, wohlgeformtes JSON, grüne Tests — und inhaltlich falsch. Ein Server, der zwei Prozent des Bestands durchsucht und das nicht meldet, produziert Antworten, die niemand als falsch erkennt.
 
-Die Leitfrage bei jedem datenabfragenden Tool: *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der sechs Regeln.
+Die Leitfrage bei jedem datenabfragenden Tool: *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der neun Regeln.
 
-## Die sechs Regeln
+## Die neun Regeln
+
+Die Regeln 1–6 stammen aus Vorfällen, die Regeln 7–9 aus der MCP-Spec 2026-07-28 — der Unterschied wird benannt statt geglättet, hier wie in `SKILL.md`.
 
 1. **Scope-Parameter explizit senden, nie erben.** Ein weggelassener optionaler Filter bedeutet oft nicht «unbeschränkt», sondern einen willkürlichen Teilausschnitt — eine Tatsache, die ausschliesslich in der Parameterbeschreibung der Spec steht und an einem funktionierenden Call nicht erkennbar ist.
 2. **Parameter-Gruppen vollständig senden.** Sendet man nur einige Mitglieder einer Gruppe, behalten die übrigen ihren serverseitigen Default. Das Argument kann dann nur erweitern, nie einschränken — ein No-op, der wie Steuerung aussieht.
@@ -24,11 +26,15 @@ Die Leitfrage bei jedem datenabfragenden Tool: *Wenn dieses Tool nichts findet �
 4. **Die Tool-Description ist eine Halluzinations-Oberfläche.** Eine Formulierung, die eine Leermenge *erklärt*, erzeugt Konfabulation zuverlässiger als gar keine Formulierung. Zum Nachfassen auffordern, nie eine Schlussfolgerung lizenzieren.
 5. **Query-Syntax in die Description, Recall in die Tests.** Abfragesprache und Matching-Granularität dokumentieren; Recall über Live-Untergrenzen absichern, denn ein Mock bildet die Annahme ab, mit der er geschrieben wurde.
 6. **Die Antwort auf Struktur prüfen, nicht durchgreifen.** `payload.get("servers", [])` macht aus einer Strukturänderung upstream ein gültig aussehendes leeres Resultat. Ein Schema-Fehler gehört in den Fehlerkanal, nicht in eine leere Liste.
+7. **Totale, dokumentierte Sortierreihenfolge.** Ein Relevanz-Score hat Ties, und eine instabile Ordnung über Seitengrenzen hinweg *verliert Treffer* — dieselbe stille Unvollständigkeit wie Regel 1, nur beim Blättern statt beim Filtern entstanden. Gilt auf jeder Spec-Version; auf 2026-07-28 entscheidet sie zusätzlich, ob ein Reconnect den Prompt-Cache des Clients behält.
+8. **Ehrliches `ttlMs`.** Nie länger als die tatsächliche Quellen-Frische: Ein `ttlMs`, das die nächste Aktualisierung überdauert, lässt den Client eine Antwort ausliefern, von der der Server schon wusste, dass sie überholt sein wird. Aus `source_freshness` ableiten — und `cacheScope` gegen `requires_credentials` prüfen: Ein zu weiter Scope auf einem credential-abhängigen Resultat ist ein Leck, kein Frischeproblem.
+9. **`input_required` ist keine leere Antwort.** Eine MRTR-Rückfrage sieht erfolgreich aus — HTTP 200, wohlgeformt, keine Treffer darin. Strikt trennen vom echten Null-Treffer: kein `hint` auf einer Rückfrage, kein `inputRequests` auf einer Leermenge. Ein Modell darf aus «Rückfrage» nie «keine Daten» schliessen — und umgekehrt.
 
 ## Voraussetzungen
 
 - Claude Code, Claude Desktop oder claude.ai mit Skill-Unterstützung
 - Die Patterns in `reference/patterns.py` zielen auf FastMCP, httpx und Pydantic v2 — die Regeln selbst sind stack-unabhängig
+- Die Regeln 8 und 9 setzen die MCP-Spec 2026-07-28 voraus: `ttlMs`/`cacheScope` auf den List-Responses und MRTR (`resultType: "input_required"`) existieren vorher nicht. Auf einem älteren oder eingefrorenen Server werden sie als nicht anwendbar abgehakt, nicht als unerfüllt. Die Regeln 1–7 gelten so oder so.
 
 ## Installation
 
@@ -52,7 +58,7 @@ Der Skill greift selbstständig, sobald ein Such-, Query- oder Filter-Tool entwo
 
 ```
 .
-├── SKILL.md                  # die sechs Regeln, mit Release-Checkliste
+├── SKILL.md                  # die neun Regeln, mit Release-Checkliste
 └── reference/
     └── patterns.py           # Copy-Paste-Patterns für FastMCP / httpx / Pydantic v2
 ```
@@ -70,6 +76,8 @@ Vier Dinge daran sind übertragbar:
 
 Regel 6 kam nach einem zweiten Fall dazu: Eine Abfrage der MCP Registry lieferte eine Zeit lang nichts, weil die Felder unter `servers[].server.*` liegen und der Client eine Ebene höher suchte. Syntaktisch einwandfrei, semantisch blind.
 
+Die Regeln 7–9 haben diese Herkunft **nicht**, und der Skill sagt das dort, wo er sie aufstellt. Sie sind aus der MCP-Spec 2026-07-28 hergeleitet: stateless Core ohne `initialize`, Reconnect als Normalfall (Regel 7); `ttlMs`/`cacheScope` auf den List-Responses (Regel 8); MRTR statt serverinitiierter Elicitation (Regel 9). Hergeleitet, nicht gemessen — in diesem Repo ein Unterschied, der genannt gehört. Die Latte für Vorschläge von aussen bleibt unverändert: Sie brauchen weiterhin einen eingetretenen Schaden. Über die tiefere Latte gekommen ist hier eine Protokolländerung, die alle 42 Server des Portfolios gleichzeitig trifft — keine plausibel klingende Empfehlung.
+
 ## Verwandte Repos
 
 ### Die MCP-Qualitätskette
@@ -81,14 +89,14 @@ Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihe
 | vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6). Hat diesen Skill unter `companion/` ausgeliefert, bis dieses Repo sein Zuhause wurde. |
 | im Bau | **`mcp-data-fidelity-skill`** | **Dieser Skill:** liefert er, was die Quelle hat? |
 | im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
-| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–5 liegen auf den fünf `FID`-Checks — nicht eins zu eins: Regeln 3 und 4 teilen sich `FID-003`, Regel 5 braucht `FID-005` und `FID-002`. Regel 6 hat keinen Check. Vollständige Tabelle in `SKILL.md`. |
+| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–5 liegen auf den fünf `FID`-Checks — nicht eins zu eins: Regeln 3 und 4 teilen sich `FID-003`, Regel 5 braucht `FID-005` und `FID-002`. Die Regeln 6–9 haben keinen Check; Katalogstand v1.7.0 ist vor 2026-07-28 geschnitten. Vollständige Tabelle in `SKILL.md`. |
 | im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Seine Recall-Floors sind Regel 5, laufend gegen die echte Quelle gemessen. |
 
 Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
 Dazu der Server, aus dem dieser Skill stammt: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die Regeln 1–5 hervorgebracht hat.
 
-Wer nach diesem Skill baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet hier die Behebung.
+Wer nach den Regeln 1–5 baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet hier die Behebung. Die Regeln 6–9 stehen nicht im Katalog — ein sauberes Audit sagt über sie nichts aus. Diese vier Lücken zu schliessen ist Folgearbeit in `mcp-audit-skill`, nicht hier.
 
 ## Changelog
 
@@ -100,12 +108,19 @@ Korrekturen sind willkommen: eine Regel, die falsch ist, ein Fall, den sie
 schlecht entscheidet, eine Quelle, deren Defaults sich seit der Tabelle geändert
 haben.
 
-Für neue Regeln liegt die Latte höher. Jede Regel hier stammt aus einem konkreten
-Schaden, der tatsächlich eingetreten ist — und nur deshalb lohnt sich die Sammlung
-überhaupt. Eine plausibel klingende Empfehlung ohne Narbe dahinter macht den Skill
-länger und schwächer. Ein Vorschlag sollte den Vorfall benennen, ein ✗/✓-Paar
-mitbringen und seinen **Nachweis** angeben: die zwei Calls, das Delta, die
-Assertion, die eine funktionierende Kontrolle von einer kaputten trennt.
+Für neue Regeln liegt die Latte höher. Die Regeln 1–6 stammen je aus einem
+konkreten Schaden, der tatsächlich eingetreten ist — und vor allem deshalb lohnt
+sich die Sammlung überhaupt. Eine plausibel klingende Empfehlung ohne Narbe
+dahinter macht den Skill länger und schwächer. Ein Vorschlag sollte den Vorfall
+benennen, ein ✗/✓-Paar mitbringen und seinen **Nachweis** angeben: die zwei
+Calls, das Delta, die Assertion, die eine funktionierende Kontrolle von einer
+kaputten trennt.
+
+Die Regeln 7–9 sind über eine tiefere Latte gekommen und sagen das im Text: Ihr
+Beleg ist der Mechanismus der MCP-Spec 2026-07-28, hergeleitet statt gemessen.
+Diese Ausnahme gilt einer Protokolländerung, die alle Server gleichzeitig
+betrifft — sie ist kein zweiter Weg hinein für Empfehlungen im Allgemeinen.
+Taucht eine der drei in freier Wildbahn auf, gehört der Vorfall in diese Datei.
 
 Der Gegenstand des Skills gilt auch für den Vorschlag. Wenn sich eine Regel nicht
 so verletzen lässt, dass es jemandem auffällt, ist es noch keine Regel — und wenn
@@ -127,6 +142,13 @@ durchsucht und das nicht meldet, liefert Antworten, die richtig aussehen, als
 falsch nicht erkennbar sind — und auf deren Grundlage entschieden wird. Regel 4
 ist die schärfste Ausprägung: Eine Tool-Description, die eine Leermenge
 *erklärt*, erzeugt Konfabulation zuverlässig.
+
+Eine Hälfte von Regel 8 ist dagegen eine klassische Schwachstelle und kein
+Integritätsproblem: `cacheScope`. Auf einem Server, dessen Resultate von den
+Credentials des Aufrufers abhängen, bedeutet ein zu weiter Scope, dass die
+Antwort des einen an den anderen ausgeliefert wird. Das ist ein Datenleck und
+kein veralteter Cache — entschieden wird es in derselben Codezeile wie das
+`ttlMs`.
 
 Zwei Grenzen gehören dazugesagt. Die Scope-Erweiterung aus Regel 1 ist bewusst
 best-effort — fällt der Vokabular-Endpoint aus, läuft die Abfrage unerweitert

@@ -7,6 +7,133 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-08-05
+
+Drei neue Regeln, und zum ersten Mal keine davon aus einem Schaden. Die
+MCP-Spec 2026-07-28 hat drei Stellen geschaffen, an denen dieselbe stille
+Unvollständigkeit entsteht wie aus einem vergessenen Filter-Parameter: eine
+instabile Sortierung verliert Treffer über Seitengrenzen, ein zu grosszügiges
+`ttlMs` verliert sie in der Zeit, und eine als Leermenge formatierte
+MRTR-Rückfrage lädt zu genau der Konfabulation ein, gegen die Regel 4 geschrieben
+wurde.
+
+Der Herkunftsunterschied ist ausgewiesen statt geglättet. Die Regeln 1–6 stammen
+aus Vorfällen, die Regeln 7–9 aus einer Herleitung — das steht in einem eigenen
+Abschnitt vor Regel 7, im Herkunftskapitel und im Contributing-Abschnitt beider
+READMEs. Die Latte für Vorschläge von aussen bleibt der eingetretene Schaden;
+über die tiefere Latte gekommen ist eine Protokolländerung, die alle 42 Server
+des Portfolios gleichzeitig trifft.
+
+### Added
+
+- **Regel 7 — Deterministische Reihenfolge, dokumentiert.** `tools/list` und
+  jedes Query-Resultat mit totaler Sortierung: eindeutiger Schlüssel als letztes
+  Glied, benannt in Tool-Description und Envelope. Ein Relevanz-Score allein ist
+  keine Ordnung, weil er Ties hat und deren Auflösung upstream nicht selten von
+  der Shard-Verteilung abhängt.
+
+  Der teure Teil ist nicht der Prompt-Cache, den ein Reconnect verliert — die
+  Spec hat `initialize` und `Mcp-Session-Id` abgeschafft, Reconnect ist der
+  Normalfall geworden —, sondern die Ebene darunter: Bei instabiler Ordnung
+  erscheint ein Datensatz, der zwischen Seite 1 und Seite 2 die Position
+  wechselt, doppelt oder gar nicht. Das ist die Fehlerklasse aus Regel 1, nur
+  beim Blättern statt beim Filtern entstanden, und sie tritt bei korrekt
+  gesendeten Parametern auf.
+
+  Testrezept in beiden Varianten: offline mit `respx`, dessen Mock zwischen zwei
+  identischen Calls **permutieren** muss — zweimal dieselbe Reihenfolge zu mocken
+  und Gleichheit zu behaupten, ist die Fehlerform aus Regel 5 —, live der
+  Pagination-Schnitt (`ids1 & ids2 == set()` und Summe gleich Gesamtmenge), den
+  kein Mock kennt, weil er von der Seitenaufteilung der Quelle abhängt.
+
+  Gilt unabhängig von der Spec-Version.
+
+- **Regel 8 — Ehrliches `ttlMs`.** Nie länger als die tatsächliche
+  Quellen-Frische. `ttlMs` ist eine Zusage, und eine, die die nächste
+  Publikation überdauert, lässt den Client eine Antwort ausliefern, von der der
+  Server im Moment des Sendens schon weiss, dass sie überholt sein wird —
+  dieselbe Klasse wie ein verlorener Filter-Parameter: Regel 1 verliert Treffer
+  im Raum, Regel 8 in der Zeit. Ein zu grosszügiges `ttlMs` ist dabei schlimmer
+  als gar keines: Ohne Angabe fragt der Client neu, mit falscher Angabe fragt er
+  begründet nicht.
+
+  Abgeleitet aus `source_freshness`, nicht geschätzt: publizierte Kadenz,
+  `Last-Modified`, `Cache-Control`. Unbekannte Kadenz heisst Boden oder
+  `ttlMs: 0`, nicht Komfortwert. Dazu `cacheScope` gegen `requires_credentials`:
+  Auf einem credential-abhängigen Resultat ist ein zu weiter Scope kein
+  Frischeproblem mehr, sondern ein Datenleck — Antwort A an Aufrufer B. Das ist
+  die einzige Stelle in diesem Skill, die eine klassische Schwachstelle
+  beschreibt, und sie steht deshalb auch im Sicherheitsabschnitt beider READMEs.
+
+  Testrezept: offline mit fixierter Uhr und gemocktem `Last-Modified` gegen die
+  Restdistanz zur nächsten Publikation, plus der Fall ohne Frische-Angabe, der
+  auf `TTL_FLOOR_MS` und `session` fallen muss; live als Obergrenzen-Canary gegen
+  den echten Header — gespiegelt zur Untergrenze aus Regel 5 und aus demselben
+  Grund grosszügig.
+
+- **Regel 9 — `input_required` ist keine leere Antwort.** MRTR hat die
+  serverinitiierten `elicitation`/`sampling`/`roots` ersetzt und damit neben
+  Leermenge und Fehler einen dritten Ausgang geschaffen. Er ist der
+  gefährlichste, weil er erfolgreich aussieht: HTTP 200, wohlgeformtes Result,
+  keine Treffer darin. Als Leermenge formatiert, liefert er exakt die
+  Konfabulation aus Regel 4 — diesmal über eine Frage, die der Server gestellt
+  und niemand beantwortet hat. Die Umkehrung kostet ebenso viel: ein echter
+  Null-Treffer als `input_required` verpackt, und der Client retryt ins Leere.
+
+  Drei disjunkte Zustände als Tabelle, unterscheidbar an genau einem Feld;
+  `entries` fehlt auf der Rückfrage wörtlich, statt leer dabeizustehen — das ist
+  der Unterschied zwischen «ich habe nicht gesucht» und «ich habe gesucht und
+  nichts gefunden». Im ✗/✓-Paar liegt der Fehler in der Reihenfolge: Wer zuerst
+  sucht und danach die Argumente prüft, hat die Rückfrage bereits durch die
+  Leermengen-Behandlung geschickt.
+
+  Testrezept: offline drei Fälle gegen dasselbe Tool, in beide Richtungen
+  assertiert (kein `hint` auf der Rückfrage, kein `inputRequests` auf der
+  Leermenge), plus die Retry-Runde — eine Rückfrage, deren Beantwortung nichts
+  ändert, war keine; live derselbe Übergang gegen den laufenden Server.
+
+  Setzt Spec 2026-07-28 voraus, wie Regel 8.
+
+- **Ein eigener Abschnitt zur Herkunft der Regeln 7–9**, vor Regel 7 in
+  `SKILL.md`. Er sagt, was ihr Beleg ist (der Mechanismus) und was nicht (ein
+  gemessener Schaden), und hält den Geltungsbereich fest: Regel 7 gilt immer, die
+  Regeln 8 und 9 setzen die neue Spec voraus. Auf einem Wave-D- oder eingefrorenen
+  Server werden sie als **nicht anwendbar** abgehakt, nicht als unerfüllt — sonst
+  liest dort jemand eine Checkliste mit drei Punkten, die er nicht erfüllen kann.
+
+- **Sechs neue Punkte in der Release-Checkliste** — totaler Sortierschlüssel,
+  überschneidungsfreie Seiten, abgeleitetes `ttlMs`, `cacheScope` gegen
+  `requires_credentials`, Disjunktheit von Rückfrage und Leermenge, erfolgreicher
+  Retry.
+
+- **Drei neue Blöcke in `reference/patterns.py`** — `in_stable_order()`,
+  `ttl_from_freshness()` samt `cache_scope()`, und `InputRequired` mit
+  `search_or_ask()`. Die CI verlangt für jede Regel ein Pattern: Eine Regel ohne
+  Vorlage ist eine, die niemand kopieren kann.
+
+### Changed
+
+- **Die Regel-zu-Check-Tabelle nennt jetzt vier Regeln ohne Check statt einer.**
+  Der Katalogstand `mcp-audit` v1.7.0 ist vor 2026-07-28 geschnitten und kennt
+  weder die Sortierpflicht noch `ttlMs`/`cacheScope` noch den dritten Ausgang aus
+  MRTR; `FID-003` kennt zwei. Die Zeilen 7–9 sagen das einzeln, wie Regel 6 es
+  seit 1.4.0 tut. Die vier Lücken zu schliessen ist Folgearbeit in
+  `mcp-audit-skill` — hier wäre ein behaupteter Check schlimmer als keiner, weil
+  ein Audit ohne Befund dann als Beleg gelesen würde.
+
+- **Der Contributing-Abschnitt beider READMEs sagt, was er noch verlangt.** Er
+  las «Jede Regel hier stammt aus einem konkreten Schaden» — mit den Regeln 7–9
+  ist das nicht mehr wahr, und eine Latte, die im eigenen Text nicht mehr stimmt,
+  ist keine mehr. Er beschreibt jetzt die Ausnahme und ihre Grenze: eine
+  Protokolländerung, die alle Server gleichzeitig trifft, ist kein zweiter Weg
+  hinein für Empfehlungen im Allgemeinen.
+
+- **Die CI-Konstanten für die README-Überschriften stehen auf «nine»/«neun».**
+  Der Zählschritt hat die Überschriften hartcodiert; die Zahlwörter bleiben
+  bewusst Konstanten statt Regex, damit eine ergänzte Regel beide READMEs und die
+  CI im selben Commit erzwingt, statt eine veraltete Zahl grün durchzulassen.
+  Dieselbe Drift, die in 1.3.0 drei Releases lang unbemerkt blieb.
+
 ## [1.4.0] - 2026-08-03
 
 Sechs Regeln, unverändert — dieses Release ändert nichts an dem, was der Skill

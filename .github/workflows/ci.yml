@@ -96,8 +96,12 @@ jobs:
                   sys.exit(f"{path}: section '## {heading}' not found")
               return len(re.findall(r"^\d+\. ", m.group(1), re.M))
 
-          for path, heading in [("README.md", "The six rules"),
-                                ("README.de.md", "Die sechs Regeln")]:
+          # Das Zahlwort in der Ueberschrift steht absichtlich hier und nicht als
+          # Regex: Wird eine Regel ergaenzt, muessen beide READMEs und diese
+          # Konstante im selben Commit mitgehen — sonst faellt der Job aus, statt
+          # eine veraltete Zahl gruen durchzulassen.
+          for path, heading in [("README.md", "The nine rules"),
+                                ("README.de.md", "Die neun Regeln")]:
               got = listed(path, heading)
               if got != expected:
                   sys.exit(f"{path}: lists {got} rules, SKILL.md defines {expected}")
