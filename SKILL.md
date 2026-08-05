@@ -477,7 +477,11 @@ Der Rest ist Handarbeit und steht in keinem YAML: **nach dem Merge einmal gegen 
 
 Für die Kontrollen dieses Skills ist das der Normalfall, nicht der Sonderfall: Der portgenaue Allow-List-Test entsteht in dem Repo, das gerade den 421 hatte; der Zwei-Aufrufer-Test aus Regel 8 in dem, das gerade migriert wird. Die übrige Flotte läuft sie später — oder nie. Es ist dieselbe Form wie beim verschachtelten Server unten in «Woher diese Regeln stammen»: Die Abdeckung hat eine Grenze, die niemand absichtlich gezogen hat, und sie fällt niemandem auf, weil ausserhalb davon nichts rot wird.
 
-**Nachweis:** Regel 6 auf den Guard selbst angewandt, aber auf `main` statt im PR: die Verletzung, gegen die er geschrieben wurde, dort herstellen und den Lauf ansehen. Wird er nicht rot, war jeder bisherige grüne Lauf ein «nicht gelaufen» und kein «bestanden» — den Unterschied misst [`OPS-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-005.md). Dazu die Zweige benennen, die den Guard nicht kennen: `git branch -r --no-contains <merge-sha>` zählt sie auf. Diese Liste ist der Umfang der Nacharbeit; solange sie nicht leer ist, ist der Guard eingeführt, aber nicht durchgesetzt.
+**Die Grenze ist nicht nur zeitlich, sondern auch räumlich.** Ein Guard liest Dateien; alles, was **nicht** im Repo liegt, ist damit ausserhalb — GitHub-Description und -Topics, die Beschreibung im Registry-Eintrag, das Deployment-Manifest nebenan, der Text im Marketplace. Diese Stellen tragen oft genau die Behauptung, die im Repo geprüft wird, und keine Prüfung erreicht sie. Nachgemessen: Als dieses Repo von sieben auf zwölf Regeln ging, blieb seine GitHub-Description auf «twelve», während `SKILL.md`, beide READMEs und `reference/patterns.py` von drei Guards auf dreizehn gehalten wurden — der Zählguard war korrekt und deckte den Ort nicht ab, an dem die Zahl zuerst gelesen wird.
+
+Solche Stellen lassen sich prüfen, sie brauchen nur einen Aufruf statt eines Dateilesers. Zwei Eigenschaften sind dabei tragend: Der Vergleich zieht seinen Sollwert aus derselben Quelle wie die übrigen Guards, statt ihn ein zweites Mal zu deklarieren — sonst hat man zwei Wahrheiten, die auseinanderlaufen. Und ein fehlgeschlagener Abruf ist ein **Fehler**, kein Skip: Ein Check, der bei einem Netzproblem grün durchläuft, meldet «bestanden», wo «nicht gelaufen» richtig wäre.
+
+**Nachweis:** Regel 6 auf den Guard selbst angewandt, aber auf `main` statt im PR: die Verletzung, gegen die er geschrieben wurde, dort herstellen und den Lauf ansehen. Wird er nicht rot, war jeder bisherige grüne Lauf ein «nicht gelaufen» und kein «bestanden» — den Unterschied misst [`OPS-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-005.md). Dazu die Zweige benennen, die den Guard nicht kennen: `git branch -r --no-contains <merge-sha>` zählt sie auf. Diese Liste ist der Umfang der Nacharbeit; solange sie nicht leer ist, ist der Guard eingeführt, aber nicht durchgesetzt. Für die räumliche Hälfte: die Behauptung, die der Guard prüft, einmal ausserhalb des Repos suchen — Description, Topics, Registry-Eintrag — und nachsehen, ob sie dort dasselbe sagt. Was dort steht und nicht geprüft wird, ist eine Kopie, die niemand pflegt.
 
 ---
 
@@ -529,6 +533,7 @@ Für die Kontrollen dieses Skills ist das der Normalfall, nicht der Sonderfall: 
 - [ ] Suite läuft unter Timeout; jeder Zweig-Test zusätzlich einzeln **und** in der vollen Suite (Regel 7)
 - [ ] Jeder neue Guard läuft auch auf `main`, nicht nur auf Pull Requests — und ist dort nach dem Merge einmal angesehen worden (Regel 13)
 - [ ] Zweige, die vor dem Merge des Guards geschnitten wurden, auf `main` nachgezogen (`git branch -r --no-contains <merge-sha>`) (Regel 13)
+- [ ] Behauptungen ausserhalb des Repos — GitHub-Description, Topics, Registry-Eintrag — gegen dieselbe Quelle geprüft wie im Repo; fehlgeschlagener Abruf ist ein Fehler, kein Skip (Regel 13)
 
 ## Woher diese Regeln stammen
 
