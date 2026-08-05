@@ -23,6 +23,10 @@ Zwei Änderungen, die dieselbe Sache betreffen — was ein Client mit einer Antw
 
 **Warum das zusammen einen Check bildet und nicht zwei.** Beide Anforderungen sind wertlos, solange die andere fehlt: Ein `ttlMs` von 300 000 über einer Liste, die bei jedem Aufruf anders sortiert ist, veranlasst den Client, fünf Minuten lang eine Reihenfolge zu behalten, die keine Aussage trägt — und das Prompt-Caching bricht bei jedem Aufruf trotzdem. Umgekehrt nützt eine stabile Reihenfolge wenig, wenn kein Frischehinweis das Nachfragen bremst. Der Fix ist derselbe Handgriff an derselben Stelle, und §2.5 verlangt, dass ein Check in **einem** Schritt behebbar bleibt.
 
+**Der stille Fehler ist ein dritter Wert.** `cacheScope` ist ein geschlossener Vorrat aus zwei Einträgen. Wer `"session"`, `"caller"` oder `"none"` sendet, meint meistens etwas Vernünftiges — «enger als öffentlich» — und liefert trotzdem etwas Schemawidriges: Eine Zwischeninstanz kennt den Wert nicht und behandelt ihn wie ein fehlendes Feld. Der vorsichtig gemeinte Wert ist damit **weiter** als `"private"`, nicht enger. Ein erfundener Wert ist kein vorsichtiger Wert.
+
+Bis v2.1.0 hat dieser Check das nicht gesehen: Seine Kriterien fragten, ob `"public"` an der richtigen Stelle steht — ein Wert, der weder `"public"` noch `"private"` ist, bestand sie deshalb ohne Weiteres, und zwar auf allen fünf Methoden. **Belegfall (Portfolio, 2026-08):** `mcp-data-fidelity-skill` lieferte in `reference/patterns.py` einen Copy-Paste-Baustein mit `Literal["public", "session"]` aus, samt Testrezept `assert result.cache_scope == "session"`. Dieser Baustein ist für die datenabfragenden Server des Portfolios der Einstieg; dort korrigiert in PR #10. Kein Kriterium dieses Katalogs hätte einen Server gemeldet, der ihm gefolgt ist — das ist die Lücke, die diese Fassung schliesst.
+
 **Der teure Fehler ist `cacheScope: "public"` an der falschen Stelle.** Bei einem Server mit `data_class != "Public Open Data"` erlaubt `"public"` einer Zwischeninstanz, die Antwort für andere Aufrufer aufzubewahren. Wenn `resources/read` mandantenbezogene Inhalte liefert, ist das kein Performance-Detail, sondern eine Freigabe. Das ist der Grund, warum dieser Check trotz `medium` eine `critical`-Nachbarschaft hat: Der Schaden liegt nicht in der Kategorie Caching, sondern in `CH-001` und `SEC-023`.
 
 ### Dieselben zwei Grössen auf Datenresultaten — und dort schärfer
@@ -41,7 +45,21 @@ Beide Anforderungen sind oben an den Protokoll-Methoden formuliert. Dieselben zw
 
 ```bash
 grep -rnE "ttlMs|ttl_ms|cacheScope|cache_scope|CacheableResult" src/ --include="*.py" --include="*.ts"
+
+# Welche Werte kennt der Quelltext? Mit Kontext, weil der Wert regelmässig in
+# einer ANDEREN Zeile steht als das Feld — Enum-Deklaration, Mapping, Rückgabe
+# einer Hilfsfunktion.
+grep -rnE -A2 "cacheScope|cache_scope|CacheScope" src/ --include="*.py" --include="*.ts"
 ```
+
+**Dieser Modus sieht den Wertevorrat an, er entscheidet ihn nicht** — und das ist keine Bequemlichkeit, sondern eine gemessene Grenze. Eine Fassung des Belegfalls:
+
+```python
+def cache_scope(*, requires_credentials: bool) -> Literal["public", "session"]:
+    return "session" if requires_credentials else "public"
+```
+
+Jeder Filter, der die Zeile mit `cacheScope` auf ein festes Fenster kürzt, verfehlt hier beide Vorkommen von `"session"`: In der Signatur steht es hinter dem Fenster, in der `return`-Zeile kommt der Feldname gar nicht vor. Wer daraus «keine Abweichung gefunden» liest, hat §2.6 verletzt, bevor der Check anfängt. Deshalb: gelesen wird der Kontext, **entschieden wird in Modus 2** am ausgelieferten Result. Bleibt Modus 1 ohne jeden Treffer, ist der Ausgang `todo` — der Server setzt das Feld anderswo oder in einer anderen Sprache.
 
 ### Modus 2: runtime_test (Felder auf allen fünf Methoden)
 
@@ -51,11 +69,23 @@ for m in tools/list prompts/list resources/list resources/templates/list; do
   curl -sS -X POST "$MCP_URL" -H 'Content-Type: application/json' \
     -H "Mcp-Method: $m" -H "Mcp-Name: $m" \
     -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$m\",\"params\":{}}" \
-    | jq '{ttlMs: .result.ttlMs, cacheScope: .result.cacheScope}'
+    | jq '{
+        ttlMs: .result.ttlMs,
+        cacheScope: .result.cacheScope,
+        scopeOk: (.result.cacheScope | . == "public" or . == "private")
+      }'
 done
 ```
 
-`null` bei einer der Methoden ist ein Befund. `resources/read` separat prüfen, es braucht eine URI.
+Drei unterscheidbare Ausgänge, und sie kosten Verschiedenes:
+
+| Beobachtung | Ausgang | Bedeutung |
+|---|---|---|
+| `cacheScope: null` | Befund | Feld fehlt — schemawidrig, aber sichtbar |
+| `scopeOk: false` | Befund | Wert ausserhalb des Vorrats; eine Zwischeninstanz liest ihn wie ein fehlendes Feld, also **weiter** als gemeint |
+| `scopeOk: true` | weiter zur Angemessenheit | Der Wert ist zulässig — ob er der richtige ist, entscheiden die zwei Kriterien darunter |
+
+`scopeOk: false` ist der Ausgang, den die Kriterien vor v2.1.0 nicht kannten. `resources/read` separat prüfen, es braucht eine URI.
 
 ### Modus 3: runtime_test (Reihenfolge ist stabil)
 
@@ -105,6 +135,7 @@ Ein literaler Wert ohne Kommentar, der die Kadenz nennt, ist ein Befund: Er mag 
 
 - [ ] `ttlMs` und `cacheScope` liegen auf allen fünf Methoden an, sofern der Server sie bedient
 - [ ] `ttlMs` ist begründet gewählt, nicht 0 und nicht willkürlich gross — ein Wert oberhalb der Änderungsfrequenz der Quelle liefert veraltete Werkzeuglisten
+- [ ] Jeder gesetzte `cacheScope` trägt **einen der zwei Werte aus SEP-2549** — `"public"` oder `"private"`. Erhoben am ausgelieferten Result (Modus 2), nicht nur am Quelltext: Ein Literal kann auf dem Weg nach draussen noch durch ein Mapping laufen
 - [ ] `cacheScope: "public"` steht ausschliesslich über aufruferunabhängigen Inhalten
 - [ ] Bei `data_class != "Public Open Data"`: `resources/read` liefert `"private"`, und ein Test hält das fest
 - [ ] `tools/list` liefert eine deterministische Reihenfolge, über **Prozessgrenzen** hinweg geprüft
@@ -112,13 +143,15 @@ Ein literaler Wert ohne Kommentar, der die Kadenz nennt, ist ein Befund: Er mag 
 - [ ] Sofern der Server Query-Resultate paginiert: Der Sortierschlüssel ist **total** — bei Gleichstand entscheidet ein eindeutiger Zusatzschlüssel, nicht die Quelle
 - [ ] Sofern paginiert: Ein Test über zwei aufeinanderfolgende Seiten belegt leere Schnittmenge **und** vollständige Vereinigung, gegen einen Bestand grösser als eine Seite
 - [ ] Sofern der Server Datenresultate mit `ttlMs` versieht: Der Wert ist aus `source_freshness` abgeleitet (publizierte Kadenz, `Last-Modified`, `Cache-Control`) und auf die nächste Publikation gedeckelt — bei unbekannter Kadenz kurz, nicht komfortabel
-- [ ] **Gegenprobe:** Der Reihenfolgetest ist einmal gegen eine Fassung mit `set`-Iteration gelaufen und hat dort angeschlagen; wo paginiert wird, ist der Seitentest einmal gegen einen nicht-totalen Sortierschlüssel gelaufen und hat dort angeschlagen
+- [ ] **Gegenprobe:** Der Reihenfolgetest ist einmal gegen eine Fassung mit `set`-Iteration gelaufen und hat dort angeschlagen; wo paginiert wird, ist der Seitentest einmal gegen einen nicht-totalen Sortierschlüssel gelaufen und hat dort angeschlagen; und die Werteprüfung ist einmal gegen ein Result mit `cacheScope: "session"` gelaufen und hat dort angeschlagen
 
 ## Common Failures
 
 | Anti-Pattern | Konsequenz |
 |---|---|
 | `cacheScope: "public"` pauschal gesetzt | Zwischeninstanz gibt mandantenbezogene Inhalte weiter |
+| `cacheScope` mit einem selbst erfundenen Wert (`"session"`, `"caller"`, `"none"`) | Schemawidrig, und die Wirkung ist die Gegenrichtung der Absicht: Eine Zwischeninstanz liest den unbekannten Wert wie ein fehlendes Feld |
+| Wertevorrat nur am Quelltext geprüft | Ein `Literal[...]` kann korrekt aussehen und trotzdem über ein Mapping als etwas anderes hinausgehen |
 | `ttlMs` grösser als der Änderungstakt der Quelle | Client arbeitet mit einer Werkzeugliste, die es nicht mehr gibt |
 | `ttlMs: 0` als «sicherer Wert» | Kein Caching, jeder Aufruf trifft den Server — die Änderung verpufft |
 | Reihenfolge aus `set` oder Registry-Dict | Wechselt beim Neustart; Prompt-Cache trifft nie |
@@ -191,3 +224,4 @@ Auf dem Datenpfad ebenfalls S, solange die Quelle einen eindeutigen Schlüssel a
 - `CH-001` (Datenresidenz), `SEC-023` (DLP auf Outputs), `ARCH-008` (Resources)
 - `FID-001` — dieselbe stille Unvollständigkeit beim Filtern, die der Pagination-Schnitt beim Blättern erzeugt
 - `FID-004` — Parameter-Gruppen vollständig senden; `offset` und `limit` sind eine solche Gruppe, und dieser Check verlangt zusätzlich die Ordnung darunter
+- Portfolio-Fundstück zum Wertevorrat: [`mcp-data-fidelity-skill` PR #10](https://github.com/malkreide/mcp-data-fidelity-skill/pull/10) — der Copy-Paste-Baustein des Portfolios lieferte `Literal["public", "session"]` aus. Dort korrigiert; hier ist der Grund, warum es kein Check gemeldet hat
