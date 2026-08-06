@@ -178,6 +178,47 @@ for path, want in expected.items():
 PY
 }
 
+step_count() {
+    # Die Schrittzahl ist eine Zusage, die dieses Repo an drei Stellen macht:
+    # in den Ueberschriften von SKILL.md, im Frontmatter — und, ausserhalb
+    # jeder Datei, in der GitHub-Description. Die dritte prueft ci.yml; sie
+    # vergleicht gegen die Ziffer aus dem Frontmatter, und dieser Check hier
+    # ist der Grund, warum sie das darf: er belegt, dass die Ziffer der Zahl
+    # der Ueberschriften entspricht.
+    #
+    # Genau hier war die Zusage falsch: Das Frontmatter sagte «3-Schritte-
+    # Vorgehen», waehrend SKILL.md seit laengerem fuenf «## Schritt N:»
+    # fuehrt. Niemand hat es gemerkt, weil nichts es verglichen hat.
+    "$PY" - <<'PY'
+import pathlib, re, sys
+
+text = pathlib.Path("SKILL.md").read_text(encoding="utf-8")
+
+headings = [int(n) for n in re.findall(r"^## Schritt (\d+):", text, re.M)]
+if not headings:
+    sys.exit("SKILL.md: no '## Schritt N:' heading matched — anchor gone or "
+             "reworded, so this check would silently stop checking")
+if headings != list(range(1, len(headings) + 1)):
+    sys.exit(f"SKILL.md: step headings are not sequential: {headings}")
+
+claim = re.search(r"Standardisiertes (?P<n>\d+)-Schritte-Vorgehen", text)
+if not claim:
+    sys.exit("SKILL.md: the frontmatter phrase 'Standardisiertes "
+             "<N>-Schritte-Vorgehen' is gone — anchor removed or reworded. "
+             "It is what ci.yml compares the GitHub description against, so "
+             "losing it stops two checks, not one")
+claimed = int(claim.group("n"))
+
+if claimed != len(headings):
+    sys.exit(f"SKILL.md: the frontmatter promises {claimed} steps, the "
+             f"document carries {len(headings)}.\n"
+             "  Either a step was added without updating the promise, or the "
+             "promise was bumped without the step — check which side moved.")
+
+print(f"{len(headings)} steps, frontmatter and headings agree")
+PY
+}
+
 cross_references() {
     "$PY" - <<'PY'
 import pathlib, re, sys
@@ -353,6 +394,7 @@ check "7  referenced files exist"                      referenced_files
 check "8  the companion pointer still points somewhere"      companion_pointer
 check "9  version badge matches the latest CHANGELOG release" version_badge
 check "10 the quality-chain table names all five members"     quality_chain
+check "11 the step count is the same in headings and frontmatter" step_count
 
 echo ""
 if [ "$failed" -eq 0 ]; then
