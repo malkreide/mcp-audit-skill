@@ -1,0 +1,272 @@
+# Reference-adoption manifest for mcp-data-source-probe-skill.
+#
+# Checked by `scripts/reference_drift_probe.py` in mcp-continuous-auditor:
+#
+#     python scripts/reference_drift_probe.py --target <this-repo> --repos-root ~/src
+#
+# WHAT THIS FILE IS. `reference/` ships code that gets copied into servers. After
+# the copy the two halves drift apart in both directions and neither side looks
+# wrong: in the server only the copied fragment is visible, and here there is no
+# server. This file is the only place the two are named together, and the probe
+# refuses to guess the mapping — a finding nobody can retrace is how a gate gets
+# switched off.
+#
+# THE PROPERTIES ARE THE CONTRACT, NOT THE TEXT. The adopting repositories rename
+# the constants, rename the function, rewrap the lines and reword the messages;
+# every one of those is a correct adoption. What must survive a copy is the
+# behaviour, and that is what is written down below.
+#
+# NOTE ON THE CURRENT STATE. Five of the properties declared for
+# `retry_backoff.py` are NOT satisfied by the template as it stands. That is
+# deliberate and it is the 2026-08-03 finding: they are what the eleven servers
+# fixed one at a time while this file kept shipping the defect. The probe will
+# report `REFERENCE_STALE` for each until the template is repaired. Do not delete
+# the properties to make the run green — repairing the template is the fix.
+
+schema = 1
+
+# Templates under reference/ that are deliberately not mapped. Anything else
+# without a [[template]] entry is a TEMPLATE_UNMAPPED finding.
+unmapped_ok = []
+
+[unanimity]
+# Facts the unanimity layer must not report. Empty on purpose: an exemption that
+# is invisible is a blind spot, and there is nothing yet to exempt. The probe
+# prints this list in every report.
+ignore = []
+
+
+# ===========================================================================
+# reference/retry_backoff.py
+# ===========================================================================
+
+[[template]]
+file = "reference/retry_backoff.py"
+symbol = "fetch_with_retry"
+
+# --- What the template does hold today -------------------------------------
+
+[[template.property]]
+id = "separates_status_from_network"
+says = "distinguishes an HTTP status failure from a transport failure"
+kind = "handles"
+any_of = ["httpx.HTTPStatusError"]
+expect = "present"
+# The whole retry policy hangs off this split: a 4xx must fail fast and a
+# connection reset must not. A server that collapses both into one handler
+# retries a 404 four times and gives up on a timeout immediately.
+
+[[template.property]]
+id = "retries_transport_errors"
+says = "retries network and timeout errors rather than surfacing them"
+kind = "handles"
+any_of = ["httpx.RequestError"]
+expect = "present"
+
+# --- What it does NOT hold. These are the 2026-08-03 defects ----------------
+
+[[template.property]]
+id = "reads_retry_after"
+says = "honours the server's own Retry-After hint instead of guessing the wait"
+kind = "literal"
+any_of = ["retry-after"]
+expect = "present"
+# A header name is on the wire. It is the one string here that no adopting
+# repository can rename, which is what makes it worth matching on. The template
+# computes `base_delay * 2 ** (attempt - 1)` and never looks at what the server
+# asked for — on a 429 that is the wrong number by construction.
+
+[[template.property]]
+id = "jitters"
+says = "spreads the retry instead of synchronising every client on the same tick"
+kind = "calls"
+any_of = ["random.uniform", "random.random", "secrets.randbelow"]
+expect = "present"
+# Eleven servers behind one upstream, all retrying at exactly 2s / 4s / 8s after
+# the same outage, is a thundering herd the upstream sees as a second outage.
+
+[[template.property]]
+id = "caps_after_jitter"
+says = "applies the ceiling AFTER jittering, so the jitter cannot exceed it"
+kind = "wraps"
+outer = "min"
+inner = ["random.uniform", "random.random"]
+expect = "present"
+# The ordering, not the presence. `min(cap, base) * jitter` and
+# `min(cap, base * jitter)` both contain a cap and a jitter; only the second is
+# bounded. `wraps` asks whether the jitter sits INSIDE the cap's arguments.
+
+[[template.property]]
+id = "wall_clock_budget"
+says = "bounds the total time spent, not just the number of attempts"
+kind = "calls"
+any_of = ["time.monotonic", "time.perf_counter"]
+expect = "present"
+# `max_attempts = 4` bounds the retries and nothing else: four attempts against
+# an upstream that takes 30s to time out is two minutes inside one tool call.
+# `time.time` is deliberately not accepted — it moves when the clock is adjusted
+# and a budget measured against it can run backwards.
+
+[[template.property]]
+id = "no_bare_runtime_error"
+says = "fails with a typed upstream error a caller can branch on"
+kind = "raises"
+any_of = ["RuntimeError"]
+expect = "absent"
+# THE line. Half of these fixes are removals, which is why `expect` exists:
+#     raise RuntimeError(f"Upstream {url} unreachable after {max_attempts} …")
+# It was removed in eleven servers, one at a time, and stayed here. A caller
+# cannot tell it apart from a bug in the server's own code.
+
+[[template.adoption]]
+repo = "malkreide/swiss-academic-libraries-mcp"
+file = "src/swiss_academic_libraries_mcp/api_client.py"
+symbol = "http_get_with_retry"
+since = "2026-03-13"
+
+[[template.adoption]]
+repo = "malkreide/swiss-energy-mcp"
+file = "src/swiss_energy_mcp/api_client.py"
+symbol = "EnergyHTTPClient.get"
+since = "2026-03-12"
+
+[[template.adoption]]
+repo = "malkreide/swiss-cultural-heritage-mcp"
+file = "src/swiss_cultural_heritage_mcp/server.py"
+symbol = "_fetch_with_retry"
+since = "2026-03-14"
+
+[[template.adoption]]
+repo = "malkreide/hn-tech-signal-mcp"
+file = "src/hn_tech_signal_mcp/server.py"
+symbol = "_request_with_retry"
+since = "2026-03-22"
+
+[[template.adoption]]
+repo = "malkreide/seco-labor-mcp"
+file = "src/seco_labor_mcp/server.py"
+symbol = "_fetch_text_cached"
+since = "2026-04-01"
+
+[[template.adoption]]
+repo = "malkreide/lobbywatch-mcp"
+file = "src/lobbywatch_mcp/client.py"
+symbol = "LobbywatchClient._download_dump"
+since = "2026-04-21"
+
+[[template.adoption]]
+repo = "malkreide/srgssr-mcp"
+file = "src/srgssr_mcp/_http.py"
+symbol = "_request_with_retry"
+since = "2026-04-30"
+
+[[template.adoption]]
+repo = "malkreide/zh-education-mcp"
+file = "src/zh_education_mcp/http_client.py"
+symbol = "_http_get"
+since = "2026-05-30"
+
+[[template.adoption]]
+repo = "malkreide/swiss-electricity-mcp"
+file = "src/swiss_electricity_mcp/api_client.py"
+symbol = "_fetch_with_retry"
+since = "2026-06-03"
+
+[[template.adoption]]
+repo = "malkreide/parlament-mcp"
+file = "src/parlament_mcp/transcripts.py"
+symbol = "_fetch"
+since = "2026-07-19"
+
+[[template.adoption]]
+repo = "malkreide/termdat-mcp"
+file = "src/termdat_mcp/client.py"
+symbol = "fetch_with_retry"
+since = "2026-07-19"
+
+[[template.adoption]]
+repo = "malkreide/i14y-mcp"
+file = "src/i14y_mcp/client.py"
+symbol = "fetch_json"
+since = "2026-07-21"
+
+[[template.adoption]]
+repo = "malkreide/swiss-holidays-mcp"
+file = "src/swiss_holidays_mcp/client.py"
+symbol = "HolidayClient._fetch_with_retry"
+since = "2026-07-21"
+
+[[template.adoption]]
+repo = "malkreide/swiss-housing-mcp"
+file = "src/swiss_housing_mcp/gwr.py"
+symbol = "fetch_with_retry"
+since = "2026-07-24"
+
+[[template.adoption]]
+repo = "malkreide/swiss-efv-mcp"
+file = "src/swiss_efv_mcp/client.py"
+symbol = "EFVClient._fetch_with_retry"
+since = "2026-07-25"
+
+[[template.adoption]]
+repo = "malkreide/lindas-mcp"
+file = "src/lindas_mcp/lindas/client.py"
+symbol = "run_query"
+since = "2026-07-26"
+
+[[template.adoption]]
+repo = "malkreide/swiss-procurement-mcp"
+file = "src/swiss_procurement_mcp/client.py"
+symbol = "SimapClient._fetch_with_retry"
+since = "2026-07-26"
+
+[[template.adoption]]
+repo = "malkreide/seco-labor-mcp"
+file = "src/seco_labor_mcp/uvg.py"
+symbol = "_fetch_bytes"
+since = "2026-08-05"
+
+
+# ===========================================================================
+# reference/response_envelope.py
+# ===========================================================================
+
+# The envelope has exactly one adoption declared so far. Extending it is the
+# next round: the sweep that produced the retry mapping keyed on a retry loop,
+# which says nothing about which servers copied the response model.
+
+[[template]]
+file = "reference/response_envelope.py"
+# NO `symbol` — the whole module, on purpose. The vocabulary this template
+# guarantees lives at module scope (`PROVENANCE_VALUES`, the ATTRIBUTION_*
+# constants), not inside `ServerResponse`. Scoping to the class made the check
+# below report a defect that was not there, which is the one outcome worse than
+# no check.
+
+[[template.property]]
+id = "declares_provenance"
+says = "every response says whether it is live, cached, dumped or stale"
+kind = "literal"
+any_of = ["weekly_dump", "live_api", "cached", "fallback_stale"]
+expect = "present"
+# The freshness contract. A consumer that cannot tell a live answer from a
+# last-known-good one will treat a stale answer as current, which is the failure
+# `fallback_stale` exists to make visible. `any_of` matches on ONE of the four,
+# which is the honest strength: a server may legitimately not serve from a
+# weekly dump, but a server with none of the four has no freshness contract.
+
+# NOT DECLARED, and worth saying why. The other half of this template's contract
+# is "the response model HAS a `source` field and a `provenance` field" — a
+# statement about a class attribute. The probe's property kinds are `calls`,
+# `literal`, `wraps`, `raises` and `handles`; none of them can express it, and
+# `literal any_of = ["source"]` does NOT, because a field name is an identifier
+# and not a string constant. Declaring it that way would put a permanent false
+# finding on every correct adoption. Until the probe grows a kind for attribute
+# declarations, that part of the contract is unchecked — and unchecked is what
+# it is called here rather than quietly left out.
+
+[[template.adoption]]
+repo = "malkreide/swiss-efv-mcp"
+file = "src/swiss_efv_mcp/models.py"
+symbol = ""
+since = "2026-07-25"
