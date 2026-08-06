@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.7.0] - 2026-08-06
 
 Zehn Regeln. Eine ist dazugekommen, und eine bestehende bekommt einen Zusatz —
 beide aus demselben Doppelfehler beim Anwenden von `ARCH-003`. Dazu die
@@ -68,8 +68,9 @@ gibt es dafür ein `FID-006`-Finding. Und Regel 9 zeigt auf einen Check mehr.
 Der Leser handelt danach anders, und das ist die Grenze zwischen patch und
 minor; die Releases 1.4.0 und 1.6.0 haben dieselbe Art Korrektur ebenso
 eingestuft. Die beiden Korrekturen an Regel 8 wären für sich genommen patch —
-falsch war falsch — und ändern an der Einstufung nichts; dazu kommen zwei
-CI-Wächter, additiv.
+falsch war falsch — und ändern an der Einstufung nichts; dazu kommen drei
+CI-Wächter und ein scharfgestelltes Lint-Gate, sämtlich additiv und ohne
+Wirkung auf den Skill-Inhalt.
 
 Alle Angaben sind gegen die Check-Dateien in `mcp-audit-skill` geprüft, nicht
 gegen deren Changelog: `FID-003.md`, `FID-006.md`, `ARCH-020.md`, `HITL-006.md`.
