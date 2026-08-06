@@ -16,12 +16,32 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Die drei Schritte darunter — compileall, `ruff format --check`,
+      # `ruff check` — ankern alle am Pfad `reference/`, und alle drei melden
+      # bei einem leeren Ergebnis Erfolg: `compileall` auf einem fehlenden
+      # Verzeichnis schreibt «Can't list» und liefert trotzdem Exit 0, ruff
+      # warnt «No Python files found» und liefert ebenfalls Exit 0. Wird
+      # `reference/` umbenannt oder geleert, pruefen ab dann drei Schritte
+      # nichts mehr und bleiben gruen. Dieser Wächter macht daraus ein Rot.
+      - name: Es gibt ueberhaupt Referenz-Vorlagen zu pruefen
+        run: |
+          if [ ! -d reference ]; then
+            echo "::error::reference/ fehlt — Verzeichnis umbenannt oder geloescht. Ohne es pruefen compileall, ruff format und ruff check ab hier nichts mehr, ohne rot zu werden."
+            exit 1
+          fi
+          n=$(find reference -name '*.py' -type f | wc -l)
+          if [ "$n" -eq 0 ]; then
+            echo "::error::reference/ enthaelt keine .py-Datei. compileall und ruff melden auf einem leeren Verzeichnis Erfolg — dieser Schritt existiert, damit das nicht als bestandene Pruefung durchgeht."
+            exit 1
+          fi
+          echo "ok — $n Vorlagen-Datei(en) unter reference/, die drei Pruefungen darunter haben einen Gegenstand"
+
       - name: Python references are syntactically valid
         run: python -m compileall -q reference/
 
-      # Nur Formatierung, kein `ruff check` — Begruendung in ruff.toml.
-      # Ruff gepinnt, damit ein Upstream-Release den Formatter nicht aendert
-      # und die CI an unberuehrtem Vorlagen-Code rot wird. Bewusst anheben.
+      # Ruff gepinnt, damit ein Upstream-Release weder Formatter noch Regeln
+      # unter uns aendert und die CI an unberuehrtem Vorlagen-Code rot wird —
+      # zu einem Zeitpunkt, den niemand gewaehlt hat. Bewusst anheben.
       #
       # ACHTUNG: diese Version und die `rev` in .pre-commit-config.yaml
       # muessen uebereinstimmen — der Schritt darunter prueft es.
@@ -30,6 +50,15 @@ jobs:
 
       - name: Formatierung der Referenz-Vorlagen
         run: ruff format --check .
+
+      # Linting lief hier lange gar nicht: ruff.toml stand auf `select = []`,
+      # weil die Vorlagen absichtlich Namen aus der Zielumgebung nennen und
+      # ruff das als F821 meldet. Gemessen ist das EIN Befund auf 581 Zeilen.
+      # F821 ist jetzt gezielt und pfadgebunden unterdrueckt, alles andere
+      # wird geprueft — Vorlagen-Code ist der Code, der kopiert wird, ein
+      # Defekt darin vermehrt sich. Ruleset und Ausnahme stehen in ruff.toml.
+      - name: Linting der Referenz-Vorlagen
+        run: ruff check .
 
       # Der Ruff-Pin steht zweimal: oben und als `rev` im Pre-Commit-Hook.
       # Laufen sie auseinander, formatiert der Hook nach der einen und dieser
@@ -40,6 +69,11 @@ jobs:
       # Reine Shell statt eines Python-Skripts: in einem Repo, dessen einziger
       # Python-Code Vorlagen sind, waere ein eigenes Modul samt Tests
       # unverhaeltnismaessig.
+      # Zweitens gilt dasselbe fuer die Menge der Hooks. Die CI fuehrt
+      # `ruff check` UND `ruff format --check` aus. Faellt einer der beiden
+      # Hooks unten weg, laeuft er lokal nicht mehr, der Commit geht gruen
+      # durch und erst die CI wird rot — dieselbe Bruchstelle wie bei
+      # auseinanderlaufenden Versionen, nur eine Zeile weiter unten.
       - name: Ruff-Pin-Sync (ci.yml ↔ .pre-commit-config.yaml)
         run: |
           ci=$(sed -n 's/.*ruff==\([0-9][^ "'"'"']*\).*/\1/p' .github/workflows/ci.yml | head -1)
@@ -53,7 +87,12 @@ jobs:
           if [ "$ci" != "$hook" ]; then
             echo "::error::Ruff-Pins laufen auseinander — ci.yml $ci, Hook $hook. Beide im selben Commit bumpen."; exit 1
           fi
-          echo "Ruff-Pin OK ($ci; beide Stellen stimmen ueberein)."
+          for id in ruff-check ruff-format; do
+            grep -qE "^[[:space:]]*-[[:space:]]*id:[[:space:]]*$id[[:space:]]*$" .pre-commit-config.yaml || {
+              echo "::error::.pre-commit-config.yaml fuehrt den Hook '$id' nicht mehr. Die CI prueft beides; laeuft lokal nur eines, meldet der Commit gruen und erst die CI rot."; exit 1
+            }
+          done
+          echo "Ruff-Pin OK ($ci; beide Stellen stimmen ueberein, beide Hooks vorhanden)."
 
       - name: SKILL.md carries a well-formed frontmatter
         env:

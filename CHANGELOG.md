@@ -306,7 +306,41 @@ Minor #5 (SEP-2549).
   statt eine veraltete Zahl grün durchzulassen. Ebenso das Zahlwort im Docstring
   von `reference/patterns.py`.
 
+- **`select = []` wird zu einem vollen Ruleset mit genau einer Ausnahme.**
+  Das Linting stand komplett aus, weil die Vorlagen unter `reference/`
+  absichtlich Namen aus der Zielumgebung nennen und ruff das korrekt als
+  `F821` meldet. Nachgemessen ist das **ein** Befund auf 581 Zeilen. Für eine
+  Regel den ganzen Linter abzuschalten heisst, jeden echten Defekt in
+  Vorlagen-Code mitdurchzulassen — und Vorlagen-Code ist der Code, der
+  anschliessend kopiert wird; ein Defekt darin vermehrt sich. Neu:
+  `E, W, F, I, UP, B, C4, SIM`, `F821` gezielt über
+  `per-file-ignores` auf `reference/*.py` unterdrückt. Ausserhalb dieses Pfads
+  greift `F821` weiterhin — nachgewiesen in beide Richtungen. Die CI führt den
+  Schritt als eigenen `ruff check .` aus, mit demselben Pin wie der Formatter.
+
+- **Der Pre-Commit-Hook spiegelt jetzt beides**, `ruff-check` und
+  `ruff-format`. Liefe lokal nur der Formatter, meldete der Commit grün und
+  erst die CI rot — genau der Fall, den ein Pre-Commit-Hook verhindern soll.
+  Der Schritt «Ruff-Pin-Sync» prüft deshalb nicht mehr nur, dass beide Seiten
+  dieselbe Version nennen, sondern auch, dass beide Hooks noch da sind.
+
 ### Fixed
+
+- **Drei CI-Schritte hätten einen verschwundenen `reference/`-Ordner
+  stillschweigend bestanden.** `python -m compileall -q reference/` schreibt
+  auf ein fehlendes Verzeichnis «Can't list» und liefert **Exit 0**; `ruff
+  format --check` und `ruff check` warnen «No Python files found» und liefern
+  ebenfalls **Exit 0**. Ein Umbenennen des Ordners hätte damit drei Prüfungen
+  auf einmal entwertet, ohne die CI rot zu machen — die Bauart, gegen die
+  dieses Repo an anderen Stellen bereits explizit anschreibt («would silently
+  stop checking»). Neu steht vor den dreien ein Wächter, der auf einem
+  fehlenden oder `.py`-freien `reference/` mit benannter Ursache abbricht.
+
+  Die übrigen ankernden Schritte wurden einzeln gegengeprüft — Frontmatter,
+  `## Regel N`, beide README-Überschriften, das Zahlwort im Docstring, die
+  Zuordnungstabelle, die Kettentabelle, die Release-Überschrift und das
+  Versions-Badge brechen bereits alle mit klarer Meldung ab, wenn ihr Anker
+  verschwindet. Dort war nichts nachzurüsten.
 
 - **Regel 8 empfahl `ttlMs: 0` und `ARCH-020` führt es als Anti-Pattern.** Der
   Satz «Ist die Kadenz unbekannt, … ein Argument für einen kleinen oder für
