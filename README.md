@@ -77,8 +77,13 @@ BASE="https://api.example.ch/v2" OUTDIR=/tmp/probe bash reference/probe_template
 ├── companion/
 │   └── mcp-data-fidelity/
 │       └── README.md                     # pointer — the skill moved to its own repo
-└── scripts/
-    └── validate.sh                       # the repository's checks; CI runs this file
+├── scripts/
+│   └── validate.sh                       # entry point; CI runs this file
+├── tools/
+│   └── checks/                           # the checks themselves — one function per gate
+└── tests/
+    ├── mutations.py                      # per check, a tree it MUST go red on
+    └── test_*.py                         # runs them, and holds the checks against this repo
 ```
 
 ## Companion skill: `mcp-data-fidelity`
@@ -158,14 +163,30 @@ proves it.
 Before opening a pull request, run the checks:
 
 ```bash
+pip install -r requirements-reference.txt -r requirements-dev.txt
 bash scripts/validate.sh
 ```
 
 It is the same file CI invokes, so there is no second copy to drift out of step.
-Every check runs even after one fails, so a red run names every problem at
-once. Worth knowing before editing the frontmatter: the `description` limit is
-1024 characters and the current one leaves single digits of headroom — the
+That now includes `ruff check` and `ruff format --check`: until 1.7.0 they ran
+only in CI, which left the local runner able to report green on a tree CI
+rejects. Every check runs even after one fails, so a red run names every problem
+at once. Worth knowing before editing the frontmatter: the `description` limit
+is 1024 characters and the current one leaves single digits of headroom — the
 script prints what is left.
+
+Changing or adding a check needs one more command:
+
+```bash
+pytest
+```
+
+The checks are ordinary functions under `tools/checks/`, and every one of them
+has at least one tree in `tests/mutations.py` that it **must** go red on —
+along with an assertion about *what it then says*. A check without a mutation
+fails the suite. The reason is written down in `ruff.toml`: it once held
+`select = []`, both ruff steps reported "All checks passed!", and nobody
+noticed, because nothing went red.
 
 Open an issue before a large pull request, so the shape can be settled first.
 
