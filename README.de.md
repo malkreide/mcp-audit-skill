@@ -14,13 +14,13 @@ Companion zu Anthropics `mcp-builder`. Dessen Best Practices decken ab, ob ein S
 
 Das ist eine eigene Fehlerklasse, weil sie still ist. HTTP 200, wohlgeformtes JSON, grüne Tests — und inhaltlich falsch. Ein Server, der zwei Prozent des Bestands durchsucht und das nicht meldet, produziert Antworten, die niemand als falsch erkennt.
 
-Die Leitfrage bei jedem datenabfragenden Tool: *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der neun Regeln.
+Die Leitfrage bei jedem datenabfragenden Tool: *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der zehn Regeln. Und die Stufe darunter, seit Regel 10: *und wenn ich falsch gefragt habe — komme ich von hier zur richtigen Frage?*
 
-## Die neun Regeln
+## Die zehn Regeln
 
-Die Regeln 1–6 stammen aus Vorfällen, die Regeln 7–9 aus der MCP-Spec 2026-07-28 — der Unterschied wird benannt statt geglättet, hier wie in `SKILL.md`.
+Die Regeln 1–6 und 10 stammen aus Vorfällen, die Regeln 7–9 aus der MCP-Spec 2026-07-28 — der Unterschied wird benannt statt geglättet, hier wie in `SKILL.md`. Die Nummerierung folgt der Reihenfolge, in der die Regeln dazugekommen sind, nicht dieser Gruppierung.
 
-1. **Scope-Parameter explizit senden, nie erben.** Ein weggelassener optionaler Filter bedeutet oft nicht «unbeschränkt», sondern einen willkürlichen Teilausschnitt — eine Tatsache, die ausschliesslich in der Parameterbeschreibung der Spec steht und an einem funktionierenden Call nicht erkennbar ist.
+1. **Scope-Parameter explizit senden, nie erben.** Ein weggelassener optionaler Filter bedeutet oft nicht «unbeschränkt», sondern einen willkürlichen Teilausschnitt — eine Tatsache, die ausschliesslich in der Parameterbeschreibung der Spec steht und an einem funktionierenden Call nicht erkennbar ist. Umgekehrt gilt: Wer den Recall bewusst verengt (exakt statt Wildcard, kein Fuzzy), muss die Rubriken oder Datenklassen nennen, die das Risiko tragen, **und** aus der Scope-Aufzählung belegen, dass sie erreichbar sind. Eine Begründung, die für jede beliebige Quelle wortgleich dastünde, ist an nichts gekoppelt.
 2. **Parameter-Gruppen vollständig senden.** Sendet man nur einige Mitglieder einer Gruppe, behalten die übrigen ihren serverseitigen Default. Das Argument kann dann nur erweitern, nie einschränken — ein No-op, der wie Steuerung aussieht.
 3. **Die Leermenge trägt einen nächsten Schritt.** Null Treffer sind mehrdeutig. Das Resultat braucht ein konkretes `hint`-Feld — im Tool-Result, nicht im README. Ein Transport- oder Autorisierungsfehler ist keine Leermenge und darf nie als solche formatiert werden — er trägt einen anderen nächsten Schritt: Konfiguration prüfen, nicht Suche verbreitern.
 4. **Die Tool-Description ist eine Halluzinations-Oberfläche.** Eine Formulierung, die eine Leermenge *erklärt*, erzeugt Konfabulation zuverlässiger als gar keine Formulierung. Zum Nachfassen auffordern, nie eine Schlussfolgerung lizenzieren.
@@ -29,12 +29,13 @@ Die Regeln 1–6 stammen aus Vorfällen, die Regeln 7–9 aus der MCP-Spec 2026-
 7. **Totale, dokumentierte Sortierreihenfolge.** Ein Relevanz-Score hat Ties, und eine instabile Ordnung über Seitengrenzen hinweg *verliert Treffer* — dieselbe stille Unvollständigkeit wie Regel 1, nur beim Blättern statt beim Filtern entstanden. Gilt auf jeder Spec-Version; auf 2026-07-28 entscheidet sie zusätzlich, ob ein Reconnect den Prompt-Cache des Clients behält.
 8. **Ehrliches `ttlMs`.** Nie länger als die tatsächliche Quellen-Frische: Ein `ttlMs`, das die nächste Aktualisierung überdauert, lässt den Client eine Antwort ausliefern, von der der Server schon wusste, dass sie überholt sein wird. Aus `source_freshness` ableiten — und `cacheScope` gegen `requires_credentials` prüfen: Ein zu weiter Scope auf einem credential-abhängigen Resultat ist ein Leck, kein Frischeproblem.
 9. **`input_required` ist keine leere Antwort.** Eine MRTR-Rückfrage sieht erfolgreich aus — HTTP 200, wohlgeformt, keine Treffer darin. Strikt trennen vom echten Null-Treffer: kein `hint` auf einer Rückfrage, kein `inputRequests` auf einer Leermenge. Ein Modell darf aus «Rückfrage» nie «keine Daten» schliessen — und umgekehrt.
+10. **Vorschlagen ist nicht Erweitern.** Auf der Leermenge kürzere Varianten des Begriffs anbieten, den der Aufrufer selbst geschickt hat — und keine davon abfragen. Die Sicherheitseigenschaft: Keine Meldung im Resultat darf einem Begriff zuzuschreiben sein, den der Aufrufer nicht gewählt hat. Der Nachweis ist ein Paar und keine einzelne Assertion — Vorschläge erscheinen, Vorschläge werden nie gesucht (Zähler auf der Upstream-Route). Fällt eine Hälfte weg, besteht die andere trivial.
 
 ## Voraussetzungen
 
 - Claude Code, Claude Desktop oder claude.ai mit Skill-Unterstützung
 - Die Patterns in `reference/patterns.py` zielen auf FastMCP, httpx und Pydantic v2 — die Regeln selbst sind stack-unabhängig
-- Die Regeln 8 und 9 setzen die MCP-Spec 2026-07-28 voraus: `ttlMs`/`cacheScope` auf den List-Responses und MRTR (`resultType: "input_required"`) existieren vorher nicht. Auf einem älteren oder eingefrorenen Server werden sie als nicht anwendbar abgehakt, nicht als unerfüllt. Die Regeln 1–7 gelten so oder so.
+- Die Regeln 8 und 9 setzen die MCP-Spec 2026-07-28 voraus: `ttlMs`/`cacheScope` auf den List-Responses und MRTR (`resultType: "input_required"`) existieren vorher nicht. Auf einem älteren oder eingefrorenen Server werden sie als nicht anwendbar abgehakt, nicht als unerfüllt. Die Regeln 1–7 und 10 gelten so oder so.
 
 ## Installation
 
@@ -58,7 +59,7 @@ Der Skill greift selbstständig, sobald ein Such-, Query- oder Filter-Tool entwo
 
 ```
 .
-├── SKILL.md                  # die neun Regeln, mit Release-Checkliste
+├── SKILL.md                  # die zehn Regeln, mit Release-Checkliste
 └── reference/
     └── patterns.py           # Copy-Paste-Patterns für FastMCP / httpx / Pydantic v2
 ```
@@ -76,6 +77,8 @@ Vier Dinge daran sind übertragbar:
 
 Regel 6 kam nach einem zweiten Fall dazu: Eine Abfrage der MCP Registry lieferte eine Zeit lang nichts, weil die Felder unter `servers[].server.*` liegen und der Client eine Ebene höher suchte. Syntaktisch einwandfrei, semantisch blind.
 
+Regel 10 kam nach einem dritten dazu, der im Entwurf aufgefallen ist statt im Betrieb: Beim Anwenden von `ARCH-003` auf ein Such-Tool des Portfolios sind zwei Fehler zusammengefallen. Der Vorschlagsmechanismus, den der Check verlangt, wurde als Erlaubnis gelesen, die Vorschläge gleich mitzusuchen — und die Gegenrichtung, Exakt-only, wurde mit falsch zugeordneten Konkursmeldungen begründet, einer Rubrik ausserhalb des bedienten Scopes. Beides klang nach Sorgfalt, und keines war an eine überprüfbare Grösse gekoppelt. Der Schaden ist nicht eingetreten, weil der Entwurf vorher gelesen wurde; festgehalten ist er trotzdem.
+
 Die Regeln 7–9 haben diese Herkunft **nicht**, und der Skill sagt das dort, wo er sie aufstellt. Sie sind aus der MCP-Spec 2026-07-28 hergeleitet: stateless Core ohne `initialize`, Reconnect als Normalfall (Regel 7); `ttlMs`/`cacheScope` auf den List-Responses (Regel 8); MRTR statt serverinitiierter Elicitation (Regel 9). Hergeleitet, nicht gemessen — in diesem Repo ein Unterschied, der genannt gehört. Die Latte für Vorschläge von aussen bleibt unverändert: Sie brauchen weiterhin einen eingetretenen Schaden. Über die tiefere Latte gekommen ist hier eine Protokolländerung, die alle 42 Server des Portfolios gleichzeitig trifft — keine plausibel klingende Empfehlung.
 
 ## Verwandte Repos
@@ -89,14 +92,14 @@ Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihe
 | vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6). Hat diesen Skill unter `companion/` ausgeliefert, bis dieses Repo sein Zuhause wurde. |
 | im Bau | **`mcp-data-fidelity-skill`** | **Dieser Skill:** liefert er, was die Quelle hat? |
 | im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
-| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–6 liegen auf den sechs `FID`-Checks — nicht eins zu eins: Regeln 3 und 4 teilen sich `FID-003`, Regel 5 braucht `FID-005` und `FID-002`, Regel 6 ist `FID-006`. Die Regeln 7–9 liegen ausserhalb von `FID`, in `ARCH-020`, `HITL-006` und `ARCH-018`, die Abgrenzung von Regel 9 gegen die Leermenge in `FID-003` (Katalogstand: 113 Checks auf `main`, geschnitten v2.0.0; alle diese Checks sind `advisory`). Vollständige Tabelle samt der Reichweite, die jeder Check *nicht* abdeckt, in `SKILL.md`. |
+| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–6 liegen auf den sechs `FID`-Checks — nicht eins zu eins: Regeln 3 und 4 teilen sich `FID-003`, Regel 5 braucht `FID-005` und `FID-002`, Regel 6 ist `FID-006`. Die Regeln 7–9 liegen ausserhalb von `FID`, in `ARCH-020`, `HITL-006` und `ARCH-018`, die Abgrenzung von Regel 9 gegen die Leermenge in `FID-003`; Regel 10 liegt auf `ARCH-003` (Katalogstand: 113 Checks auf `main`, geschnitten v2.0.0; alle diese Checks sind `advisory` — ausser `ARCH-003`, das `enforced` ist und `always` gilt). Vollständige Tabelle samt der Reichweite, die jeder Check *nicht* abdeckt, in `SKILL.md`. |
 | im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Seine Recall-Floors sind Regel 5, laufend gegen die echte Quelle gemessen. |
 
 Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
 Dazu der Server, aus dem dieser Skill stammt: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die Regeln 1–5 hervorgebracht hat.
 
-Wer nach den Regeln 1–6 baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet hier die Behebung. Die Regeln 7–9 sind ausserhalb von `FID` abgedeckt, und alle diese Checks sind `advisory` — sie werden gezählt, nicht erzwungen. Ohne Check ist keine Regel mehr; offen ist nur noch Reichweite, und am weitesten bei Regel 7: Ihr Check misst auf Baseline `2026-07-28`, den Pagination-Verlust gibt es aber auch auf `2025-11-25`. Die Lücken stehen je Zeile in `SKILL.md`.
+Wer nach den Regeln 1–6 baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet hier die Behebung. Die Regeln 7–9 sind ausserhalb von `FID` abgedeckt, und diese Checks sind `advisory` — sie werden gezählt, nicht erzwungen. Regel 10 ist die Ausnahme: `ARCH-003` blockiert. Ohne Check ist keine Regel mehr; offen ist nur noch Reichweite, und am weitesten bei Regel 7: Ihr Check misst auf Baseline `2026-07-28`, den Pagination-Verlust gibt es aber auch auf `2025-11-25`. Die Lücken stehen je Zeile in `SKILL.md`.
 
 ## Changelog
 
@@ -110,7 +113,10 @@ haben.
 
 Für neue Regeln liegt die Latte höher. Die Regeln 1–6 stammen je aus einem
 konkreten Schaden, der tatsächlich eingetreten ist — und vor allem deshalb lohnt
-sich die Sammlung überhaupt. Eine plausibel klingende Empfehlung ohne Narbe
+sich die Sammlung überhaupt. Regel 10 ist der Grenzfall dazu und sagt es im Text:
+Der Fehler ist passiert, der Schaden nicht, weil der Entwurf vorher gelesen
+wurde. Was sie über die Latte bringt, ist nicht die Plausibilität, sondern dass
+sie sich verletzen lässt, ohne dass es jemandem auffällt. Eine plausibel klingende Empfehlung ohne Narbe
 dahinter macht den Skill länger und schwächer. Ein Vorschlag sollte den Vorfall
 benennen, ein ✗/✓-Paar mitbringen und seinen **Nachweis** angeben: die zwei
 Calls, das Delta, die Assertion, die eine funktionierende Kontrolle von einer
