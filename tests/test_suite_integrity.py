@@ -137,6 +137,25 @@ def test_suggested_description_is_advice_that_works() -> None:
     assert_description_matches(SUGGESTED_DESCRIPTION, expected)
 
 
+@pytest.mark.parametrize("number", [12, 13, 14])
+def test_a_missing_ruff_is_a_finding_not_a_skip(
+    number: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ohne ruff auf dem PATH werden alle drei Gates rot, nicht still grün.
+
+    Diese Verzweigung lässt sich nicht als Mutation am Baum ausdrücken — sie
+    hängt an der Umgebung, nicht an einer Datei. Getestet gehört sie trotzdem:
+    Ein übersprungener Check meldete «bestanden», wo «nicht gelaufen» richtig
+    wäre, und das ist die eine Auskunft, die schlimmer ist als keine.
+    """
+    monkeypatch.setenv("PATH", "/nonexistent")
+    by_number = {check.number: check for check in all_checks()}
+
+    with pytest.raises(CheckFailed) as raised:
+        by_number[number].run(REPO_ROOT)
+    assert "ruff liegt nicht auf dem PATH" in str(raised.value)
+
+
 def test_a_crashing_check_is_reported_as_a_defect_not_as_a_finding() -> None:
     """Ein kaputter Check darf den Lauf weder mitnehmen noch sich tarnen.
 
