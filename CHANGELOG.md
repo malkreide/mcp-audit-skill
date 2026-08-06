@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Das Repo hat Tags.** Bisher hatte es keine — `git checkout v1.4.0` ging
+  nicht, und die Versionsnummer stand nur im CHANGELOG und in zwei Badges.
+  Nachgetragen sind `v1.0.0` bis `v1.7.0`. Getaggt ist jeweils der Commit auf
+  der Erst-Eltern-Historie von `main`, an dem die Release-Überschrift dort
+  ankam — bei 1.0.0–1.3.0 der Release-Commit selbst, ab 1.4.0 der Merge-Commit
+  der zugehörigen PR. Für jeden ist nachgeprüft, dass CHANGELOG-Spitze und
+  **beide** Badges an dieser Stelle die Version tragen; die Tags behaupten also
+  nichts, was der Stand nicht schon sagt.
+
+- **Ein CI-Wächter für den Tag.** Der Schritt «Version badge matches the latest
+  CHANGELOG release» bindet Badge an CHANGELOG. Der Tag war die dritte Stelle,
+  die dieselbe Zahl behauptet und von keiner geprüft wurde — und die einzige der
+  drei, die man nach dem Veröffentlichen nicht mehr stillschweigend korrigieren
+  kann. Der Workflow triggert dafür neu auch auf `tags: ["v*"]`.
+
+  **Grenze, ausdrücklich:** Bei einem Tag-Lauf führt GitHub die `ci.yml` des
+  *getaggten* Commits aus, nicht die von `main`. Die sieben nachgetragenen Tags
+  zeigen auf Commits ohne diesen Schritt und werden von ihm daher nie geprüft —
+  sie sind stattdessen einmalig von Hand verifiziert. Der Wächter greift ab dem
+  ersten Tag auf einen Commit, der ihn selbst enthält.
+
 ## [1.7.0] - 2026-08-06
 
 Zehn Regeln. Eine ist dazugekommen, und eine bestehende bekommt einen Zusatz —
