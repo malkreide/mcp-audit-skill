@@ -1,12 +1,12 @@
-"""Copy-paste patterns for the nine data-fidelity rules (FastMCP / httpx / pydantic v2).
+"""Copy-paste patterns for the ten data-fidelity rules (FastMCP / httpx / pydantic v2).
 
 Each block is self-contained and annotated with the rule it implements. Adapt the
 names; keep the shape. The comments are deliberately verbose — they are the part
 that survives into the target codebase and explains *why* to the next reader.
 
-Rules 1-6 come from incidents. Rules 7-9 are derived from MCP spec 2026-07-28 and
-only apply to a server that speaks it — with one exception: rule 7 (a total sort
-order) breaks pagination on every spec version.
+Rules 1-6 and 10 come from incidents. Rules 7-9 are derived from MCP spec
+2026-07-28 and only apply to a server that speaks it — with one exception: rule 7
+(a total sort order) breaks pagination on every spec version.
 """
 
 from __future__ import annotations
@@ -104,13 +104,30 @@ class SearchResult(BaseModel):
         default=None,
         description="Set when the search returned nothing; suggests how to widen it",
     )
+    # Rule 10 — the two fields that keep a suggestion from becoming a hit.
+    match_type: Literal["exact", "none"] = Field(
+        default="exact",
+        description="What produced `entries`. Never 'fuzzy' here: see rule 10.",
+    )
+    suggestions: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Shorter variants of the caller's own term, derived not queried. "
+            "Unverified: call the tool again with one of them."
+        ),
+    )
     entries: list[dict]
 
 
-def build_result(entries: list[dict], **envelope: Any) -> SearchResult:
+def build_result(
+    entries: list[dict], *, term: str | None = None, **envelope: Any
+) -> SearchResult:
     return SearchResult(
         returned=len(entries),
         hint=EMPTY_HINT if not entries else None,
+        match_type="exact" if entries else "none",
+        # Rule 10: offered, never executed. See shorter_variants() below.
+        suggestions=[] if entries or term is None else shorter_variants(term),
         entries=entries,
         **envelope,
     )
@@ -168,7 +185,7 @@ async def search_or_raise(client: Client, term: str, **envelope: Any) -> SearchR
         raise _unreachable(exc) from exc
     except httpx.RequestError as exc:  # DNS, TLS, refused, timeout
         raise _unreachable(exc) from exc
-    return build_result(entries, **envelope)
+    return build_result(entries, term=term, **envelope)
 
 
 # ---------------------------------------------------------------------------
@@ -461,10 +478,10 @@ async def search_or_ask(
 
         entries = await client.search(term)
         if not entries:
-            return build_result([], hint=EMPTY_HINT)   # swallows the question
+            return build_result([], term=term)         # swallows the question
 
     Search first and check the arguments afterwards, and the follow-up question
-    has already been through the empty-set branch, hint attached.
+    has already been through the empty-set branch, hint and suggestions attached.
     """
     if scope is None:
         return InputRequired(
@@ -479,7 +496,7 @@ async def search_or_ask(
                 )
             ]
         )
-    return build_result(await client.search(term), **envelope)
+    return build_result(await client.search(term), term=term, **envelope)
 
 
 async def test_the_three_outcomes_stay_disjoint() -> None:
@@ -490,5 +507,75 @@ async def test_the_three_outcomes_stay_disjoint() -> None:
     set must never carry ``input_requests`` (the client retries into the void) —
     plus the retry round: answered with ``inputResponses``, the same call has to
     return hits. A question whose answer changes nothing was not a question.
+    """
+    ...
+
+
+# ---------------------------------------------------------------------------
+# Rule 10 — suggesting is not widening
+# ---------------------------------------------------------------------------
+
+
+def shorter_variants(term: str, *, minimum: int = 5) -> list[str]:
+    """Prefix variants of the caller's OWN term — derived, never queried.
+
+    The safety property of rule 10: no entry in a result may be attributable to
+    a term the caller did not choose. Everything in ``entries`` answers the term
+    that went in, and nothing else.
+
+    Two halves, and they hold each other up. Suggest nothing and the empty set
+    carries no next step, which is the rule-3 failure. Run the suggestions and
+    return their hits, and the model reports rows for «Quellensteuerverordnung»
+    that in fact answer «Quellensteuer» — invisibly, because the response looks
+    the same either way.
+
+    Derived from the input on purpose. A list of "popular terms" fetched from
+    the source is a second result type with its own recall risk, and one more
+    query nobody asked for.
+    """
+    stem = term.strip()
+    out = []
+    while len(stem) > minimum:
+        stem = stem[:-3]
+        out.append(f"{stem}*")
+    return out[:3]
+
+
+async def search_and_suggest(
+    client: Client, term: str, **envelope: Any
+) -> SearchResult:
+    """Rule 10 read path: exactly one query goes out, for exactly what came in.
+
+    ✗ What this deliberately does NOT do::
+
+        entries = await client.search(term)
+        if not entries:
+            for variant in shorter_variants(term):
+                entries = await client.search(variant)      # <- the whole bug
+                if entries:
+                    return build_result(entries, **envelope)
+
+    Boundary against ``ARCH-003``, which is ``enforced`` in the audit catalogue
+    and asks for a fuzzy match *or* a suggestion mechanism plus a ``match_type``
+    field: the suggestion arm satisfies the check and this rule at once. Take the
+    fuzzy arm instead and the heuristic rows belong in a field of their own, with
+    the term that produced them — merged into ``entries`` they are indistinguish-
+    able from hits. What is forbidden is the merge, not the help.
+    """
+    return build_result(await client.search(term), term=term, **envelope)
+
+
+async def test_suggestions_are_never_searched() -> None:
+    """Rule 10, offline — and offline is the point, not a concession.
+
+    The subject under test is what went OUT, not what came back: assert the
+    upstream route was called exactly once and with the caller's term verbatim.
+    Live, that is unmeasurable — a search with one hit looks like a search whose
+    term was quietly swapped. The mock is legitimate here because the assumption
+    being tested is the server's own behaviour, not the shape of the source.
+
+    Needs its pair to mean anything (rule 9's shape, applied here): a server that
+    suggests nothing passes this test trivially, so the other half asserts that
+    an empty result carries suggestions AND that each is a variant of the input.
     """
     ...

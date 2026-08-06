@@ -1,6 +1,6 @@
 ---
 name: mcp-data-fidelity
-description: Datentreue-Regeln für MCP-Server-Tools, die eine externe Datenquelle abfragen — damit ein Server nicht still unvollständig liefert. Verwende diesen Skill ergänzend zu mcp-builder immer wenn (1) ein Such-, Query- oder Filter-Tool für einen MCP-Server entworfen oder implementiert wird, (2) eine Tool-Description für ein datenabfragendes Tool geschrieben oder überarbeitet wird, (3) jemand meldet, ein Server finde nichts, zu wenig oder weniger als die offizielle Oberfläche («findet nichts», «leeres Ergebnis», «Web-UI zeigt mehr», «zu wenig Treffer», «Recall», «Scope»), (4) ein Modell auf ein leeres Tool-Result hin eine Antwort erfunden hat, (5) optionale API-Parameter (Filter, Facetten, Feld-Flags, Limits) in Requests übersetzt werden, (6) Tests für ein datenabfragendes Tool geschrieben werden, oder (7) ein Server auf MCP-Spec 2026-07-28 migriert wird und dabei Sortierreihenfolge, `ttlMs`/`cacheScope` oder MRTR-Rückfragen (`input_required`) festgelegt werden. Nicht nötig für Server ohne externe Datenquelle.
+description: Datentreue-Regeln für MCP-Server-Tools, die eine externe Datenquelle abfragen — damit ein Server nicht still unvollständig liefert. Verwende diesen Skill ergänzend zu mcp-builder immer wenn (1) ein Such-, Query- oder Filter-Tool für einen MCP-Server entworfen oder implementiert wird, (2) eine Tool-Description dafür geschrieben oder überarbeitet wird, (3) jemand meldet, ein Server finde nichts, zu wenig oder weniger als die offizielle Oberfläche («findet nichts», «leeres Ergebnis», «Web-UI zeigt mehr», «zu wenig Treffer», «Recall», «Scope»), (4) ein Modell auf ein leeres Tool-Result hin eine Antwort erfunden hat oder ein Fuzzy-/Vorschlags-Fallback entworfen wird, (5) optionale API-Parameter (Filter, Facetten, Feld-Flags, Limits) in Requests übersetzt werden, (6) Tests dafür geschrieben werden, oder (7) ein Server auf MCP-Spec 2026-07-28 migriert wird und dabei Sortierreihenfolge, `ttlMs`/`cacheScope` oder MRTR-Rückfragen (`input_required`) festgelegt werden. Nicht nötig für Server ohne externe Datenquelle.
 ---
 
 # MCP Data Fidelity — liefert der Server, was die Quelle hat?
@@ -9,9 +9,11 @@ Companion zu `mcp-builder`. Dessen Best Practices decken ab, ob ein Server **kor
 
 Das ist eine eigene Fehlerklasse, weil sie still ist. HTTP 200, wohlgeformtes JSON, grüne Tests — und inhaltlich falsch. Ein Server, der zwei Prozent des Bestands durchsucht und das nicht meldet, produziert Antworten, die niemand als falsch erkennt.
 
-**Die Leitfrage bei jedem datenabfragenden Tool:** *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der neun Regeln unten.
+**Die Leitfrage bei jedem datenabfragenden Tool:** *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der zehn Regeln unten.
 
-Die Regeln 1–6 stammen aus Vorfällen, die Regeln 7–9 aus der Spec 2026-07-28. Der Unterschied ist ausgewiesen und nicht kosmetisch — siehe den Abschnitt vor Regel 7.
+Seit Regel 10 steht die Stufe darunter daneben: *und wenn ich falsch gefragt habe — komme ich von hier zur richtigen Frage?* Die erste Frage entscheidet, ob das Modell schweigen darf. Die zweite, ob es weiterkommt, ohne sich einen Treffer zu erfinden.
+
+Die Regeln 1–6 und 10 stammen aus Vorfällen, die Regeln 7–9 aus der Spec 2026-07-28. Der Unterschied ist ausgewiesen und nicht kosmetisch — siehe den Abschnitt vor Regel 7. Die Nummerierung folgt der Reihenfolge, in der die Regeln dazugekommen sind, nicht dieser Gruppierung.
 
 ---
 
@@ -45,6 +47,12 @@ if classification_ids:
 Muss der volle Scope zur Laufzeit ermittelt werden (Vokabular-Endpoint), dann **best-effort**: Fällt die Ermittlung aus, läuft die Suche unerweitert weiter. Eine Erweiterung darf nie brechen, was sie erweitert.
 
 **Nachweis:** Zwei Calls, exakt eine Variable geändert — Parameter weggelassen vs. explizit maximal. Delta ≠ 0 heisst, der Server muss ihn senden.
+
+**Wer den Recall verengt, zitiert den Scope.** Eine bewusste Verengung — exakt statt Wildcard, kein Fuzzy-Matching, kein Prefix — wird fast immer mit einem Risiko begründet: Eine falsche Zuordnung wäre *hier* besonders teuer. Das Argument trägt nur, wenn die Datenklasse, die das Risiko trägt, über diesen Server überhaupt erreichbar ist.
+
+Fallgeschichte (2026-08, im Entwurf gefangen, nicht ausgeliefert): Exakt-only wurde mit dem Schaden falsch zugeordneter **Konkursmeldungen** begründet — einer Rubrik, die der Server gar nicht bedient. Die Begründung klang zwingend und war an nichts gekoppelt; sie hätte wortgleich für jede beliebige Quelle dagestanden, und genau das ist ihr Erkennungsmerkmal. Es ist die vorformulierte Ausrede aus Regel 4, eine Stufe früher: Regel 4 fängt sie dort, wo das Modell sie liest, hier wird sie dort gefangen, wo jemand sie schreibt.
+
+**Prüffrage, zwei Teile:** *Nenne die Rubriken oder Datenklassen, die das Risiko tragen — und weise nach, dass sie erreichbar sind.* Der Nachweis ist derselbe wie oben: die Aufzählung des vollen Scopes, gegen die diese Regel ohnehin misst. Steht die Klasse nicht darin, fällt die Begründung. Die Verengung kann trotzdem richtig sein — aber sie muss aus dem neu begründet werden, was tatsächlich in Reichweite liegt. Ist die riskante Klasse erreichbar, gilt die Umkehrung: Dann ist Exakt-only richtig (die Ausnahme für sensible Daten in `ARCH-003`), und die Klasse gehört namentlich in die Tool-Description — sonst liest das Modell die Verengung als Lücke und rät sich darüber hinweg.
 
 ## Regel 2 — Parameter-Gruppen vollständig senden
 
@@ -81,7 +89,7 @@ class SearchResult(BaseModel):
     entries: list[TermEntry]
 ```
 
-Der Hinweis muss **konkret** sein. «Versuchen Sie eine andere Suche» ist kein nächster Schritt. Und er gehört ins Tool-Result, nicht ins README — das wird nicht an das Modell weitergereicht.
+Der Hinweis muss **konkret** sein. «Versuchen Sie eine andere Suche» ist kein nächster Schritt. Und er gehört ins Tool-Result, nicht ins README — das wird nicht an das Modell weitergereicht. Wie konkret er werden darf, ohne selbst zum Treffer zu werden, steht in Regel 10: vorschlagen ja, abfragen nein.
 
 **Abgrenzung:** Ein Transport- oder Autorisierungsfehler ist keine Leermenge und darf nie als solche formatiert werden. Ein abgewiesener Request — HTTP 421 auf einen fremden Host-Header, 401, 403, ein Verbindungsabbruch — erreicht die Quelle nie und kommt bei der aufrufenden Schicht trotzdem als «Fehlschlag ohne Daten» an; wer nur auf «keine Datensätze» prüft, reicht ihn als Leermenge durch. Er trägt aber einen anderen nächsten Schritt: **Konfiguration prüfen, nicht Suche verbreitern.** Ein Hinweis, der zur Wildcard rät, während die Abfrage gar nicht angekommen ist, schickt das Modell in die falsche Richtung — und ein Konfigurationsfehler unterläuft genau die Regel, die das Raten verhindern soll. Solche Fälle gehören mit `isError` in den Fehlerkanal, wie die Strukturabweichung in Regel 6.
 
@@ -89,7 +97,7 @@ Eine dritte Tür hat die Spec 2026-07-28 aufgemacht: die MRTR-Rückfrage. Sie si
 
 ## Regel 4 — Die Tool-Description ist eine Halluzinations-Oberfläche
 
-Die schwerste der sechs incident-belegten Regeln, weil sie kontraintuitiv ist: **Eine Formulierung, die eine Leermenge erklärt, erzeugt Konfabulation zuverlässiger als gar keine Formulierung.**
+Die schwerste der sieben incident-belegten Regeln, weil sie kontraintuitiv ist: **Eine Formulierung, die eine Leermenge erklärt, erzeugt Konfabulation zuverlässiger als gar keine Formulierung.**
 
 Realer Fall (`termdat-mcp`, 2026-07). Die Description enthielt:
 
@@ -179,11 +187,11 @@ Der Unterschied liegt in der Behandlung des **unerwarteten** Falls: `.get(x, [])
 
 ## Regeln aus der Spec 2026-07-28 — belegt durch den Mechanismus, nicht durch einen Schaden
 
-Die Regeln 1–6 stehen hier, weil etwas kaputtgegangen ist: eine Suche über 1 von 23 Klassifikationen, eine Registry-Abfrage eine Ebene daneben. Für die Regeln 7–9 gilt das nicht, und das gehört gesagt, statt sie stillschweigend danebenzustellen. Ihr Beleg ist der **Mechanismus**: Die Spec 2026-07-28 hat drei Felder eingeführt oder abgeschafft, aus denen sich dieselbe stille Unvollständigkeit ableiten lässt wie aus einem vergessenen Filter — nachrechenbar, aber noch nicht nachgemessen. Fällt einer der drei in freier Wildbahn auf, gehört der Vorfall hierher; bis dahin sind es Regeln mit Herleitung statt mit Narbe.
+Die Regeln 1–6 stehen hier, weil etwas kaputtgegangen ist: eine Suche über 1 von 23 Klassifikationen, eine Registry-Abfrage eine Ebene daneben. Regel 10 steht hinter diesem Abschnitt und gehört trotzdem zur ersten Gruppe — sie ist später dazugekommen, nicht anders belegt. Für die Regeln 7–9 gilt das nicht, und das gehört gesagt, statt sie stillschweigend danebenzustellen. Ihr Beleg ist der **Mechanismus**: Die Spec 2026-07-28 hat drei Felder eingeführt oder abgeschafft, aus denen sich dieselbe stille Unvollständigkeit ableiten lässt wie aus einem vergessenen Filter — nachrechenbar, aber noch nicht nachgemessen. Fällt einer der drei in freier Wildbahn auf, gehört der Vorfall hierher; bis dahin sind es Regeln mit Herleitung statt mit Narbe.
 
 Das Contributing-Kriterium dieses Repos bleibt davon unberührt: Ein **Vorschlag** von aussen braucht weiterhin einen eingetretenen Schaden. Was hier über die tiefere Latte kommt, ist eine Protokolländerung, die alle 42 Server des Portfolios gleichzeitig betrifft — nicht eine plausible Empfehlung.
 
-**Geltungsbereich.** Regel 7 gilt unabhängig von der Spec-Version; instabile Sortierung zerlegt Pagination auch auf 2025-06-18. Die Regeln 8 und 9 setzen 2026-07-28 voraus — `ttlMs`/`cacheScope` auf den List-Responses und MRTR (`resultType: "input_required"`) existieren vorher nicht. Wer einen Server der Wave D oder ein eingefrorenes Repo prüft, hakt sie als nicht anwendbar ab, statt sie zu erfüllen.
+**Geltungsbereich.** Regel 7 gilt unabhängig von der Spec-Version; instabile Sortierung zerlegt Pagination auch auf 2025-06-18. Dasselbe gilt für Regel 10 und für alles vor Regel 7. Die Regeln 8 und 9 setzen 2026-07-28 voraus — `ttlMs`/`cacheScope` auf den List-Responses und MRTR (`resultType: "input_required"`) existieren vorher nicht. Wer einen Server der Wave D oder ein eingefrorenes Repo prüft, hakt sie als nicht anwendbar ab, statt sie zu erfüllen.
 
 ## Regel 7 — Deterministische Reihenfolge, dokumentiert
 
@@ -372,10 +380,93 @@ async def test_input_required_resolves_against_the_live_source():
 
 ---
 
+## Regel 10 — Vorschlagen ist nicht Erweitern
+
+Zurück zur ersten Gruppe: Diese Regel hat wieder einen Vorfall hinter sich, keine Herleitung.
+
+Regel 3 verlangt einen nächsten Schritt auf der Leermenge. Der naheliegende Weg, ihn konkret zu machen, ist eine **kürzere Variante des Begriffs, den der Aufrufer selbst geschickt hat** — bei deutschen Komposita die Kürzung, die Regel 5 ohnehin erklärt: `Quellensteuerverordnung` → `Quellensteuer*`. Der Schritt danach ist der, der bricht: diese Variante selbst abzufragen und ihre Treffer zurückzugeben.
+
+**Die Sicherheitseigenschaft:** *Keine Meldung im Resultat darf einem Begriff zuzuschreiben sein, den der Aufrufer nicht gewählt hat.* Alles in `entries` beantwortet den Begriff, der reingegangen ist — und sonst nichts.
+
+Sie lässt sich in beide Richtungen verletzen, und beide Male sieht das Ergebnis brauchbar aus:
+
+| Verletzung | Was das Modell daraus macht |
+|---|---|
+| Server sucht die gekürzte Variante und mischt deren Treffer unter `entries` | «Zu *Quellensteuerverordnung* gibt es diese Meldungen» — für Meldungen, die zu einem anderen Begriff gehören |
+| Server schlägt gar nichts vor | Der Aufrufer weiss, dass die Abfrage nichts ergab, aber nicht, wie er zur richtigen kommt — der Ausfall aus Regel 3 |
+
+Der Konflikt zwischen «hilf dem Modell weiter» und «erfinde keine Treffer» wird damit nicht zugunsten einer Seite entschieden, sondern aufgeteilt: **vorschlagen ja, abfragen nein.**
+
+```python
+# ✗ Der Vorschlag wird gleich mitgesucht — die Treffer landen unter dem Begriff
+#   des Aufrufers, obwohl sie einen anderen beantworten.
+entries = await client.search(term)
+if not entries:
+    for variant in shorter_variants(term):
+        entries = await client.search(variant)
+        if entries:
+            return build_result(entries, hint=f"Keine Treffer für {term!r}.")
+
+# ✓ Der Vorschlag bleibt ein Vorschlag. Gesucht wird genau einmal, genau das,
+#   was der Aufrufer geschickt hat.
+entries = await client.search(term)
+if not entries:
+    return build_result(
+        [],
+        match_type="none",
+        suggestions=shorter_variants(term),   # abgeleitet, nicht abgefragt
+        hint=(
+            f"Keine Meldung zu {term!r}. Volltextsuche matcht auf ganzen Wörtern; "
+            "die Vorschläge unter `suggestions` sind Kürzungen deines Begriffs "
+            "und ungeprüft — rufe das Tool damit erneut auf, wenn einer passt."
+        ),
+    )
+```
+
+Die Vorschläge werden **aus der Eingabe abgeleitet**, nicht aus einem fremden Vokabular geholt. Eine Liste «häufiger Begriffe» aus der Quelle ist ein zweiter Treffertyp mit eigenem Recall-Risiko und wieder eine Abfrage, die niemand angefordert hat.
+
+**Abgrenzung gegen `ARCH-003`.** Der Katalog-Check verlangt auf einer Leermenge einen **Fuzzy-Match *oder* einen Vorschlagsmechanismus**, dazu ein `match_type`-Feld und einen handlungsfähigen Hinweis. Der Vorschlags-Arm erfüllt beides — den Check und diese Regel. Wer den Fuzzy-Arm nimmt, hält die Sicherheitseigenschaft nur, wenn die heuristischen Treffer in einem **eigenen Feld** stehen, mit dem Begriff, der sie erzeugt hat, und `match_type` sie als das ausweist. Verboten ist die Vermischung, nicht die Hilfe. Umgekehrt gilt die Ausnahme von `ARCH-003` weiter: Wo eine Fehlzuordnung teuer ist — Personendaten, Zugriffskontrollen —, ist «nichts gefunden» richtig, und die Begründung dafür steht unter Regel 1: die riskante Klasse nennen und zeigen, dass sie erreichbar ist.
+
+**Nachweis / Test.** Ein **Paar**, und beide Hälften sind Pflicht:
+
+```python
+@respx.mock
+async def test_empty_result_offers_variants_of_the_callers_own_term():
+    """Regel 10, Hälfte 1: Der nächste Schritt ist konkret und kommt aus der Eingabe."""
+    respx.get(SEARCH_URL).mock(return_value=httpx.Response(200, json=_EMPTY_PAGE))
+    result = await search_tool(term="Quellensteuerverordnung")
+    assert result.entries == [] and result.match_type == "none"
+    assert result.suggestions, "Leermenge ohne Vorschlag — Regel 3 bleibt unerfüllt"
+    assert all(s.rstrip("*") in "Quellensteuerverordnung" for s in result.suggestions), (
+        "Vorschlag stammt nicht aus dem Begriff des Aufrufers"
+    )
+
+@respx.mock
+async def test_suggestions_are_never_searched():
+    """Regel 10, Hälfte 2: Vorgeschlagen wird viel, abgefragt genau eines."""
+    route = respx.get(SEARCH_URL).mock(
+        return_value=httpx.Response(200, json=_EMPTY_PAGE)
+    )
+    result = await search_tool(term="Quellensteuerverordnung")
+    assert result.suggestions
+    assert route.call_count == 1, (
+        f"{route.call_count} Abfragen für einen Begriff — Vorschläge wurden gesucht"
+    )
+    sent = route.calls[0].request.url.params["SearchTerm"]
+    assert sent == "Quellensteuerverordnung", f"gesucht wurde {sent!r}"
+```
+
+Fällt eine der beiden weg, ist die andere wertlos: Ohne die erste besteht ein Server, der nie etwas vorschlägt, die zweite mühelos. Ohne die zweite besteht ein Server die erste, der jeden seiner Vorschläge sofort selbst abfragt. Das ist dieselbe Testform wie bei Regel 9 — die Trennung wird in beide Richtungen assertiert, nicht bloss die Existenz eines Feldes.
+
+Der Zähler auf der Route ist der eigentliche Prüfgegenstand und darum bewusst offline: Er misst, was rausgegangen ist, nicht was zurückkam. Ein Live-Test kann das nicht — dort ist eine Suche mit einem Treffer von einer Suche mit einem nachgereichten Ersatz-Begriff nicht zu unterscheiden. Genau deshalb greift hier ausnahmsweise der Mock: Prüfgegenstand ist das eigene Verhalten des Servers, nicht eine Annahme über die Quelle.
+
+---
+
 ## Checkliste vor dem Release eines datenabfragenden Tools
 
 - [ ] Jeder optionale Filter-/Scope-Parameter geprüft: Was bedeutet Weglassen? Beleg aus der Parameterbeschreibung
 - [ ] Recall-Delta gemessen (weggelassen vs. explizit maximal), Delta ≠ 0 behoben
+- [ ] Jede bewusste Recall-Verengung (exakt statt Wildcard, kein Fuzzy) nennt die Rubriken/Datenklassen, die das Risiko tragen — und belegt aus der Scope-Aufzählung, dass sie erreichbar sind (Regel 1)
 - [ ] Boolesche Parameter-Gruppen vollständig gesendet, Verengung nachgewiesen
 - [ ] Leeres Result trägt ein `hint`-Feld mit konkretem nächstem Schritt
 - [ ] Transport- und Autorisierungsfehler enden im Fehlerkanal, nie als Leermenge mit Such-Hinweis (Regel 3)
@@ -390,6 +481,8 @@ async def test_input_required_resolves_against_the_live_source():
 - [ ] `cacheScope` gegen `requires_credentials` geprüft — credential-abhängige Resultate nie über den Aufrufer hinaus, und nur die beiden Werte `"public"` / `"private"` (Regel 8)
 - [ ] `input_required` und Leermenge sind disjunkt: kein `hint` auf einer Rückfrage, kein `inputRequests` auf einem Null-Treffer (Regel 9)
 - [ ] Die beantwortete Rückfrage liefert im Retry tatsächlich Treffer (Regel 9)
+- [ ] Die Leermenge trägt Vorschläge, abgeleitet aus dem Begriff des Aufrufers — und der Zähler auf der Upstream-Route beweist, dass keiner davon abgefragt wurde (Regel 10, beide Hälften)
+- [ ] Kein Eintrag in `entries` beantwortet einen anderen Begriff als den geschickten; heuristische Treffer stehen in einem eigenen Feld, mit `match_type` (Regel 10)
 - [ ] Gegen die offizielle Oberfläche der Quelle verglichen, jedes Delta erklärt
 
 ## Woher diese Regeln stammen
@@ -404,6 +497,8 @@ Vier Dinge daran sind übertragbar:
 4. **Gefunden hat es ein User mit dem Web-UI daneben** — Ground Truth kommt von aussen, nicht aus der Testsuite.
 
 Regel 6 kam nach einem zweiten Fall dazu: Eine Abfrage der MCP Registry lieferte eine Zeit lang nichts, weil die Felder unter `servers[].server.*` liegen und der Client eine Ebene höher suchte.
+
+Regel 10 kam nach einem dritten dazu, und der unterscheidet sich in einem Punkt von den beiden davor: Er ist **im Entwurf** aufgefallen, nicht im Betrieb. Beim Anwenden von `ARCH-003` auf ein Such-Tool des Portfolios (2026-08) sind zwei Fehler zusammengefallen, die sich gegenseitig gedeckt haben. Erstens wurde der Vorschlagsmechanismus, den der Check verlangt, als Erlaubnis gelesen, die Vorschläge auch gleich abzufragen — das Resultat hätte Meldungen unter einem Begriff ausgeliefert, den niemand gewählt hat. Zweitens wurde die Gegenrichtung, Exakt-only, mit falsch zugeordneten Konkursmeldungen begründet — einer Rubrik ausserhalb des bedienten Scopes. Beide Fehler klangen nach Sorgfalt, und keiner war an eine überprüfbare Grösse gekoppelt. Was daran übertragbar ist: Ein Argument, das für jede beliebige Quelle wortgleich dastünde, ist noch keines. Der Schaden ist hier nicht eingetreten, weil der Entwurf vorher gelesen wurde — festgehalten ist er trotzdem, an derselben Stelle wie die anderen.
 
 Die Regeln 7–9 haben diese Herkunft **nicht**. Sie kommen aus der Spec 2026-07-28 und sind aus deren Mechanik hergeleitet: stateless Core ohne `initialize` (Regel 7), `ttlMs`/`cacheScope` auf den List-Responses (Regel 8), MRTR statt serverinitiierter Elicitation (Regel 9). Hergeleitet, nicht gemessen — was in diesem Repo ein Unterschied ist und deshalb dabeisteht.
 
@@ -423,11 +518,11 @@ Daneben, nicht Teil der Kette: `mcp-builder` — generische Bauanleitung von Ant
 
 ### Welche Regel welcher Check ist
 
-Stand des Katalogs: `mcp-audit` auf `main` — 113 Checks in zwölf Kategorien auf zwei Spec-Baselines, davon sechs in der Kategorie `FID`. Geschnitten ist v2.0.0 (112 Checks); die drei Änderungen, die diese Tabelle zuletzt bewegt haben, stehen drüben unter `[Unreleased]` und sind dort als v2.1.0 eingestuft. Die Zuordnung ist nicht eins zu eins — `FID-003` trägt drei Regeln, `ARCH-020` zwei, Regel 5 braucht zwei Checks und Regel 9 drei. Ohne Check ist seit `FID-006` keine mehr:
+Stand des Katalogs: `mcp-audit` auf `main` — 113 Checks in zwölf Kategorien auf zwei Spec-Baselines, davon sechs in der Kategorie `FID`. Geschnitten ist v2.0.0 (112 Checks); die drei Änderungen, die diese Tabelle zuletzt bewegt haben, stehen drüben unter `[Unreleased]` und sind dort als v2.1.0 eingestuft. Die Zuordnung ist nicht eins zu eins — `FID-003` trägt drei Regeln, `ARCH-020` zwei, Regel 5 braucht zwei Checks und Regel 9 drei. Ohne Check ist seit `FID-006` keine mehr, und Regel 10 bringt mit `ARCH-003` den einzigen **`enforced`** Check dieser Tabelle mit — alle anderen sind `advisory`:
 
 | Regel | Check |
 |---|---|
-| 1 — Scope-Parameter explizit senden | [`FID-001`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-001.md) — «Scope-Defaults: Filter-Parameter explizit senden, nie erben» |
+| 1 — Scope-Parameter explizit senden | [`FID-001`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-001.md) — «Scope-Defaults: Filter-Parameter explizit senden, nie erben». **Reichweite:** Der Check verlangt, dass eine bewusst gewählte Einschränkung im Tool-Result **sichtbar** ist. Dass ihre **Begründung** den erreichbaren Scope zitiert — die Rubriken nennen, die das Risiko tragen, und sie in der Scope-Aufzählung nachweisen —, verlangt drüben keiner der 113 Checks; das steht allein hier |
 | 2 — Parameter-Gruppen vollständig senden | [`FID-004`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-004.md) — «Teilmengen erben Server-Defaults», im Check als die feinere Ausprägung von `FID-001` geführt |
 | 3 — Leermenge trägt einen nächsten Schritt | [`FID-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-003.md). Die Abgrenzung gegen Transport- und Autorisierungsfehler steht dort ausdrücklich, mit `HTTP 421` als gemessenem Fall und Querverweis auf `SEC-016`/`SEC-024` |
 | 4 — Tool-Description als Halluzinations-Oberfläche | ebenfalls [`FID-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-003.md) — der Check trägt beide Hälften: den fehlenden nächsten Schritt und die vorformulierte Ausrede |
@@ -436,9 +531,12 @@ Stand des Katalogs: `mcp-audit` auf `main` — 113 Checks in zwölf Kategorien a
 | 7 — Deterministische Reihenfolge | [`ARCH-020`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-020.md) — «`ttlMs` und `cacheScope` auf List- und Read-Ergebnissen, deterministische Reihenfolge», `spec_baseline: 2026-07-28`, `adoption: advisory`. **Reichweite:** Der Check prüft die Reihenfolge von `tools/list` über Prozessgrenzen hinweg mit `PYTHONHASHSEED=random` — schärfer als das Testrezept oben — und seit seiner Erweiterung auch den Pagination-Schnitt auf Query-Resultaten: zwei aufeinanderfolgende Seiten, leere Schnittmenge **und** vollständige Vereinigung, gegen einen Bestand grösser als eine Seite. Offen bleibt die **Baseline**: `ARCH-020` misst auf `2026-07-28`, der Pagination-Verlust tritt aber auch auf `2025-11-25` auf — er hängt an der Quelle und am Sortierschlüssel, nicht am Protokollstand, und Regel 7 gilt hier ausdrücklich unabhängig von der Spec-Version. Ein Server der alten Baseline wird drüben also nicht dagegen gemessen. Der Check benennt diese Lücke in seiner Description und lässt sie bewusst offen: `spec_baseline` gilt pro Datei, und `beide` würde `ttlMs`/`cacheScope` gegen Server messen, deren Protokoll diese Felder nicht kennt |
 | 8 — Ehrliches `ttlMs` | ebenfalls [`ARCH-020`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-020.md) — der Check trägt beide Hälften, samt dem Kriterium «kein Wert oberhalb der Änderungsfrequenz der Quelle» und `cacheScope: "public"` nur über aufruferunabhängigen Inhalten. **Reichweite:** Er misst die fünf `CacheableResult`-Methoden, knüpft `cacheScope` an `data_class` und fragt seit seiner Erweiterung auch die Ableitung für **Datenresultate** ab — aus `source_freshness`, gedeckelt auf die nächste Publikation, unbekannte Kadenz kurz statt komfortabel. Dieses Kriterium ist **bedingt** formuliert: Es greift, «sofern der Server Datenresultate mit `ttlMs` versieht». Ein Datenresultat ganz **ohne** `ttlMs` fällt drüben damit nicht auf — dass eines hingehört, verlangt nur diese Regel |
 | 9 — `input_required` ist keine leere Antwort | [`HITL-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/HITL-006.md) — «MRTR statt serverinitiierter Requests», dazu [`ARCH-018`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-018.md) für `resultType` auf allen Results und, seit dessen Erweiterung, [`FID-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-003.md) für die Abgrenzung gegen den Null-Treffer. Die Aufteilung steht drüben in beiden Checks ausgeschrieben: `HITL-006` prüft die Retry-Idempotenz und dass `input_required` nicht für gewöhnliche **Fehler** benutzt wird, `FID-003` die Disjunktheit gegen die **Leermenge** — kein `hint` auf einer Rückfrage, kein `inputRequests` auf einem Null-Treffer, und `entries` fehlt bei der Rückfrage, statt leer zu sein. **Reichweite:** Die drei Kriterien in `FID-003` sind doppelt bedingt — auf `2026-07-28` und darauf, dass das Tool `input_required` überhaupt zurückgeben kann; `FID-003` selbst trägt unverändert kein `spec_baseline`. Und dass der beantwortete Retry tatsächlich **Treffer** liefert, verlangt drüben nur der Idempotenz-Test bei `write_capable: true`; für lesende Server steht dieser Nachweis allein hier |
+| 10 — Vorschlagen ist nicht Erweitern | [`ARCH-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-003.md) — «‹Not Found›-Anti-Pattern: Heuristiken statt leerer Antworten», `severity: medium`, `applies_when: always`, ohne `adoption`-Feld und damit **`enforced`**. Der Check ist der Grund für diese Regel und zugleich ihre Gegenprobe: Er verlangt auf der Leermenge einen Fuzzy-Match **oder** einen Vorschlagsmechanismus plus `match_type`, und der Vorschlags-Arm erfüllt beide Seiten. **Reichweite:** Was drüben fehlt, ist die Disjunktheit — kein Kriterium verbietet, den Vorschlag gleich abzufragen und seine Treffer unter `results` zu mischen; das Pass-Pattern des Checks tut es sogar (`match_type: "fuzzy"` auf einer gemeinsamen Liste). Der Zähler auf der Upstream-Route steht allein hier. Nebenan liegt [`DRIFT-002`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/DRIFT-002.md) («Fallback verengt, erweitert nie») — dieselbe Form eine Ebene weiter: dort wird ein anderer *Datensatz* substituiert, hier eine andere *Abfrage* |
 
-Wer nach den Regeln 1–5 baut, besteht die `FID`-Checks; Regel 6 liegt seit `FID-006` ebenfalls dort, allerdings `advisory` — der Check verlässt diesen Stand erst nach dem ersten Portfolio-Durchlauf, der zeigt, wie viele Server die Antwortstruktur überhaupt bestätigen. Die Regeln 7–9 laufen über `ARCH-020`, `HITL-006`, `ARCH-018` und die `2026-07-28`-Kriterien von `FID-003` und sind ebenfalls durchweg `advisory` — sie blockieren also nicht, sie werden gezählt. Ohne Check ist keine Regel mehr; was offen bleibt, steht je Zeile in der Reichweite und ist damit ein benannter Rand, kein fehlender Check.
+Wer nach den Regeln 1–5 baut, besteht die `FID`-Checks; Regel 6 liegt seit `FID-006` ebenfalls dort, allerdings `advisory` — der Check verlässt diesen Stand erst nach dem ersten Portfolio-Durchlauf, der zeigt, wie viele Server die Antwortstruktur überhaupt bestätigen. Die Regeln 7–9 laufen über `ARCH-020`, `HITL-006`, `ARCH-018` und die `2026-07-28`-Kriterien von `FID-003` und sind ebenfalls durchweg `advisory` — sie blockieren also nicht, sie werden gezählt. Regel 10 ist die Ausnahme: `ARCH-003` ist `enforced` und gilt `always`, ein Verstoss dagegen blockiert. Ohne Check ist keine Regel mehr; was offen bleibt, steht je Zeile in der Reichweite und ist damit ein benannter Rand, kein fehlender Check.
 
 **Warum die Zeilen 7–9 nicht in `FID` liegen:** Die drei Regeln kommen aus der Spec, und der Katalog ordnet Spec-Checks nach dem Ort der Änderung ein — Caching und Reihenfolge nach `ARCH`, MRTR nach `HITL`. Die Datentreue-Hälfte davon stand hier bis zuletzt als offen und ist inzwischen abgedeckt — aber nicht durch neue `FID`-Checks: `ARCH-020` hat den Pagination-Schnitt und die `ttlMs`-Ableitung in sich aufgenommen, statt ein `FID-007` zu eröffnen, weil beides an denselben zwei Grössen hängt wie der bestehende Check; und die Disjunktheit gegen den Null-Treffer ist nach `FID-003` gegangen, weil sie an der Leermenge hängt und nicht am Rückfrageprotokoll.
+
+**Und warum Zeile 10 nicht:** Aus einem anderen Grund. `ARCH-003` ist älter als die `FID`-Kategorie und beschreibt das Verhalten auf der Leermenge aus der Perspektive des Antwortformats, nicht der Datentreue. Die Datentreue-Hälfte — dass ein Vorschlag nie zum Treffer werden darf — ist dort nicht als Kriterium formuliert. Ob das ein `FID-007` verdient, entscheidet der erste Portfolio-Durchlauf, der zeigt, wie viele Server auf der Leermenge überhaupt etwas anbieten. Bis dahin steht der Rand in der Zeile, wie überall sonst in dieser Tabelle.
 
 **Zur Haltbarkeit dieser Tabelle:** Der Katalog bewegt sich schneller als dieser Skill. Zwischen v1.7.0 (97 Checks) und v2.0.0 (112, dual baseline) lagen vier Tage, und mit v2.0.0 sind aus vier angeblich fehlenden Checks drei vorhandene geworden. Der nächste Beleg kam einen Tag später: Zwischen v2.0.0 und dem Katalogstand oben liegt ein Tag, und in ihm ist aus «Regel 6 hat keinen Check» ein `FID-006` geworden — plus zwei Reichweite-Sätze, die von «prüft er nicht» auf «prüft er» gekippt sind. Wer hier eine Zeile liest, um ein Finding zu beheben, prüft besser den Katalogstand oben mit — eine falsche Zuordnung kostet an genau der Stelle am meisten, an der jemand etwas reparieren will.

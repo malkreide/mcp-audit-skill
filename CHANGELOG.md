@@ -7,8 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Neun Regeln — die Liste bleibt, aber Regel 8 sagt in zwei Punkten etwas
-anderes als vorher.
+Zehn Regeln. Eine ist dazugekommen, und eine bestehende bekommt einen Zusatz —
+beide aus demselben Doppelfehler beim Anwenden von `ARCH-003`. Dazu die
+Korrekturen an Regel 8, die schon vorher hier standen.
+
+Die Leitfrage des Skills hat eine zweite Stufe bekommen. Bisher hiess sie: «kann
+ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?» Neu steht
+daneben: «und wenn ich falsch gefragt habe — komme ich von hier zur richtigen
+Frage?» Die erste entscheidet, ob das Modell schweigen darf; die zweite, ob es
+weiterkommt, ohne sich einen Treffer zu erfinden.
+
+**Der Anlass.** Beim Anwenden von `ARCH-003` («‹Not Found›-Anti-Pattern») auf ein
+Such-Tool des Portfolios sind zwei Fehler zusammengefallen, die sich gegenseitig
+gedeckt haben. Erstens wurde der Vorschlagsmechanismus, den der Check verlangt,
+als Erlaubnis gelesen, die Vorschläge gleich mitzusuchen — das Resultat hätte
+Meldungen unter einem Begriff ausgeliefert, den niemand gewählt hat. Zweitens
+wurde die Gegenrichtung, Exakt-only, mit falsch zugeordneten **Konkursmeldungen**
+begründet, einer Rubrik, die der Server gar nicht bedient. Beides klang nach
+Sorgfalt, keines war an eine überprüfbare Grösse gekoppelt.
+
+**Einstufung: minor.** Eine neue Regel plus ein Regel-Zusatz, beides additiv;
+kein bestehendes Kriterium wird enger. Wer nach 1.6.0 gebaut hat, muss nichts
+zurückbauen — er hat zwei Nachweise mehr zu erbringen.
+
+**Zur Herkunft, ausdrücklich:** Regel 10 ist der Grenzfall der Latte dieses
+Repos. Der Fehler ist passiert, der Schaden nicht — der Entwurf wurde vorher
+gelesen. Das steht in `SKILL.md`, in beiden READMEs und hier, statt als
+«Vorfall» durchzugehen. Über die Latte bringt sie nicht ihre Plausibilität,
+sondern dass sie sich verletzen lässt, ohne dass es jemandem auffällt: Ein
+Server, der seine eigenen Vorschläge absucht, ist von aussen nicht von einem zu
+unterscheiden, der Treffer hat.
+
+Was darunter unverändert stehen bleibt: Regel 8 sagt in zwei Punkten etwas
+anderes als vor diesem Stand.
 
 Angefangen hat es bei der Zuordnung Regel → Audit-Check: `mcp-audit` hat mit
 PR #98 drei Dinge bewegt (dort unter `[Unreleased]`, eingestuft als v2.1.0),
@@ -35,6 +66,66 @@ Die beiden Werte-Fragen zusätzlich gegen die Spec selbst — das
 Minor #5 (SEP-2549).
 
 ### Added
+
+- **Regel 10 — Vorschlagen ist nicht Erweitern.** Auf der Leermenge kürzere
+  Varianten des Begriffs anbieten, den der Aufrufer selbst geschickt hat — und
+  keine davon abfragen. Die Sicherheitseigenschaft steht als eigener Satz da:
+  *Keine Meldung im Resultat darf einem Begriff zuzuschreiben sein, den der
+  Aufrufer nicht gewählt hat.* Sie ist in beide Richtungen verletzbar, und beide
+  Male sieht das Ergebnis brauchbar aus — der Server mischt die Treffer der
+  gekürzten Variante unter `entries`, oder er schlägt gar nichts vor und lässt
+  den Aufrufer im Ausfall aus Regel 3 stehen. Der Konflikt zwischen «hilf dem
+  Modell weiter» und «erfinde keine Treffer» wird deshalb aufgeteilt statt
+  entschieden.
+
+  **Der Nachweis ist ein Paar, und beide Hälften sind Pflicht:** Vorschläge
+  erscheinen und stammen aus der Eingabe; Vorschläge werden nie gesucht —
+  gemessen am Zähler der Upstream-Route und am tatsächlich gesendeten Suchbegriff.
+  Fällt eine weg, ist die andere wertlos: Ein Server, der nie etwas vorschlägt,
+  besteht die zweite mühelos; einer, der jeden Vorschlag sofort selbst abfragt,
+  besteht die erste. Dieselbe Testform wie bei Regel 9 — die Trennung wird in
+  beide Richtungen assertiert.
+
+  **Ausnahmsweise offline.** Prüfgegenstand ist, was rausgegangen ist, nicht was
+  zurückkam. Live ist das nicht messbar: Eine Suche mit einem Treffer sieht aus
+  wie eine Suche mit stillschweigend ersetztem Begriff. Der Mock ist hier
+  zulässig, weil die geprüfte Annahme das eigene Verhalten des Servers ist und
+  keine über die Quelle — die Umkehrung der Begründung aus Regel 5.
+
+  **Abgrenzung gegen `ARCH-003`, das die Regel ausgelöst hat.** Der Check
+  verlangt Fuzzy-Match **oder** Vorschlagsmechanismus plus `match_type`; der
+  Vorschlags-Arm erfüllt Check und Regel zugleich. Wer den Fuzzy-Arm nimmt, hält
+  die Sicherheitseigenschaft nur mit einem eigenen Feld für die heuristischen
+  Treffer, samt dem Begriff, der sie erzeugt hat. Verboten ist die Vermischung,
+  nicht die Hilfe.
+
+- **Regel-Zusatz zu Regel 1: Wer den Recall verengt, zitiert den Scope.** Eine
+  Exakt-only-Entscheidung wird fast immer mit einem Risiko begründet. Das
+  Argument trägt nur, wenn die Datenklasse, die das Risiko trägt, über diesen
+  Server erreichbar ist. Prüffrage in zwei Teilen: *Nenne die Rubriken oder
+  Datenklassen, die das Risiko tragen — und weise nach, dass sie erreichbar
+  sind.* Der Nachweis ist der, gegen den Regel 1 ohnehin misst: die Aufzählung
+  des vollen Scopes. Steht die Klasse nicht darin, fällt die Begründung; die
+  Verengung kann richtig bleiben, muss aber aus dem Erreichbaren neu begründet
+  werden.
+
+  Es ist die vorformulierte Ausrede aus Regel 4, eine Stufe früher: Regel 4 fängt
+  sie dort, wo das Modell sie liest, dieser Zusatz dort, wo jemand sie schreibt.
+  Erkennungsmerkmal beide Male dasselbe — eine Begründung, die für jede beliebige
+  Quelle wortgleich dastünde. Umgekehrt gilt: Ist die riskante Klasse erreichbar,
+  ist Exakt-only richtig (die Ausnahme für sensible Daten in `ARCH-003`) und die
+  Klasse gehört namentlich in die Tool-Description.
+
+- **Zwei Blöcke in `reference/patterns.py`** — `shorter_variants()` samt
+  `search_and_suggest()` und dem ✗-Zweig, der die Vorschläge absucht, dazu
+  `match_type` und `suggestions` auf `SearchResult` und ein `term` an
+  `build_result()`, damit die Leermenge ihre Vorschläge ohne zweite Codestelle
+  trägt. Die CI verlangt für jede Regel ein Pattern.
+
+- **Drei neue Punkte in der Release-Checkliste** — der Scope-Beleg für jede
+  bewusste Verengung (Regel 1), die beiden Hälften des Regel-10-Nachweises, und
+  dass kein Eintrag in `entries` einen anderen Begriff beantwortet als den
+  geschickten.
 
 - **Ein CI-Schritt hält die Zuordnungstabelle gegen die Regelliste** — jede
   Regel genau eine Zeile, jede Zeile mindestens eine Check-ID, plus die
@@ -79,6 +170,23 @@ Minor #5 (SEP-2549).
   wird abgeschaltet.
 
 ### Changed
+
+- **Die Zuordnungstabelle bekommt eine Zeile 10 — und mit ihr den ersten
+  `enforced` Check.** Regel 10 liegt auf
+  [`ARCH-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-003.md)
+  (`severity: medium`, `applies_when: always`, **kein** `adoption`-Feld und damit
+  `enforced` — alle anderen Checks dieser Tabelle sind `advisory`). Die
+  Reichweite ist der interessante Teil: Drüben fehlt genau die Disjunktheit. Kein
+  Kriterium verbietet, den Vorschlag gleich abzufragen und seine Treffer unter
+  `results` zu mischen — das Pass-Pattern des Checks tut es sogar, mit
+  `match_type: "fuzzy"` auf einer gemeinsamen Liste. Nebenan steht `DRIFT-002`
+  («Fallback verengt, erweitert nie»), dieselbe Form eine Ebene weiter: dort wird
+  ein anderer *Datensatz* substituiert, hier eine andere *Abfrage*.
+
+  Die Zeile zu Regel 1 nennt jetzt ebenfalls ihre Reichweite: `FID-001` verlangt,
+  dass eine bewusst gewählte Einschränkung im Tool-Result **sichtbar** ist —
+  dass ihre **Begründung** den erreichbaren Scope zitiert, verlangt keiner der
+  113 Checks.
 
 - **Regel 6 zeigt auf [`FID-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-006.md)**
   («Antwortstruktur bestätigen, bevor gezählt wird», `high`,
@@ -144,7 +252,15 @@ Minor #5 (SEP-2549).
 - **Beide READMEs ziehen die Kurzfassung nach** — Regeln 1–6 auf sechs
   `FID`-Checks, Regel 9 zusätzlich auf `FID-003`, Katalogstand 113, und statt
   «Regel 6 hat keinen Check» der Hinweis, dass offen nur noch Reichweite ist,
-  am weitesten bei Regel 7.
+  am weitesten bei Regel 7. Dazu die zehnte Zeile in der Regelliste, der
+  Scope-Zusatz an Zeile 1, der Herkunftsabsatz zu Regel 10 und der Satz im
+  Contributing-Abschnitt, der sie als Grenzfall der eigenen Latte ausweist.
+
+- **Die CI-Konstanten für die README-Überschriften stehen auf «ten»/«zehn».**
+  Wie beim Schritt von acht auf neun bleiben die Zahlwörter hartcodiert: Eine
+  ergänzte Regel erzwingt damit beide READMEs und die CI im selben Commit,
+  statt eine veraltete Zahl grün durchzulassen. Ebenso das Zahlwort im Docstring
+  von `reference/patterns.py`.
 
 ### Fixed
 

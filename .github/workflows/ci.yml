@@ -100,8 +100,8 @@ jobs:
           # Regex: Wird eine Regel ergaenzt, muessen beide READMEs und diese
           # Konstante im selben Commit mitgehen — sonst faellt der Job aus, statt
           # eine veraltete Zahl gruen durchzulassen.
-          for path, heading in [("README.md", "The nine rules"),
-                                ("README.de.md", "Die neun Regeln")]:
+          for path, heading in [("README.md", "The ten rules"),
+                                ("README.de.md", "Die zehn Regeln")]:
               got = listed(path, heading)
               if got != expected:
                   sys.exit(f"{path}: lists {got} rules, SKILL.md defines {expected}")
