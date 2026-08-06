@@ -68,6 +68,69 @@ jobs:
       - name: Linting der Referenz-Vorlagen
         run: ruff check .
 
+      # Der Waechter oben belegt, dass es Vorlagen GIBT. Er belegt nicht, dass
+      # die beiden Ruff-Schritte sie noch lesen — und das ist eine andere
+      # Frage. Wird `reference/` in ruff.toml ausgeschlossen (per `exclude`,
+      # `[lint] exclude`, `[format] exclude`, `select = []` oder einem
+      # pauschalen `per-file-ignores`), melden beide Schritte eine Warnung auf
+      # stderr und **Exit 0**: «All checks passed!», ohne eine Zeile gelesen zu
+      # haben. Gruen wird dann ausgerechnet der Code, den Leute kopieren.
+      #
+      # Der Fall ist nicht hypothetisch, und zwar in genau diesem Repo: In
+      # ruff.toml stand fuer diese Dateien schon einmal `select = []` — die
+      # Begruendung und ihre Widerlegung stehen dort. Gemerkt hat es niemand,
+      # weil nichts rot wurde. Das Schwester-Repo mcp-data-source-probe-skill
+      # hat daraus seinen Check 12 gebaut; das hier ist dieselbe Sonde.
+      #
+      # Geprueft wird nicht die Konfiguration, sondern die WIRKUNG. Ein
+      # Konfigurationsleser muesste jeden der fuenf Schalter einzeln kennen —
+      # und wuerde den verpassen, den ruff erst nach diesem Commit bekommt.
+      # Eine absichtlich fehlerhafte Datei liegt kurz unter `reference/`, und
+      # beide Gates muessen sie beim NAMEN nennen: Gegen den Exit-Status zu
+      # pruefen hiesse, dass ein anderer, echter Fund anderswo im Baum als
+      # bestandene Sonde durchginge.
+      #
+      # `.` statt `reference/`, wie in den Schritten oben: Ein explizit
+      # genannter Pfad umgeht `exclude` und wuerde genau die Luecke zudecken,
+      # die dieser Schritt sucht.
+      - name: Die Ruff-Gates greifen nachweislich auf reference/
+        run: |
+          probe=reference/_ruff_gate_probe.py
+          if [ -e "$probe" ]; then
+            echo "::error::$probe liegt schon da. Dieser Schritt legt die Datei selbst an und raeumt sie weg; existiert sie vorher, wuerde er sie ueberschreiben und loeschen."
+            exit 1
+          fi
+          # F401 (ungenutzter Import) und ein Formatverstoss in derselben
+          # Datei — so testet eine Sonde beide Gates. F821 waere untauglich:
+          # genau diese Regel ist fuer reference/ absichtlich unterdrueckt.
+          printf 'import os\nx   =    1\n' > "$probe"
+          trap 'rm -f "$probe"' EXIT
+
+          check_out=$(ruff check --no-cache --output-format=concise . 2>&1) || true
+          format_out=$(ruff format --no-cache --check . 2>&1) || true
+
+          dead=0
+          case "$check_out" in
+            *"$probe"*) ;;
+            *) echo "::error::ruff check hat $probe nicht beanstandet — das Lint-Gate greift auf reference/ nicht mehr. Verdaechtig sind exclude, select und per-file-ignores in ruff.toml."
+               printf 'ruff check meldete:\n%s\n' "$check_out"
+               dead=1 ;;
+          esac
+          case "$format_out" in
+            *"$probe"*) ;;
+            *) echo "::error::ruff format --check hat $probe nicht beanstandet — das Format-Gate greift auf reference/ nicht mehr. Verdaechtig sind exclude und [format] exclude in ruff.toml."
+               printf 'ruff format meldete:\n%s\n' "$format_out"
+               dead=1 ;;
+          esac
+          [ "$dead" -eq 0 ] || exit 1
+
+          rm -f "$probe"
+          if [ -e "$probe" ]; then
+            echo "::error::$probe liess sich nicht entfernen — eine liegengebliebene Sonde setzt die Schritte darueber im naechsten Lauf auf eine Datei an, die niemand geschrieben hat."
+            exit 1
+          fi
+          echo "ok — beide Ruff-Gates beanstanden eine fehlerhafte Datei unter reference/"
+
       # Der Ruff-Pin steht zweimal: oben und als `rev` im Pre-Commit-Hook.
       # Laufen sie auseinander, formatiert der Hook nach der einen und dieser
       # Job prueft nach der anderen Version — der Hook meldet gruen und die CI
