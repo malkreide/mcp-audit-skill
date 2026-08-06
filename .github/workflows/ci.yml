@@ -22,17 +22,32 @@ jobs:
       #
       # The script runs every check even after one fails, so a red run shows
       # all the problems at once rather than one per push.
-      # Nur Formatierung, kein `ruff check` — Begruendung in ruff.toml.
-      # Ruff gepinnt, damit ein Upstream-Release den Formatter nicht aendert
-      # und die CI an unberuehrtem Vorlagen-Code rot wird. Bewusst anheben.
+      # Linting UND Formatierung — Regelwerk und Begruendung in ruff.toml.
+      # Ruff gepinnt, damit ein Upstream-Release weder Formatter noch Regelsatz
+      # aendert und die CI an unberuehrtem Vorlagen-Code rot wird. Bewusst
+      # anheben.
       #
       # ACHTUNG: diese Version und die `rev` in .pre-commit-config.yaml
       # muessen uebereinstimmen — der Schritt darunter prueft es.
       - name: Ruff installieren
         run: pip install ruff==0.15.8
 
+      # `reference/` ist der Code, den Leute kopieren. Bis hierher wurde er
+      # hoechstens kompiliert — compileall prueft Syntax, nicht mehr: ein
+      # ungenutzter Import, ein undefinierter Name in einem Zweig, ein
+      # mutables Default-Argument kompilieren alle anstandslos und wandern
+      # dann in jeden Server, der die Vorlage uebernimmt.
+      - name: Linting der Referenz-Vorlagen
+        run: ruff check --no-cache .
+
       - name: Formatierung der Referenz-Vorlagen
-        run: ruff format --check .
+        run: ruff format --no-cache --check .
+
+      # Der Import-Smoke-Test in scripts/validate.sh laedt die Vorlagen
+      # wirklich. Ohne diese Pakete meldet er «FAIL», nicht «skip» — die
+      # Begruendung steht in requirements-reference.txt.
+      - name: Abhaengigkeiten der Referenz-Vorlagen installieren
+        run: pip install -r requirements-reference.txt
 
       # Der Ruff-Pin steht zweimal: oben und als `rev` im Pre-Commit-Hook.
       # Laufen sie auseinander, formatiert der Hook nach der einen und dieser
