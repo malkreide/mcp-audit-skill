@@ -60,8 +60,15 @@ The skill triggers on its own when a search, query, or filter tool is designed, 
 ```
 .
 ├── SKILL.md                  # the ten rules, with the release checklist
-└── reference/
-    └── patterns.py           # copy-paste FastMCP / httpx / pydantic v2 patterns
+├── reference/
+│   └── patterns.py           # copy-paste FastMCP / httpx / pydantic v2 patterns
+├── scripts/
+│   └── validate.sh           # entry point for the checks; CI runs this file
+├── tools/
+│   └── checks/               # the checks themselves — one function per gate
+└── tests/
+    ├── mutations.py          # per check, a tree it MUST go red on
+    └── test_*.py             # runs them, and holds the checks against this repo
 ```
 
 ## Where these rules come from
@@ -129,6 +136,25 @@ belongs in this file.
 The skill's own subject applies to the proposal. If a rule cannot be violated in
 a way that something notices, it is not yet a rule — and if the evidence for it
 comes only from a mock, it is not yet evidence.
+
+Before opening a pull request, run the checks:
+
+```bash
+pip install -r requirements-dev.txt
+bash scripts/validate.sh
+pytest
+```
+
+`validate.sh` is the same file CI invokes, so there is no second copy to drift
+out of step. Every check runs even after one fails, so a red run names every
+problem at once.
+
+`pytest` applies the paragraph above to the checks themselves. Each one is an
+ordinary function under `tools/checks/`, and each has at least one tree in
+`tests/mutations.py` that it **must** go red on — along with an assertion about
+*what it then says*. A check without a mutation fails the suite. The same
+sentence, one level up: a check that cannot be violated in a way that something
+notices is not yet a check.
 
 Open an issue before a large pull request, so the shape can be settled first.
 

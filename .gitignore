@@ -6,6 +6,8 @@
 __pycache__/
 *.py[cod]
 .venv/
+.pytest_cache/
+.ruff_cache/
 
 # Secrets and local configuration — see the secrets check before any push
 .env

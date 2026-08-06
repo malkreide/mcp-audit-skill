@@ -3,13 +3,13 @@ name: validate
 on:
   push:
     branches: [main, master]
-    # Tag-Laeufe: der Schritt «Tag und CHANGELOG nennen dieselbe Version»
-    # unten laeuft nur hier. Achtung, das gilt fuer jeden Workflow: bei einem
+    # Tag-Laeufe: Pruefung 13 («Tag und CHANGELOG nennen dieselbe Version»)
+    # laeuft nur hier. Achtung, das gilt fuer jeden Workflow: bei einem
     # Tag-Lauf fuehrt GitHub die ci.yml des GETAGGTEN Commits aus, nicht die
     # von main. Ein Tag auf einen Commit ohne diesen Schritt wird also nicht
-    # geprueft. Alle bisherigen Tags (v1.0.0–v1.4.0) und die drei noch
-    # fehlenden (v1.5.0–v1.7.0) sind genau dieser Fall; sie sind von Hand
-    # verifiziert. Der Schritt greift fruehestens ab 1.8.0.
+    # geprueft. Alle bisherigen Tags (v1.0.0–v1.4.0) und die drei
+    # nachgetragenen (v1.5.0–v1.7.0) sind genau dieser Fall; sie sind von Hand
+    # verifiziert. Die Pruefung greift fruehestens ab 1.8.0.
     tags: ["v*"]
   pull_request:
 
@@ -24,450 +24,48 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Die drei Schritte darunter — compileall, `ruff format --check`,
-      # `ruff check` — ankern alle am Pfad `reference/`, und alle drei melden
-      # bei einem leeren Ergebnis Erfolg: `compileall` auf einem fehlenden
-      # Verzeichnis schreibt «Can't list» und liefert trotzdem Exit 0, ruff
-      # warnt «No Python files found» und liefert ebenfalls Exit 0. Wird
-      # `reference/` umbenannt oder geleert, pruefen ab dann drei Schritte
-      # nichts mehr und bleiben gruen. Dieser Wächter macht daraus ein Rot.
-      - name: Es gibt ueberhaupt Referenz-Vorlagen zu pruefen
-        run: |
-          if [ ! -d reference ]; then
-            echo "::error::reference/ fehlt — Verzeichnis umbenannt oder geloescht. Ohne es pruefen compileall, ruff format und ruff check ab hier nichts mehr, ohne rot zu werden."
-            exit 1
-          fi
-          n=$(find reference -name '*.py' -type f | wc -l)
-          if [ "$n" -eq 0 ]; then
-            echo "::error::reference/ enthaelt keine .py-Datei. compileall und ruff melden auf einem leeren Verzeichnis Erfolg — dieser Schritt existiert, damit das nicht als bestandene Pruefung durchgeht."
-            exit 1
-          fi
-          echo "ok — $n Vorlagen-Datei(en) unter reference/, die drei Pruefungen darunter haben einen Gegenstand"
-
-      - name: Python references are syntactically valid
-        run: python -m compileall -q reference/
-
-      # Ruff gepinnt, damit ein Upstream-Release weder Formatter noch Regeln
-      # unter uns aendert und die CI an unberuehrtem Vorlagen-Code rot wird —
-      # zu einem Zeitpunkt, den niemand gewaehlt hat. Bewusst anheben.
+      # Die Gates selbst stehen unter `tools/checks/`, dieser Job ruft sie auf.
+      # Bis 1.7.0 standen sie als Python-Heredocs hier: billig zu schreiben und
+      # nicht zu testen — ein Heredoc laesst sich nur ausfuehren, indem man das
+      # ganze Repository in den Zustand bringt, den es beanstanden soll. Von
+      # keiner Pruefung war belegt, dass sie ueberhaupt beisst.
       #
-      # ACHTUNG: diese Version und die `rev` in .pre-commit-config.yaml
-      # muessen uebereinstimmen — der Schritt darunter prueft es.
+      # Ruff gepinnt, damit ein Upstream-Release weder Formatter noch Regeln
+      # unter uns aendert und die CI an unberuehrtem Code rot wird — zu einem
+      # Zeitpunkt, den niemand gewaehlt hat. Bewusst anheben.
+      #
+      # ACHTUNG: diese Version und die `rev` in .pre-commit-config.yaml muessen
+      # uebereinstimmen — Pruefung 12 prueft es, samt der Frage, ob beide Hooks
+      # noch da sind.
       - name: Ruff installieren
         run: pip install ruff==0.15.8
 
-      - name: Formatierung der Referenz-Vorlagen
-        run: ruff format --check .
+      - name: Abhaengigkeiten der Testsuite installieren
+        run: pip install -r requirements-dev.txt
 
-      # Linting lief hier lange gar nicht: ruff.toml stand auf `select = []`,
-      # weil die Vorlagen absichtlich Namen aus der Zielumgebung nennen und
-      # ruff das als F821 meldet. Gemessen ist das EIN Befund auf 581 Zeilen.
-      # F821 ist jetzt gezielt und pfadgebunden unterdrueckt, alles andere
-      # wird geprueft — Vorlagen-Code ist der Code, der kopiert wird, ein
-      # Defekt darin vermehrt sich. Ruleset und Ausnahme stehen in ruff.toml.
-      - name: Linting der Referenz-Vorlagen
-        run: ruff check .
+      # Ein Kommando, dasselbe wie lokal. Keine zweite Kopie der Gates: Zwei
+      # Kopien driften, und ein gedrifteter Pre-Flight-Check meldet gruen auf
+      # einem Baum, den dieser Job ablehnt.
+      - name: Run the validation suite
+        run: bash scripts/validate.sh
 
-      # Der Waechter oben belegt, dass es Vorlagen GIBT. Er belegt nicht, dass
-      # die beiden Ruff-Schritte sie noch lesen — und das ist eine andere
-      # Frage. Wird `reference/` in ruff.toml ausgeschlossen (per `exclude`,
-      # `[lint] exclude`, `[format] exclude`, `select = []` oder einem
-      # pauschalen `per-file-ignores`), melden beide Schritte eine Warnung auf
-      # stderr und **Exit 0**: «All checks passed!», ohne eine Zeile gelesen zu
-      # haben. Gruen wird dann ausgerechnet der Code, den Leute kopieren.
+      # Die Pruefungen pruefen das Repository. Diese Suite prueft die
+      # Pruefungen: Zu jeder gibt es mindestens einen Baum, auf dem sie rot
+      # werden MUSS, und der Text ihres Befundes ist zugesichert.
+      # tests/mutations.py sagt, warum das noetig ist.
       #
-      # Der Fall ist nicht hypothetisch, und zwar in genau diesem Repo: In
-      # ruff.toml stand fuer diese Dateien schon einmal `select = []` — die
-      # Begruendung und ihre Widerlegung stehen dort. Gemerkt hat es niemand,
-      # weil nichts rot wurde. Das Schwester-Repo mcp-data-source-probe-skill
-      # hat daraus seinen Check 12 gebaut; das hier ist dieselbe Sonde.
-      #
-      # Geprueft wird nicht die Konfiguration, sondern die WIRKUNG. Ein
-      # Konfigurationsleser muesste jeden der fuenf Schalter einzeln kennen —
-      # und wuerde den verpassen, den ruff erst nach diesem Commit bekommt.
-      # Eine absichtlich fehlerhafte Datei liegt kurz unter `reference/`, und
-      # beide Gates muessen sie beim NAMEN nennen: Gegen den Exit-Status zu
-      # pruefen hiesse, dass ein anderer, echter Fund anderswo im Baum als
-      # bestandene Sonde durchginge.
-      #
-      # `.` statt `reference/`, wie in den Schritten oben: Ein explizit
-      # genannter Pfad umgeht `exclude` und wuerde genau die Luecke zudecken,
-      # die dieser Schritt sucht.
-      - name: Die Ruff-Gates greifen nachweislich auf reference/
-        run: |
-          probe=reference/_ruff_gate_probe.py
-          if [ -e "$probe" ]; then
-            echo "::error::$probe liegt schon da. Dieser Schritt legt die Datei selbst an und raeumt sie weg; existiert sie vorher, wuerde er sie ueberschreiben und loeschen."
-            exit 1
-          fi
-          # F401 (ungenutzter Import) und ein Formatverstoss in derselben
-          # Datei — so testet eine Sonde beide Gates. F821 waere untauglich:
-          # genau diese Regel ist fuer reference/ absichtlich unterdrueckt.
-          printf 'import os\nx   =    1\n' > "$probe"
-          trap 'rm -f "$probe"' EXIT
+      # Nach validate.sh, nicht davor: Ein echter Befund ueber das Repository
+      # soll zuerst im lesbaren Format des Runners erscheinen, nicht als
+      # Testfehlschlag.
+      - name: Die Pruefungen selbst testen
+        run: pytest
 
-          check_out=$(ruff check --no-cache --output-format=concise . 2>&1) || true
-          format_out=$(ruff format --no-cache --check . 2>&1) || true
-
-          dead=0
-          case "$check_out" in
-            *"$probe"*) ;;
-            *) echo "::error::ruff check hat $probe nicht beanstandet — das Lint-Gate greift auf reference/ nicht mehr. Verdaechtig sind exclude, select und per-file-ignores in ruff.toml."
-               printf 'ruff check meldete:\n%s\n' "$check_out"
-               dead=1 ;;
-          esac
-          case "$format_out" in
-            *"$probe"*) ;;
-            *) echo "::error::ruff format --check hat $probe nicht beanstandet — das Format-Gate greift auf reference/ nicht mehr. Verdaechtig sind exclude und [format] exclude in ruff.toml."
-               printf 'ruff format meldete:\n%s\n' "$format_out"
-               dead=1 ;;
-          esac
-          [ "$dead" -eq 0 ] || exit 1
-
-          rm -f "$probe"
-          if [ -e "$probe" ]; then
-            echo "::error::$probe liess sich nicht entfernen — eine liegengebliebene Sonde setzt die Schritte darueber im naechsten Lauf auf eine Datei an, die niemand geschrieben hat."
-            exit 1
-          fi
-          echo "ok — beide Ruff-Gates beanstanden eine fehlerhafte Datei unter reference/"
-
-      # Der Ruff-Pin steht zweimal: oben und als `rev` im Pre-Commit-Hook.
-      # Laufen sie auseinander, formatiert der Hook nach der einen und dieser
-      # Job prueft nach der anderen Version — der Hook meldet gruen und die CI
-      # wird rot. Ein fehlender Pin ist ebenfalls ein Fehler: dann hat der
-      # Vergleich nicht stattgefunden.
-      #
-      # Reine Shell statt eines Python-Skripts: in einem Repo, dessen einziger
-      # Python-Code Vorlagen sind, waere ein eigenes Modul samt Tests
-      # unverhaeltnismaessig.
-      # Zweitens gilt dasselbe fuer die Menge der Hooks. Die CI fuehrt
-      # `ruff check` UND `ruff format --check` aus. Faellt einer der beiden
-      # Hooks unten weg, laeuft er lokal nicht mehr, der Commit geht gruen
-      # durch und erst die CI wird rot — dieselbe Bruchstelle wie bei
-      # auseinanderlaufenden Versionen, nur eine Zeile weiter unten.
-      - name: Ruff-Pin-Sync (ci.yml ↔ .pre-commit-config.yaml)
-        run: |
-          ci=$(sed -n 's/.*ruff==\([0-9][^ "'"'"']*\).*/\1/p' .github/workflows/ci.yml | head -1)
-          hook=$(sed -n '/ruff-pre-commit/,/hooks:/{s/^[[:space:]]*rev:[[:space:]]*v\{0,1\}\([0-9][^[:space:]]*\)[[:space:]]*$/\1/p;}' .pre-commit-config.yaml | head -1)
-          if [ -z "$ci" ]; then
-            echo "::error::.github/workflows/ci.yml nennt kein ruff==<version>."; exit 1
-          fi
-          if [ -z "$hook" ]; then
-            echo "::error::.pre-commit-config.yaml nennt keine rev fuer ruff-pre-commit."; exit 1
-          fi
-          if [ "$ci" != "$hook" ]; then
-            echo "::error::Ruff-Pins laufen auseinander — ci.yml $ci, Hook $hook. Beide im selben Commit bumpen."; exit 1
-          fi
-          for id in ruff-check ruff-format; do
-            grep -qE "^[[:space:]]*-[[:space:]]*id:[[:space:]]*$id[[:space:]]*$" .pre-commit-config.yaml || {
-              echo "::error::.pre-commit-config.yaml fuehrt den Hook '$id' nicht mehr. Die CI prueft beides; laeuft lokal nur eines, meldet der Commit gruen und erst die CI rot."; exit 1
-            }
-          done
-          echo "Ruff-Pin OK ($ci; beide Stellen stimmen ueberein, beide Hooks vorhanden)."
-
-      - name: SKILL.md carries a well-formed frontmatter
-        env:
-          PYTHONUTF8: "1"
-        run: |
-          python - <<'PY'
-          import pathlib, re, sys
-          p = pathlib.Path("SKILL.md")
-          m = re.match(r"^---\nname: (.+?)\ndescription: (.+?)\n---\n",
-                       p.read_text(encoding="utf-8"), re.S)
-          if not m:
-              sys.exit("SKILL.md: frontmatter missing or malformed")
-          name, desc = m.group(1).strip(), m.group(2).strip()
-          if name != "mcp-data-fidelity":
-              sys.exit(f"SKILL.md: expected name 'mcp-data-fidelity', got {name!r}")
-          if len(desc) > 1024:
-              sys.exit(f"SKILL.md: description too long ({len(desc)} > 1024)")
-          print(f"ok — name={name}, description={len(desc)} chars")
-          PY
-
-      - name: Rule count is consistent across SKILL.md, both READMEs and patterns.py
-        env:
-          PYTHONUTF8: "1"
-        run: |
-          python - <<'PY'
-          import pathlib, re, sys
-
-          skill = pathlib.Path("SKILL.md").read_text(encoding="utf-8")
-          numbers = [int(n) for n in re.findall(r"^## Regel (\d+)", skill, re.M)]
-          if not numbers:
-              sys.exit("SKILL.md: no '## Regel N' headings found")
-          if numbers != list(range(1, len(numbers) + 1)):
-              sys.exit(f"SKILL.md: rule numbers not sequential: {numbers}")
-          expected = len(numbers)
-
-          def listed(path, heading):
-              text = pathlib.Path(path).read_text(encoding="utf-8")
-              m = re.search(rf"^## {heading}\n(.*?)(?=^## )", text, re.M | re.S)
-              if not m:
-                  sys.exit(f"{path}: section '## {heading}' not found")
-              return len(re.findall(r"^\d+\. ", m.group(1), re.M))
-
-          # Das Zahlwort in der Ueberschrift steht absichtlich hier und nicht als
-          # Regex: Wird eine Regel ergaenzt, muessen beide READMEs und diese
-          # Konstante im selben Commit mitgehen — sonst faellt der Job aus, statt
-          # eine veraltete Zahl gruen durchzulassen.
-          for path, heading in [("README.md", "The ten rules"),
-                                ("README.de.md", "Die zehn Regeln")]:
-              got = listed(path, heading)
-              if got != expected:
-                  sys.exit(f"{path}: lists {got} rules, SKILL.md defines {expected}")
-              print(f"ok — {path}: {got} rules")
-
-          # reference/patterns.py makes two claims nothing else checks: the number
-          # word in its module docstring, and that every rule actually appears in
-          # it. Both were correct when written — which is exactly how the probe
-          # repository went on describing "five rules" for two weeks after the
-          # sixth was added here.
-          WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-                   "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
-          patterns = pathlib.Path("reference/patterns.py").read_text(encoding="utf-8")
-
-          m = re.search(r"patterns for the (?P<word>\w+) [\w-]+ rules", patterns)
-          if not m:
-              sys.exit("reference/patterns.py: the phrase 'patterns for the <word> "
-                       "... rules' is gone — anchor removed or reworded, so this "
-                       "check would silently stop checking")
-          claimed = WORDS.get(m.group("word"))
-          if claimed != expected:
-              sys.exit(f"reference/patterns.py: docstring says {m.group('word')!r} "
-                       f"rules, SKILL.md defines {expected}")
-
-          # «Rule 1», «Rules 4 + 5», «Rules 5-7» — ranges expanded.
-          mentioned = set()
-          for mm in re.finditer(r"[Rr]ules?\s+(\d+(?:\s*(?:[-–+,]|and)\s*\d+)*)", patterns):
-              nums = [int(n) for n in re.findall(r"\d+", mm.group(1))]
-              if re.search(r"[-–]", mm.group(1)) and len(nums) == 2:
-                  mentioned.update(range(nums[0], nums[1] + 1))
-              else:
-                  mentioned.update(nums)
-          missing = sorted(set(range(1, expected + 1)) - mentioned)
-          if missing:
-              sys.exit(f"reference/patterns.py: nothing for rule(s) {missing} — "
-                       "a rule without a pattern is a rule nobody can copy")
-          print(f"ok — reference/patterns.py: says {m.group('word')}, covers "
-                f"{sorted(mentioned)}")
-
-          print(f"ok — {expected} rules, consistent everywhere")
-          PY
-
-      # Die Zuordnung Regel -> Audit-Check ist die Stelle, an der dieses Repo
-      # zweimal falsch stand (1.4.0 und 1.6.0), und sie zeigt auf ein fremdes
-      # Repo, dessen Katalog sich schneller bewegt. Was von hier aus pruefbar
-      # ist, ist nicht der Inhalt einer Zeile — dafuer muesste man den Katalog
-      # abrufen —, sondern dass jede Regel ueberhaupt eine Zeile hat und jede
-      # Zeile mindestens eine Check-ID nennt.
-      #
-      # Grenze, ausdruecklich: Der Wächter haette den Anlass fuer diesen Schritt
-      # NICHT gefangen. «Ein `FID-006` existiert nicht» nennt eine Check-ID und
-      # haette ihn gruen passiert. Er faengt die naechste Regel ohne Zeile, nicht
-      # die naechste veraltete Zeile.
-      - name: Every rule has a row in the rule-to-check table
-        env:
-          PYTHONUTF8: "1"
-        run: |
-          python - <<'PY'
-          import pathlib, re, sys
-
-          HEADING = "### Welche Regel welcher Check ist"
-          skill = pathlib.Path("SKILL.md").read_text(encoding="utf-8")
-
-          expected = len(re.findall(r"^## Regel (\d+)", skill, re.M))
-          if not expected:
-              sys.exit("SKILL.md: no '## Regel N' headings found")
-
-          m = re.search(rf"^{re.escape(HEADING)}\n(.*?)(?=^#{{2,3}} |\Z)",
-                        skill, re.M | re.S)
-          if not m:
-              sys.exit(f"SKILL.md: section {HEADING!r} not found — anchor gone or "
-                       "reworded, so this check would silently stop checking")
-          section = m.group(1)
-
-          rows = {}
-          for line in section.splitlines():
-              rm = re.match(r"^\|\s*(\d+)\s*—\s*(.*?)\s*\|(.*)\|\s*$", line)
-              if not rm:
-                  continue
-              n = int(rm.group(1))
-              if n in rows:
-                  sys.exit(f"SKILL.md: rule {n} has more than one row in the table")
-              rows[n] = rm.group(3)
-
-          missing = sorted(set(range(1, expected + 1)) - set(rows))
-          if missing:
-              sys.exit(f"SKILL.md: no table row for rule(s) {missing} — a rule "
-                       "without a row reads as if the catalogue had nothing to say "
-                       "about it")
-          extra = sorted(set(rows) - set(range(1, expected + 1)))
-          if extra:
-              sys.exit(f"SKILL.md: table row for rule(s) {extra}, which SKILL.md "
-                       f"does not define ({expected} rules)")
-
-          CHECK_ID = re.compile(r"\b[A-Z]{2,6}-\d{3}\b")
-          silent = sorted(n for n, cell in rows.items() if not CHECK_ID.search(cell))
-          if silent:
-              sys.exit(f"SKILL.md: row(s) {silent} name no check at all — say which "
-                       "check covers the rule, or say in check IDs what does not")
-
-          print(f"ok — SKILL.md: {expected} rules, {len(rows)} rows, each naming "
-                "at least one check")
-          PY
-
-      - name: Referenced files exist
-        run: |
-          for f in SKILL.md reference/patterns.py README.md README.de.md \
-                   LICENSE CHANGELOG.md; do
-            test -f "$f" || { echo "missing: $f"; exit 1; }
-          done
-          echo "ok — all referenced files present"
-
-      # The five repositories of the chain are named together in exactly one
-      # place per language. Nothing outside this repo can be tested from here —
-      # the GitHub topic itself is checked by the guard in mcp-audit-skill,
-      # which is the only repo carrying the manifest. What CAN be tested is
-      # that the table has not quietly lost a member.
-      - name: The quality-chain table names all five members
-        env:
-          PYTHONUTF8: "1"
-        run: |
-          python - <<'PY'
-          import pathlib, re, sys
-
-          MEMBERS = [
-              "mcp-data-source-probe-skill",
-              "mcp-data-fidelity-skill",
-              "mcp-transport-hardening-skill",
-              "mcp-audit-skill",
-              "mcp-continuous-auditor",
-          ]
-          TOPIC_URL = "https://github.com/topics/mcp-quality-chain"
-
-          for path, heading in [("README.md", "The MCP quality chain"),
-                                ("README.de.md", "Die MCP-Qualitätskette")]:
-              text = pathlib.Path(path).read_text(encoding="utf-8")
-              m = re.search(rf"^### {re.escape(heading)}\n(.*?)(?=^#{{2,3}} |\Z)",
-                            text, re.M | re.S)
-              if not m:
-                  sys.exit(f"{path}: section '### {heading}' not found — anchor gone "
-                           "or reworded, so this check would silently stop checking")
-              body = m.group(1)
-              missing = [r for r in MEMBERS if r not in body]
-              if missing:
-                  sys.exit(f"{path}: the chain table does not name {missing}")
-              if TOPIC_URL not in body:
-                  sys.exit(f"{path}: the shared topic page {TOPIC_URL} is not linked — "
-                           "without it the table is a list nobody outside can find")
-              print(f"ok — {path}: all {len(MEMBERS)} members named, topic page linked")
-          PY
-
-      - name: No compiled Python is tracked
-        run: |
-          if git ls-files | grep -E '(__pycache__/|\.py[cod]$)'; then
-            echo "compiled Python is tracked — see .gitignore"
-            exit 1
-          fi
-          echo "ok — no compiled Python tracked"
-
-      - name: Version badge matches the latest CHANGELOG release
-        env:
-          PYTHONUTF8: "1"
-        run: |
-          python - <<'PY'
-          import pathlib, re, sys
-
-          # Quelle ist die oberste Release-Überschrift. `[Unreleased]` trägt keine
-          # Versionsnummer und wird vom Muster von selbst übersprungen.
-          lines = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
-          HEADING = re.compile(r"^## \[v?(?P<version>\d+\.\d+\.\d+)\]")
-          source = next(((n, ln, m.group("version"))
-                         for n, ln in enumerate(lines, 1)
-                         if (m := HEADING.match(ln))), None)
-          if source is None:
-              sys.exit("CHANGELOG.md: no '## [X.Y.Z]' release heading found — anchor "
-                       "gone, so this check would have nothing to compare against")
-          lineno, heading, expected = source
-
-          # Über das Dateisystem, nicht als gepflegte Liste: eine dritte
-          # Sprachfassung ist damit automatisch abgedeckt.
-          readmes = sorted(pathlib.Path(".").glob("README*.md"))
-          if not readmes:
-              sys.exit("no README*.md found — nothing to check, which would pass silently")
-
-          BADGE = re.compile(r"badge/version-(\d+\.\d+\.\d+)-")
-          for path in readmes:
-              found = BADGE.findall(path.read_text(encoding="utf-8"))
-              if not found:
-                  sys.exit(f"{path}: no version badge found — anchor gone or reworded, "
-                           "so this check would stop checking this file")
-              stale = sorted({v for v in found if v != expected})
-              if stale:
-                  sys.exit(
-                      f"{path}: version badge shows {stale}, but the topmost release in "
-                      f"CHANGELOG.md is {expected} (line {lineno}: {heading.strip()!r}).\n"
-                      "  Either the badge was not bumped with the release, or a release "
-                      "heading was lost — check which side moved before editing."
-                  )
-              print(f"ok — {path}: {expected}")
-          print(f"ok — version badge matches CHANGELOG ({expected}, line {lineno}) "
-                f"in {len(readmes)} file(s)")
-          PY
-
-      # Der Schritt darueber bindet Badge an CHANGELOG. Ohne diesen hier bleibt
-      # der Tag die dritte Stelle, die dieselbe Zahl behauptet und von keiner
-      # geprueft wird — und der Tag ist die einzige der drei, die man nach dem
-      # Veroeffentlichen nicht mehr stillschweigend korrigieren kann.
-      #
-      # `if` statt eines eigenen Jobs: der Schritt braucht denselben Checkout
-      # und dieselbe CHANGELOG-Lesung wie der Rest. Bei einem Branch- oder
-      # PR-Lauf gibt es keinen Tag, dann wird er uebersprungen.
+      # Pruefung 13 braucht einen Tag-Kontext und ist deshalb `offline=False` —
+      # der lokale Runner laesst sie aus, dieser Schritt fuehrt sie. Bei einem
+      # Branch- oder PR-Lauf gibt es keinen Tag, dann wird er uebersprungen.
       - name: Tag und CHANGELOG nennen dieselbe Version
         if: startsWith(github.ref, 'refs/tags/')
         env:
           PYTHONUTF8: "1"
           TAG_NAME: ${{ github.ref_name }}
-        run: |
-          python - <<'PY'
-          import os, pathlib, re, sys
-
-          # Leer statt ungesetzt waere der stille Fall: `re.match` gegen "" -> None
-          # -> Abbruch mit der Tag-Meldung, die dann in die Irre fuehrt. Deshalb
-          # zuerst gegen die Variable selbst pruefen.
-          tag = os.environ.get("TAG_NAME", "")
-          if not tag:
-              sys.exit("TAG_NAME ist leer — der Schritt lief ohne Tag-Kontext. "
-                       "Entweder hat sich `github.ref_name` geaendert oder die "
-                       "`if`-Bedingung greift nicht mehr; so oder so hat dieser "
-                       "Check nicht stattgefunden.")
-
-          m = re.fullmatch(r"v?(?P<version>\d+\.\d+\.\d+)", tag)
-          if not m:
-              sys.exit(f"Tag {tag!r} ist keine Version der Form vX.Y.Z. Der "
-                       "Trigger steht auf `tags: [\"v*\"]` — ein Tag, der damit "
-                       "anfaengt, aber keine Versionsnummer ist, gehoert nicht "
-                       "an ein Release.")
-          tagged = m.group("version")
-
-          lines = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
-          HEADING = re.compile(r"^## \[v?(?P<version>\d+\.\d+\.\d+)\]")
-          source = next(((n, ln, hm.group("version"))
-                         for n, ln in enumerate(lines, 1)
-                         if (hm := HEADING.match(ln))), None)
-          if source is None:
-              sys.exit("CHANGELOG.md: no '## [X.Y.Z]' release heading found — anchor "
-                       "gone, so this check would have nothing to compare against")
-          lineno, heading, top = source
-
-          if tagged != top:
-              sys.exit(
-                  f"Tag {tag!r} nennt {tagged}, oberstes Release in CHANGELOG.md ist "
-                  f"{top} (Zeile {lineno}: {heading.strip()!r}).\n"
-                  "  Entweder wurde der Tag vor dem Release-Commit gesetzt, oder er "
-                  "zeigt auf den falschen Commit. Tag loeschen und neu setzen — der "
-                  "CHANGELOG ist hier die Quelle, nicht der Tag."
-              )
-          print(f"ok — Tag {tag} und CHANGELOG-Spitze stimmen ueberein ({top}, "
-                f"Zeile {lineno})")
-          PY
+        run: python -m tools.checks --include-context-bound 13

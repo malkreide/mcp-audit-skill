@@ -1,13 +1,13 @@
 # Katalog-Drift: haelt die Zuordnungstabelle in SKILL.md gegen den echten
 # Katalog von mcp-audit-skill.
 #
-# WARUM NICHT IM PR-LAUF. Der Wächter in ci.yml prueft, was ohne Netz pruefbar
-# ist: dass jede Regel eine Zeile hat. Was er strukturell NICHT kann, ist der
-# eigentliche Fehler dieses Repos — eine Zeile, die zum Zeitpunkt des Schreibens
-# stimmte und seither veraltet ist. Das ist keine Eigenschaft eines Commits,
-# sondern der verstrichenen Zeit: Die Tabelle stand am 5. August zweimal falsch,
-# ohne dass hier jemand etwas geaendert haette. Ein zeitbasierter Fehler gehoert
-# an einen Zeitplan, nicht an einen Diff.
+# WARUM NICHT IM PR-LAUF. Pruefung 6 prueft, was ohne Netz pruefbar ist: dass
+# jede Regel eine Zeile hat. Was sie strukturell NICHT kann, ist der
+# eigentliche Fehler dieses Repos — eine Zeile, die zum Zeitpunkt des
+# Schreibens stimmte und seither veraltet ist. Das ist keine Eigenschaft eines
+# Commits, sondern der verstrichenen Zeit: Die Tabelle stand am 5. August
+# zweimal falsch, ohne dass hier jemand etwas geaendert haette. Ein
+# zeitbasierter Fehler gehoert an einen Zeitplan, nicht an einen Diff.
 #
 # Und er gehoert NICHT vor den Merge-Button: Ein Netzaussetzer oder ein Release
 # drueben wuerde sonst einen unbeteiligten Doku-PR rot faerben. Regel 5 dieses
@@ -42,113 +42,33 @@ jobs:
         with:
           python-version: "3.12"
 
+      # NICHT ERREICHBAR ist nicht dasselbe wie ABGEWICHEN. Beide Ausgaenge
+      # sind rot, aber mit verschiedenem Text und aus verschiedenen Schritten —
+      # sonst sucht man beim naechsten Netzaussetzer im Katalog nach einem
+      # Fehler, den es nicht gibt.
+      #
+      # Der Abruf steht hier und nicht in der Pruefung: Eine Pruefung, die Netz
+      # braucht, um ueberhaupt zu starten, laesst sich nicht gegen einen
+      # Fixture-Baum fahren — und dann bliebe ausgerechnet die logikreichste
+      # Pruefung des Repos ungetestet.
+      - name: Katalog abrufen
+        env:
+          MANIFEST: https://raw.githubusercontent.com/malkreide/mcp-audit-skill/main/checks/MANIFEST.txt
+        run: |
+          curl -sS -f --retry 3 --retry-delay 5 --retry-all-errors \
+               --max-time 30 -o "$RUNNER_TEMP/MANIFEST.txt" "$MANIFEST" || {
+            echo "::error::NICHT ERREICHBAR (kein Drift-Befund): $MANIFEST nach 3 Versuchen. Wenn die Datei drueben umgezogen ist, gehoert die URL hier und in tools/checks/catalogue.py nachgezogen; die Tabelle ist damit ungeprueft, nicht falsch."
+            exit 1
+          }
+          echo "ok — Katalog abgerufen ($(wc -l < "$RUNNER_TEMP/MANIFEST.txt") Zeilen)"
+
+      # Pruefung 14. Die Logik steht in tools/checks/catalogue.py und wird von
+      # tests/ gegen Fixture-Baeume gefahren — einschliesslich des Falls, an dem
+      # dieser Job bei seinem ersten Lauf falsch angeschlagen ist (eine
+      # genannte, aber absichtlich nicht existierende Check-ID ist kein Befund,
+      # ein toter LINK schon).
       - name: SKILL.md matches the real catalogue of mcp-audit-skill
         env:
           PYTHONUTF8: "1"
-        run: |
-          python - <<'PY'
-          import pathlib, re, sys, time, urllib.error, urllib.request
-
-          MANIFEST = ("https://raw.githubusercontent.com/malkreide/"
-                      "mcp-audit-skill/main/checks/MANIFEST.txt")
-          HEADING = "### Welche Regel welcher Check ist"
-          WORDS = {"fünf": 5, "sechs": 6, "sieben": 7, "acht": 8, "neun": 9,
-                   "zehn": 10, "elf": 11, "zwölf": 12, "dreizehn": 13}
-
-          # Nicht erreichbar ist NICHT dasselbe wie abgewichen. Beide Ausgaenge
-          # sind rot, aber mit verschiedenem Text — sonst sucht man beim
-          # naechsten Netzaussetzer im Katalog nach einem Fehler, den es nicht
-          # gibt.
-          for attempt in range(3):
-              try:
-                  with urllib.request.urlopen(MANIFEST, timeout=30) as resp:
-                      raw = resp.read().decode("utf-8")
-                  break
-              except (urllib.error.URLError, TimeoutError) as exc:
-                  if attempt == 2:
-                      sys.exit(f"NICHT ERREICHBAR (kein Drift-Befund): {MANIFEST} "
-                               f"nach 3 Versuchen — {exc}. Wenn die Datei drueben "
-                               "umgezogen ist, gehoert die URL hier nachgezogen; "
-                               "die Tabelle ist damit ungeprueft, nicht falsch.")
-                  time.sleep(5 * (attempt + 1))
-
-          ids = [ln.strip() for ln in raw.splitlines() if ln.strip()]
-          if not ids or not all(re.fullmatch(r"[A-Z]{2,6}-\d{3}", i) for i in ids):
-              sys.exit("MANIFEST.txt sieht nicht aus wie eine Liste von Check-IDs "
-                       "— Format drueben geaendert, dieser Job prueft sonst nichts")
-          catalogue = set(ids)
-          categories = {i.split("-")[0] for i in ids}
-          fid = {i for i in ids if i.startswith("FID-")}
-
-          skill = pathlib.Path("SKILL.md").read_text(encoding="utf-8")
-          m = re.search(rf"^{re.escape(HEADING)}\n(.*?)(?=^#{{2,3}} |\Z)",
-                        skill, re.M | re.S)
-          if not m:
-              sys.exit(f"SKILL.md: section {HEADING!r} not found — anchor gone, so "
-                       "this job would silently stop checking")
-          section = m.group(1)
-
-          problems = []
-
-          # 1) Die Zahlen in der Kopfzeile.
-          head = re.search(
-              r"(?P<total>\d+) Checks in (?P<cats>\w+) Kategorien.*?"
-              r"davon (?P<fid>\w+) in der Kategorie `FID`",
-              section, re.S)
-          if not head:
-              sys.exit("SKILL.md: the catalogue-state sentence no longer matches "
-                       "'<N> Checks in <wort> Kategorien ... davon <wort> in der "
-                       "Kategorie `FID`' — reworded, so the numbers went unchecked")
-          claimed_total = int(head.group("total"))
-          claimed_cats = WORDS.get(head.group("cats"))
-          claimed_fid = WORDS.get(head.group("fid"))
-          if claimed_total != len(catalogue):
-              problems.append(f"Katalog-Groesse: Tabelle sagt {claimed_total}, "
-                              f"MANIFEST.txt hat {len(catalogue)}")
-          if claimed_cats != len(categories):
-              problems.append(f"Kategorien: Tabelle sagt {head.group('cats')!r} "
-                              f"({claimed_cats}), MANIFEST.txt hat "
-                              f"{len(categories)} ({sorted(categories)})")
-          if claimed_fid != len(fid):
-              problems.append(f"FID-Checks: Tabelle sagt {head.group('fid')!r} "
-                              f"({claimed_fid}), MANIFEST.txt hat {len(fid)} "
-                              f"({sorted(fid)})")
-
-          # 2) Jeder VERLINKTE Check muss existieren — und nur der.
-          #
-          # Bewusst nicht jede genannte ID: Der erste Lauf dieses Jobs ist genau
-          # daran falsch angeschlagen. Die Tabelle nennt ein `FID-007`, das es
-          # absichtlich nicht gibt («statt ein `FID-007` zu eroeffnen»), und ein
-          # Wächter, der eine korrekte Gegenrede als Fehler meldet, ist der
-          # Fehlalarm aus Regel 5. Ein toter *Link* dagegen ist immer ein Befund.
-          linked = set(re.findall(r"/checks/([A-Z]{2,6}-\d{3})\.md", section))
-          gone = sorted(linked - catalogue)
-          if gone:
-              problems.append(f"Die Tabelle verlinkt {gone}, im Katalog gibt es "
-                              "sie nicht (mehr) — umbenannt, zurueckgezogen oder "
-                              "Tippfehler in der URL")
-
-          # 3) Ein FID-Check, den die Tabelle nicht VERLINKT, ist der Fall vom
-          #    5. August: Genau so ist `FID-006` entstanden, waehrend hier «kein
-          #    Check» stand. Auch hier zaehlt der Link und nicht die Erwaehnung —
-          #    und zwar in dieselbe Richtung nuetzlich: Gaebe es eines Tages ein
-          #    echtes `FID-007`, schlaegt dieser Punkt an, obwohl die ID im Text
-          #    vorkommt. Das ist richtig so, denn der Satz, der sie heute nennt
-          #    («statt ein `FID-007` zu eroeffnen»), waere an diesem Tag falsch.
-          unlinked = sorted(fid - linked)
-          if unlinked:
-              problems.append(f"Neu im Katalog und in der Tabelle nicht verlinkt: "
-                              f"{unlinked} — welche Regel deckt er ab?")
-
-          if problems:
-              print("DRIFT — die Zuordnungstabelle in SKILL.md ist gegenueber dem "
-                    "Katalog veraltet:\n")
-              for p in problems:
-                  print(f"  - {p}")
-              print("\nQuelle ist die Check-Datei drueben, nicht deren CHANGELOG.")
-              sys.exit(1)
-
-          print(f"ok — {claimed_total} Checks, {claimed_cats} Kategorien, "
-                f"{claimed_fid} in FID; alle {len(linked)} verlinkten Checks "
-                "existieren, alle FID-Checks sind verlinkt")
-          PY
+          CATALOGUE_MANIFEST: ${{ runner.temp }}/MANIFEST.txt
+        run: python -m tools.checks --include-context-bound 14

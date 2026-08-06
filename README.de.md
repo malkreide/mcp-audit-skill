@@ -60,8 +60,15 @@ Der Skill greift selbstständig, sobald ein Such-, Query- oder Filter-Tool entwo
 ```
 .
 ├── SKILL.md                  # die zehn Regeln, mit Release-Checkliste
-└── reference/
-    └── patterns.py           # Copy-Paste-Patterns für FastMCP / httpx / Pydantic v2
+├── reference/
+│   └── patterns.py           # Copy-Paste-Patterns für FastMCP / httpx / Pydantic v2
+├── scripts/
+│   └── validate.sh           # Einstieg für die Checks; die CI ruft diese Datei auf
+├── tools/
+│   └── checks/               # die Checks selbst — eine Funktion pro Gate
+└── tests/
+    ├── mutations.py          # pro Check ein Baum, auf dem er rot werden MUSS
+    └── test_*.py             # fährt sie, und hält die Checks gegens echte Repo
 ```
 
 ## Woher diese Regeln stammen
@@ -131,6 +138,25 @@ Taucht eine der drei in freier Wildbahn auf, gehört der Vorfall in diese Datei.
 Der Gegenstand des Skills gilt auch für den Vorschlag. Wenn sich eine Regel nicht
 so verletzen lässt, dass es jemandem auffällt, ist es noch keine Regel — und wenn
 der Beleg dafür nur aus einem Mock stammt, ist es noch kein Beleg.
+
+Vor einem Pull Request die Checks laufen lassen:
+
+```bash
+pip install -r requirements-dev.txt
+bash scripts/validate.sh
+pytest
+```
+
+`validate.sh` ist dieselbe Datei, die die CI aufruft — es gibt also keine zweite
+Kopie, die auseinanderlaufen könnte. Jeder Check läuft auch nach einem
+Fehlschlag weiter, ein roter Durchlauf benennt damit alle Probleme auf einmal.
+
+`pytest` wendet den Absatz oben auf die Checks selbst an. Jeder ist eine
+gewöhnliche Funktion unter `tools/checks/`, und zu jedem gibt es in
+`tests/mutations.py` mindestens einen Baum, auf dem er rot werden **muss** —
+samt der Zusicherung, *was* er dann sagt. Ein Check ohne Mutation lässt die
+Suite fehlschlagen. Derselbe Satz, eine Ebene höher: Ein Check, der sich nicht
+so verletzen lässt, dass es jemandem auffällt, ist noch kein Check.
 
 Vor einem grösseren Pull Request bitte ein Issue eröffnen, damit die Form vorher
 geklärt ist.
