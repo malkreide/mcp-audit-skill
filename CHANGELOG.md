@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Die beiden Ruff-Gates greifen nachweislich auf `reference/`.** Der
+  Wächter «Es gibt überhaupt Referenz-Vorlagen zu prüfen» belegt, dass es
+  Vorlagen *gibt*. Er belegt nicht, dass die Ruff-Schritte sie noch *lesen* —
+  eine andere Frage, und bis hierher hat sie niemand gestellt.
+
+  Nachgemessen: Steht in `ruff.toml` ein `exclude = ["reference"]`, melden
+  beide Schritte
+
+  ```
+  warning: No Python files found under the given path(s)
+  All checks passed!
+  ```
+
+  und **Exit 0**. Grün wird damit ausgerechnet der Code, den Leute kopieren.
+  Dasselbe gilt für `[lint] exclude`, `[format] exclude`, `select = []` und
+  ein pauschales `per-file-ignores`.
+
+  Der Fall ist nicht hypothetisch, und zwar in genau diesem Repo: Für diese
+  Dateien stand hier schon einmal `select = []` — die Begründung und ihre
+  Widerlegung stehen in `ruff.toml`. Gemerkt hat es niemand, weil nichts rot
+  wurde.
+
+  Der neue Schritt prüft deshalb nicht die Konfiguration, sondern die
+  **Wirkung**: Eine absichtlich fehlerhafte Datei (`import os` plus ein
+  Formatverstoss) liegt kurz unter `reference/`, und beide Gates müssen sie
+  beim Namen nennen. Gegen den Exit-Status zu prüfen wäre zu schwach — ein
+  anderer, echter Fund anderswo im Baum ginge sonst als bestandene Sonde
+  durch. Ein Konfigurationsleser wiederum müsste alle fünf Schalter einzeln
+  kennen und verpasste den, den ruff erst nach diesem Commit bekommt.
+
+  `F821` ist als Sonde untauglich: Genau diese Regel ist für `reference/`
+  absichtlich unterdrückt.
+
+  Alle fünf Mutationen sind gefahren worden, dazu der Fall «die Sonde liegt
+  schon da» und der Nachweis, dass sie nichts liegenlässt. Das Schwester-Repo
+  `mcp-data-source-probe-skill` führt dieselbe Sonde als Check 12.
+
 ## [1.7.0] - 2026-08-06
 
 Zehn Regeln. Eine ist dazugekommen, und eine bestehende bekommt einen Zusatz —
