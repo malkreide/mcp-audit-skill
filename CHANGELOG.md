@@ -37,6 +37,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Check 12: das Ruff-Gate greift nachweislich auf `reference/`.** `ruff
+  check` und `ruff format --check` waren die einzigen Prüfungen dieses Repos
+  ohne Anker-Wächter. Wird `reference/` in `ruff.toml` ausgeschlossen — per
+  `exclude`, `[lint] exclude`, `[format] exclude`, `select = []` oder
+  `per-file-ignores` —, melden beide Schritte eine Warnung auf stderr und
+  **Exit 0**: «All checks passed!», ohne eine Zeile gelesen zu haben. Grün
+  würde damit ausgerechnet der Code, den Leute kopieren.
+
+  Der Fall ist nicht hypothetisch: für genau diese Dateien stand hier schon
+  einmal `select = []` (siehe die Begründung und ihre Widerlegung in
+  `ruff.toml`). Gemerkt hat es niemand, weil nichts rot wurde.
+
+  Geprüft wird deshalb nicht die Konfiguration, sondern die Wirkung: eine
+  absichtlich fehlerhafte Datei liegt kurz unter `reference/`, und beide Gates
+  müssen sie beim Namen nennen. Ein Konfigurationsleser müsste jeden Schalter
+  einzeln kennen und würde den verpassen, den ruff erst später bekommt. Die
+  Sonde fährt dieselbe Invokation wie die CI (`.`, nicht `reference/` — ein
+  explizit genannter Pfad umgeht `exclude` und würde die Lücke zudecken) und
+  vergleicht gegen den Dateinamen statt gegen den Exit-Status, damit ein
+  echter Fund anderswo im Baum nicht als bestandene Sonde durchgeht.
+
+  Gegenprobe gefahren: `exclude = ["reference"]`, `select = []` und `[format]
+  exclude` einzeln gesetzt. Alle drei lassen die CI-Schritte grün und werden
+  von Check 12 rot gemeldet, jeweils mit Angabe, welches der beiden Gates
+  ausgefallen ist.
+
 - **Die GitHub-Description trägt eine prüfbare Zusage.** Sie nennt jetzt die
   Schrittzahl («a five-step procedure»), und die CI prüft sie bei jedem Lauf
   gegen `SKILL.md`. Die Description liegt ausserhalb des Repos und fiel damit
