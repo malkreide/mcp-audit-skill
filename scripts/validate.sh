@@ -179,27 +179,62 @@ PY
 }
 
 step_count() {
-    # Die Schrittzahl ist eine Zusage, die dieses Repo an drei Stellen macht:
-    # in den Ueberschriften von SKILL.md, im Frontmatter — und, ausserhalb
-    # jeder Datei, in der GitHub-Description. Die dritte prueft ci.yml; sie
-    # vergleicht gegen die Ziffer aus dem Frontmatter, und dieser Check hier
-    # ist der Grund, warum sie das darf: er belegt, dass die Ziffer der Zahl
-    # der Ueberschriften entspricht.
+    # Die Zusage dieses Skills ist ein Vorgehen aus DREI Kernschritten;
+    # Schritt 4 und 5 sind Uebergabe und zaehlen nicht mit. Das stand schon
+    # immer im Text («durchlaeuft die drei Schritte unten», «nach Abschluss
+    # der Probe (Schritt 1-3)»), aber nirgends so, dass eine Pruefung es
+    # haette lesen koennen. Deshalb traegt jede Schritt-Ueberschrift jetzt
+    # ihre Einordnung als [Kern] oder [Übergabe].
     #
-    # Genau hier war die Zusage falsch: Das Frontmatter sagte «3-Schritte-
-    # Vorgehen», waehrend SKILL.md seit laengerem fuenf «## Schritt N:»
-    # fuehrt. Niemand hat es gemerkt, weil nichts es verglichen hat.
+    # Die Zusage steht an vier Stellen: in diesen Markierungen, im Zahlwort
+    # der Einleitung, in der Ziffer des Frontmatters — und, ausserhalb jeder
+    # Datei, in der GitHub-Description. Die vierte prueft ci.yml gegen die
+    # Frontmatter-Ziffer; dieser Check hier ist der Grund, warum sie das
+    # darf.
+    #
+    # JEDER Schritt braucht eine Markierung. Kern aus dem FEHLEN einer
+    # Markierung abzuleiten waere die teure Variante: ein neu eingefuegter
+    # Schritt ohne Marker zaehlte still als Kern und bliese die Zusage auf,
+    # ohne dass irgendetwas rot wuerde.
     "$PY" - <<'PY'
 import pathlib, re, sys
 
 text = pathlib.Path("SKILL.md").read_text(encoding="utf-8")
 
-headings = [int(n) for n in re.findall(r"^## Schritt (\d+):", text, re.M)]
-if not headings:
+# Zuerst ohne Marker suchen: so unterscheidet der Befund «Ueberschriften weg»
+# von «Ueberschriften da, aber unmarkiert».
+raw = re.findall(r"^## Schritt (\d+):(.*)$", text, re.M)
+if not raw:
     sys.exit("SKILL.md: no '## Schritt N:' heading matched — anchor gone or "
              "reworded, so this check would silently stop checking")
-if headings != list(range(1, len(headings) + 1)):
-    sys.exit(f"SKILL.md: step headings are not sequential: {headings}")
+
+numbers = [int(n) for n, _ in raw]
+if numbers != list(range(1, len(numbers) + 1)):
+    sys.exit(f"SKILL.md: step headings are not sequential: {numbers}")
+
+KINDS = ("Kern", "Übergabe")
+kinds = []
+for num, rest in raw:
+    m = re.search(r"\[(Kern|Übergabe)\]\s*$", rest)
+    if not m:
+        sys.exit(f"SKILL.md: '## Schritt {num}:' carries no [Kern] or "
+                 "[Übergabe] marker.\n"
+                 "  Every step needs one — an unmarked step would otherwise "
+                 "count as core by default and inflate the promise without "
+                 "anything turning red.")
+    kinds.append(m.group(1))
+
+# Kern muss ein zusammenhaengender Anfang sein. Ein [Kern] hinter einem
+# [Übergabe] hiesse, dass nach der Uebergabe noch Verfahren kommt — dann
+# stimmt entweder die Reihenfolge nicht oder die Einordnung.
+core = sum(1 for k in kinds if k == "Kern")
+if kinds[:core] != ["Kern"] * core:
+    sys.exit(f"SKILL.md: core steps are not a contiguous prefix: {kinds}.\n"
+             "  A [Kern] step after an [Übergabe] step means either the order "
+             "or the classification is wrong.")
+if core == 0:
+    sys.exit("SKILL.md: no step is marked [Kern] — the promise would be a "
+             "zero-step procedure, which is not a thing")
 
 claim = re.search(r"Standardisiertes (?P<n>\d+)-Schritte-Vorgehen", text)
 if not claim:
@@ -208,14 +243,34 @@ if not claim:
              "It is what ci.yml compares the GitHub description against, so "
              "losing it stops two checks, not one")
 claimed = int(claim.group("n"))
-
-if claimed != len(headings):
+if claimed != core:
     sys.exit(f"SKILL.md: the frontmatter promises {claimed} steps, the "
-             f"document carries {len(headings)}.\n"
-             "  Either a step was added without updating the promise, or the "
-             "promise was bumped without the step — check which side moved.")
+             f"document marks {core} as [Kern] (of {len(kinds)} total).\n"
+             "  Either a core step was added without updating the promise, or "
+             "a step changed kind — check which side moved.")
 
-print(f"{len(headings)} steps, frontmatter and headings agree")
+# Das Zahlwort in der Einleitung ist die vierte Stelle. Es liest sich als
+# Prosa und veraltet genau deshalb unbemerkt.
+WORDS = {"einen": 1, "zwei": 2, "drei": 3, "vier": 4, "fünf": 5,
+         "sechs": 6, "sieben": 7, "acht": 8, "neun": 9, "zehn": 10}
+lead = re.search(r"durchläuft die (?P<word>\w+) Schritte unten", text)
+if not lead:
+    sys.exit("SKILL.md: the sentence 'durchläuft die <Zahlwort> Schritte "
+             "unten' is gone — anchor removed or reworded, so this check "
+             "would stop checking the one claim written as prose")
+word = lead.group("word")
+if word not in WORDS:
+    sys.exit(f"SKILL.md: the intro says {word!r}, which is not a number word "
+             "this check knows — extend WORDS in scripts/validate.sh, "
+             "otherwise the comparison below reports a mismatch that is "
+             "really a gap in this script")
+if WORDS[word] != core:
+    sys.exit(f"SKILL.md: the intro says {word!r} ({WORDS[word]}) steps, "
+             f"{core} are marked [Kern]")
+
+handover = len(kinds) - core
+print(f"{core} core step(s) + {handover} handover, frontmatter, intro and "
+      f"markers agree")
 PY
 }
 
@@ -394,7 +449,7 @@ check "7  referenced files exist"                      referenced_files
 check "8  the companion pointer still points somewhere"      companion_pointer
 check "9  version badge matches the latest CHANGELOG release" version_badge
 check "10 the quality-chain table names all five members"     quality_chain
-check "11 the step count is the same in headings and frontmatter" step_count
+check "11 the core-step count agrees everywhere in SKILL.md" step_count
 
 echo ""
 if [ "$failed" -eq 0 ]; then

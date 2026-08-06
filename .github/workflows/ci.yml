@@ -81,16 +81,22 @@ jobs:
       # das offline und ohne Token laufen koennen muss. Deshalb steht dieser
       # eine Check hier statt dort.
       #
+      # Zugesagt sind die KERNSCHRITTE (1-3); Schritt 4 und 5 sind Uebergabe
+      # und zaehlen nicht mit. Welcher Schritt was ist, steht als [Kern] bzw.
+      # [Übergabe] an der jeweiligen Ueberschrift in SKILL.md.
+      #
       # Kein zweiter Ort fuer die Wahrheit: verglichen wird gegen die Ziffer
       # aus dem Frontmatter von SKILL.md, und Check 11 der Suite oben hat
-      # bereits belegt, dass diese Ziffer der Zahl der «## Schritt N:»-
-      # Ueberschriften entspricht. Die Zahlwort-Tabelle steht nur hier, weil
-      # nur hier ein Wort gegen eine Ziffer gehalten wird.
+      # bereits belegt, dass diese Ziffer der Zahl der [Kern]-Schritte
+      # entspricht — und dass jeder Schritt ueberhaupt eine Markierung traegt.
+      # Die englische Zahlwort-Tabelle steht nur hier, weil nur hier ein
+      # englisches Wort gegen eine Ziffer gehalten wird; die deutsche in
+      # scripts/validate.sh deckt das Zahlwort der Einleitung ab.
       #
       # Ein fehlgeschlagener API-Aufruf ist ein FEHLER, kein Skip (`curl -f`,
       # kein `|| true`): Ein Check, der bei einem Netzproblem gruen durchlaeuft,
       # meldet «bestanden», wo «nicht gelaufen» richtig waere.
-      - name: GitHub description names the current step count
+      - name: GitHub description names the current core-step count
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYTHONUTF8: "1"
@@ -113,9 +119,10 @@ jobs:
           skill = pathlib.Path("SKILL.md").read_text(encoding="utf-8")
           claim = re.search(r"Standardisiertes (?P<n>\d+)-Schritte-Vorgehen", skill)
           if not claim:
-              sys.exit("SKILL.md: the frontmatter step count is gone — check 11 "
-                       "of the suite above should have caught this first; without "
-                       "it there is nothing to compare the description against")
+              sys.exit("SKILL.md: the frontmatter core-step count is gone — check "
+                       "11 of the suite above should have caught this first; "
+                       "without it there is nothing to compare the description "
+                       "against")
           expected = int(claim.group("n"))
 
           repo = json.loads(
@@ -123,18 +130,18 @@ jobs:
           )
           description = repo.get("description") or ""
 
-          found = re.search(r"(?P<word>\w+)-step procedure", description)
+          found = re.search(r"(?P<word>\w+)-step core procedure", description)
           if not found:
               sys.exit(
                   "GitHub description does not carry the phrase '<word>-step "
-                  f"procedure' — got {description!r}.\n"
+                  f"core procedure' — got {description!r}.\n"
                   "  Either it was reworded (then adjust this anchor in the same "
                   "commit) or the promise was dropped from it. An anchor that is "
                   "gone makes this check stop checking without saying so.\n"
                   "  Set it on the repo itself — no commit can fix it:\n"
                   f"    gh repo edit {os.environ['GITHUB_REPOSITORY']} "
                   '--description "Claude Skill for probing public data sources '
-                  'before building an MCP server — a five-step procedure"'
+                  'before building an MCP server - a three-step core procedure"'
               )
           word = found.group("word")
           if word not in WORDS:
@@ -144,12 +151,12 @@ jobs:
                        "gap in this script")
           if WORDS[word] != expected:
               sys.exit(
-                  f"GitHub description promises {word!r} ({WORDS[word]}) steps, "
-                  f"SKILL.md carries {expected}.\n"
+                  f"GitHub description promises {word!r} ({WORDS[word]}) core "
+                  f"steps, SKILL.md marks {expected} as [Kern].\n"
                   "  The description lives outside the repository, so no commit "
                   "fixes it — set it on the repo itself:\n"
                   f"    gh repo edit {os.environ['GITHUB_REPOSITORY']} "
                   f'--description "..."'
               )
-          print(f"ok — GitHub description says {word}, matching SKILL.md ({expected})")
+          print(f"ok — GitHub description says {word} core steps, matching SKILL.md ({expected})")
           PY

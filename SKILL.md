@@ -1,6 +1,6 @@
 ---
 name: mcp-data-source-probe
-description: Standardisiertes 5-Schritte-Vorgehen zur Evaluation, Architektur-Entscheidung und Implementation von `*-mcp`-Servern im Swiss Public Data MCP Portfolio. Verwende diesen Skill IMMER wenn der User (1) einen neuen MCP-Server plant oder baut, (2) eine neue Datenquelle für einen bestehenden Server evaluiert, (3) einen Server um zusätzliche Tools erweitern will, (4) fragt ob eine bestimmte API/Datenquelle geeignet ist, (5) einen bestehenden MCP-Server refaktoriert, (6) Begriffe wie «MCP-Server», «neue Datenquelle anbinden», «API prüfen», «Live-Probe», «Datenquelle evaluieren», «welche Tools», «kann ich das nutzen» erwähnt, (7) für einen `*-mcp`-Server einen Scaffold anfordert, oder (8) meldet, dass ein Server zu wenige oder keine Treffer liefert, obwohl die Daten in der Quelle vorhanden sind («findet nichts», «zu wenig Resultate», «Web-UI zeigt mehr», «leeres Ergebnis», «Recall», «Scope»). Auch bei allgemeinen Aussagen wie «ich würde gerne X via MCP anbinden» oder «gibt es Daten von Y» diesen Skill anwenden.
+description: Standardisiertes 3-Schritte-Vorgehen zur Evaluation, Architektur-Entscheidung und Implementation von `*-mcp`-Servern im Swiss Public Data MCP Portfolio. Verwende diesen Skill IMMER wenn der User (1) einen neuen MCP-Server plant oder baut, (2) eine neue Datenquelle für einen bestehenden Server evaluiert, (3) einen Server um zusätzliche Tools erweitern will, (4) fragt ob eine bestimmte API/Datenquelle geeignet ist, (5) einen bestehenden MCP-Server refaktoriert, (6) Begriffe wie «MCP-Server», «neue Datenquelle anbinden», «API prüfen», «Live-Probe», «Datenquelle evaluieren», «welche Tools», «kann ich das nutzen» erwähnt, (7) für einen `*-mcp`-Server einen Scaffold anfordert, oder (8) meldet, dass ein Server zu wenige oder keine Treffer liefert, obwohl die Daten in der Quelle vorhanden sind («findet nichts», «zu wenig Resultate», «Web-UI zeigt mehr», «leeres Ergebnis», «Recall», «Scope»). Auch bei allgemeinen Aussagen wie «ich würde gerne X via MCP anbinden» oder «gibt es Daten von Y» diesen Skill anwenden.
 ---
 
 # MCP Data Source Probe — Standard-Vorgehen
@@ -18,7 +18,7 @@ Jeder neue `*-mcp`-Server durchläuft die drei Schritte unten in dieser Reihenfo
 
 ---
 
-## Schritt 1: Live-Probe (vor dem Coden)
+## Schritt 1: Live-Probe (vor dem Coden) [Kern]
 
 **Ziel:** Empirisch feststellen, was die Datenquelle tatsächlich liefert — nicht was die Dokumentation verspricht. Und zweitens: festhalten, was sie hat, das der geplante Server nicht anfassen wird. Beides ist hier billig und später teuer.
 
@@ -395,7 +395,7 @@ Sie sind nie dieselbe Zahl, und die eine ersetzt die andere nicht. Ein `ttlMs` v
 
 ---
 
-## Schritt 2: Architektur-Entscheid
+## Schritt 2: Architektur-Entscheid [Kern]
 
 **Ziel:** Basierend auf den Probe-Befunden die richtige Architektur wählen — und den Entscheid **schriftlich** im README festhalten.
 
@@ -524,7 +524,7 @@ Nicht zulässig: «das Beispiel im Tutorial sah anders aus», «der letzte Serve
 
 ---
 
-## Schritt 3: Resilienz-Defaults (nicht-verhandelbar)
+## Schritt 3: Resilienz-Defaults (nicht-verhandelbar) [Kern]
 
 **Ziel:** Jeder `*-mcp`-Server erfüllt dieselben Minimal-Standards, damit er im Produktivbetrieb nicht am ersten Upstream-Blip kippt.
 
@@ -648,7 +648,7 @@ Wildcards serverseitig automatisch anhängen ist **kein** Ersatz: Es macht Phras
 
 ---
 
-## Schritt 4: Übergabe an `github-repo`-Skill
+## Schritt 4: Übergabe an `github-repo`-Skill [Übergabe]
 
 Nach Abschluss der Probe (Schritt 1-3) erfolgt die Repo-Erstellung via [`github-repo`](../github-repo/SKILL.md)-Skill. Als Input dafür bereitstellen:
 
@@ -665,7 +665,7 @@ Nach Abschluss der Probe (Schritt 1-3) erfolgt die Repo-Erstellung via [`github-
 
 ---
 
-## Schritt 5: Portfolio-Register nachführen
+## Schritt 5: Portfolio-Register nachführen [Übergabe]
 
 Nach Release (Tag `v0.1.0`) wird der Server im Portfolio-Register eingetragen. Das Register hat zwei Hälften, und nur eine davon ist normativ.
 
