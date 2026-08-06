@@ -9,14 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Das Repo hat Tags.** Bisher hatte es keine — `git checkout v1.4.0` ging
-  nicht, und die Versionsnummer stand nur im CHANGELOG und in zwei Badges.
-  Nachgetragen sind `v1.0.0` bis `v1.7.0`. Getaggt ist jeweils der Commit auf
-  der Erst-Eltern-Historie von `main`, an dem die Release-Überschrift dort
-  ankam — bei 1.0.0–1.3.0 der Release-Commit selbst, ab 1.4.0 der Merge-Commit
-  der zugehörigen PR. Für jeden ist nachgeprüft, dass CHANGELOG-Spitze und
-  **beide** Badges an dieser Stelle die Version tragen; die Tags behaupten also
-  nichts, was der Stand nicht schon sagt.
+- **Die Tag-Praxis ist seit 1.5.0 abgerissen.** `v1.0.0` bis `v1.4.0` liegen
+  auf GitHub und sind es immer gewesen. Ab 1.5.0 wurde nicht mehr getaggt: Für
+  1.5.0, 1.6.0 und 1.7.0 gibt es keinen Tag, `git checkout v1.7.0` geht nicht,
+  und die Versionsnummer steht für diese drei nur im CHANGELOG und in den
+  Badges.
+
+  Die drei fehlenden Tags gehören auf die Commits der Erst-Eltern-Historie von
+  `main`, an denen die jeweilige Release-Überschrift dort ankam — also auf den
+  Merge-Commit der zugehörigen PR:
+
+  | Tag | Commit | PR |
+  |---|---|---|
+  | `v1.5.0` | `07e4889` | #6 |
+  | `v1.6.0` | `18e7662` | #7 |
+  | `v1.7.0` | `d4eef4d` | #14 |
+
+  Für jeden ist nachgeprüft, dass CHANGELOG-Spitze und **beide** Badges an
+  dieser Stelle die Version tragen. Dieselbe Zuordnung gilt für die fünf
+  bestehenden Tags — `v1.1.0` bis `v1.4.0` zeigen genau auf diese Commits,
+  `v1.0.0` auf `972f50e` («docs: prepare v1.0.0 — add the Security section and
+  date the release»), zwei Commits nach dem Initial Commit.
 
 - **Ein CI-Wächter für den Tag.** Der Schritt «Version badge matches the latest
   CHANGELOG release» bindet Badge an CHANGELOG. Der Tag war die dritte Stelle,
@@ -25,10 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   kann. Der Workflow triggert dafür neu auch auf `tags: ["v*"]`.
 
   **Grenze, ausdrücklich:** Bei einem Tag-Lauf führt GitHub die `ci.yml` des
-  *getaggten* Commits aus, nicht die von `main`. Die sieben nachgetragenen Tags
-  zeigen auf Commits ohne diesen Schritt und werden von ihm daher nie geprüft —
-  sie sind stattdessen einmalig von Hand verifiziert. Der Wächter greift ab dem
-  ersten Tag auf einen Commit, der ihn selbst enthält.
+  *getaggten* Commits aus, nicht die von `main`. Die fünf bestehenden Tags und
+  die drei nachzutragenden zeigen sämtlich auf Commits ohne diesen Schritt und
+  werden von ihm daher nie geprüft — sie sind stattdessen von Hand verifiziert.
+  Der Wächter greift ab dem ersten Tag auf einen Commit, der ihn selbst
+  enthält, also frühestens ab 1.8.0.
 
 ## [1.7.0] - 2026-08-06
 

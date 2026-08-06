@@ -7,8 +7,9 @@ on:
     # unten laeuft nur hier. Achtung, das gilt fuer jeden Workflow: bei einem
     # Tag-Lauf fuehrt GitHub die ci.yml des GETAGGTEN Commits aus, nicht die
     # von main. Ein Tag auf einen Commit ohne diesen Schritt wird also nicht
-    # geprueft — die sieben nachgetragenen Tags v1.0.0–v1.6.0 sind genau
-    # dieser Fall und wurden stattdessen einmalig von Hand verifiziert.
+    # geprueft. Alle bisherigen Tags (v1.0.0–v1.4.0) und die drei noch
+    # fehlenden (v1.5.0–v1.7.0) sind genau dieser Fall; sie sind von Hand
+    # verifiziert. Der Schritt greift fruehestens ab 1.8.0.
     tags: ["v*"]
   pull_request:
 
