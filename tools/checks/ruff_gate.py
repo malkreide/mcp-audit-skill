@@ -34,8 +34,8 @@ MISSING_RUFF = (
     "FAIL statt skip, aus demselben Grund wie bei den Vorlagen-"
     "Abhängigkeiten: Eine übersprungene Prüfung meldete «bestanden», wo "
     "«nicht gelaufen» richtig wäre.\n"
-    "  Die gepinnte Version steht in .github/workflows/ci.yml und in "
-    "  .pre-commit-config.yaml — beide müssen übereinstimmen."
+    "  Die gepinnte Version steht in .github/workflows/ci.yml und in\n"
+    "  .pre-commit-config.yaml — beide müssen übereinstimmen (Check 16)."
 )
 
 
