@@ -77,8 +77,13 @@ BASE="https://api.example.ch/v2" OUTDIR=/tmp/probe bash reference/probe_template
 ├── companion/
 │   └── mcp-data-fidelity/
 │       └── README.md                     # Pointer — der Skill hat ein eigenes Repo
-└── scripts/
-    └── validate.sh                       # die Checks des Repos; die CI ruft diese Datei auf
+├── scripts/
+│   └── validate.sh                       # Einstieg; die CI ruft diese Datei auf
+├── tools/
+│   └── checks/                           # die Checks selbst — eine Funktion pro Gate
+└── tests/
+    ├── mutations.py                      # pro Check ein Baum, auf dem er rot werden MUSS
+    └── test_*.py                         # fährt sie, und hält die Checks gegens echte Repo
 ```
 
 ## Companion-Skill: `mcp-data-fidelity`
@@ -159,15 +164,31 @@ die sie belegt.
 Vor einem Pull Request die Checks laufen lassen:
 
 ```bash
+pip install -r requirements-reference.txt -r requirements-dev.txt
 bash scripts/validate.sh
 ```
 
 Es ist dieselbe Datei, die die CI aufruft — es gibt also keine zweite Kopie, die
-auseinanderlaufen könnte. Jeder Check läuft auch nach einem Fehlschlag weiter,
-ein roter Durchlauf benennt damit alle Probleme auf einmal. Vor einer
-Änderung an der Frontmatter zu wissen: Das Limit für `description` liegt bei 1024
-Zeichen, und die aktuelle lässt einstelligen Spielraum — das Skript gibt aus,
-wie viel übrig ist.
+auseinanderlaufen könnte. Das schliesst `ruff check` und `ruff format --check`
+ein: Sie liefen bis 1.7.0 nur in der CI, womit der lokale Runner grün melden
+konnte auf einem Baum, den die CI ablehnt. Jeder Check läuft auch nach einem
+Fehlschlag weiter, ein roter Durchlauf benennt damit alle Probleme auf einmal.
+Vor einer Änderung an der Frontmatter zu wissen: Das Limit für `description`
+liegt bei 1024 Zeichen, und die aktuelle lässt einstelligen Spielraum — das
+Skript gibt aus, wie viel übrig ist.
+
+Wer einen Check ändert oder hinzufügt, braucht ausserdem:
+
+```bash
+pytest
+```
+
+Die Checks stehen als gewöhnliche Funktionen unter `tools/checks/`, und zu jedem
+gibt es in `tests/mutations.py` mindestens einen Baum, auf dem er rot werden
+**muss** — samt der Zusicherung, *was* er dann sagt. Ein Check ohne Mutation
+lässt die Suite fehlschlagen. Der Grund steht in `ruff.toml`: Dort stand einmal
+`select = []`, beide Ruff-Schritte meldeten «All checks passed!», und niemand
+merkte es, weil nichts rot wurde.
 
 Vor einem grösseren Pull Request bitte ein Issue eröffnen, damit die Form vorher
 geklärt ist.

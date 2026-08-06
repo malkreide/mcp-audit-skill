@@ -37,6 +37,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Die Checks sind testbar geworden: `tools/checks/` statt Heredocs.** Jedes
+  Gate ist jetzt eine gewöhnliche Funktion `(root: Path) -> str`, die bei
+  einem Befund `CheckFailed` wirft, statt `sys.exit` aufzurufen. Beides ist
+  Zweck, nicht Kosmetik: *root* statt `cwd` erlaubt, eine Prüfung gegen einen
+  Baum zu fahren, in dem gezielt ein Anker fehlt; die Exception macht ihren
+  Befundtext abfangbar. `sys.exit` hätte einen Test nur «nicht 0» prüfen
+  lassen, nicht *warum* — und eine Prüfung, die aus dem falschen Grund rot
+  wird, schickt den Lesenden zur falschen Datei.
+
+  Vorher standen dieselben Prüfungen als Shell-Funktionen und Python-Heredocs
+  in `scripts/validate.sh` und in `ci.yml`. Ein Heredoc lässt sich nur
+  ausführen, indem man das ganze Repository in genau den Zustand bringt, den
+  es beanstanden soll; entsprechend war von keiner einzigen Prüfung belegt,
+  dass sie überhaupt beisst. Das ist derselbe Fehler, gegen den die
+  Prüfungen gerichtet sind, eine Ebene höher — und Check 12 ist der Beleg,
+  dass er hier vorkommt und nicht bloss denkbar ist.
+
+  `scripts/validate.sh` bleibt der dokumentierte Einstieg und ruft
+  `python -m tools.checks` auf. Die Ausgabe hat absichtlich dieselbe Form wie
+  vorher.
+
+- **`tests/` — pro Check mindestens ein Baum, auf dem er rot werden MUSS.**
+  Rund fünfzig Mutationen, jede mit der Zusicherung, *welchen* Teil des
+  Befundes die Prüfung dann nennt. Drei Wächter halten die Suite ehrlich:
+
+  * `test_every_check_has_at_least_one_mutation` — eine Prüfung ohne Mutation
+    lässt die Suite fehlschlagen. Ohne diesen Zwang wäre jede neue Prüfung
+    genau das, wogegen dieses Repo angeschrieben ist: eine Behauptung, die
+    nie widerlegt wurde.
+  * `test_check_passes_on_the_real_repository` — jede Prüfung läuft
+    zusätzlich gegen den echten Baum. Ohne diesen Meta-Test prüfte die Suite
+    am Ende nur sich selbst: Ein handgeschriebenes Fixture enthält die Anker
+    per Konstruktion.
+  * Eine Mutation, deren Suchtext nicht mehr im Baum steht, schlägt **laut**
+    fehl, statt still zu passieren. Eine veraltete Mutation wäre sonst ein
+    Test, der nichts mehr testet.
+
+  Der Fixture-Baum ist aus demselben Grund eine Kopie des echten
+  Arbeitsbaums (`git ls-files`) und keine Attrappe; ein eigener Test belegt,
+  dass die Kopie nichts verloren hat.
+
+  Der schärfste Test der Sammlung ist
+  `test_check_12_catches_what_13_and_14_cannot`: Auf einem Baum, in dem
+  `reference/` aus `ruff.toml` genommen wurde, laufen beide Gates grün durch
+  — sie haben nichts zu beanstanden, weil sie nichts mehr lesen. Genau das
+  ist die Daseinsberechtigung von Check 12, und sie steht jetzt als Test da
+  statt als Kommentar.
+
+- **Check 13 und 14: `ruff check` und `ruff format --check` laufen im
+  Runner.** Sie standen bisher als eigene Schritte in `ci.yml` und liefen
+  damit *nicht* in `scripts/validate.sh` — der Datei, deren Kopfkommentar
+  seit jeher argumentiert, zwei Kopien der Gates würden driften und ein
+  gedrifteter Pre-Flight-Check melde grün auf einem Baum, den die CI
+  ablehnt. Genau diese Eigenschaft hatte er selbst, für Lint und
+  Formatierung. `ci.yml` installiert ruff und ruft den Runner auf; die
+  doppelten Schritte sind weg.
+
+  Die Reihenfolge ist Absicht: erst die Sonde (12), dann die Gates (13, 14).
+  Ein grünes 13 heisst nur dann «der Baum ist sauber», wenn 12 vorher gezeigt
+  hat, dass 13 überhaupt etwas liest.
+
+- **Check 15 und 16 — die letzten zwei Heredocs aus `ci.yml`.** Check 15 ist
+  die GitHub-Description gegen SKILL.md; sie ist als einzige Prüfung
+  `offline=False` markiert, weil sie Netz und Token braucht, und bleibt
+  deshalb aus `scripts/validate.sh` heraus — der Runner muss in einem Clone
+  ohne Zugangsdaten vollständig durchlaufen. Ein Test hält zusätzlich den
+  Description-Vorschlag, den ihr eigener Befund ausgibt, gegen das echte
+  SKILL.md: Ein Hinweis, der eine Description empfiehlt, die derselbe Check
+  anschliessend beanstandet, schickt den Lesenden im Kreis.
+
+  Check 16 ist der Ruff-Pin-Abgleich zwischen `ci.yml` und
+  `.pre-commit-config.yaml`. Er prüft neu auch, dass **beide** Hooks
+  (`ruff-check`, `ruff-format`) noch geführt werden — fällt einer weg, läuft
+  er lokal nicht mehr, der Commit geht grün durch und erst die CI wird rot.
+  Das Schwester-Repo `mcp-data-fidelity-skill` hatte diesen Teil, dieses
+  nicht.
+
 - **Check 12: das Ruff-Gate greift nachweislich auf `reference/`.** `ruff
   check` und `ruff format --check` waren die einzigen Prüfungen dieses Repos
   ohne Anker-Wächter. Wird `reference/` in `ruff.toml` ausgeschlossen — per
