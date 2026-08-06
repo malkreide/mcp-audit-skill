@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Die Zusage sind drei Kernschritte, nicht fünf Schritte.** Schritt 4
+  (Übergabe an `github-repo`) und Schritt 5 (Portfolio-Register) sind
+  Übergabe und zählen nicht mit. Das stand längst im Text — «durchläuft die
+  drei Schritte unten», «nach Abschluss der Probe (Schritt 1-3)» —, nur
+  nirgends so, dass eine Prüfung es hätte lesen können. Der vorangegangene
+  Eintrag hatte deshalb die falsche Seite korrigiert und das Frontmatter auf
+  `5-Schritte-Vorgehen` gezogen; es steht wieder auf `3`.
+
+  Damit die Einordnung nicht wieder nur Prosa ist, trägt **jede**
+  Schritt-Überschrift jetzt `[Kern]` oder `[Übergabe]`. Bewusst jede: Kern
+  aus dem *Fehlen* einer Markierung abzuleiten hiesse, dass ein neu
+  eingefügter Schritt ohne Marker still als Kern zählt und die Zusage
+  aufbläst, ohne dass etwas rot wird.
+
+  `ci.yml` prüft die GitHub-Description entsprechend gegen
+  `<Zahlwort>-step core procedure`. **Die Description muss dafür neu gesetzt
+  werden** — kein Commit erreicht sie.
+
+- **Check 11 prüft jetzt die Klassifikation, nicht nur die Zahl.** Neu
+  abgesichert: jeder Schritt trägt eine Markierung; die Kernschritte bilden
+  einen zusammenhängenden Anfang (ein `[Kern]` hinter einem `[Übergabe]`
+  wäre entweder falsche Reihenfolge oder falsche Einordnung); mindestens ein
+  Kernschritt existiert; und das Zahlwort der Einleitung stimmt mit der
+  Markierung überein — die eine Stelle, an der die Zusage als Prosa steht
+  und genau deshalb unbemerkt veraltet.
+
 ### Added
 
 - **Die GitHub-Description trägt eine prüfbare Zusage.** Sie nennt jetzt die
