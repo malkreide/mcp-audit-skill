@@ -3,6 +3,14 @@ name: validate
 on:
   push:
     branches: [main, master]
+    # Tag-Laeufe: der Schritt «Tag und CHANGELOG nennen dieselbe Version»
+    # unten laeuft nur hier. Achtung, das gilt fuer jeden Workflow: bei einem
+    # Tag-Lauf fuehrt GitHub die ci.yml des GETAGGTEN Commits aus, nicht die
+    # von main. Ein Tag auf einen Commit ohne diesen Schritt wird also nicht
+    # geprueft. Alle bisherigen Tags (v1.0.0–v1.4.0) und die drei noch
+    # fehlenden (v1.5.0–v1.7.0) sind genau dieser Fall; sie sind von Hand
+    # verifiziert. Der Schritt greift fruehestens ab 1.8.0.
+    tags: ["v*"]
   pull_request:
 
 jobs:
@@ -405,4 +413,61 @@ jobs:
               print(f"ok — {path}: {expected}")
           print(f"ok — version badge matches CHANGELOG ({expected}, line {lineno}) "
                 f"in {len(readmes)} file(s)")
+          PY
+
+      # Der Schritt darueber bindet Badge an CHANGELOG. Ohne diesen hier bleibt
+      # der Tag die dritte Stelle, die dieselbe Zahl behauptet und von keiner
+      # geprueft wird — und der Tag ist die einzige der drei, die man nach dem
+      # Veroeffentlichen nicht mehr stillschweigend korrigieren kann.
+      #
+      # `if` statt eines eigenen Jobs: der Schritt braucht denselben Checkout
+      # und dieselbe CHANGELOG-Lesung wie der Rest. Bei einem Branch- oder
+      # PR-Lauf gibt es keinen Tag, dann wird er uebersprungen.
+      - name: Tag und CHANGELOG nennen dieselbe Version
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          PYTHONUTF8: "1"
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os, pathlib, re, sys
+
+          # Leer statt ungesetzt waere der stille Fall: `re.match` gegen "" -> None
+          # -> Abbruch mit der Tag-Meldung, die dann in die Irre fuehrt. Deshalb
+          # zuerst gegen die Variable selbst pruefen.
+          tag = os.environ.get("TAG_NAME", "")
+          if not tag:
+              sys.exit("TAG_NAME ist leer — der Schritt lief ohne Tag-Kontext. "
+                       "Entweder hat sich `github.ref_name` geaendert oder die "
+                       "`if`-Bedingung greift nicht mehr; so oder so hat dieser "
+                       "Check nicht stattgefunden.")
+
+          m = re.fullmatch(r"v?(?P<version>\d+\.\d+\.\d+)", tag)
+          if not m:
+              sys.exit(f"Tag {tag!r} ist keine Version der Form vX.Y.Z. Der "
+                       "Trigger steht auf `tags: [\"v*\"]` — ein Tag, der damit "
+                       "anfaengt, aber keine Versionsnummer ist, gehoert nicht "
+                       "an ein Release.")
+          tagged = m.group("version")
+
+          lines = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
+          HEADING = re.compile(r"^## \[v?(?P<version>\d+\.\d+\.\d+)\]")
+          source = next(((n, ln, hm.group("version"))
+                         for n, ln in enumerate(lines, 1)
+                         if (hm := HEADING.match(ln))), None)
+          if source is None:
+              sys.exit("CHANGELOG.md: no '## [X.Y.Z]' release heading found — anchor "
+                       "gone, so this check would have nothing to compare against")
+          lineno, heading, top = source
+
+          if tagged != top:
+              sys.exit(
+                  f"Tag {tag!r} nennt {tagged}, oberstes Release in CHANGELOG.md ist "
+                  f"{top} (Zeile {lineno}: {heading.strip()!r}).\n"
+                  "  Entweder wurde der Tag vor dem Release-Commit gesetzt, oder er "
+                  "zeigt auf den falschen Commit. Tag loeschen und neu setzen — der "
+                  "CHANGELOG ist hier die Quelle, nicht der Tag."
+              )
+          print(f"ok — Tag {tag} und CHANGELOG-Spitze stimmen ueberein ({top}, "
+                f"Zeile {lineno})")
           PY
