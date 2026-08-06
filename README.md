@@ -77,7 +77,9 @@ Four things about it generalise:
 
 Rule 6 was added after a second case: an MCP Registry query returned nothing for a while because the fields sit under `servers[].server.*` and the client looked one level up. Syntactically fine, semantically blind.
 
-Rule 10 was added after a third, which surfaced in a design rather than in production: applying `ARCH-003` to a search tool of the portfolio, two errors coincided. The suggestion mechanism the check asks for was read as permission to query the suggestions as well — and the opposite decision, exact-only, was argued from misattributed bankruptcy notices, a rubric outside the scope the server serves. Both sounded like diligence; neither was tied to anything checkable. The damage did not occur, because the design was read first. It is recorded all the same.
+Rule 10 and the addendum to rule 1 come from a third case, [`amtsblatt-mcp`](https://github.com/malkreide/amtsblatt-mcp), and it shipped. Version 0.20.0 declined a suggestion mechanism and argued the refusal from bankruptcy notices, debt-collection summonses, estate calls and construction objections — rubrics the server's allow-list exists to exclude. Since the searchable set is therefore the non-sensitive one, the sensitive-data exemption was claimed for exactly the set the criterion applies to. The reasoning stood in both `SECURITY` files, the CHANGELOG and the closing PR; the [2026-07-30 re-audit](https://github.com/malkreide/amtsblatt-mcp/blob/main/audits/2026-07-30T105205-Z-amtsblatt-mcp/findings/ARCH-003.md) caught it, 0.22.0 fixed it.
+
+The opposite direction is the second error of the same case: the suggestion mechanism the check asks for reads as permission to query the suggestions as well — and then the server serves notices under a term nobody chose. Both routes end in the same trap, which is why the resolution splits them rather than choosing between them.
 
 Rules 7–9 do **not** have that provenance, and the skill says so where it states them. They are derived from MCP spec 2026-07-28: a stateless core without `initialize`, so reconnects are the normal case (rule 7); `ttlMs`/`cacheScope` on the list responses (rule 8); MRTR replacing server-initiated elicitation (rule 9). Derived, not measured — which in this repository is a difference worth naming. The bar for an outside proposal is unchanged: it still needs an incident. What cleared the lower bar here is a protocol change that hits all 42 servers of the portfolio at once, not a plausible-sounding guideline.
 
@@ -97,7 +99,7 @@ Five repositories, one lifecycle. Each answers a different question, in the orde
 
 Alongside, not part of the chain: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — Anthropic's generic build guidance, complemented rather than replaced. It is someone else's repository and cannot carry the topic.
 
-Plus the server this skill came from: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), whose [issue #11](https://github.com/malkreide/termdat-mcp/issues/11) produced rules 1–5.
+Plus the two servers this skill came from: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), whose [issue #11](https://github.com/malkreide/termdat-mcp/issues/11) produced rules 1–5, and [`amtsblatt-mcp`](https://github.com/malkreide/amtsblatt-mcp), whose [`ARCH-003` finding](https://github.com/malkreide/amtsblatt-mcp/blob/main/audits/2026-07-30T105205-Z-amtsblatt-mcp/findings/ARCH-003.md) produced rule 10 and the scope addendum to rule 1.
 
 Build by rules 1–6 and you pass the `FID` checks; fail them in an audit and the remediation is here. Rules 7–9 are covered outside `FID`, and those checks are `advisory` — they are counted, not enforced. Rule 10 is the exception: `ARCH-003` blocks. Every rule now has a check; what remains open is scope, not coverage, and the widest of those is rule 7: its check measures on baseline `2026-07-28`, while pagination loss also happens on `2025-11-25`. The gaps are named per row in `SKILL.md`.
 
@@ -113,10 +115,8 @@ whose defaults have changed since the table was written.
 New rules have a higher bar. Rules 1–6 each come from a specific failure that
 actually happened, and that is the main reason the set is worth reading — a
 plausible-sounding guideline without a scar behind it makes the skill longer and
-weaker. Rule 10 is the borderline case and says so in the text: the error
-happened, the damage did not, because the design was read first. What carries it
-over the bar is not plausibility but that it can be violated without anyone
-noticing. A proposal should name the incident, carry a ✗/✓ pair, and state its
+weaker. Rule 10 clears the same bar: shipped in `amtsblatt-mcp` 0.20.0, caught by
+the re-audit, fixed in 0.22.0. A proposal should name the incident, carry a ✗/✓ pair, and state its
 **Nachweis**: the two calls, the delta, the assertion that separates a working
 control from a broken one.
 
