@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`ruff check` auf `reference/`, mit gepinnter Version.** Der Referenzcode
+  wurde bisher nur kompiliert. `compileall` prüft Syntax — ein ungenutzter
+  Import, ein mutables Default-Argument oder eine falsche Importreihenfolge
+  kompilieren anstandslos und wandern dann in jeden `*-mcp`-Server, der die
+  Vorlage kopiert. `ruff.toml` schaltet dafür das Linting ein (E, W, F, I, UP,
+  B, SIM, C4, RUF); der Pre-Commit-Hook bekommt `ruff-check` dazu, damit lokal
+  und CI dieselbe Antwort geben.
+
+- **Import-Smoke-Test für `reference/*.py` (Check 3).** Die Vorlagen werden
+  wirklich geladen, nicht nur kompiliert: Import vorhanden, Klassenkörper baut
+  durch, Pydantic-Modell validiert sein eigenes Schema. Die Abhängigkeiten
+  dafür stehen gepinnt in `requirements-reference.txt`. Fehlen sie, meldet der
+  Check `FAIL` mit dem Installationsbefehl — kein stiller Skip, sonst meldete
+  ein Lauf ohne Abhängigkeiten «bestanden», wo «nicht gelaufen» richtig wäre.
+  Der Check läuft über `reference/*.py` statt über eine gepflegte Liste, damit
+  eine dritte Vorlage automatisch abgedeckt ist.
+
+- **Wächter gegen eingecheckte `.pyc`-Dateien (Check 4).** Der Vorfall steht
+  seit 1.1.0 unter «Removed» im Changelog, der Wächter dagegen fehlte. Das
+  Schwester-Repo `mcp-transport-hardening-skill` hat ihn seit jeher.
+
+### Changed
+
+- **Jeder Check, der über eine Überschrift, ein Regex oder einen Dateinamen
+  ankert, bricht jetzt ab, wenn sein Anker verschwindet** — statt weiter grün
+  zu melden, ohne noch etwas zu prüfen. Betroffen: Check 1 (fehlende
+  `probe_template.sh`), Check 2 (`compileall` meldet auf einem `reference/`
+  ohne `.py`-Dateien Erfolg), Check 6 (leerer Überschriften- **oder**
+  Referenz-Satz macht die Differenz zwangsläufig leer, also „alle aufgelöst"),
+  Check 8 (fehlendes Companion-README las sich wie ein falscher Inhalt). Die
+  Checks 9 und 10 hatten diese Absicherung bereits; das Muster stammt aus
+  `mcp-transport-hardening-skill`.
+
+- **`ruff.toml`: `select = []` entfernt.** Die Begründung — Vorlagen führen
+  offene Namen, ruff meldete sie korrekt als F821 — war aus einem
+  Schwester-Repo übernommen, in dem sie zutrifft. Für die beiden Dateien hier
+  gilt sie nicht: beide sind geschlossen und bestehen das Linting unverändert.
+
+### Fixed
+
+- **`reference/response_envelope.py`: Zeile über 88 Zeichen** (E501), gefunden
+  vom neu eingeschalteten `ruff check`.
+
 ## [1.7.0] - 2026-08-05
 
 1.6.0 hat zwei Lücken bewusst offen gelassen — die zulässigen `cacheScope`-Werte

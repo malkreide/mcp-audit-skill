@@ -1,9 +1,9 @@
-# Pre-Commit-Hook — spiegelt den Formatier-Schritt aus
+# Pre-Commit-Hook — spiegelt die ruff-Schritte aus
 # .github/workflows/ci.yml.
 #
-# Bewusst nur `ruff-format`, kein `ruff-check`: die Dateien unter `reference/`
-# sind Vorlagen, deren offene Namen ruff korrekt als F821 melden wuerde. Die
-# Begruendung steht in ruff.toml.
+# Beide Schritte, `ruff-check` und `ruff-format`: die Dateien unter
+# `reference/` sind zwar Vorlagen, aber geschlossene — sie bestehen das
+# Linting. Die Begruendung steht in ruff.toml.
 #
 # Einmalig pro Clone:
 #     pip install pre-commit
@@ -16,4 +16,6 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.8
     hooks:
+      # Reihenfolge wie in ci.yml: erst linten, dann formatieren.
+      - id: ruff-check
       - id: ruff-format

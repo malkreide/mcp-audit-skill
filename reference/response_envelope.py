@@ -70,7 +70,9 @@ class ServerResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     source: str = Field(
-        description="Data attribution. Set the default on your subclass to pin the licence.",
+        description=(
+            "Data attribution. Set the default on your subclass to pin the licence."
+        ),
     )
     provenance: str = Field(
         description=(

@@ -53,11 +53,103 @@ check() {
 # ----------------------------------------------------------------------
 
 shell_syntax() {
-    bash -n reference/probe_template.sh && echo "reference/probe_template.sh parses"
+    # Der Anker ist der Dateiname. Verschwindet die Datei, meldet `bash -n`
+    # zwar einen Fehler, aber einen ueber eine fehlende Datei — hier steht
+    # stattdessen, was das fuer die Pruefung bedeutet.
+    local f=reference/probe_template.sh
+    if [ ! -f "$f" ]; then
+        echo "$f fehlt — Anker weg; dieser Check haette nichts zu parsen"
+        return 1
+    fi
+    bash -n "$f" && echo "$f parses"
 }
 
 python_syntax() {
-    "$PY" -m compileall -q reference/ && echo "reference/*.py compile"
+    # `compileall` auf einem Verzeichnis ohne .py-Dateien meldet Erfolg. Wird
+    # `reference/` umbenannt oder geleert, liefe dieser Check weiter gruen,
+    # ohne noch etwas zu pruefen — der Anker ist der Verzeichnisname.
+    if [ ! -d reference ]; then
+        echo "reference/ fehlt — Anker weg; dieser Check wuerde stillschweigend"
+        echo "nichts mehr pruefen"
+        return 1
+    fi
+    local count
+    count="$(find reference -maxdepth 1 -name '*.py' | wc -l)"
+    if [ "$count" -eq 0 ]; then
+        echo "reference/ enthaelt keine .py-Datei — compileall haette hier Erfolg"
+        echo "gemeldet, ohne etwas geprueft zu haben"
+        return 1
+    fi
+    "$PY" -m compileall -q reference/ && echo "$count reference/*.py compile"
+}
+
+reference_imports() {
+    # compileall prueft Syntax. Ob eine Vorlage sich tatsaechlich laden laesst
+    # — Import vorhanden, Klassenkoerper baut durch, Pydantic-Modell validiert
+    # sein eigenes Schema — sagt erst der Import. Genau diese Dateien werden
+    # kopiert; eine, die nur kompiliert, kostet den Kopierenden die Zeit bis
+    # zum ersten Serverstart.
+    #
+    # Ueber das Dateisystem statt ueber eine gepflegte Liste: eine dritte
+    # Vorlage ist damit automatisch abgedeckt. Eine Abdeckungsgrenze, die
+    # niemand absichtlich gezogen hat, ist die teuerste Sorte.
+    "$PY" - <<'PY'
+import importlib.util
+import pathlib
+import sys
+
+files = sorted(pathlib.Path("reference").glob("*.py"))
+if not files:
+    sys.exit("reference/ enthaelt keine .py-Datei — Anker weg, dieser Check "
+             "haette nichts zu importieren und waere still gruen geblieben")
+
+for path in files:
+    name = f"_probe_reference_{path.stem}"
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        sys.exit(f"{path}: kein Importer zustaendig")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except ModuleNotFoundError as exc:
+        sys.exit(f"{path}: Import scheitert an fehlendem Paket {exc.name!r}.\n"
+                 "  Ist es eine Abhaengigkeit der Vorlage, gehoert es gepinnt "
+                 "nach requirements-reference.txt:\n"
+                 "    pip install -r requirements-reference.txt\n"
+                 "  Ist es das nicht, importiert die Vorlage etwas, das beim "
+                 "Kopieren nirgends existiert.")
+    except Exception as exc:
+        sys.exit(f"{path}: Import scheitert — {type(exc).__name__}: {exc}")
+    finally:
+        sys.modules.pop(name, None)
+
+    public = [n for n in vars(module) if not n.startswith("_")]
+    if not public:
+        sys.exit(f"{path}: importiert, stellt aber keinen Namen bereit — eine "
+                 "Vorlage ohne kopierbares Symbol ist keine Vorlage")
+    print(f"{path.name}: importiert, {len(public)} oeffentliche Namen")
+
+print(f"{len(files)} Vorlage(n) unter reference/ importierbar")
+PY
+}
+
+no_compiled_python() {
+    # Ein .pyc war hier schon einmal eingecheckt (CHANGELOG 1.1.0, Removed).
+    # Der Vorfall steht dokumentiert, ein Waechter dagegen fehlte — das
+    # Schwester-Repo mcp-transport-hardening-skill hat ihn, dieses nicht.
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        echo "kein Git-Repository — dieser Check kann nichts pruefen"
+        return 1
+    fi
+    local tracked
+    tracked="$(git ls-files | grep -E '(^|/)__pycache__/|\.py[cod]$')" || true
+    if [ -n "$tracked" ]; then
+        printf 'kompiliertes Python ist eingecheckt (siehe .gitignore):\n%s\n' \
+               "$tracked"
+        return 1
+    fi
+    echo "kein kompiliertes Python eingecheckt"
 }
 
 frontmatter() {
@@ -88,10 +180,32 @@ PY
 
 cross_references() {
     "$PY" - <<'PY'
-import re, sys
-text = open("SKILL.md", encoding="utf-8").read()
+import pathlib, re, sys
+path = pathlib.Path("SKILL.md")
+if not path.is_file():
+    sys.exit("SKILL.md: missing")
+text = path.read_text(encoding="utf-8")
 headings = set(re.findall(r"^#{2,4} (\d+\.\d+[a-z]?)", text, re.M))
 referenced = set(re.findall(r"\((\d+\.\d+)[a-z]?\)", text))
+# Beide Seiten sind Anker, aber sie fallen unterschiedlich aus — der
+# Mutationstest hat beide Faelle gefahren:
+#
+#   referenced leer (Klammer-Notation ersetzt): die Differenz unten ist
+#   zwangslaeufig leer, der Check meldet «alle aufgeloest» und prueft in
+#   Wahrheit nichts mehr. Ohne diesen Guard still gruen.
+#
+#   headings leer (Nummerierungsschema geaendert): der Check wird auch ohne
+#   Guard rot — aber mit einem Befund, der elf angeblich fehlende Abschnitte
+#   auflistet, statt die eine echte Ursache zu nennen. Wer dem Befund folgt,
+#   repariert elf Verweise, die in Ordnung sind.
+if not headings:
+    sys.exit("SKILL.md: no '## N.M' numbered heading matched — the numbering "
+             "scheme changed or is gone, so this check would silently stop "
+             "checking")
+if not referenced:
+    sys.exit("SKILL.md: no '(N.M)' cross-reference matched — the reference "
+             "notation changed or is gone, so this check would silently stop "
+             "checking")
 missing = sorted(r for r in referenced if not any(h.startswith(r) for h in headings))
 if missing:
     sys.exit(f"SKILL.md references non-existent sections: {missing}")
@@ -120,6 +234,14 @@ companion_pointer() {
     # move was meant to end.
     if [ -e companion/mcp-data-fidelity/SKILL.md ]; then
         echo "companion/ carries a SKILL.md again — it moved to its own repo"
+        return 1
+    fi
+    # Der Anker ist der Dateipfad. Fehlt die Datei, meldete `grep` sonst
+    # dasselbe wie ein falscher Inhalt — der Befund zeigte auf die falsche
+    # Ursache, und der Zeiger waere ganz weg statt nur falsch.
+    if [ ! -f companion/mcp-data-fidelity/README.md ]; then
+        echo "companion/mcp-data-fidelity/README.md fehlt — der Zeiger ist"
+        echo "nicht falsch, sondern weg; dieser Check haette nichts zu lesen"
         return 1
     fi
     if ! grep -q 'malkreide/mcp-data-fidelity-skill' \
@@ -221,14 +343,16 @@ echo "  repo:   $(pwd)"
 echo "  python: $("$PY" --version 2>&1)"
 echo ""
 
-check "1  shell reference is syntactically valid"     shell_syntax
-check "2  python references are syntactically valid"  python_syntax
-check "3  SKILL.md carries a well-formed frontmatter" frontmatter
-check "4  cross-references resolve to real sections"  cross_references
-check "5  referenced files exist"                     referenced_files
-check "6  the companion pointer still points somewhere" companion_pointer
-check "7  version badge matches the latest CHANGELOG release" version_badge
-check "8  the quality-chain table names all five members"    quality_chain
+check "1  shell reference is syntactically valid"      shell_syntax
+check "2  python references are syntactically valid"   python_syntax
+check "3  python references actually import"           reference_imports
+check "4  no compiled python is tracked"               no_compiled_python
+check "5  SKILL.md carries a well-formed frontmatter"  frontmatter
+check "6  cross-references resolve to real sections"   cross_references
+check "7  referenced files exist"                      referenced_files
+check "8  the companion pointer still points somewhere"      companion_pointer
+check "9  version badge matches the latest CHANGELOG release" version_badge
+check "10 the quality-chain table names all five members"     quality_chain
 
 echo ""
 if [ "$failed" -eq 0 ]; then

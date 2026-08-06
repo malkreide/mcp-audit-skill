@@ -1,15 +1,35 @@
-# Nur Formatierung, kein Linting.
+# Formatierung UND Linting.
 #
-# Die Python-Dateien dieses Repos liegen unter `reference/` und sind
-# Copy-Paste-Vorlagen fuer die Zielcodebasis, kein lauffaehiges Modul. Sie
-# referenzieren absichtlich Namen aus der Zielumgebung — ruff meldet das
-# korrekt als F821, aber es ist hier kein Defekt, sondern der Zweck. Die CI
-# fuehrt sie deshalb nur durch `compileall` und `ruff format --check`.
+# Hier stand frueher `select = []` mit der Begruendung, die Dateien unter
+# `reference/` seien Copy-Paste-Vorlagen, die absichtlich Namen aus der
+# Zielumgebung referenzieren — ruff wuerde das als F821 melden, obwohl es hier
+# der Zweck und kein Defekt ist.
 #
-# `select = []` schaltet das Linting aus: wer hier doch einmal `ruff check`
-# laufen laesst, bekommt keine Fehlalarme auf Vorlagen-Code. Damit steht die
-# Entscheidung in der Konfiguration statt nur in einem Commit-Text.
+# Fuer dieses Repo stimmt das nicht. `reference/response_envelope.py` und
+# `reference/retry_backoff.py` sind beide geschlossen: sie importieren, was sie
+# brauchen (`pydantic`, `httpx`), definieren alles Uebrige selbst und lassen
+# sich unveraendert importieren — der Import-Smoke-Test in scripts/validate.sh
+# belegt das bei jedem Lauf. Die Begruendung war aus einem Schwester-Repo
+# uebernommen, in dem sie zutrifft; hier hat sie das Linting fuer Dateien
+# abgeschaltet, die es bestehen.
+#
+# Das ist teuer, denn `reference/` ist genau der Code, den Leute kopieren. Was
+# hier durchrutscht, rutscht in jeden `*-mcp`-Server durch, der die Vorlage
+# uebernimmt.
+#
+# Sollte spaeter eine Vorlage dazukommen, die tatsaechlich offene Namen fuehrt:
+# `# noqa: F821` mit Begruendung an die betroffene Zeile — nicht das Regelwerk
+# fuer alle Dateien wieder abschalten.
 target-version = "py311"
+line-length = 88
 
 [lint]
-select = []
+# E/W  pycodestyle       — Zeilenlaenge, Whitespace
+# F    pyflakes          — ungenutzte Importe, undefinierte Namen
+# I    isort             — Importreihenfolge (`ruff format` sortiert nicht)
+# UP   pyupgrade         — veraltete Syntax fuer target-version
+# B    flake8-bugbear    — typische Fallen (mutable defaults, …)
+# SIM  flake8-simplify
+# C4   flake8-comprehensions
+# RUF  ruff-spezifisch
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "C4", "RUF"]
