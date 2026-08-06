@@ -75,3 +75,81 @@ jobs:
 
       - name: Run the validation suite
         run: bash scripts/validate.sh
+
+      # Die GitHub-Description steht ausserhalb des Repos und faellt damit
+      # durch jede Pruefung, die Dateien liest — auch durch scripts/validate.sh,
+      # das offline und ohne Token laufen koennen muss. Deshalb steht dieser
+      # eine Check hier statt dort.
+      #
+      # Kein zweiter Ort fuer die Wahrheit: verglichen wird gegen die Ziffer
+      # aus dem Frontmatter von SKILL.md, und Check 11 der Suite oben hat
+      # bereits belegt, dass diese Ziffer der Zahl der «## Schritt N:»-
+      # Ueberschriften entspricht. Die Zahlwort-Tabelle steht nur hier, weil
+      # nur hier ein Wort gegen eine Ziffer gehalten wird.
+      #
+      # Ein fehlgeschlagener API-Aufruf ist ein FEHLER, kein Skip (`curl -f`,
+      # kein `|| true`): Ein Check, der bei einem Netzproblem gruen durchlaeuft,
+      # meldet «bestanden», wo «nicht gelaufen» richtig waere.
+      - name: GitHub description names the current step count
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONUTF8: "1"
+        run: |
+          curl -sS -f \
+               -H "Authorization: Bearer $GH_TOKEN" \
+               -H "Accept: application/vnd.github+json" \
+               "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY" \
+               > "$RUNNER_TEMP/repo.json"
+          python - <<'PY'
+          import json, os, pathlib, re, sys
+
+          # Bis "ten", damit die naechsten Schritte den Wortschatz nicht
+          # sprengen: ein Zahlwort, das hier fehlt, ergibt sonst dieselbe
+          # Meldung wie ein echter Zahlendreher — der Befund zeigte dann auf
+          # die falsche Datei.
+          WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+                   "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+
+          skill = pathlib.Path("SKILL.md").read_text(encoding="utf-8")
+          claim = re.search(r"Standardisiertes (?P<n>\d+)-Schritte-Vorgehen", skill)
+          if not claim:
+              sys.exit("SKILL.md: the frontmatter step count is gone — check 11 "
+                       "of the suite above should have caught this first; without "
+                       "it there is nothing to compare the description against")
+          expected = int(claim.group("n"))
+
+          repo = json.loads(
+              pathlib.Path(os.environ["RUNNER_TEMP"], "repo.json").read_text(encoding="utf-8")
+          )
+          description = repo.get("description") or ""
+
+          found = re.search(r"(?P<word>\w+)-step procedure", description)
+          if not found:
+              sys.exit(
+                  "GitHub description does not carry the phrase '<word>-step "
+                  f"procedure' — got {description!r}.\n"
+                  "  Either it was reworded (then adjust this anchor in the same "
+                  "commit) or the promise was dropped from it. An anchor that is "
+                  "gone makes this check stop checking without saying so.\n"
+                  "  Set it on the repo itself — no commit can fix it:\n"
+                  f"    gh repo edit {os.environ['GITHUB_REPOSITORY']} "
+                  '--description "Claude Skill for probing public data sources '
+                  'before building an MCP server — a five-step procedure"'
+              )
+          word = found.group("word")
+          if word not in WORDS:
+              sys.exit(f"GitHub description says {word!r}, which is not a number "
+                       "word this check knows — extend WORDS in ci.yml, otherwise "
+                       "the comparison below reports a mismatch that is really a "
+                       "gap in this script")
+          if WORDS[word] != expected:
+              sys.exit(
+                  f"GitHub description promises {word!r} ({WORDS[word]}) steps, "
+                  f"SKILL.md carries {expected}.\n"
+                  "  The description lives outside the repository, so no commit "
+                  "fixes it — set it on the repo itself:\n"
+                  f"    gh repo edit {os.environ['GITHUB_REPOSITORY']} "
+                  f'--description "..."'
+              )
+          print(f"ok — GitHub description says {word}, matching SKILL.md ({expected})")
+          PY

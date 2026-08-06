@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Die GitHub-Description trägt eine prüfbare Zusage.** Sie nennt jetzt die
+  Schrittzahl («a five-step procedure»), und die CI prüft sie bei jedem Lauf
+  gegen `SKILL.md`. Die Description liegt ausserhalb des Repos und fiel damit
+  durch jede Prüfung, die Dateien liest — dieselbe Lücke, die im Schwester-Repo
+  `mcp-transport-hardening-skill` dazu geführt hat, dass dort zwei Wochen lang
+  «twelve» stand, als es schon dreizehn Regeln waren. Der Schritt steht in
+  `ci.yml` statt in `scripts/validate.sh`, weil er Netz und Token braucht und
+  die Suite offline lauffähig bleiben soll. Ein fehlgeschlagener API-Aufruf ist
+  ein Fehler, kein Skip (`curl -f`, kein `|| true`).
+
+- **Check 11: die Schrittzahl stimmt in Überschriften und Frontmatter
+  überein.** Das ist der repo-lokale Anker, gegen den die Description geprüft
+  wird — die Zahl, auf die sich der CI-Schritt stützt, ist damit selbst
+  abgesichert und nicht bloss geglaubt. Zusätzlich geprüft: die Schritte sind
+  lückenlos von 1 durchnummeriert.
+
 - **`ruff check` auf `reference/`, mit gepinnter Version.** Der Referenzcode
   wurde bisher nur kompiliert. `compileall` prüft Syntax — ein ungenutzter
   Import, ein mutables Default-Argument oder eine falsche Importreihenfolge
@@ -51,6 +67,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`reference/response_envelope.py`: Zeile über 88 Zeichen** (E501), gefunden
   vom neu eingeschalteten `ruff check`.
+
+- **Das Frontmatter versprach ein «3-Schritte-Vorgehen», `SKILL.md` führt
+  fünf.** Gefunden vom neuen Check 11, beim ersten Lauf. Schritt 4 (Übergabe an
+  `github-repo`) und Schritt 5 (Portfolio-Register) sind nummerierte Schritte
+  der Prozedur; die Zusage war schlicht nicht mitgewachsen. Korrigiert auf
+  `5-Schritte-Vorgehen` — die Zeichenzahl bleibt gleich, das 1024er-Limit der
+  Description ist weiterhin eingehalten (1017 Zeichen).
 
 ## [1.7.0] - 2026-08-05
 
