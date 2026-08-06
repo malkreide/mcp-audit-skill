@@ -6,6 +6,34 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `ARCH-003` misst jetzt auch, was rausgegangen ist
+
+Der Check prüfte, ob auf einer Leermenge ein Fuzzy- oder Vorschlagsmechanismus **existiert**. Beide Modi lasen dafür die **Antwort**: Empty-Result-Pattern im Quelltext, `match_type`-Feld, handlungsfähiger Hinweis. Keiner mass den **Request**. Ein Server, der seine eigenen Vorschläge still selbst absucht und deren Treffer unter `results` mischt, bestand ihn — die Antwort beantwortet dann einen Begriff, den der Aufrufer nie gewählt hat, und für das Modell ist eine so entstandene Zeile von einer echten nicht zu unterscheiden. `match_type: "fuzzy"` steht daneben, aber es sagt *dass* geraten wurde, nicht *welche Zeile zu welchem Begriff gehört*.
+
+**Der Check hat es nicht nur übersehen, er hat es vorgeführt.** Das Pass-Pattern von Modus 1 legte `fuzzy[:10]` direkt unter `results` und holte seine Vorschläge über `popular_terms_starting_with(query[:3])` — ein fremdes Korpus-Vokabular statt einer Ableitung aus der Eingabe, also eine zweite Abfrage, die niemand angefordert hatte, dazu ein Präfix aus drei Zeichen, das den halben Bestand matcht. Der Remediation-Block zeigte dasselbe. Ein Pass-Pattern ist Kopiervorlage; was dort steht, wird gebaut. Beide Stellen sind korrigiert, und die Gegenrichtung hält jetzt ein katalogweiter Guard.
+
+**§2.5 vor dem Vorschlag beantwortet, nicht danach:**
+
+1. **`applies_when` zu eng?** Nein — `ARCH-003` gilt `always`.
+2. **Richtige Sache am zu kleinen Umfang?** **Ja, hier liegt es.** Der Prüfgegenstand lag vollständig auf der Antwortseite.
+3. **Eigene Prüfdimension?** Nein. Der Zähler wird in demselben Handgriff gesetzt wie der Mechanismus selbst — der Belegfall lieferte beides in *einem* Release —, und §2.5 verlangt, dass ein Check in **einem** Schritt behebbar bleibt. Das Gegensignal greift nicht: Die Erweiterung erzwingt kein `oder` in den Kriterien, das mit Kriterium 1 nichts zu tun hätte, sie schärft Kriterium 1.
+
+Also Frage 2: Verification erweitern, **kein `FID-007`** — derselbe Ausgang wie bei `ARCH-020`, das den Pagination-Schnitt und die `ttlMs`-Ableitung aufgenommen hat, statt einen Check zu eröffnen. Der Vorschlag stand als [#102](https://github.com/malkreide/mcp-audit-skill/issues/102).
+
+**Belegfall (Portfolio, 2026-08):** [`amtsblatt-mcp`](https://github.com/malkreide/amtsblatt-mcp), beide Hälften desselben Vorgangs. 0.20.0 lehnte Kriterium 1 ausdrücklich ab und begründete das mit Konkursmeldungen, Betreibungen, Erbschaftsaufrufen und Baueinsprachen — Rubriken, die die Allow-Liste des Servers gerade ausschliesst und die über kein Tool erreichbar sind. Die Ausnahme aus Kriterium 4 war damit für genau die Menge beansprucht, auf die Kriterium 1 anzuwenden gewesen wäre. Gefangen hat das erst das [Re-Audit vom 2026-07-30](https://github.com/malkreide/amtsblatt-mcp/blob/main/audits/2026-07-30T105205-Z-amtsblatt-mcp/findings/ARCH-003.md) — und zwar durch Lesen der Rubrik-Listen, nicht durch einen Modus dieses Checks. 0.22.0 hat es behoben.
+
+**Neu: Modus 3 — Request-Zähler, Upstream gemockt.** Gezählt wird auf der Route: genau ein Request pro Aufruf, und sein Suchbegriff ist der des Aufrufers, unverändert. Dazu sechs Kriterien, alle aus dem Belegfall und dort je mit eigenem Test: Vorschläge aus der Eingabe abgeleitet statt aus einem Korpus geholt, zu kurze verworfen, heuristische Treffer in einem eigenen Feld mit dem erzeugenden Begriff, die Antwort sagt ausdrücklich, dass nicht verbreitert wurde — und die Gegenprobe nach §2.6, dass der Zähler einmal gegen eine Fassung gelaufen ist, die ihre Vorschläge absucht, und dort angeschlagen hat.
+
+**Das Testpaar wird als Paar verlangt, und das ist die eigentliche Schärfung.** In `amtsblatt-mcp` existierte die Zähler-Hälfte **lange vor** dem Vorschlagsmechanismus: Der Server war nachweislich unschädlich und nachweislich nutzlos. Eine Hälfte allein liest sich wie Disziplin und ist keine — ein Check, der sie einzeln akzeptiert, prämiert genau den Zustand, den Kriterium 1 verbietet.
+
+**Warum gemockt, obwohl `DRIFT-004` vor Mocks warnt.** Dort pinnt ein Mock eine Annahme über die Quelle. Hier ist der Prüfgegenstand das eigene Verhalten des Servers, und ein Live-Test kann es prinzipiell nicht sehen: Gegen die echte Quelle ist eine Suche mit einem Treffer von einer Suche mit einem still nachgereichten Ersatz-Begriff nicht zu unterscheiden. Der Zähler ist die einzige Stelle, an der die Unterscheidung existiert. Wo keine Route zählbar ist, ist der Ausgang `todo` — nach §2.6 hat ein Server, dessen Abfragen unbeobachtbar sind, den Modus verhindert, nicht bestanden.
+
+**`evidence_required` von 2 auf 3.** Mit zwei Punkten blieb ein `pass` möglich, das die Request-Seite nie gesehen hat: Vorschlag da, `match_type` da, fertig. Der dritte Punkt ist der Zähler.
+
+**Kein §5-Auslöser, und das ist keine Beruhigung.** Fall c) — Prüfkriterium korrigiert — trifft der Sache nach zu, greift aber nur bei `critical` und `high`; `ARCH-003` ist `medium`, `docs/re-audit-queue.md` bleibt unverändert. Trotzdem gilt: Ein `pass` aus der Zeit davor belegt über die Request-Seite **nichts**, weil sie niemand gemessen hat. Wer einen Server der letzten Durchläufe gegen den neuen Stand halten will, hat drei Assertions Arbeit, nicht ein Re-Audit.
+
+`tests/test_arch_003_request_side.py` hält die Kriterien, das Paar und die Gegenprobe fest und scannt zusätzlich **alle** Checks darauf, dass keiner die Vermischung oder die Korpus-Vorschläge lehrt — entfernte Diff-Zeilen ausgenommen, die dürfen das Anti-Pattern zeigen. Jede Prüfung dort scheitert auch, wenn ihr Muster ins Leere greift; die Muster sind gegen die Fassung vor dieser Änderung gegengeprüft und schlagen dort an.
+
 ### Geändert — `line-length` steht jetzt in `ruff.toml`, und zwar auf 88
 
 `ruff.toml` trug keinen `line-length`-Eintrag und lief damit auf dem ruff-Default 88. Von aussen ist eine Abwesenheit nicht von einer Entscheidung zu unterscheiden — und weil 24 der 32 in `SKILL.md` gezählten Portfolio-Repos auf 100 stehen, liest sich ausgerechnet das Repo, das die Regel formuliert, wie der Ausreisser.
