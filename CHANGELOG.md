@@ -17,26 +17,38 @@ daneben: «und wenn ich falsch gefragt habe — komme ich von hier zur richtigen
 Frage?» Die erste entscheidet, ob das Modell schweigen darf; die zweite, ob es
 weiterkommt, ohne sich einen Treffer zu erfinden.
 
-**Der Anlass.** Beim Anwenden von `ARCH-003` («‹Not Found›-Anti-Pattern») auf ein
-Such-Tool des Portfolios sind zwei Fehler zusammengefallen, die sich gegenseitig
-gedeckt haben. Erstens wurde der Vorschlagsmechanismus, den der Check verlangt,
-als Erlaubnis gelesen, die Vorschläge gleich mitzusuchen — das Resultat hätte
-Meldungen unter einem Begriff ausgeliefert, den niemand gewählt hat. Zweitens
-wurde die Gegenrichtung, Exakt-only, mit falsch zugeordneten **Konkursmeldungen**
-begründet, einer Rubrik, die der Server gar nicht bedient. Beides klang nach
-Sorgfalt, keines war an eine überprüfbare Grösse gekoppelt.
+**Der Anlass** ist [`amtsblatt-mcp`](https://github.com/malkreide/amtsblatt-mcp),
+und er ist ausgeliefert gewesen. Version 0.20.0 lehnte Kriterium 1 von
+`ARCH-003` («‹Not Found›-Anti-Pattern») ausdrücklich ab — kein Fuzzy-Match, kein
+Vorschlagsmechanismus — und begründete das mit «bankruptcy notices,
+debt-collection summonses, estate calls, construction objections», mit dem
+Schadensbild, die falsche Firma als konkurs zu benennen.
+
+**Jede Rubrik dieser Liste ist rot und über kein Tool erreichbar.** `KK`, `SB`,
+`SR`, `LS`, `NA`, `ES`, `TE-*`, `GB-*`, `GE-*`, `BP-*` liegen sämtlich ausserhalb
+der `GREEN_RUBRICS` — einer Allow-Liste, die genau dafür existiert, systematische
+Personendaten auszuschliessen. Weil der durchsuchbare Bestand damit der
+**nicht-sensible** ist, wurde die Ausnahme aus Kriterium 4 für genau die Menge
+beansprucht, auf die Kriterium 1 anzuwenden gewesen wäre. Die Begründung stand in
+beiden `SECURITY`-Dateien, im CHANGELOG und im abschliessenden PR; gefangen hat
+sie erst das
+[Re-Audit vom 2026-07-30](https://github.com/malkreide/amtsblatt-mcp/blob/main/audits/2026-07-30T105205-Z-amtsblatt-mcp/findings/ARCH-003.md),
+behoben hat sie 0.22.0.
+
+Der zweite Fehler desselben Falls liegt in der Gegenrichtung: Der
+Vorschlagsmechanismus, den der Check verlangt, ist als Erlaubnis lesbar, die
+Vorschläge gleich mitzusuchen — dann liefert der Server Meldungen unter einem
+Begriff aus, den niemand gewählt hat. Beide Wege laufen in dieselbe Falle, und
+deshalb ist die Auflösung keine Wahl zwischen ihnen, sondern die Aufteilung.
 
 **Einstufung: minor.** Eine neue Regel plus ein Regel-Zusatz, beides additiv;
 kein bestehendes Kriterium wird enger. Wer nach 1.6.0 gebaut hat, muss nichts
 zurückbauen — er hat zwei Nachweise mehr zu erbringen.
 
-**Zur Herkunft, ausdrücklich:** Regel 10 ist der Grenzfall der Latte dieses
-Repos. Der Fehler ist passiert, der Schaden nicht — der Entwurf wurde vorher
-gelesen. Das steht in `SKILL.md`, in beiden READMEs und hier, statt als
-«Vorfall» durchzugehen. Über die Latte bringt sie nicht ihre Plausibilität,
-sondern dass sie sich verletzen lässt, ohne dass es jemandem auffällt: Ein
-Server, der seine eigenen Vorschläge absucht, ist von aussen nicht von einem zu
-unterscheiden, der Treffer hat.
+**Zur Herkunft:** Regel 10 steht auf derselben Latte wie 1–6 — ein eingetretener
+Schaden, kein hergeleiteter Mechanismus. Was sie trotzdem nah an den Rand bringt,
+ist die Unsichtbarkeit: Ein Server, der seine eigenen Vorschläge absucht, ist von
+aussen nicht von einem zu unterscheiden, der Treffer hat.
 
 Was darunter unverändert stehen bleibt: Regel 8 sagt in zwei Punkten etwas
 anderes als vor diesem Stand.
@@ -86,6 +98,12 @@ Minor #5 (SEP-2549).
   besteht die erste. Dieselbe Testform wie bei Regel 9 — die Trennung wird in
   beide Richtungen assertiert.
 
+  Der Belegfall zeigt genau diese Halbierung: `amtsblatt-mcp` hatte die zweite
+  Hälfte (`test_no_search_tool_widens_the_callers_term` — genau ein Request mit
+  unverändertem Begriff) lange vor der ersten und war damit nachweislich
+  unschädlich und nachweislich nutzlos. Eine Hälfte allein liest sich wie
+  Disziplin und ist keine.
+
   **Ausnahmsweise offline.** Prüfgegenstand ist, was rausgegangen ist, nicht was
   zurückkam. Live ist das nicht messbar: Eine Suche mit einem Treffer sieht aus
   wie eine Suche mit stillschweigend ersetztem Begriff. Der Mock ist hier
@@ -98,6 +116,13 @@ Minor #5 (SEP-2549).
   die Sicherheitseigenschaft nur mit einem eigenen Feld für die heuristischen
   Treffer, samt dem Begriff, der sie erzeugt hat. Verboten ist die Vermischung,
   nicht die Hilfe.
+
+  **Drei Details aus der Umsetzung in `amtsblatt-mcp` 0.22.0**, je mit eigenem
+  Test drüben: Vorschläge unter etwa vier Zeichen verwerfen («AG» ist kein
+  Suchbegriff, ein so kurzes Präfix matcht den halben Bestand); das Resultat
+  sagt ausdrücklich, dass **nicht** verbreitert wurde, sonst schliesst das Modell
+  aus dem Schweigen und schliesst falsch; und der breiteste Vorschlag kommt
+  zuletzt, weil die Reihenfolge als Empfehlung gelesen wird.
 
 - **Regel-Zusatz zu Regel 1: Wer den Recall verengt, zitiert den Scope.** Eine
   Exakt-only-Entscheidung wird fast immer mit einem Risiko begründet. Das
@@ -115,6 +140,14 @@ Minor #5 (SEP-2549).
   Quelle wortgleich dastünde. Umgekehrt gilt: Ist die riskante Klasse erreichbar,
   ist Exakt-only richtig (die Ausnahme für sensible Daten in `ARCH-003`) und die
   Klasse gehört namentlich in die Tool-Description.
+
+  Der Belegfall liefert beide Seiten. Was von der ursprünglichen Begründung übrig
+  bleibt, ist schmal und echt: `HR`/`BH` (Handelsregister) und `OB-*`
+  (Beschaffungen) **sind** erreichbar und nennen juristische Personen, ein
+  verbreiterter Firmenname liefert also Meldungen über andere Firmen. Das ist ein
+  Argument darüber, *wie* verbreitert wird — keine Ausnahme dagegen, überhaupt
+  etwas anzubieten. Der Unterschied zwischen den beiden Begründungen ist nicht
+  ihre Sorgfalt, sondern ob eine erreichbare Rubrik darunter steht.
 
 - **Zwei Blöcke in `reference/patterns.py`** — `shorter_variants()` samt
   `search_and_suggest()` und dem ✗-Zweig, der die Vorschläge absucht, dazu
@@ -182,6 +215,17 @@ Minor #5 (SEP-2549).
   `match_type: "fuzzy"` auf einer gemeinsamen Liste. Nebenan steht `DRIFT-002`
   («Fallback verengt, erweitert nie»), dieselbe Form eine Ebene weiter: dort wird
   ein anderer *Datensatz* substituiert, hier eine andere *Abfrage*.
+
+  **Die `FID-007`-Frage ist beantwortet statt offengelassen**, und zwar mit dem
+  Verfahren des Katalogs selbst (§2.5 «Reichweite vor neuer Regel»): `applies_when`
+  schliesst nichts aus (Frage 1, nein), beide Modi von `ARCH-003` lesen die
+  Antwort und keiner misst den Request (Frage 2, **ja**), und eine eigene
+  Prüfdimension ist es nicht — der Zähler wird in demselben Handgriff gesetzt wie
+  der Mechanismus, und §2.5 verlangt, dass ein Check in einem Schritt behebbar
+  bleibt. Also **kein `FID-007`, sondern ein dritter Modus in `ARCH-003`**, wie
+  schon bei den Regeln 7 und 8, die `ARCH-020` aufgenommen hat. Vorschlag samt
+  Belegfall und Gegenprobe liegt drüben als
+  [`mcp-audit-skill#102`](https://github.com/malkreide/mcp-audit-skill/issues/102).
 
   Die Zeile zu Regel 1 nennt jetzt ebenfalls ihre Reichweite: `FID-001` verlangt,
   dass eine bewusst gewählte Einschränkung im Tool-Result **sichtbar** ist —

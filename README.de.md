@@ -77,7 +77,9 @@ Vier Dinge daran sind übertragbar:
 
 Regel 6 kam nach einem zweiten Fall dazu: Eine Abfrage der MCP Registry lieferte eine Zeit lang nichts, weil die Felder unter `servers[].server.*` liegen und der Client eine Ebene höher suchte. Syntaktisch einwandfrei, semantisch blind.
 
-Regel 10 kam nach einem dritten dazu, der im Entwurf aufgefallen ist statt im Betrieb: Beim Anwenden von `ARCH-003` auf ein Such-Tool des Portfolios sind zwei Fehler zusammengefallen. Der Vorschlagsmechanismus, den der Check verlangt, wurde als Erlaubnis gelesen, die Vorschläge gleich mitzusuchen — und die Gegenrichtung, Exakt-only, wurde mit falsch zugeordneten Konkursmeldungen begründet, einer Rubrik ausserhalb des bedienten Scopes. Beides klang nach Sorgfalt, und keines war an eine überprüfbare Grösse gekoppelt. Der Schaden ist nicht eingetreten, weil der Entwurf vorher gelesen wurde; festgehalten ist er trotzdem.
+Regel 10 und der Zusatz zu Regel 1 kamen nach einem dritten Fall dazu, [`amtsblatt-mcp`](https://github.com/malkreide/amtsblatt-mcp): Version 0.20.0 lehnte einen Vorschlagsmechanismus ab und begründete das mit Konkursmeldungen, Betreibungen, Erbschaftsaufrufen und Baueinsprachen — Rubriken, die die Allow-Liste des Servers gerade ausschliesst. Weil der durchsuchbare Bestand damit der nicht-sensible ist, wurde die Ausnahme für sensible Daten für genau die Menge beansprucht, auf die das Kriterium anzuwenden gewesen wäre. Die Begründung stand in beiden `SECURITY`-Dateien, im CHANGELOG und im abschliessenden PR; gefangen hat sie erst das [Re-Audit vom 2026-07-30](https://github.com/malkreide/amtsblatt-mcp/blob/main/audits/2026-07-30T105205-Z-amtsblatt-mcp/findings/ARCH-003.md), behoben hat sie 0.22.0.
+
+Die Gegenrichtung ist der zweite Fehler desselben Falls: Der Vorschlagsmechanismus, den der Check verlangt, ist als Erlaubnis lesbar, die Vorschläge gleich mitzusuchen — dann liefert der Server Meldungen unter einem Begriff aus, den niemand gewählt hat. Beide Wege laufen in dieselbe Falle, und deshalb ist die Auflösung keine Wahl zwischen ihnen, sondern die Aufteilung.
 
 Die Regeln 7–9 haben diese Herkunft **nicht**, und der Skill sagt das dort, wo er sie aufstellt. Sie sind aus der MCP-Spec 2026-07-28 hergeleitet: stateless Core ohne `initialize`, Reconnect als Normalfall (Regel 7); `ttlMs`/`cacheScope` auf den List-Responses (Regel 8); MRTR statt serverinitiierter Elicitation (Regel 9). Hergeleitet, nicht gemessen — in diesem Repo ein Unterschied, der genannt gehört. Die Latte für Vorschläge von aussen bleibt unverändert: Sie brauchen weiterhin einen eingetretenen Schaden. Über die tiefere Latte gekommen ist hier eine Protokolländerung, die alle 42 Server des Portfolios gleichzeitig trifft — keine plausibel klingende Empfehlung.
 
@@ -97,7 +99,7 @@ Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihe
 
 Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
-Dazu der Server, aus dem dieser Skill stammt: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die Regeln 1–5 hervorgebracht hat.
+Dazu die beiden Server, aus denen dieser Skill stammt: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die Regeln 1–5 hervorgebracht hat, und [`amtsblatt-mcp`](https://github.com/malkreide/amtsblatt-mcp), dessen [`ARCH-003`-Finding](https://github.com/malkreide/amtsblatt-mcp/blob/main/audits/2026-07-30T105205-Z-amtsblatt-mcp/findings/ARCH-003.md) Regel 10 und den Scope-Zusatz zu Regel 1 hervorgebracht hat.
 
 Wer nach den Regeln 1–6 baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet hier die Behebung. Die Regeln 7–9 sind ausserhalb von `FID` abgedeckt, und diese Checks sind `advisory` — sie werden gezählt, nicht erzwungen. Regel 10 ist die Ausnahme: `ARCH-003` blockiert. Ohne Check ist keine Regel mehr; offen ist nur noch Reichweite, und am weitesten bei Regel 7: Ihr Check misst auf Baseline `2026-07-28`, den Pagination-Verlust gibt es aber auch auf `2025-11-25`. Die Lücken stehen je Zeile in `SKILL.md`.
 
@@ -113,10 +115,8 @@ haben.
 
 Für neue Regeln liegt die Latte höher. Die Regeln 1–6 stammen je aus einem
 konkreten Schaden, der tatsächlich eingetreten ist — und vor allem deshalb lohnt
-sich die Sammlung überhaupt. Regel 10 ist der Grenzfall dazu und sagt es im Text:
-Der Fehler ist passiert, der Schaden nicht, weil der Entwurf vorher gelesen
-wurde. Was sie über die Latte bringt, ist nicht die Plausibilität, sondern dass
-sie sich verletzen lässt, ohne dass es jemandem auffällt. Eine plausibel klingende Empfehlung ohne Narbe
+sich die Sammlung überhaupt. Regel 10 steht auf derselben Latte: ausgeliefert in
+`amtsblatt-mcp` 0.20.0, gefangen vom Re-Audit, behoben in 0.22.0. Eine plausibel klingende Empfehlung ohne Narbe
 dahinter macht den Skill länger und schwächer. Ein Vorschlag sollte den Vorfall
 benennen, ein ✗/✓-Paar mitbringen und seinen **Nachweis** angeben: die zwei
 Calls, das Delta, die Assertion, die eine funktionierende Kontrolle von einer
