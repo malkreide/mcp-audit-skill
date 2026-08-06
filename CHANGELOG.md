@@ -9,6 +9,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Die Prüfungen sind testbar geworden: `tools/checks/` statt Heredocs.**
+  Jedes Gate ist jetzt eine gewöhnliche Funktion `(root: Path) -> str`, die
+  bei einem Befund `CheckFailed` wirft, statt `sys.exit` aufzurufen. Beides
+  ist Zweck, nicht Kosmetik: *root* statt `cwd` erlaubt, eine Prüfung gegen
+  einen Baum zu fahren, in dem gezielt ein Anker fehlt; die Exception macht
+  ihren Befundtext abfangbar. `sys.exit` hätte einen Test nur «nicht 0»
+  prüfen lassen, nicht *warum* — und eine Prüfung, die aus dem falschen Grund
+  rot wird, schickt den Lesenden zur falschen Datei. Regel 5 sagt, was danach
+  kommt.
+
+  Vorher standen dieselben Prüfungen als Python-Heredocs in `ci.yml` und
+  `catalogue-drift.yml`. Ein Heredoc lässt sich nur ausführen, indem man das
+  ganze Repository in genau den Zustand bringt, den es beanstanden soll;
+  entsprechend war von keiner einzigen belegt, dass sie überhaupt beisst. Der
+  Ruff-Gate-Wächter aus dem vorigen Eintrag ist genau daraus entstanden — er
+  war nur selbst wieder ein ungetestetes Heredoc.
+
+- **`scripts/validate.sh` — die Prüfungen in einem Kommando.** Dieses
+  Repository hatte bis hierher **gar keinen** lokalen Runner: Wer vor dem Push
+  prüfen wollte, hätte den Workflow von Hand nachspielen müssen, und
+  entsprechend hat das niemand getan. `ci.yml` ruft dieselbe Datei auf, statt
+  die Gates ein zweites Mal hinzuschreiben.
+
+- **`tests/` — pro Prüfung mindestens ein Baum, auf dem sie rot werden MUSS.**
+  Rund fünfzig Mutationen, jede mit der Zusicherung, *welchen* Teil des
+  Befundes die Prüfung dann nennt. Die Wächter über die Suite selbst:
+
+  * `test_every_check_has_at_least_one_mutation` — eine Prüfung ohne Mutation
+    lässt die Suite fehlschlagen. Es ist der Satz aus dem Abschnitt
+    «Mitwirken», eine Ebene höher angewandt: Was sich nicht so verletzen
+    lässt, dass es jemandem auffällt, ist noch keine Prüfung.
+  * `test_check_passes_on_the_real_repository` — jede Prüfung läuft zusätzlich
+    gegen den echten Baum. Ohne diesen Meta-Test prüfte die Suite am Ende nur
+    sich selbst: Ein handgeschriebenes Fixture enthält die Anker per
+    Konstruktion. Der Fixture-Baum ist aus demselben Grund eine Kopie des
+    Arbeitsbaums (`git ls-files`) und keine Attrappe.
+  * Eine Mutation, deren Suchtext nicht mehr im Baum steht, schlägt **laut**
+    fehl statt still zu passieren.
+
+  Am schärfsten ist `test_check_9_catches_what_10_and_11_cannot`: Auf einem
+  Baum, in dem `reference/` aus `ruff.toml` genommen wurde, laufen beide Gates
+  grün durch — sie haben nichts zu beanstanden, weil sie nichts mehr lesen.
+  Genau das ist die Daseinsberechtigung des Wächters, und sie steht jetzt als
+  Test da statt als Kommentar.
+
+- **Zwei Prüfungen dazu, die vorher nur die CI kannte: `ruff check` und
+  `ruff format --check` als Prüfung 10 und 11.** Sie liefen als eigene
+  Schritte in `ci.yml` und damit nirgends lokal.
+
+- **Die Katalog-Prüfung ist aus dem Wochenplan-Heredoc heraus.** Sie ist die
+  logikreichste dieses Repos — drei Vergleiche und die Unterscheidung
+  «verlinkt» gegen «erwähnt», an der der Job bei seinem ersten Lauf falsch
+  angeschlagen ist. Der Abruf bleibt im Workflow, damit «nicht erreichbar» ein
+  anderer Ausgang bleibt als «abgewichen»; die Logik liegt in
+  `tools/checks/catalogue.py` und wird von `tests/` gefahren, einschliesslich
+  des Fehlalarms von damals.
+
+  **Grenze, ausdrücklich:** Der gute Fall im Test ist ein *synthetischer*
+  Katalog, der zu dem passt, was SKILL.md über ihn behauptet. Er belegt, dass
+  die Prüfung einen stimmigen Katalog durchlässt — **nicht**, dass SKILL.md
+  zum echten passt. Das bleibt der Job des Wochenplans. Ein eingefrorener
+  Schnappschuss wäre die Alternative gewesen und veraltete beim nächsten
+  Katalog-Release: der Fehlalarm aus Regel 5, dann in der Testsuite statt in
+  der CI.
+
 - **Die Tag-Praxis ist seit 1.5.0 abgerissen.** `v1.0.0` bis `v1.4.0` liegen
   auf GitHub und sind es immer gewesen. Ab 1.5.0 wurde nicht mehr getaggt: Für
   1.5.0, 1.6.0 und 1.7.0 gibt es keinen Tag, `git checkout v1.7.0` geht nicht,
