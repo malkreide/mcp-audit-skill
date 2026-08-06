@@ -26,7 +26,13 @@ export PYTHONUTF8=1
 # working tree — an untracked reference/__pycache__/ is how a .pyc came to be
 # committed once already (CHANGELOG 1.1.0, Removed).
 CACHE_DIR="$(mktemp -d)"
-trap 'rm -rf "$CACHE_DIR"' EXIT
+# Die Ruff-Sonde (Check 12) legt kurzzeitig eine absichtlich fehlerhafte Datei
+# unter reference/ ab. Sie wird im Check selbst wieder entfernt; der Trap ist
+# fuer den Abbruch dazwischen — eine liegengebliebene Sonde wuerde die Checks 2,
+# 3 und 7 des naechsten Laufs auf eine Datei ansetzen, die niemand geschrieben
+# hat.
+RUFF_PROBE=reference/_ruff_gate_probe.py
+trap 'rm -rf "$CACHE_DIR"; rm -f "$RUFF_PROBE"' EXIT
 export PYTHONPYCACHEPREFIX="$CACHE_DIR"
 
 passed=0
@@ -132,6 +138,88 @@ for path in files:
 
 print(f"{len(files)} Vorlage(n) unter reference/ importierbar")
 PY
+}
+
+ruff_gate_bites() {
+    # `ruff check` und `ruff format --check` sind die einzigen Gates dieses
+    # Repos ohne Anker-Waechter. Jede andere Pruefung hier wird rot, wenn ihr
+    # Anker verschwindet; die Ruff-Schritte melden auf einem Baum, in dem
+    # `reference/` aus der Konfiguration ausgeschlossen wurde, eine Warnung auf
+    # stderr und Exit 0 — «All checks passed!», ohne eine Zeile gelesen zu
+    # haben. Gruen wird dann ausgerechnet der Code, den Leute kopieren.
+    #
+    # Der Fall ist nicht hypothetisch: in ruff.toml stand fuer genau diese
+    # Dateien schon einmal `select = []` (die Begruendung und ihre Widerlegung
+    # stehen dort). Damals hat es niemand gemerkt, weil nichts rot wurde.
+    #
+    # Geprueft wird deshalb nicht die Konfiguration, sondern die Wirkung: eine
+    # absichtlich fehlerhafte Datei liegt kurz unter `reference/`, und beide
+    # Gates muessen sie beim Namen nennen. Ein Konfigurationsleser muesste
+    # `exclude`, `[lint] exclude`, `[format] exclude`, `select` und
+    # `per-file-ignores` einzeln kennen — und wuerde den Schalter verpassen,
+    # den ruff erst nach diesem Commit bekommt. Die Sonde deckt alle ab, weil
+    # sie dieselbe Invokation faehrt wie die CI (`.`, nicht `reference/`:
+    # ein explizit genannter Pfad umgeht `exclude` und wuerde die Luecke
+    # zudecken, die dieser Check sucht).
+    if ! command -v ruff >/dev/null 2>&1; then
+        echo "ruff liegt nicht auf dem PATH."
+        echo "FAIL statt skip, aus demselben Grund wie bei den Vorlagen-"
+        echo "Abhaengigkeiten: ein uebersprungener Check meldete «bestanden», wo"
+        echo "«nicht gelaufen» richtig waere."
+        echo "  Die gepinnte Version steht in .github/workflows/ci.yml und in"
+        echo "  .pre-commit-config.yaml — beide muessen uebereinstimmen."
+        return 1
+    fi
+    if [ ! -d reference ]; then
+        echo "reference/ fehlt — Anker weg; die Sonde haette kein Verzeichnis,"
+        echo "in dem sie das Gate testen koennte"
+        return 1
+    fi
+    if [ -e "$RUFF_PROBE" ]; then
+        echo "$RUFF_PROBE liegt schon da. Die Sonde legt diese Datei selbst an"
+        echo "und raeumt sie weg; existiert sie vorher, wuerde dieser Check sie"
+        echo "ueberschreiben und loeschen. Bitte von Hand pruefen und entfernen."
+        return 1
+    fi
+
+    # F401 (ungenutzter Import) und ein Formatverstoss in derselben Datei — so
+    # testet eine Sonde beide Gates.
+    printf 'import os\nx   =    1\n' > "$RUFF_PROBE" || {
+        echo "$RUFF_PROBE liess sich nicht anlegen"
+        return 1
+    }
+    local check_out format_out
+    check_out="$(ruff check --no-cache --output-format=concise . 2>&1)"
+    format_out="$(ruff format --no-cache --check . 2>&1)"
+    rm -f "$RUFF_PROBE"
+
+    # Gegen den Dateinamen, nicht gegen den Exit-Status: ein anderer, echter
+    # Fund anderswo im Baum wuerde sonst als bestandene Sonde durchgehen und
+    # dieser Check waere gruen, ohne die Vorlagen geprueft zu haben.
+    local dead=0
+    case "$check_out" in
+        *"$RUFF_PROBE"*) ;;
+        *) echo "ruff check hat $RUFF_PROBE nicht beanstandet — das Lint-Gate"
+           echo "greift auf reference/ nicht mehr. Verdaechtig sind exclude,"
+           echo "select und per-file-ignores in ruff.toml."
+           printf 'ruff check meldete:\n%s\n' "$check_out"
+           dead=1 ;;
+    esac
+    case "$format_out" in
+        *"$RUFF_PROBE"*) ;;
+        *) echo "ruff format --check hat $RUFF_PROBE nicht beanstandet — das"
+           echo "Format-Gate greift auf reference/ nicht mehr. Verdaechtig sind"
+           echo "exclude und [format] exclude in ruff.toml."
+           printf 'ruff format meldete:\n%s\n' "$format_out"
+           dead=1 ;;
+    esac
+    [ "$dead" -eq 0 ] || return 1
+
+    if [ -e "$RUFF_PROBE" ]; then
+        echo "$RUFF_PROBE liess sich nicht entfernen — bitte von Hand loeschen"
+        return 1
+    fi
+    echo "beide Ruff-Gates beanstanden eine fehlerhafte Datei unter reference/"
 }
 
 no_compiled_python() {
@@ -450,6 +538,7 @@ check "8  the companion pointer still points somewhere"      companion_pointer
 check "9  version badge matches the latest CHANGELOG release" version_badge
 check "10 the quality-chain table names all five members"     quality_chain
 check "11 the core-step count agrees everywhere in SKILL.md" step_count
+check "12 the ruff gate still bites on reference/"    ruff_gate_bites
 
 echo ""
 if [ "$failed" -eq 0 ]; then
