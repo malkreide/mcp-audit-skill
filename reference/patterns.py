@@ -1,4 +1,4 @@
-"""Copy-paste patterns for the thirteen transport-hardening rules (MCP SDK 2.x / ASGI / uvicorn).
+"""Copy-paste patterns for the fourteen transport-hardening rules (MCP SDK 2.x / ASGI / uvicorn).
 
 Each block is self-contained and annotated with the rule it implements. Adapt the
 names; keep the shape. The comments are deliberately verbose — they are the part
@@ -10,6 +10,13 @@ and the way you prove them hang off the transport, not off the lifecycle. Rules
 two baselines coexist inside one process — a legacy `initialize` still caps at
 2025-11-25 while the per-request envelope reaches 2026-07-28 — so a stateless
 fault is invisible to every client that stayed on the old era.
+
+SCOPE IS DECIDED BY WHERE A LINE SITS, NOT BY THE TRANSPORT IT RUNS. Everything
+ahead of the transport branch — imports, settings assignments, the lifespan, the
+readiness marker — runs under every transport, stdio included. Rule 1 broke a
+published server under stdio for months (zh-education-mcp 0.2.4) precisely
+because the assignment stood before `mcp.run(...)`. Only rules 2-4 and 9 need a
+network transport; rule 14 is the one where stdio is the MAIN case.
 
 `get_settings()`, `mcp` and the concrete settings fields stand in for whatever the
 target project already calls them. Likewise the `settings` and `tool` fixtures in
@@ -24,9 +31,12 @@ removable in a test.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import subprocess
 import sys
 from collections.abc import Sequence
+from contextlib import asynccontextmanager
 from typing import Any
 
 import pytest
@@ -104,9 +114,24 @@ def serve(settings: Any) -> None:
         ValueError: "Settings" object has no field "host"
 
     and a read raises AttributeError. Measured, not assumed. A server that still
-    carries those lines does not start under HTTP **at all** — and because tool
-    tests run over stdio, nothing in an ordinary suite goes near it. The failure
-    waits for the first HTTP deployment.
+    carries those lines does not start **at all** — under ANY transport, not just
+    HTTP. Note where the assignment sat: one line ABOVE the branch below, so it
+    throws before anything has decided whether this process speaks stdio or HTTP.
+    zh-education-mcp 0.2.4, measured against the artifact installed from PyPI in
+    an empty venv, died exactly there with transport="stdio", and stayed broken on
+    the index for months because nothing ever started the installed artifact.
+
+    So the Nachweis is not only a test. It is also six seconds of measurement,
+    and it needs no HTTP, no port and no client:
+
+        # stdin closed = no request possible = whatever lands on stderr is the
+        # server talking about itself. exit=124 means it was still standing.
+        timeout 6 uv run --no-project --with '<dist>==<version>' \\
+          <console-script> </dev/null >/tmp/out.txt 2>/tmp/err.txt
+        echo "exit=$?"
+
+    Any exit code other than 124 means it terminated. Whether a MARKER line shows
+    up in that same window is rule 14; here only the standing process is at stake.
     """
     if settings.transport == "stdio":
         mcp.run(transport="stdio")
@@ -1030,3 +1055,102 @@ def test_a_code_without_iss_is_refused(auth_client: Any) -> None:
 # PR: create the violation it was written against and watch the run. If it does
 # not go red, every green run so far was "did not run", not "passed".
 # ---------------------------------------------------------------------------
+
+
+# ===========================================================================
+# Rule 14 — the server announces that it is listening
+#
+# Every server has a moment where it stops being a process and starts being a
+# server: config read, clients built, tools registered, now waiting. From the
+# outside both states look identical — a PID doing nothing. On stdio there is
+# exactly one channel to tell them apart: stderr. stdout belongs to the protocol,
+# an exit code arrives too late, and there is no port. This is the one rule where
+# a stdio server is the MAIN case rather than the edge case.
+#
+# Survey (2026-08-03, 42 published servers): 15 say nothing of their own — 13 no
+# output at all, 2 only the banner the SDK itself writes.
+# ===========================================================================
+
+# The marker is a CONTRACT, not prose. Changing this string changes an interface:
+# the README and any monitoring that greps for it move in the same commit.
+READY_MARKER = "server ready"
+
+
+@asynccontextmanager
+async def lifespan(_app: Any) -> Any:
+    """Rule 14: everything that can fail sits BEFORE the marker.
+
+    Four properties turn a log line into a marker, each of them measured:
+
+    1. Structured log: the `event`/`msg` field is compared for EQUALITY. Not a
+       prefix, not startswith, not "contains". openlex-mcp was documented with
+       the marker "Lifespan gestartet" while the field actually read
+       "Lifespan gestartet — geteilter HTTP-Client bereit". A prefix comparison
+       would have matched, and would have broken the moment somebody rephrased
+       the explanatory tail — which nobody reads as an interface change, because
+       it looks like log text. Explanations go in their OWN fields.
+    2. Plain text: a stable substring. An unstructured line carries logger name,
+       level and formatting, so there is no field to compare exactly. The promise
+       is then a piece of text the server deliberately keeps as its marker. That
+       is weaker than (1) and is the price of unstructured logs — not a reason to
+       soften (1).
+    3. Never a timestamp, and nothing else that varies per run: no PID, no port,
+       no duration, no config-dependent count. Timestamps in the log are correct
+       and stay; they just must not be part of what is compared.
+    4. The FastMCP banner does not count. It is the SDK talking, not the server —
+       it appears as soon as the framework object runs, i.e. BEFORE the lifespan
+       has built its clients and validated its config. It would have appeared for
+       zh-education-mcp 0.2.4 with the server dead behind it. And its wording
+       belongs to somebody else, so it disappears on the next SDK release without
+       a release of this server in between — the same mechanic as the version cap
+       in rule 1, one level up.
+    """
+    client = await build_http_client()  # anything that can fail
+    tools = register_tools()  # sits ahead of the marker
+    # Explanatory values as their own fields — never inside the marker field.
+    log.info(READY_MARKER, tools=len(tools), transport=settings.transport)
+    try:
+        yield
+    finally:
+        await client.aclose()
+
+
+# And into the README, in exactly the spelling that gets compared — a marker only
+# the source knows is not a contract:
+#
+#     Bereitschaftsmarker (stderr, JSON field `event`): `server ready`
+
+
+def test_server_announces_readiness() -> None:
+    """Rule 14's Nachweis — the same measurement the boot gate makes.
+
+    Mutations that must turn this red (rule 6):
+
+      * append an explanatory tail inside the `event` field — if it stays green,
+        the comparison is a prefix match, not an equality check;
+      * move the log.info(READY_MARKER, ...) call ABOVE build_http_client() — if
+        it stays green, the test asserts entry into the lifespan, not readiness.
+
+    And the negative control belongs in the evidence (rule 5): start once with an
+    invalid argument, where something MUST appear on stderr. If that is empty too,
+    the setup measures nothing and "no marker" is not a result — it is a check
+    that did not run.
+    """
+    proc = subprocess.run(
+        [sys.executable, "-m", PACKAGE],
+        stdin=subprocess.DEVNULL,  # no request possible → stderr is self-report
+        capture_output=True,
+        text=True,
+        timeout=6,
+    )
+    events = [
+        json.loads(line)["event"]
+        for line in proc.stderr.splitlines()
+        if line.startswith("{")
+    ]
+    # Equality, deliberately: `in` on a list is an exact match per element.
+    assert READY_MARKER in events, (
+        f"no readiness marker on stderr. Seen: {events}. The `event` field is "
+        "compared exactly — a prefix does not count (openlex-mcp)."
+    )
+    assert proc.stdout == "", "stdout belongs to the protocol"
