@@ -9,6 +9,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Regel 11 — die Leermenge trägt die Anfrage, die sie erzeugt hat.** Regel 3
+  verlangt auf der Leermenge einen nächsten Schritt; diese Regel verlangt die
+  andere Hälfte derselben Auskunft: Scope, Filter und Limits, so wie sie
+  rausgegangen sind. «Nichts da» und «falsch gefragt» unterscheiden sich in
+  genau einer Sache — der Anfrage —, und ohne sie kann das Modell die Leitfrage
+  dieses Skills nicht beantworten, sondern nur raten.
+
+  Der Anlassfall liegt in einem Nachbarwerkzeug und ist dort gemessen: Eine
+  Prüfstufe meldete für 38 von 42 Servern wortgleich «lief 6s, stürzte nicht ab,
+  kündigte nichts an», ohne mitzuführen, was stattdessen zu sehen war. Damit
+  waren «schweigt» und «formuliert es anders» dieselbe Meldung; die 38
+  identischen Zeilen wurden weggeklickt, und darin ging der eine Server unter,
+  der überhaupt nicht startete. Nach der Behebung: 26 bestätigt, 16 mit
+  belegtem Grund. Übertragbar ist die Form, nicht derselbe Vorfall — das steht
+  in SKILL.md so da.
+
+  Für dieses Repo hat die Regel eine eigene Pointe: Die Best-Effort-Erweiterung
+  aus Regel 1 darf ausfallen, und dann liest sich die Leermenge wie «im ganzen
+  Bestand nichts», während ein Teilausschnitt durchsucht wurde. Sichtbar wird
+  das erst über die mitgeführte Anfrage. Der Nachweis ist ein Paar wie bei
+  Regel 10: Das Echo stimmt mit dem abgesetzten Request überein — und zwei
+  Läufe, die verschieden rausgingen, lesen sich verschieden. Ohne die zweite
+  Hälfte besteht ein fest verdrahtetes Echo die erste, und das ist genau der
+  Zustand der 38 Zeilen.
+
+- **Regel 12 — Abwesenheit ist dreiwertig: nicht erhoben / erhoben und leer /
+  zurückgehalten.** Ein `null` für alle drei macht aus «nicht gemessen» eine
+  Tatsachenbehauptung über einen Datensatz, die niemand gemessen hat. Zwei
+  Hälften: Der dritte Wert wird dort **gesetzt**, wo entschieden wurde, nie als
+  Rückfallwert eines Lookups — und was er bedeutet, samt Pflicht des Aufrufers,
+  steht **am Feld**, nicht in einer hausweiten Konvention.
+
+  Belegt an einem Review-Befund an eigenem Code, also abgefangen statt
+  ausgeliefert: Im Portfolio-Manifest heisst `null` «nicht erhoben», und die
+  Semantik ist bewusst pro Feld verschieden — ein fehlendes `pypi_dist` ist ein
+  Abbruch, ein fehlendes `start_event` ein Rückfall auf die Vorgabe. Ein
+  umbenanntes `pypi_dist` hätte jeden Eintrag zur «begründeten Auslassung»
+  gemacht: nichts gemessen, Exit 0. Das ist Regel 6 am Feld statt an der Hülle,
+  und die Parallele trägt bis in den Code — `payload.get("servers", [])` und
+  `entry.get("pypi_dist")` haben dieselbe Ursache, den Rückfallwert.
+
+  Es ist die **einzige Regel ohne Check** drüben. Ob daraus eine Erweiterung von
+  `FID-006` wird oder ein eigener Check, ist nach §2.5 zu entscheiden und hier
+  nicht entschieden; die Zeile in der Zuordnungstabelle sagt das als Lücke, nicht
+  als benannten Rand.
+
 - **Die Prüfungen sind testbar geworden: `tools/checks/` statt Heredocs.**
   Jedes Gate ist jetzt eine gewöhnliche Funktion `(root: Path) -> str`, die
   bei einem Befund `CheckFailed` wirft, statt `sys.exit` aufzurufen. Beides
@@ -145,6 +191,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Alle fünf Mutationen sind gefahren worden, dazu der Fall «die Sonde liegt
   schon da» und der Nachweis, dass sie nichts liegenlässt. Das Schwester-Repo
   `mcp-data-source-probe-skill` führt dieselbe Sonde als Check 12.
+
+### Changed
+
+- **Regel 5 um den Vergleich erweitert: exakt, nicht Teilzeichenkette.** Der
+  Satz, der dort schon stand — *ein Test, der die Bedingung herstellt, unter der
+  der Fehler nicht auftreten kann, prüft nichts* — hat eine zweite Ausprägung:
+  den Vergleich, der nicht scheitern kann. Ein Präfix-Assert auf ein
+  strukturiertes Feld besteht, bis der Feldwert wächst, und dann besteht er
+  weiter und meint etwas anderes. Gemessener Fall: Ein Marker war als «Lifespan
+  gestartet» deklariert, das Feld lautete «Lifespan gestartet — geteilter
+  HTTP-Client bereit»; der exakte Vergleich schlug fehl, obwohl der Server
+  korrekt lief, und zeigte damit auf die veraltete Deklaration. Ein
+  `in`-Vergleich wäre grün geblieben — damals und später auch dann, wenn der
+  Rumpf des Feldes etwas ganz anderes meldet.
+
+  Ausdrücklich abgegrenzt gegen zwei Nachbarn, die sonst wie ein Widerspruch
+  aussehen: das «exakt statt Wildcard» aus Regel 1 (dort eine Verengung des
+  Recalls **gegen die Quelle**, die begründet werden muss) und den
+  Präfix-Wildcard aus Regel 5 selbst (der zielt auf einen **Textbestand**, nicht
+  auf einen Feldwert).
+
+- **Zuordnungstabelle, Checkliste und beide READMEs nachgezogen.** Regel 11 liegt
+  zur Hälfte auf `FID-001` — der Check verlangt, dass eine *bewusst gewählte*
+  Einschränkung im Result sichtbar ist, misst aber nicht die, die *passiert* ist
+  — und zur Hälfte auf `FID-003`. Der Satz «ohne Check ist keine Regel mehr»
+  stimmt mit Regel 12 nicht mehr und steht entsprechend nicht mehr da.
 
 ## [1.7.0] - 2026-08-06
 
