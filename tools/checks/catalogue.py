@@ -14,7 +14,7 @@ Skills sagt, was dann passiert — «ein Test, der ständig falsch anschlägt, w
 abgeschaltet und fängt dann gar nichts mehr».
 
 Deshalb `offline=False`: `scripts/validate.sh` fährt diese Prüfung nicht,
-`catalogue-drift.yml` tut es wöchentlich.
+`weekly-drift.yml` tut es wöchentlich.
 
 DER ABRUF STEHT NICHT HIER. Der Workflow legt das Manifest als Datei ab und
 nennt sie in `$CATALOGUE_MANIFEST`; diese Prüfung liest sie. Eine Prüfung, die
@@ -174,7 +174,7 @@ def catalogue_drift(root: Path) -> str:
         raise CheckFailed(
             f"${MANIFEST_ENV} ist nicht gesetzt — diese Prüfung liest das "
             "abgelegte Manifest. Der Abruf steht in "
-            f".github/workflows/catalogue-drift.yml ({MANIFEST_URL}). FAIL "
+            f".github/workflows/weekly-drift.yml ({MANIFEST_URL}). FAIL "
             "statt skip: Eine übersprungene Prüfung meldete «bestanden», wo "
             "«nicht gelaufen» richtig wäre."
         )

@@ -135,7 +135,7 @@ def description_matches_rule_count(root: Path) -> str:
         raise CheckFailed(
             f"${METADATA_ENV} ist nicht gesetzt — diese Prüfung liest die "
             "abgelegte Antwort der Repo-API. Der Abruf steht in "
-            f".github/workflows/catalogue-drift.yml ({METADATA_URL}). FAIL "
+            f".github/workflows/weekly-drift.yml ({METADATA_URL}). FAIL "
             "statt skip: Eine übersprungene Prüfung meldete «bestanden», wo "
             "«nicht gelaufen» richtig wäre."
         )

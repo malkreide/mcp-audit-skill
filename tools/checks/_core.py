@@ -1,7 +1,8 @@
 """Gerüst der Prüfungen: Befund-Exception, Registry, Ausführung.
 
 Bis 1.7.0 standen die Prüfungen dieses Repos als Python-Heredocs in
-`.github/workflows/ci.yml` und `catalogue-drift.yml`. Das war billig zu
+`.github/workflows/ci.yml` und `catalogue-drift.yml` — der Datei, die heute
+`weekly-drift.yml` heisst. Das war billig zu
 schreiben und praktisch nicht zu testen: Ein Heredoc lässt sich nur
 ausführen, indem man das ganze Repository in genau den Zustand bringt, den es
 beanstanden soll. Entsprechend war nie belegt, ob eine Prüfung überhaupt
