@@ -9,6 +9,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Die «elf» in `adoption.toml` stand auf der falschen Seite — gemessen, nicht
+  geschätzt.** Die Notiz behauptete, die elf erhobenen Server hätten die
+  Eigenschaften «einer nach dem anderen repariert, während diese Datei den
+  Defekt weiter auslieferte». Am 7.8.2026 gegen die Server gelesen, ist das
+  genau verkehrt herum: **Sechs** Repositories hatten die Eigenschaften vor der
+  Vorlage, die anderen **elf** tragen den Defekt bis heute. Ein Grep über die
+  ganzen Repositories — nicht nur über das deklarierte Symbol — findet in allen
+  elf **null** Vorkommen von `retry-after` und **null** von `random`/`secrets`.
+  Damit stimmt die Erhebung vom 3.8.2026 wörtlich: über elf Server las keiner
+  `Retry-After` und keiner streute — weil sie alle diese Vorlage hatten.
+
+  **Elf Repositories, zwölf Übernahmen:** `seco-labor-mcp` steht zweimal
+  (`server.py` und `uvg.py`). Übernahmen gezählt sind es zwölf, Server gezählt
+  elf; die Erhebung zählte Server. Das war die ganze Diskrepanz zwischen «elf»
+  und «18 Übernahmen in 17 Repositories» — beide Zahlen stimmten, sie zählten
+  Verschiedenes.
+
+  `swiss-housing-mcp/src/swiss_housing_mcp/gwr.py:86` trägt die Zeile
+  **wörtlich**: `raise RuntimeError(f"Upstream unreachable after retries:
+  {last_error}")`. Genau die, deren leeres `str()` die Meldung erzeugt, die nach
+  dem Doppelpunkt aufhört.
+
+  Die 18 Einträge sind jetzt nach der Messung gruppiert — «hatte die
+  Eigenschaften vor der Vorlage» und «trägt den Defekt noch». **Kein `since`
+  wurde verschoben:** Ein `since` sagt, wann ein Repository das Verhalten
+  übernommen hat, und daran ändert eine Lesung nichts. Was die Lesung hinzufügt,
+  ist die Seite, auf der jeder Eintrag steht — gemessen statt angenommen.
+
+- **Drei Befunde über die Eigenschaften selbst**, aus derselben Lesung. Eine
+  Eigenschaft, die nicht messen kann, ist schlimmer als eine fehlende: Sie
+  meldet mit Zuversicht.
+
+  - **`caps_after_jitter` ist ein Falsch-Negativ auf jeder korrekten Übernahme,
+    und die beiden Lesarten schliessen einander aus.** Alle sechs reparierten
+    Server binden erst (`jittered = …`) und decken dann (`min(jittered, MAX)`) —
+    ein `wraps`, das fragt, ob ein `random.*`-Aufruf *lexikalisch* in den
+    Argumenten von `min` steht, findet in keinem von ihnen etwas. Lexikalisch
+    gelesen fällt die Eigenschaft bei 6 von 6 Servern durch, die genau das
+    Verhalten haben, das sie beschreibt. Die Vorlage schreibt `min` direkt um
+    den Jitter-Ausdruck und besteht damit die lexikalische Lesart und fällt bei
+    einer namensbindenden durch; die Server umgekehrt. **Kein einziger Ausdruck
+    erfüllt beide**, denn die Wahl *ist*, ob ein Name gebunden wird. `wraps` muss
+    also beide Formen akzeptieren, sonst misst es eine Schreibgewohnheit statt
+    der Reihenfolge, für die es existiert.
+  - **`wall_clock_budget` ist ein Falsch-Positiv auf `i14y-mcp`.** Dort ruft
+    `client.py:147` und `:150` `time.perf_counter()` auf — um `elapsed_ms` für
+    eine Log-Zeile zu berechnen. Begrenzt wird nichts. `kind = "calls"` kann
+    «etwas messen» nicht von «etwas beschränken» unterscheiden. Ohne die zwei
+    Zeilen zu lesen, zählt i14y als Server mit Budget; die ehrliche Zahl ist
+    6 von 18, nicht 7.
+  - **`no_bare_runtime_error` fällt bei `swiss-efv-mcp` durch** — dem
+    Repository, gegen das die Reparatur dieser Vorlage geschrieben wurde.
+    `client.py:315` und `:334` werfen beide `RuntimeError`. Die Referenz hat in
+    den fünf Punkten recht, für die sie herangezogen wurde, und in diesem
+    unrecht; die Vorlage kopiert sie hier **nicht**.
+
 - **`reference/retry_backoff.py` hatte sechs Defekte, und alle sind mitkopiert
   worden.** Die Vorlage ist die Quelle, aus der die `*-mcp`-Server ihren Retry
   übernehmen; `reference/adoption.toml` nennt 18 Übernahmen in 17 Repositories.
