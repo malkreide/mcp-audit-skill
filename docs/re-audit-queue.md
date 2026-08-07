@@ -1,12 +1,39 @@
 # Re-Audit-Warteschlange
 
-**Stand:** 2026-08-07 · **Auslösendes Release:** `v2.1.0` · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+**Stand:** 2026-08-07 · **Letztes geprüftes Release:** `v2.2.0` (feuert nichts) · **Jüngste offene Auslöser:** `v2.1.0` · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
 
 Diese Datei beantwortet eine Frage: **Welche bestandenen Audits gelten nicht mehr, und warum?**
 
 Sie ist bewusst eine Momentaufnahme mit Datum und keine gepflegte Liste. Ein Dokument, das vorgibt, immer aktuell zu sein, ist nach dem zweiten Release falsch, ohne dass es jemand merkt. Der maschinelle Stand steht im Notion-Tracker (`Audit-Status`); hier steht die **Begründung**, die dort nicht hinpasst.
 
-**Zwei Releases, eine Datei.** Die `v2.0.0`-Auslöser stehen unverändert weiter unten — sie sind nicht dadurch erledigt, dass ein neues Release erschienen ist. Ein Server, der wegen `OBS-001` in der Warteschlange stand und seither nicht reauditiert wurde, steht jetzt wegen `OBS-001` **und** `DEP-001` darin.
+**Mehrere Releases, eine Datei.** Die Auslöser aus `v2.1.0` und `v2.0.0` stehen unverändert weiter unten — sie sind nicht dadurch erledigt, dass ein neues Release erschienen ist. Ein Server, der wegen `OBS-001` in der Warteschlange stand und seither nicht reauditiert wurde, steht jetzt wegen `OBS-001` **und** `DEP-001` darin.
+
+---
+
+## `v2.2.0` — 2026-08-07
+
+### Was gefeuert hat
+
+**Nichts.** Dieser Abschnitt steht trotzdem hier, und das ist sein ganzer Zweck: Ein Release, das in dieser Datei gar nicht auftaucht, ist von einem Release ohne §5-Prüfung nicht zu unterscheiden. Der Unterschied zwischen «geprüft und niemand betroffen» und «nicht geprüft» ist derselbe, den [`SKILL.md` §2.6](../SKILL.md) eine Ebene höher meint — und den `OPS-005` an Pipelines misst.
+
+| Eintrag | §5-Prüfung | Ergebnis |
+|---|---|---|
+| `SEC-028` (`high`, `enforced`, **neu**) | Punkt **4** der Katalog-Versionierung, nicht Punkt 5: «Ein neuer Check ist ein neuer Vertrag. Bestehende Audits sind nicht rückwirkend ungültig.» Die vier Fälle a–d setzen sämtlich eine Änderung an einem **bestehenden** Check voraus — Severity (a), Reichweite (b), Prüfkriterium (c), Adoptionsstufe (d). Keiner trifft zu, weil es vorher nichts gab, das sich hätte ändern können. | feuert nicht |
+| Ziel-Anker (`target_revision()`) | §5 regelt Änderungen am **Katalog**, nicht am Werkzeug. Keine Severity, keine Reichweite, kein Prüfkriterium hat sich bewegt. | feuert nicht |
+
+### Was der Anker-Fix stattdessen bedeutet
+
+Er trifft keine Audit-*Ergebnisse*, sondern Audit-*Anker* — und die Unterscheidung ist der Grund, warum er nicht in die Warteschlange gehört.
+
+Ein Lauf, dessen `--target-repo` auf ein Verzeichnis **unterhalb** einer Repository-Wurzel zeigte, nennt in `audit-meta.json` eine SHA aus dem umgebenden Baum: vierzig Hexziffern, plausibel, und über ein anderes Repo. Die Befunde jenes Laufs bleiben, was sie waren; unbrauchbar ist die Angabe, *woran* sie hängen.
+
+Nachprüfbar, ohne etwas neu zu auditieren:
+
+```bash
+git -C <target_repo> rev-parse --show-toplevel
+```
+
+Kommt ein anderer Pfad zurück als der, der als `--target-repo` übergeben wurde, ist der Anker jenes Laufs wertlos — der Report belegt dann nicht, woran er sich misst. Behebung ist ein neuer Lauf mit korrektem `--target-repo`, kein Re-Audit im Sinn von §5.
 
 ---
 
