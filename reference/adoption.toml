@@ -97,11 +97,16 @@
 #   it does, this property's verdict says more about who wrote the line than
 #   about whether the cap binds.
 #
-#   `wall_clock_budget` is a FALSE POSITIVE on `i14y-mcp`. It calls
+#   `wall_clock_budget` was a FALSE POSITIVE on `i14y-mcp`. It called
 #   `time.perf_counter()` twice (client.py:147 and :150) to compute `elapsed_ms`
-#   for a log line. Nothing is bounded. `kind = "calls"` cannot distinguish
-#   timing something from limiting it, and i14y is the case where that matters:
-#   without reading the two lines it counts as a server with a budget.
+#   for a log line. Nothing was bounded. `kind = "calls"` cannot distinguish
+#   timing something from limiting it, and i14y is the case where that mattered:
+#   without reading the two lines it counted as a server with a budget.
+#   ADDRESSED on 2026-08-07 by splitting the claim in two — `wall_clock_budget`
+#   now only says a monotonic clock is read, and `wall_clock_deadline` carries
+#   the half that bounds. The two together are a budget; neither alone is. A
+#   clock read still cannot be told apart from a stopwatch, and it no longer has
+#   to be.
 #
 #   `no_bare_runtime_error` fails on `swiss-efv-mcp` — the repository this
 #   template's repair was written against. Its client.py:315 and :334 both raise
@@ -187,7 +192,7 @@ expect = "present"
 
 [[template.property]]
 id = "wall_clock_budget"
-says = "bounds the total time spent, not just the number of attempts"
+says = "measures elapsed time against a monotonic clock"
 kind = "calls"
 any_of = ["time.monotonic", "time.perf_counter"]
 expect = "present"
@@ -195,6 +200,36 @@ expect = "present"
 # an upstream that takes 30s to time out is two minutes inside one tool call.
 # `time.time` is deliberately not accepted — it moves when the clock is adjusted
 # and a budget measured against it can run backwards.
+#
+# THIS PROPERTY ALONE IS NOT A BUDGET, and the `says` above was narrowed on
+# 2026-08-07 to stop implying that it is. A clock read looks identical whether
+# it bounds something or merely measures it. Read against the servers,
+# `i14y-mcp` called `time.perf_counter()` twice to compute an `elapsed_ms` for a
+# log line — nothing was bounded — and counted as the ONE server of eleven with
+# a wall-clock budget. It had none; the honest figure for that sweep was 6 of
+# 18, not 7. `wall_clock_deadline` below is the half this one cannot express.
+
+[[template.property]]
+id = "wall_clock_deadline"
+says = "holds the budget against a real deadline, not just an httpx timeout"
+kind = "calls"
+any_of = ["asyncio.timeout", "asyncio.wait_for"]
+expect = "present"
+# The other half of a budget, and the half that does the bounding. Declared
+# separately rather than folded into `wall_clock_budget` because the two say
+# different things and a server can hold one without the other: reading a clock
+# is arithmetic, enforcing a deadline is control flow.
+#
+# Why it cannot be the httpx timeout. httpx bounds each OPERATION — connect,
+# read, write, pool — and its read timeout restarts with every chunk. A slowly
+# trickling response therefore outlives any per-operation limit without a single
+# read expiring, which is exactly the case a total budget exists to catch.
+#
+# Both spellings are accepted because both are correct: `asyncio.timeout` needs
+# Python 3.11, and three of the adopting repositories declare
+# `requires-python = ">=3.10"`, where `asyncio.wait_for` is the same wall-clock
+# bound under the older name. Rejecting `wait_for` would report those three as
+# lagging for supporting an interpreter they deliberately support.
 
 [[template.property]]
 id = "no_bare_runtime_error"

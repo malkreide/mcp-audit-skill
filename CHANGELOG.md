@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`wall_clock_budget` konnte keine Schranke von einer Stoppuhr unterscheiden —
+  die Zusage ist jetzt in zwei geteilt.** Die Eigenschaft war als `kind =
+  "calls"` über `time.monotonic` / `time.perf_counter` deklariert und versprach
+  im `says`, sie belege «bounds the total time spent». Ein Uhrenzugriff sieht
+  aber gleich aus, ob er etwas begrenzt oder bloss misst.
+
+  Gemessen: `i14y-mcp` rief `time.perf_counter()` zweimal auf, um `elapsed_ms`
+  für eine **Log-Zeile** zu berechnen. Begrenzt wurde nichts. Damit zählte es
+  als der eine Server von elf mit Wanduhr-Budget — die ehrliche Zahl jener
+  Erhebung war 6 von 18, nicht 7.
+
+  `wall_clock_budget` sagt jetzt nur noch, dass eine monotone Uhr gelesen wird.
+  Die neue Eigenschaft **`wall_clock_deadline`** trägt die Hälfte, die
+  tatsächlich bindet: ein Aufruf von `asyncio.timeout` oder `asyncio.wait_for`.
+  Die beiden zusammen sind ein Budget, keine von beiden allein — Uhr lesen ist
+  Arithmetik, Deadline durchsetzen ist Kontrollfluss.
+
+  **Nicht der httpx-Timeout**, und das ist der Grund für die eigene Eigenschaft:
+  httpx begrenzt pro *Operation*, und sein Read-Timeout beginnt mit jedem Chunk
+  von vorn. Eine langsam tröpfelnde Antwort überdauert jede Einzelschranke, ohne
+  dass ein einzelner Read abläuft — genau der Fall, für den ein Gesamtbudget
+  existiert.
+
+  **Beide Schreibweisen zählen**, weil beide richtig sind: `asyncio.timeout`
+  braucht Python 3.11, und drei der übernehmenden Repositories halten
+  `requires-python = ">=3.10"`, wo `asyncio.wait_for` dieselbe Wanduhr-Schranke
+  unter dem älteren Namen ist. `wait_for` abzulehnen hiesse, diese drei dafür zu
+  bestrafen, dass sie einen Interpreter unterstützen, den sie bewusst
+  unterstützen.
+
+  Gegengeprüft: **18 von 18** Übernahmen halten die neue Eigenschaft, und Check
+  17 hält die Vorlage gegen jetzt acht statt sieben Eigenschaften.
+
 ### Added
 
 - **Die Checkliste endete am Quellbaum — ausgeliefert wird das Artefakt.** Eine
