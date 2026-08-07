@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Behoben — die Zuordnung von `seco-labor-mcp` konnte den Server nicht beschreiben
+
+`seco-labor-mcp` hält `compute_delay` und `parse_retry_after` in
+`retry_policy.py` und ruft sie aus **zwei** Retry-Schleifen auf, in `server.py`
+und `uvg.py`. Keine der Dateien hält allein alle acht Eigenschaften: Die
+Schleifen tragen Fehlerbehandlung, Netzfehler und Wanduhr-Budget, das
+Policy-Modul trägt Jitter, Deckel und `Retry-After`.
+
+Das Manifest konnte nur wählen, **welche Hälfte es unterberichtet** — und es
+unterberichtete die mit drei Eigenschaften darin. Sechs Befunde gegen einen
+Server, der jede einzelne hält.
+
+Beide Adoptionen deklarieren jetzt `also = ["src/seco_labor_mcp/retry_policy.py"]`.
+Das Feld ist neu in `reference_drift_probe.py` (mcp-continuous-auditor#83) und
+nennt weitere Dateien desselben Repos, deren Funktionen das Einstiegssymbol
+**aufrufen** darf. Es erweitert den Scope nicht auf diese Dateien; gefolgt wird
+nur, was der Einstieg wirklich erreicht. Check 17 liest Adoptionen gar nicht —
+es prüft Vorlagen, und eine Vorlage ist eine Datei —, das Feld ist dort also
+bedeutungslos und wird ignoriert.
+
+Gemessen: `seco-labor-mcp` verschwindet vollständig aus dem Bericht.
+
+### Geändert — der Vorbehalt zu Finding 4 ist zurückgezogen, nicht abgemildert
+
+Finding 4 trug den Satz, ein `REFERENCE_STALE` auf `reads_retry_after`,
+`jitters` oder `caps_after_jitter` sei ein Sonden-Artefakt und dürfe nicht gegen
+einen Server gebucht werden. Mit mcp-continuous-auditor#81 scopen beide Leser
+gleich; solche Befunde sind wieder echt.
+
+Der Vorbehalt ist **gelöscht** statt umformuliert. Ein Vorbehalt, der seine
+Ursache überlebt, ist derselbe Defekt wie ein Verzeichnis, das seine Lesung
+überlebt — und dieses Manifest hat heute schon einen davon korrigiert.
+
 ### Geändert — das Adoptionsregister nennt elf Server als defekt, die es nicht mehr sind
 
 `reference/adoption.toml` führte elf Repositories unter «Still carrying the
