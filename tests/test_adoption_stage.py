@@ -145,6 +145,24 @@ class TestRealCatalogUnchanged:
         # enforced at `high` on merge day would have failed almost every
         # data-source server for a property none of them was ever asked to
         # have. Advisory until a portfolio run says how many confirm the shape.
+        #
+        # OBS-008 (unreleased) takes the ordinary bridge, and the survey behind it
+        # says why: of 42 published servers, 15 emit nothing at all within six
+        # seconds on a closed stdin. Enforced on merge day would fail more than
+        # a third of the portfolio for a property none of them was ever asked
+        # to have — the exact shape §2.3 exists to prevent. Advisory until a
+        # run shows the marker rules are cut correctly, in particular whether
+        # the exact-match rule on the `event` field produces false failures on
+        # servers that do log a marker.
+        #
+        # ARCH-022 (unreleased) likewise, for the opposite reason: it is narrow,
+        # not broad. Two servers are confirmed (`i14y-mcp`, `bag-health-mcp`),
+        # and the finding was first dismissed as an import-order artefact — the
+        # cold/warm double measurement is what settled it. A check whose method
+        # of proof has been run twice, on two servers, has not yet earned the
+        # right to block; advisory until a portfolio run says how often the
+        # shape occurs and how often the double measurement disagrees with a
+        # single run.
         assert advisory_ids(parse_catalog(CHECKS_DIR)) == [
             "ARCH-015",
             "ARCH-016",
@@ -153,8 +171,10 @@ class TestRealCatalogUnchanged:
             "ARCH-019",
             "ARCH-020",
             "ARCH-021",
+            "ARCH-022",
             "FID-006",
             "HITL-006",
+            "OBS-008",
             "OPS-005",
             "OPS-006",
             "OPS-007",
@@ -311,6 +331,8 @@ class TestReadmesNameTheAdvisorySet:
             5: ("five", "fünf"),
             18: ("eighteen", "achtzehn"),
             19: ("nineteen", "neunzehn"),
+            20: ("twenty", "zwanzig"),
+            21: ("twenty-one", "einundzwanzig"),
         }
         assert expected in words, (
             f"{expected} advisory checks — extend the number words in this test"

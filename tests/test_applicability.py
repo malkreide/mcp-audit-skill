@@ -335,8 +335,8 @@ class TestRealCatalog:
         # 86 mit OPS-005, 87 mit SCALE-007, 93 mit IDENT-007, DEP-001 und
         # DRIFT-006, 94 mit OBS-007, 95 mit ARCH-014, 96 mit OPS-006,
         # 98 mit OPS-008, 112 mit den vierzehn Spec-Checks aus v2.0.0,
-        # 113 mit FID-006 aus v2.1.0)
-        assert len(results) == 113
+        # 113 mit FID-006 aus v2.1.0, 115 mit OBS-008 und ARCH-022)
+        assert len(results) == 115
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
         # test fails loudly only on grammar drift.
@@ -365,7 +365,16 @@ class TestRealCatalog:
         # anwendbar — die Baseline-Stufe fängt sie vor der Grammatik ab.
         # Genau das ist der Zweck der zweiten Achse, und dass die Schranke hier
         # nicht wandert, ist ihr Beleg.
-        assert 25 <= len(applicable) <= 62, (
+        # 62 → 70: `OBS-008` und `ARCH-022` tragen beide `always` und
+        # `spec_baseline: beide`, greifen also für jedes Profil — 63 von 62.
+        # Wieder gewöhnliches Katalogwachstum, keine Grammatik-Drift: Die
+        # Baseline-Stufe kann hier nichts abfangen, weil beide Checks
+        # baseline-unabhängig sind. Erneut mit Luft nach oben statt knapp
+        # darüber, aus demselben Grund wie beim Schritt 55 → 62 — eine
+        # Schranke, die jeder zweite `always`-Check reisst, misst die
+        # Katalog-Grösse und nicht die Grammatik. Die Untergrenze bleibt bei
+        # 25; sie ist die Seite, die einen echten Grammatik-Ausfall fängt.
+        assert 25 <= len(applicable) <= 70, (
             f"Applicable count drifted: got {len(applicable)} ({applicable})"
         )
 

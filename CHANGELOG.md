@@ -6,6 +6,89 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Neu — `OBS-008`: Der Server sagt an, dass er bedient (advisory, medium)
+
+Ein MCP-Server auf stdio hat keinen Port, keinen Health-Endpunkt und keinen Exit-Code, solange er läuft. «Läuft» war damit keine Beobachtung, sondern eine Annahme — und der Katalog stellte dazu keine Frage.
+
+**Die Erhebung (2026-08-03, 42 veröffentlichte Server):** gestartet mit geschlossenem stdin, sechs Sekunden Geduld. Ohne stdin gibt es keine Anfrage, also ist alles auf stderr Selbstauskunft. 27 Server melden sich, **13 schweigen ganz, 2 geben nur den FastMCP-Banner des SDK aus**. 15 von 42 sind von aussen nicht von einem Server zu unterscheiden, der beim Import gestorben ist.
+
+**Was dabei durchrutscht:** `zh-education-mcp` `0.2.4` startete überhaupt nicht — der Prozess kam hoch, brach in der Initialisierung ab und beendete sich still. Weil er auch im Normalfall geschwiegen hätte, gab es keinen Unterschied zu bemerken; der Zustand blieb monatelang unentdeckt.
+
+Die drei Marker-Regeln stammen sämtlich aus Messungen, nicht aus Geschmack:
+
+- **Strukturiertes Log: Das `event`/`msg`-Feld wird EXAKT verglichen.** `openlex-mcp` war als «Lifespan gestartet» dokumentiert; das Feld lautete «Lifespan gestartet — geteilter HTTP-Client bereit». Ein Präfix-Vergleich hätte gepasst und wäre bei der nächsten Umformulierung gebrochen — einer Änderung, die niemand für eine Schnittstellenänderung hält. Erklärende Zusätze gehören in eigene Felder.
+- **Klartext: eine stabile Teilzeichenkette genügt.** Ohne Feld gibt es nichts exakt zu vergleichen; das ist der Preis unstrukturierter Logs und kein Grund, Regel 1 aufzuweichen.
+- **Nie ein Zeitstempel** — und nichts anderes Laufvariables (PID, Port, Dauer, konfigurationsabhängige Anzahlen). Passt beim ersten Lauf und nie wieder.
+
+**Der SDK-Banner zählt nicht**, aus zwei Gründen: Er erscheint, sobald das Framework-Objekt läuft — also *bevor* der Lifespan Clients gebaut und Konfiguration validiert hat, er wäre bei `zh-education-mcp` erschienen —, und sein Wortlaut gehört dem SDK und ändert sich beim nächsten Update ohne Release des Servers. Dieselbe Mechanik wie in `DEP-001`, eine Ebene höher.
+
+**Advisory, mit der Zahl als Begründung:** 15 von 42 auf `fail` am Merge-Tag wäre ein rotes Portfolio für eine Eigenschaft, um die nie jemand gebeten hat — genau die Form, die `SKILL.md` §2.3 verhindern soll. Die offene Frage für den Übergang ist benannt: ob die Exakt-Regel auf dem `event`-Feld bei Servern, die einen Marker führen, Fehlalarme erzeugt.
+
+Der Check verlangt zusätzlich die **negative Kontrolle**: Ein leeres stderr kann auch heissen, dass die Messung nichts gemessen hat. Ein erzwungener Fehlstart muss Ausgabe erzeugen, sonst ist «kein Marker» kein Ergebnis.
+
+### Neu — `ARCH-022`: Die Versionsquelle importiert das Paket-Root nicht (advisory, medium)
+
+`IDENT-002` sagt, **woher** die Version kommt. Offen blieb, **wo** sie steht und wer sie holen darf.
+
+**Der Fall (`i14y-mcp`):** `client` braucht die Version für den User-Agent und liest sie aus dem Paket-Root; das Root importiert `server`, `server` importiert `client`. Der Import läuft im Kreis, und dass es trotzdem funktioniert, hängt an einer einzigen Eigenschaft — dass `__version__` **oberhalb** von `from .server import mcp` steht. Die Version aus einem halb initialisierten Root zu ziehen hält, bis jemand zwei Zeilen umsortiert. Und Importe nach oben zu sortieren ist genau die Änderung, die durch jedes Review geht. `bag-health-mcp` trägt dieselbe Form.
+
+Die Lösung ist ein eigenes `_version.py` als **Blatt** im Importgraphen: Es importiert nichts aus dem eigenen Paket, also kann kein Pfad durch es zurückführen. Damit ist die Zeilenreihenfolge im Root wieder das, wonach sie aussieht — Formatierung.
+
+**Die Doppelmessung ist Teil des Checks, nicht eine Empfehlung dazu.** Gemessen wird zweimal in je **frischem** Interpreter: KALT (Submodul zuerst) und WARM (Root zuerst). Nur der Vergleich trägt die Aussage — KALT rot / WARM grün ist ein echter Zyklus, beide rot ist ein kaputter Aufbau, beide grün ist kein Befund aus dieser Messung. Ein einzelner Interpreter, der beides nacheinander tut, misst die zweite Frage nicht mehr: Nach dem ersten Import steht das Paket in `sys.modules`.
+
+**Warum das ausdrücklich dasteht:** Der `bag-health-mcp`-Befund wurde beim ersten Durchgang als Reihenfolge-Artefakt abgetan — auf Basis eines einzigen warmen Laufs, der erwartungsgemäss grün war. Das war falsch, und der kalte Lauf hat es gezeigt. Die Fehleinschätzung steht im Check, weil sie die Regel begründet.
+
+Dazu der Pfad, der bei Nutzenden wirklich läuft: Ein Konsolen-Skript auf `pkg.server:main` importiert das Submodul — das ist der **kalte** Pfad, und er ist der, den Tests fast nie nehmen.
+
+**Advisory**, hier aus dem umgekehrten Grund wie bei `OBS-008`: Der Check ist schmal, zwei Server sind bestätigt, und seine Beweismethode ist zweimal gelaufen. Das genügt für einen Befund und noch nicht dafür, ein Release zu blockieren.
+
+### Geändert — `DEP-001` misst die Obergrenze, statt sie zu raten
+
+Der Check verlangte eine Obergrenze und liess offen, **welche**. Die bequeme Antwort ist die nächste runde Zahl, und sie ist in beide Richtungen falsch: zu tief sperrt sie eine Major-Version aus, die längst läuft, zu hoch lässt sie genau die herein, die den Import bricht.
+
+> Der Deckel wird gegen das gemessen, was heute nachweislich installiert **und importiert** wird.
+
+`structlog>=24.1,<27` ist deshalb kein Tippfehler: `<27` steht dort, weil `26.1.0` belegt funktioniert — installiert, importiert, Suite gelaufen. Neuer **Modus 4a** hält das fest (höchste vom Cap erlaubte Version installieren, importieren, testen), und «als kompatibel dokumentiert» zählt dabei nicht als Messung.
+
+Neuer **Modus 4b** beantwortet die zweite Frage, die bisher niemand stellte: *Tut der Deckel überhaupt etwas?* Eine Obergrenze, die ohnehin nie erreicht wird, ist Text ohne Wirkung und sieht im Diff genauso aus wie eine wirksame. Der Gegenversuch: **Cap entfernen, gegen den Index auflösen — der nächste Major muss hereinkommen.** Tut er das nicht, ist die Wirkung ungeprüft, und das steht so im Report statt als Pass.
+
+Der Belegfall ist geschärft: `swiss-energy-mcp` `0.3.3` deklarierte `mcp` ohne Cap; `mcp` 2.0.0 entfernte `mcp.server.fastmcp`, jedes frische `pip install` löste auf die 2er-Linie auf, und das Konsolen-Skript starb mit `ModuleNotFoundError`. **Das Artefakt hat sich nicht geändert, die Antwort des Resolvers hat sich geändert.** Der Portfolio-Sweep vom **2026-08-02** zeigt, dass das kein Einzelfall in zwei Repos war: **28 Befunde über 24 Server**, alle behoben, gedeckelte Abhängigkeiten **61 → 89**.
+
+### Geändert — `DEP-001` und `SDK-006` grenzen sich gegenseitig ausdrücklich ab
+
+Beide Checks sehen dieselbe Zeile an, und die Verwechslung ist naheliegend genug, dass sie in **beiden** benannt gehört — statt einen dritten Check zu bauen, der dasselbe noch einmal fragt.
+
+| | `SDK-006` | `DEP-001` |
+|---|---|---|
+| Frage | Ist die Migration 1.x → 2.x abgeschlossen? | Ist der Auflösungsraum jeder Abhängigkeit begrenzt? |
+| Gegenstand | nur das Python-SDK `mcp` | jede Abhängigkeit der Distribution |
+| Was ein Cap bedeutet | `<2` ist ein **Befund** | `<3` ist die **Erfüllung** |
+| `applies_when` | `sdk_language == "Python"` | `always` |
+
+In einem Satz: **`SDK-006` prüft, an welchem Major der Bound verankert ist. `DEP-001` prüft, dass es überhaupt einen zweiten Bound gibt.** `mcp>=1.28.1` verletzt beide — das ist ein Befund je Check, nicht ein doppelter. Ein makelloses `mcp>=2.0.0,<3` erfüllt `SDK-006` vollständig und sagt nichts über `httpx`, `pydantic` oder `structlog`. Beide Checks führen den Fehler «Befund unter dem anderen abgehakt» jetzt in ihren Common Failures.
+
+### Geändert — `IDENT-002`: Ein Test mit Versions-Literal ist selbst eine Versions-Stelle
+
+Wer die Versions-Stellen eines Servers zählt, zählt `pyproject.toml`, `server.json`, `__init__.py`, vielleicht ein `Dockerfile` — und hört bei den Dateien auf, die nach Konfiguration aussehen. `tests/` steht auf keiner dieser Listen.
+
+**Der Fall (`hn-tech-signal-mcp`):** Der Release zog vier gezählte Stellen mit. Rot wurde die CI trotzdem, an `assert __version__ == "0.3.0"` in `tests/`. Das war die fünfte, und sie war nirgends erfasst.
+
+**Die Behebung ist nicht, das Literal mitzuziehen.** Ein fünfter Ort in der Release-Checkliste macht die Liste länger und das Problem nicht kleiner; beim nächsten Mal ist es der sechste. Der Test muss auf die **Invariante** zeigen, die wirklich brechen kann — `__version__` gegen `server.json`, zwei unabhängig gepflegte Stellen. Der Unterschied ist nicht kosmetisch: Ein Literal-Vergleich bricht bei *jedem* Bump, also gerade dann, wenn alles richtig läuft; der Vergleich gegen `server.json` bricht nur, wenn zwei zusammengehörende Stellen auseinanderlaufen. Dass sie das tun, ist belegt — `IDENT-003` fand vier Server mit genau dieser Drift.
+
+Ausdrücklich **nicht** die Behebung ist `assert __version__ == version("<dist-name>")`: Beide Seiten kommen aus denselben Metadaten, der Vergleich kann nicht widersprechen und ist grün, ohne etwas zu prüfen — dieselbe Falle, vor der der Abschnitt «Reichweite» desselben Checks bereits warnt.
+
+Neu verlangt wird deshalb der Nachweis, dass der Test greift: **`server.json` verstimmen, Suite laufen lassen, Änderung zurücknehmen.** Ein Versions-Test, der nie rot war, ist von einem wirkungslosen nicht zu unterscheiden. Modus 1 sucht jetzt zusätzlich Versions-Literale unter `tests/`.
+
+### Neu — `docs/semantik-statt-gestalt.md`: Checks greifen semantisch, nicht über die Form
+
+Bewusst **kein** Check, und der Grund steht auf der Seite: Sie beschreibt keine Eigenschaft eines auditierten Servers, sondern eine unserer eigenen Prüfungen. Ein Check dafür hätte keinen Server, auf den er zeigen könnte.
+
+**Der Vorfall:** Der erste Versions-Scanner in diesem Repo suchte Versionsnummern über ihre Gestalt (`\d+\.\d+\.\d+`) und hielt `127.0.0.1`, `10.0.0.0/8` und `0.0.0.0` für Versionsnummern. Alle passen auf das Muster, keiner ist eine Version.
+
+Das ist schlimmer als ein fehlender Check: Rauschen wird pauschal weggeklickt, die Reaktion darauf ist Abschalten statt Nachschärfen, und ein Fehlalarm sieht aus wie ein Befund — wer ihn «behebt», ändert korrekten Code. Der Scanner hätte jemanden dazu gebracht, an einer Bind-Adresse zu drehen.
+
+Die Seite gibt drei semantische Anker (Position, ausschliessender Kontext, Verhalten statt Text) und benennt den Preis, wenn es die nicht gibt: Die Ausgabe heisst dann **Kandidatenliste**, die Einordnung jedes Kandidaten ist Teil der Evidenz, und die negative Kontrolle gehört dazu. Die drei neuen bzw. erweiterten Checks dieser Runde sind Belege für den dritten Anker — `DEP-001` löst auf, `ARCH-022` importiert, `OBS-008` startet.
+
 ### Geändert — `ARCH-003` misst jetzt auch, was rausgegangen ist
 
 Der Check prüfte, ob auf einer Leermenge ein Fuzzy- oder Vorschlagsmechanismus **existiert**. Beide Modi lasen dafür die **Antwort**: Empty-Result-Pattern im Quelltext, `match_type`-Feld, handlungsfähiger Hinweis. Keiner mass den **Request**. Ein Server, der seine eigenen Vorschläge still selbst absucht und deren Treffer unter `results` mischt, bestand ihn — die Antwort beantwortet dann einen Begriff, den der Aufrufer nie gewählt hat, und für das Modell ist eine so entstandene Zeile von einer echten nicht zu unterscheiden. `match_type: "fuzzy"` steht daneben, aber es sagt *dass* geraten wurde, nicht *welche Zeile zu welchem Begriff gehört*.
