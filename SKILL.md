@@ -249,7 +249,7 @@ Für die Regeln 8–12 gilt dieselbe Form. Die Mutationen stehen dort jeweils un
 
 ## Regel 7 — Die Test-Harness ist bei HTTP-Transporten selbst eine Fehlerquelle
 
-Drei Fallen, die alle dasselbe Symptom haben: Der Befund sieht aus wie ein Infrastrukturproblem und wird als Rauschen abgetan.
+Vier Fallen. Die ersten drei haben dasselbe Symptom: Der Befund sieht aus wie ein Infrastrukturproblem und wird als Rauschen abgetan. Die vierte hat gar keines — sie nimmt einem Test still seinen Gegenstand, und ein Test ohne Gegenstand ist grün.
 
 **(a) Ein blanker `httpx.ASGITransport` liefert 500 auf jede Anfrage.** Streamable HTTP baut seinen Transport-Manager im **App-Lifespan** auf, und dieser Transport führt den Lifespan nie aus. Wer den 500er für einen Befund hält, debuggt den falschen Code. Das gilt unabhängig von der Baseline: Was `2026-07-28` entfernt, ist die *Protokoll*-Sitzung, nicht der Aufbau der App.
 
@@ -282,7 +282,36 @@ assert calls[0]["transport_security"] is not None
 
 Warum der SSE-Fall hängt, verbindet (a) und (c): Ohne Allow-List wird ein SSE-GET unter fremdem Host **zugelassen** und öffnet einen endlosen Event-Stream, auf den der `TestClient` beim Verlassen wartet. Die fehlende Kontrolle äussert sich also nicht als roter Test, sondern als stehende Suite — und ein Hänger wird routinemässig als Flake abgetan. Regel 11 fügt dieser Klasse eine zweite Ursache hinzu, die nichts mit SSE zu tun hat.
 
-**Nachweis:** Ein Timeout auf die Suite (`pytest --timeout=30`) macht aus jedem Hänger einen Fehlschlag mit Stacktrace, und die Stelle ist damit benannt statt gemutmasst. Dazu jeden Zweig-Test **einzeln und in der vollen Suite** laufen lassen: Die Instanz-Patch-Falle aus (b) zeigt sich ausschliesslich im zweiten Fall.
+**(d) Eine `autouse`-Fixture, die ein fremdes Modul patcht, entschärft die Mechanik im ganzen Prozess.** `monkeypatch.setattr(modul.asyncio, "sleep", ...)` liest sich, als bliebe der Griff in `modul` — aber `modul.asyncio` **ist** das Modul `asyncio`, dasselbe Objekt, das jeder andere Import im Prozess hält. Mit `autouse=True` gilt der Griff für jeden Test der Suite, auch für die, die davon nichts wissen. (b) betrifft die *Ebene* des Patches, hier geht es um sein *Ziel*: Wem gehört der Name, auf den er zeigt?
+
+Was real passiert ist: Eine solche Fixture hat eine Parallelitätsprüfung stillgelegt. Der Test liess zwei Coroutinen ineinandergreifen und benutzte dafür `asyncio.sleep(0)` — den Standardweg, dem Event-Loop das Wort zu geben. Der Ersatz gab es nicht weiter: Eine `async`-Funktion, die zurückkehrt, ohne etwas abzuwarten, suspendiert nie. Die eine Coroutine lief also durch, bevor die andere begann, und der Test behauptete Nebenläufigkeit über einen Ablauf, in dem es keine gab.
+
+Er wurde rot, und das war Glück — er prüfte die Verschränkung direkt. Hätte er die Nebenläufigkeit nur indirekt geprüft, an einem Zähler, einer Reihenfolge, einem Ergebnis, wäre er grün geblieben und hätte nichts mehr abgesichert. Das ist der Unterschied zu (a)–(c): Dort ist der Schaden sichtbar und wird bloss falsch zugeordnet. Hier bleibt nichts übrig, das man zuordnen könnte.
+
+```python
+# ✗ sieht lokal aus, greift aber ins Modul asyncio — jeder Import im Prozess, jeder Test der Suite
+@pytest.fixture(autouse=True)
+def _no_sleep(monkeypatch):
+    async def _instant(_delay): return None            # kehrt zurück, ohne zu suspendieren
+    monkeypatch.setattr(server.asyncio, "sleep", _instant)
+
+# ✓ der Produktivcode hält einen Alias, die Fixture patcht den Alias
+# src/server.py:  _sleep = asyncio.sleep   …   await _sleep(delay)
+@pytest.fixture(autouse=True)
+def _no_sleep(monkeypatch):
+    async def _instant(_delay): await asyncio.sleep(0)  # Dauer weg, Übergabe an den Loop bleibt
+    monkeypatch.setattr(server, "_sleep", _instant)
+```
+
+Zwei Eigenschaften tragen. **Der Patch zielt auf einen Namen, den dieses Repo besitzt** — dann ist seine Reichweite am Namen ablesbar, statt aus der Importkette erschlossen werden zu müssen. Und **der Ersatz nimmt die Dauer weg, nicht die Übergabe an den Event-Loop**: `await asyncio.sleep(0)` ist genauso schnell, lässt aber den Punkt stehen, an dem eine andere Coroutine drankommt. Der Alias muss dafür an *jeder* Aufrufstelle stehen; bleibt irgendwo ein direktes `await asyncio.sleep(...)`, patcht die Fixture daran vorbei — derselbe No-op wie eine Mutation, die ihr Ziel verfehlt (Regel 6).
+
+Damit schliesst (d) eine Lücke in Regel 6: Der Mutationstest ist dort das Abnahmekriterium, und dies ist genau der Fall, in dem er grün bleibt, ohne etwas zu prüfen. Nicht weil die Mutation nicht ankam — sie kam an —, sondern weil der Test, der sie hätte fangen sollen, seinen Gegenstand vorher an die Fixture verloren hat.
+
+**Nachweis:** Ein Timeout auf die Suite (`pytest --timeout=30`) macht aus jedem Hänger einen Fehlschlag mit Stacktrace, und die Stelle ist damit benannt statt gemutmasst. Dazu jeden Zweig-Test **einzeln und in der vollen Suite** laufen lassen: Die Instanz-Patch-Falle aus (b) zeigt sich ausschliesslich im zweiten Fall. Für (d) ist die Fixture selbst der Gegenstand von Regel 6 — den Ersatz gegen einen ohne `await` tauschen: Verliert kein Test seine Aussage, hat auch keiner die Nebenläufigkeit geprüft, die er behauptet. Und ein `setattr`, dessen Ziel ein importiertes Fremdmodul ist, ist ein Befund beim Hinsehen:
+
+```bash
+grep -rnE 'setattr\(\s*([A-Za-z_][A-Za-z0-9_.]*\.)?(asyncio|time|socket|os|random|subprocess)\s*,' tests/
+```
 
 ---
 
@@ -529,6 +558,8 @@ Solche Stellen lassen sich prüfen, sie brauchen nur einen Aufruf statt eines Da
 - [ ] Die Stateless-Kontrollen sind mit **zwei** Aufrufern getestet — ein Aufrufer ist in beiden Zuständen grün (Regeln 5, 8)
 - [ ] Gegen den echten ASGI-Stack geprüft (`TestClient`), nicht gegen blankes `ASGITransport` (Regel 7)
 - [ ] Patch-Ebene im ganzen Repo einheitlich — Instanz oder Klasse, nicht gemischt (Regel 7)
+- [ ] Kein `setattr` auf ein importiertes Fremdmodul; gepatcht wird ein Name, den dieses Repo besitzt (Regel 7)
+- [ ] Jede `autouse`-Fixture gegen die Tests gehalten, die sie nicht bestellt haben — nimmt der Ersatz die Dauer weg oder auch die Übergabe an den Event-Loop? (Regel 7)
 - [ ] Jeder Zweig-Test behauptet, welcher Zweig lief (Regel 7)
 - [ ] Suite läuft unter Timeout; jeder Zweig-Test zusätzlich einzeln **und** in der vollen Suite (Regel 7)
 - [ ] Jeder neue Guard läuft auch auf `main`, nicht nur auf Pull Requests — und ist dort nach dem Merge einmal angesehen worden (Regel 13)
@@ -558,11 +589,12 @@ Sechs Dinge daran sind übertragbar:
 
 Was am Portfolio dazu **gemessen** ist und nicht angenommen: Der Legacy-`initialize`-Handshake cappt unter mcp 2.x weiter bei `2025-11-25`, während derselbe Prozess daneben einen per-request-Umschlag bedient, der `2026-07-28` erreicht (festgehalten in `zurich-opendata-mcp`s `pyproject.toml`). Und das Erkennungsrezept aus Regel 10, an demselben Server angewandt, kommt an allen drei Orten negativ zurück. Beides sind Messungen an einem Repo, keine Verallgemeinerungen — mehr behaupten die Regeln an dieser Stelle auch nicht.
 
-**Regel 13 und zwei Nachträge stammen aus dem Betrieb der Kette selbst (2026-08).** Sie haben untereinander dieselbe Form wie Punkt 3 oben, der verschachtelte Server: Etwas ist eingeführt, aber nicht dort angekommen, wo es hätte wirken müssen — und weil ausserhalb der Reichweite nichts rot wird, sieht der Zustand von innen aus wie Erfolg.
+**Regel 13 und drei Nachträge stammen aus dem Betrieb der Kette selbst (2026-08).** Die ersten drei haben untereinander dieselbe Form wie Punkt 3 oben, der verschachtelte Server: Etwas ist eingeführt, aber nicht dort angekommen, wo es hätte wirken müssen — und weil ausserhalb der Reichweite nichts rot wird, sieht der Zustand von innen aus wie Erfolg.
 
 - **Regel 13.** Ein Versions-Sync-Check landete auf `main`, nachdem der `0.20.0`-Release-Branch geschnitten war. Dessen CI kannte ihn nicht, danach prüfte niemand `main` nach, und die README-Badges waren zwei Releases lang falsch.
 - **Regel 6, der Diff-Schritt.** Eine Ersetzung lief ins Leere, weil das gesuchte Literal im umbrochenen Text über eine Zeilengrenze fiel. Die Datei blieb unverändert, die Suite grün — und das las sich als überlebender Mutant.
 - **Regel 1, die Lock-Hälfte.** Der Auslöser des SDK-Major-Sprungs war ein unbeschränkter Resolve. Die Bounds danach in `pyproject.toml` zu setzen genügt nicht: Ohne neu aufgelösten Lock installiert das Deployment weiter, was vorher galt — was zu diesem Zeitpunkt auf einer `main` des Portfolios genau so lag.
+- **Regel 7, der Fall (d).** Eine `autouse`-Fixture ersetzte `asyncio.sleep` im Modul `asyncio` selbst und nahm damit jedem Test im Prozess die Übergabe an den Event-Loop. Das ist die Spiegelung der drei Punkte darüber: Nicht die Reichweite war zu klein, sondern zu gross. Rot wird trotzdem nichts — der entschärfte Test hat keinen Gegenstand mehr, an dem er scheitern könnte. Hier ging er rot, weil er die Verschränkung direkt behauptete; das ist Glück und keine Eigenschaft der Fixture.
 
 Regel 13 hat sich beim Schreiben dieses Abschnitts selbst bestätigt: Der Zweig, auf dem sie entstand, war vor dem Merge von `2.0.0` geschnitten. Sieben Regeln wurden zwölf, während er offen lag — und die neue Regel trug bis zum Rebase die Nummer 8, die inzwischen vergeben war.
 
