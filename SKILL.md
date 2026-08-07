@@ -14,7 +14,7 @@ Dieser Skill kodiert vier Disziplinen, die das Swiss Public Data MCP Portfolio v
 3. Retry **vor** Defaitismus
 4. Ground Truth **vor** Selbstvertrauen
 
-Jeder neue `*-mcp`-Server durchläuft die drei Schritte unten in dieser Reihenfolge; die vierte Disziplin ist kein eigener Schritt, sondern verläuft quer durch Schritt 1 (1.2b, 1.3b, 1.4, 1.5) und Schritt 3 (3.6). Abweichungen erfordern eine explizite Begründung, die im README unter «Architektur-Entscheid» dokumentiert wird.
+Jeder neue `*-mcp`-Server durchläuft die drei Schritte unten in dieser Reihenfolge; die vierte Disziplin ist kein eigener Schritt, sondern verläuft quer durch Schritt 1 (1.2b, 1.2d, 1.3b, 1.4, 1.5) und Schritt 3 (3.6). Abweichungen erfordern eine explizite Begründung, die im README unter «Architektur-Entscheid» dokumentiert wird.
 
 ---
 
@@ -155,6 +155,51 @@ In der Befund-Tabelle bekommt jede Null eine Spalte «Struktur bestätigt»:
 Das ist dieselbe Regel wie 3.6 («Leermenge ≠ Abwesenheit»), eine Ebene höher: Dort schützt sie das Modell vor dem Tool, hier die Probe vor sich selbst.
 
 **Verwandt — aggregierte Endpoints hinken nach.** Liefert eine Quelle dieselbe Information über mehrere Wege, sind sie nicht gleich aktuell. Bei PyPI meldete der JSON-Sammel-Endpoint (`/pypi/<pkg>/json`) **dreimal in Folge** nach einem Release noch die Vorversion, während der Simple Index und eine echte Installation sofort korrekt waren. Für jede Freshness-Aussage im Protokoll gehört deshalb dazu, **welcher** Endpoint befragt wurde — und für die belastbare Aussage der autoritative, nicht der bequeme.
+
+### 1.2d Feldnamen-Inventar — die Schreibweise ist Teil des Befunds
+
+**Regel:** Die Live-Probe protokolliert die **tatsächlichen** Feld- bzw. Spaltennamen jeder Antwort, **samt Schreibweise** — Gross-/Kleinschreibung, Umlaute, Trennzeichen, Leerzeichen, BOM. Und sie legt die rohe Antwort als **aufgezeichnete Fixture** ab, aus der später die Tests lesen.
+
+Das ist die einzige Regel in Schritt 1, die nicht die Menge der Daten betrifft, sondern ihre Beschriftung. Sie steht hier, weil die Beschriftung genau einmal billig zu messen ist: in dem Moment, in dem die Probe die Antwort ohnehin in der Hand hat.
+
+**Belegfall aus dem Portfolio (2026-08-03).** Eine Quelle wechselte die Schreibweise ihrer CSV-Kopfzeile von `Schulgemeinde` auf `schulgemeinde`. Vier von sechs Datensätzen eines Servers lieferten daraufhin nichts mehr. **Alle Unit-Tests blieben grün** — ihre von Hand geschriebenen Fixtures pinnten die alte Schreibweise, also prüften sie den Server gegen eine Welt, die es nicht mehr gab. Der Ausfall war live sichtbar und im Testlauf unsichtbar, und das ist die teure Kombination: Ein handgeschriebenes Fixture ist eine Behauptung über die Quelle, kein Beleg. Es kann per Konstruktion nicht auffallen, wenn die Quelle sich bewegt.
+
+```bash
+# Feldnamen-Inventar: was die Quelle WIRKLICH schreibt, nicht was die Doku sagt.
+# repr() statt print(): macht Leerzeichen am Rand, BOM und NBSP sichtbar —
+# genau die Zeichen, an denen ein Lookup scheitert, ohne sich zu zeigen.
+curl -sS "$URL" -o fixtures/raw/quelle_2026-08-03.csv     # aufgezeichnet, nicht getippt
+python3 - fixtures/raw/quelle_2026-08-03.csv <<'PY'
+import csv, sys
+with open(sys.argv[1], encoding="utf-8-sig", newline="") as fh:
+    header = next(csv.reader(fh))
+for name in header:
+    print(repr(name))
+PY
+
+# JSON: dieselbe Frage, eine Ebene tiefer
+curl -sS "$URL" -o fixtures/raw/quelle_2026-08-03.json
+python3 - fixtures/raw/quelle_2026-08-03.json <<'PY'
+import json, sys
+rows = json.load(open(sys.argv[1], encoding="utf-8"))
+rows = rows if isinstance(rows, list) else rows.get("results", [])
+assert rows, "keine Zeile — erst 1.2c klaeren, dann hier weiter"
+for name in rows[0]:
+    print(repr(name))
+PY
+```
+
+Ins Probe-Protokoll kommt die Liste vollständig, nicht als «wie dokumentiert»:
+
+| Datensatz | Feld laut Doku | Feld gemessen (`repr`) | Aufgezeichnet am | Fixture |
+|---|---|---|---|---|
+| Schulliste | `Schulgemeinde` | `'schulgemeinde'` | 2026-08-03 | `fixtures/raw/schulen_2026-08-03.csv` |
+| Schulliste | `PLZ` | `'PLZ'` | 2026-08-03 | `fixtures/raw/schulen_2026-08-03.csv` |
+| Klassen | — | `'﻿Jahr'` | 2026-08-03 | `fixtures/raw/klassen_2026-08-03.csv` |
+
+**Aufgezeichnet, nicht getippt.** Ein Fixture wird aus der echten Antwort gespeichert und mit dem Abrufdatum im Namen abgelegt; es wird nicht von Hand nachgebaut. Ein nachgebautes Fixture erbt die Erwartung des Schreibenden — das ist derselbe Fehler wie in 1.4, nur eine Schicht tiefer: Der grüne Test beweist dann, dass der Server tut, was erwartet wurde, nicht dass die Erwartung noch stimmt.
+
+**Was daraus für Schritt 3 folgt.** Feldnamen sind Fremddaten, kein Vertrag. Ein Lookup, der genau eine Schreibweise kennt, ist ein Ausfall mit Ankündigung; entweder wird beim Einlesen normalisiert (`strip()`, casefold, BOM weg) oder die akzeptierten Schreibweisen stehen explizit im Code. Und mindestens ein Test liest die aufgezeichnete Fixture, damit ein Schreibweisen-Wechsel beim nächsten Aufzeichnen als Diff auffällt, statt als Nullbefund in der Produktion.
 
 ### 1.3 Befund-Tabelle erstellen
 
@@ -755,7 +800,8 @@ Dieses Portfolio führt zusätzlich eine Karte in der Notion-Datenbank `aa6b672a
 11. **«Was wir nicht abdecken, ist offensichtlich»** — beim Bauen ja, beim Begründen nicht mehr. Wer den Scope erst im Audit begründet, rekonstruiert ihn und erfindet dabei Gründe, die die Quelle kleiner machen, als sie ist. Die Abdeckungs-Matrix wird geprobt, nicht erinnert. Siehe 1.3b.
 12. **«Die Staffel ist eine Formel»** — 30 % pro Schritt ist eine Annahme über die Matching-Granularität der Quelle, kein Messwert. Ab welcher Präfixlänge Treffer kommen, sagt nur die Quelle, und sie sagt es für ein paar Calls. Siehe 1.5.
 13. **«Die Spec-Version ergibt sich aus dem SDK»** — sie ergibt sich aus einem Entscheid, den jemand trifft und begründet. Das SDK ist eine Randbedingung, kein Entscheider: Ein Pin, der `mcp` unterhalb 2.0 hält, ist ein Abweichungsgrund, den man aufschreibt — kein Zustand, in den man hineinrutscht und der später niemandem gehört. Siehe 2.4.
-14. **«`ttlMs` schätze ich»** — dieselbe Fehlerklasse wie die geratene Staffel, eine Ebene höher. Zu lang, und der Cache verschweigt einen ganzen Zyklus, ohne dass irgendwo ein Fehler auftaucht; zu kurz, und er greift nie, während der Verkehr bleibt. Weglassen ist keine dritte Möglichkeit: Das Feld ist in `CacheableResult` nicht optional, die Wahl steht also nur zwischen gemessen und geraten. Der Rhythmus der Quelle ist messbar, und zwar bevor gebaut wird. Siehe 1.7.
+14. **«Die Feldnamen stehen in der Doku»** — sie stehen auf der Leitung, und die Doku hinkt hinterher. Ein Wechsel von `Schulgemeinde` auf `schulgemeinde` legte vier von sechs Datensätzen lahm, während alle Unit-Tests grün blieben: Ihre handgeschriebenen Fixtures pinnten die alte Schreibweise. Ein Fixture wird aufgezeichnet, nicht getippt. Siehe 1.2d.
+15. **«`ttlMs` schätze ich»** — dieselbe Fehlerklasse wie die geratene Staffel, eine Ebene höher. Zu lang, und der Cache verschweigt einen ganzen Zyklus, ohne dass irgendwo ein Fehler auftaucht; zu kurz, und er greift nie, während der Verkehr bleibt. Weglassen ist keine dritte Möglichkeit: Das Feld ist in `CacheableResult` nicht optional, die Wahl steht also nur zwischen gemessen und geraten. Der Rhythmus der Quelle ist messbar, und zwar bevor gebaut wird. Siehe 1.7.
 
 ---
 
@@ -769,6 +815,7 @@ Vor `v0.1.0`-Tag alle folgenden Punkte abhaken:
 - [ ] **Default-Matrix**: jeder optionale Parameter geprüft, Recall-Delta gemessen (1.2b)
 - [ ] **Struktur-Assertion**: jede Null in der Befund-Tabelle ist als echter Nullbefund bestätigt, nicht als ungeprüfte Leermenge (1.2c)
 - [ ] Bei mehreren Wegen zur selben Information: der befragte Endpoint ist protokolliert und autoritativ (1.2c)
+- [ ] **Feldnamen-Inventar**: tatsächliche Feld-/Spaltennamen samt Schreibweise protokolliert, Rohantwort als aufgezeichnete Fixture abgelegt (1.2d)
 - [ ] **Abdeckungs-Matrix**: Bestandsachse aus der Quelle enumeriert, jede nicht erreichbare Zeile trägt einen der drei zulässigen Gründe (1.3b)
 - [ ] Homepage-Zahlen vs. API-Zahlen verglichen
 - [ ] **Recall-Ground-Truth**: 3–5 Referenzbegriffe gegen das offizielle Web-UI, jedes Delta erklärt (1.4b)
