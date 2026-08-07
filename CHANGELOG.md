@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Zuordnungstabelle nachgezogen: die Regeln 13 und 14 haben Checks, keine 24
+  Stunden nachdem sie hier als «kein Check deckt sie ab» geschrieben wurden.**
+  Gefunden hat es **Prüfung 14** im Wochenplan, von Hand ausgelöst: 113 gegen
+  120 Checks, sechs gegen sieben in `FID`, und ein `FID-007`, das die Tabelle
+  nicht verlinkt. Genau dafür läuft sie an einem Zeitplan statt an einem Diff —
+  hier hat sich kein Commit bewegt, sondern das Nachbarrepo.
+
+  - **Regel 13 → [`DRIFT-007`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/DRIFT-007.md)**
+    («Feldnamen sind Teil des Vertrags»). Derselbe Belegfall, und §2.5 ist
+    drüben mit derselben Begründung durchlaufen worden, die hier in der
+    Abgrenzung steht: `FID-006` *fängt* den Fall, aber die Behebung ist eine
+    andere. **Reichweite, zwei Stellen:** Seine Pass-Criteria sind ein `oder` —
+    normalisieren *oder* je Endpunkt ein Live-Test —, und Regel 13 kennt diesen
+    zweiten Arm nicht; sie stellt die Bestätigung *hinter* die Normalisierung,
+    nicht daneben. Und die Kollisionsprüfung verlangt drüben kein Kriterium.
+  - **Regel 14 → [`FID-007`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-007.md)**
+    («Eine Zahlenspalte ohne Zahlen»). Ebenfalls derselbe Belegfall, dieselben
+    18.6 % / 18.1 %, dieselbe Einstufung der stillen `0` als schlimmer als der
+    Absturz. **Reichweite:** Er geht in zwei Punkten *weiter* — der Hinweis muss
+    die Richtung der Abweichung nennen, und ein Live-Test muss die tatsächlich
+    vorkommenden Marker gegen die eigene Liste halten. Was ihm fehlt, sind die
+    **abgeleiteten** Grössen: eine Quote oder Rangfolge, die dieselben Zeilen
+    auslässt, fällt unter keines seiner Kriterien.
+  - **Regel 5 → zusätzlich [`OPS-009`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-009.md)**
+    («Herkunft der Fixture»). Der Check ist ausdrücklich aus einer Katalog-Lücke
+    **gegen diesen Skill** entstanden: Vier Checks sagen «gegen die echte
+    Antwort prüfen», keiner sagte, woher die Antwort im Repo stammt. Er verlangt
+    Herkunft **und Datum** und ersetzt den Live-Canary nicht.
+  - **Regel 12 ist damit die einzige Zeile ohne Check.** Nachgesehen und nicht
+    angenommen: Keine der sieben neuen Check-Dateien nennt «dreiwertig»,
+    `not_collected`, «nicht erhoben» oder «zurückgehalten».
+
+  **Nebeneffekt, der zur Sache gehört.** Der Satz «statt ein `FID-007` zu
+  eröffnen» stand zweimal in SKILL.md und meinte eine Nummer, die es absichtlich
+  nicht gab. Seit es sie gibt, las er sich, als sei dieser Check gemeint — er
+  nennt jetzt keine Nummer mehr. Der Kommentar in `tools/checks/catalogue.py`
+  hat genau diesen Tag vorhergesagt («Gäbe es eines Tages ein echtes
+  `FID-007`…») und ist mitgezogen: Die Vorhersage bleibt stehen, weil sie
+  eingetroffen ist, und der Punkt, den sie begründet, gilt unabhängig von diesem
+  einen Fall.
+
+  Der Absatz «Zur Haltbarkeit dieser Tabelle» trägt den Fall jetzt als dritten
+  Beleg. Er ist der schärfste der drei, weil er die Regeln traf, die am selben
+  Tag dazugekommen sind: Zwei Zeilen, die als offene Frage geschrieben waren,
+  waren beim Schreiben schon beantwortet.
+
 ### Added
 
 - **Regel 13 — «Der Feldname ist Teil des Vertrags, samt Schreibweise».**
