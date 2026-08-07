@@ -21,6 +21,7 @@ from tools.checks.readmes import top_release
 from tools.checks.release import assert_tag_matches
 from tools.checks.repo_metadata import assert_description_matches, parse_metadata
 from tools.checks.skill_doc import read_skill, rule_count
+from tools.checks.workflows import assert_mentions_resolve
 
 OFFLINE = all_checks(offline_only=True)
 CONTEXT_BOUND = {13, 14, 15}
@@ -234,6 +235,20 @@ def test_a_manifest_that_is_not_a_catalogue_is_a_finding() -> None:
     with pytest.raises(CheckFailed) as raised:
         parse_manifest("das ist jetzt YAML:\n  - FID-001\n")
     assert "sieht nicht aus wie eine Liste von Check-IDs" in str(raised.value)
+
+
+def test_a_tree_without_any_workflow_mention_is_a_finding() -> None:
+    """Der Zweig von Prüfung 16, den keine Mutation am Baum erreicht.
+
+    Ihn per Mutation herzustellen hiesse, jede Erwähnung aus jeder Datei zu
+    entfernen — eine Mutation, die den Baum zerstört und über die einzelne
+    Prüfung nichts belegt (siehe `test_mutation_leaves_the_other_checks_alone`).
+    Der Zweig gehört trotzdem getestet: Er ist die Stelle, an der die Prüfung
+    ohne Gegenstand dasteht und ohne ihn «bestanden» melden würde.
+    """
+    with pytest.raises(CheckFailed) as raised:
+        assert_mentions_resolve({}, {".github/workflows/ci.yml"})
+    assert "Kein einziger Verweis" in str(raised.value)
 
 
 def test_a_crashing_check_is_reported_as_a_defect_not_as_a_finding() -> None:

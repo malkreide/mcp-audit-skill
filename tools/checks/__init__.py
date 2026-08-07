@@ -27,6 +27,7 @@ from . import (
     ruff_gate,
     skill_doc,
     toolchain,
+    workflows,
 )
 from ._core import (
     Check,
@@ -55,4 +56,5 @@ __all__ = [
     "run_all",
     "skill_doc",
     "toolchain",
+    "workflows",
 ]
