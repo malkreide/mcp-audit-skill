@@ -6,6 +6,27 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `OPS-010`: die Gegenprobe wird ein Abnahmekriterium, nicht eine Gewohnheit
+
+**Ein neuer Check** (`OPS-010`, `high`, **`advisory`**, `applies_when: always`) — der Katalog wächst von 119 auf **120 in zwölf Kategorien**, 25 davon `advisory`.
+
+Ein Test, der grün bleibt, wenn man die Implementierung entfernt, prüft nichts. Er kostet Laufzeit, erzeugt eine Zeile im Report und eine Überzeugung, die durch nichts gedeckt ist.
+
+**Der Katalog lebte das bereits, aber nur nebenbei.** **Einundzwanzig** Checks tragen eine Gegenproben-Zeile in ihren Pass Criteria — `ARCH-013`, `ARCH-015`–`ARCH-017`, `ARCH-020`, `DRIFT-003`, `FID-003`, `FID-004`, `FID-006`, `HITL-006`, `IDENT-002`, `IDENT-004`, `OPS-005`–`OPS-008`, `SCALE-007`, `SCALE-009`, `SEC-024`, `SEC-026`. Das ist gute Praxis in Einzelfällen und **kein** Abnahmekriterium: Ein Check ohne eigene Zeile bekommt keine, und für den Rest der Suite wird die Frage nie gestellt. Der Skill [`mcp-transport-hardening`](https://github.com/malkreide/mcp-transport-hardening-skill) führt sie als Regel 6; hier war sie eine Gewohnheit.
+
+**Zwei Untervarianten stehen ausdrücklich im Check, weil eine allgemeine Regel sie nicht fängt.** In beiden Fällen *gibt* es eine Gegenprobe, und sie ist wirkungslos:
+
+- **Die Fake-Uhr, die nur beim Schlafen vorrückt**, kann eine Zusicherung über **echte** Zeit nicht widerlegen: Der Code, der die Wanduhr ignoriert, schläft nicht, also vergeht keine Zeit, also besteht er. Genau dieser blinde Fleck liess den Budget-Defekt aus `ARCH-014` durch **sechs** Server reisen. Die Regel ist eng geschnitten — nur Zusicherungen über Wanduhrzeit brauchen echte Zeit; eine Suite, die überall echt schläft, wird abgeschaltet und prüft dann gar nichts.
+- **Der globale Monkeypatch auf ein fremdes Modul** (`monkeypatch.setattr(modul.asyncio, "sleep", …)`) sieht lokal aus und wirkt prozessweit: `modul.asyncio` **ist** das stdlib-Modul. Fremde Tests, die `asyncio.sleep(0)` zum Taktgeben benutzen, messen ab da nichts mehr — so ist in `srgssr-mcp` eine Parallelitäts-Prüfung eingebrochen, ohne rot zu werden. Der Ausweg ist eine eigene Naht (`modul._sleep`) plus ein Test, der sie bewacht.
+
+**§2.5 durchlaufen.** `DRIFT-003` prüft **eine** Fehlerklasse (Assertions, die der Degradationspfad erfüllt) — ein Sonderfall mit eigener, enger Antwort. `OPS-008` sagt, wo Prüflogik **liegen** muss, damit sie mutationstestbar ist; dieser Check sagt, dass die Mutation dann auch stattfindet. `OPS-005` prüft, ob ein Gate **läuft**; dieser, ob es **scheitern kann** — ein Gate, das läuft und nicht scheitern kann, ist in `OPS-005` grün.
+
+**Adoptionsstufe `advisory` nach §2.3.** Von 42 Portfolio-Repos mit Test-Verzeichnis zeigen **9** überhaupt eine Spur einer Gegenprobe, und **11** patchen das `asyncio` eines fremden Moduls prozessweit. Dazu kommt der ehrlichere Grund: Es ist der Check mit dem grössten Ermessensanteil — «zentrale Zusicherung» ist nicht greppbar —, und der Durchlauf muss erst sagen, ob das Kriterium überhaupt auditierbar ist, bevor es blockieren darf.
+
+**Re-Audit-Auslöser nach §5: feuert nicht.** Punkt 4 — neuer Check, neuer Vertrag. Die einundzwanzig Checks mit eigener Gegenproben-Zeile bleiben unverändert; keiner verliert oder gewinnt ein Kriterium.
+
+**Gegenprobe geführt**, drei Mutationen: `adoption: enforced` (5 Tests fallen), Check-Datei entfernt (24 fallen), `OPS-010` aus dem Advisory-Satz beider READMEs gestrichen (2 fallen).
+
 ### Hinzugefügt — `OPS-009`: die Fixture braucht eine Herkunft
 
 **Ein neuer Check** (`OPS-009`, `high`, **`advisory`**, `tools_make_external_requests == true`) — der Katalog wächst von 118 auf **119 in zwölf Kategorien**, 24 davon `advisory`.

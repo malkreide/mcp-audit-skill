@@ -5,7 +5,7 @@ description: Reproduzierbares Audit von MCP-Servern gegen einen versionierten Be
 
 # MCP Audit — Standardisiertes Audit-Vorgehen
 
-Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer sowie den Spec-Migrations-Layer, 119 Checks in zwölf Kategorien auf zwei Spec-Baselines). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
+Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer sowie den Spec-Migrations-Layer, 120 Checks in zwölf Kategorien auf zwei Spec-Baselines). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
 
 **Das Mantra in drei Zeilen:**
 
@@ -256,12 +256,12 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 | `OBS` | PDF Sec 6 + Anhang B10 + Custom — Logging, Errors, SIEM, Tracing, Bereitschaftsmarker | 5–8 | 8 / 8 ✅ |
 | `HITL` | PDF Sec 7 + Spec 2026-07-28 — Sampling, Human-in-the-Loop, MRTR | 4–6 | 6 / 6 ✅ |
 | `CH` | Custom — DSG/EDÖB, Schweiz-Compliance | 5–8 | 8 / 8 ✅ |
-| `OPS` | Anhang C + Custom — Test-Strategie, Doku, Phasenarchitektur, Audit-Redlichkeit, Pipeline-Ehrlichkeit, reproduzierbare Urteile, ausfuehrbare Anleitungen, pruefbare Guards, Herkunft der Fixtures | 3–9 | 9 / 9 ✅ |
+| `OPS` | Anhang C + Custom — Test-Strategie, Doku, Phasenarchitektur, Audit-Redlichkeit, Pipeline-Ehrlichkeit, reproduzierbare Urteile, ausfuehrbare Anleitungen, pruefbare Guards, Herkunft der Fixtures, Gegenprobe als Abnahmekriterium | 3–10 | 10 / 10 ✅ |
 | `FID` | Custom — Datentreue: Scope, Recall, Leermengen, Antwortstruktur, unterdrückte Zahlwerte | 4–7 | 7 / 7 ✅ |
 | `IDENT` | Custom — Identität: User-Agent, `__version__`, Manifest, Doku-Version, Release-Gap, Gesundheit des Artefakts | 5–8 | 7 / 7 ✅ |
 | `DRIFT` | Custom — Upstream-Vertrag und Repo-Prosa: Endpoint-Drift, Fallback-Semantik, Testgüte, CHANGELOG gegen Code, Feldnamen-Schreibweise | 4–8 | 7 / 7 ✅ |
 | `DEP` | Custom — Auflösungsraum des publizierten Artefakts: Obergrenzen, Major-Wechsel | 1–3 | 1 / 1 ✅ |
-| **Total** | | **~99** | **119 / 119 ✅** |
+| **Total** | | **~99** | **120 / 120 ✅** |
 
 ### 2.2 Severity-Stufen
 
