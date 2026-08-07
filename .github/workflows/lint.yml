@@ -21,7 +21,7 @@ jobs:
       #
       # ACHTUNG: Diese Version und die `rev` in .pre-commit-config.yaml muessen
       # uebereinstimmen. Der Schritt am Ende dieses Jobs prueft das.
-      - run: pip install ruff==0.15.8
+      - run: pip install ruff==0.16.1
 
       - run: ruff check .
 
