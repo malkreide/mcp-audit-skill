@@ -9,6 +9,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Prüfung 18 — der `ruff` auf dem PATH ist der gepinnte.** Der Pin steht ab
+  jetzt an drei Stellen, und die dritte ist keine Deklaration: das Werkzeug
+  selbst.
+
+  **Der Anlass ist gemessen, nicht gedacht.** In der Umgebung, in der Prüfung
+  17 entstand, lag ein `ruff 0.15.8` unter `~/.local/bin` vor dem gepinnten
+  `0.16.1` unter `/usr/local/bin`. Prüfung 12 war grün — sie hält zwei
+  **Textstellen** gegeneinander, und die waren sich einig. Der lokale Lauf maß
+  trotzdem mit einer anderen Version als die CI, und die Prüfungen 9, 10, 11
+  und 17 hatten gegen ein Werkzeug geprüft, das dieses Repository nirgends
+  nennt.
+
+  **Warum das kein Randfall ist.** `format` hat kein `select`: Dort ist das
+  Ergebnis selbst das Kriterium, und zwei ruff-Versionen formatieren
+  verschieden — genau die Begründung, aus der der Pin exakt ist. Ein Pin, den
+  niemand gegen das ausführende Binary hält, ist eine Zusicherung über ein
+  Werkzeug, das vielleicht gar nicht läuft. «Lokal grün, im Pull Request rot»
+  ist dabei der harmlose Ausgang; der teure ist die andere Richtung.
+
+  Gemessen wird über `shutil.which("ruff")` — dieselbe Auflösung, die
+  `ruff_gate._ruff` benutzt, wenn es `subprocess.run(["ruff", …])` startet.
+  Eine Prüfung, die ein anderes Binary misst als das, welches die Gates fährt,
+  wäre schlimmer als keine.
+
+  **Der Befund listet alle `ruff` auf dem PATH** und markiert den, der gewinnt.
+  Ein blosses «falsche Version» schickt zu `pip install`, und dort hilft es
+  nicht: Die gepinnte Version ist in diesem Fall längst installiert, sie steht
+  bloss hinter einer zweiten.
+
+  Zwei Mutationen in `tests/mutations.py` — beide bewegen den **Pin**, denn das
+  ist die einzige Seite, die im Baum liegt. Welcher `ruff` auf dem PATH steht,
+  ist eine Eigenschaft der Umgebung und keine Datei. Die drei
+  Umgebungszweige stehen deshalb als eigene Tests: gar kein ruff (jetzt für 9,
+  10, 11, 17 **und** 18 parametrisiert), ein ruff mit unlesbarer `--version`,
+  und der Anlassfall selbst — ein beschattender `ruff 0.0.1` zuerst im PATH,
+  bei dem der Test ausdrücklich mitprüft, dass **Prüfung 12 grün bleibt**. Das
+  ist die Lücke, für die es 18 gibt, als Test statt als Absatz.
+
+  **Grenze, ausdrücklich:** Prüfung 18 sagt nichts darüber, welche Version
+  `pre-commit` installiert. Der Hook hält seine eigene Umgebung und startet
+  nicht den `ruff` vom PATH; was dort läuft, steht in der `rev`, und mehr als
+  die beiden Deklarationen gegeneinander zu halten ist von hier aus nicht
+  prüfbar.
+
+### Changed
+
+- **Prüfung 12 liest den Pin nicht mehr selbst.** Beide Prüfungen holen ihn
+  über `pinned_version()` aus derselben Lesung — ein zweites Regex für
+  dieselbe Zahl wäre ein zweiter Ort gewesen, an dem sie veraltet. Dieselbe
+  Begründung, aus der `ruff` nicht in `requirements-dev.txt` steht. Verhalten
+  und Befundtexte von 12 sind unverändert; die vier bestehenden Mutationen
+  schlagen weiterhin an.
+
+### Added
+
 - **Prüfung 17 — `line-length` steht in `ruff.toml`, und beide Gates messen
   auch danach.** Die Breite war bis hierher undeklariert: Es galt ruffs
   Vorgabe von 88. Der neue Eintrag ändert deshalb heute keine Zeile — gemessen

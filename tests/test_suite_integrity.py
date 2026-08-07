@@ -8,6 +8,7 @@ sich aus der Registry verabschiedet.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -125,22 +126,73 @@ def test_the_offline_runner_leaves_the_context_bound_checks_out() -> None:
     } == CONTEXT_BOUND
 
 
-@pytest.mark.parametrize("number", [9, 10, 11])
+@pytest.mark.parametrize("number", [9, 10, 11, 17, 18])
 def test_a_missing_ruff_is_a_finding_not_a_skip(
     number: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Ohne ruff auf dem PATH werden alle drei Gates rot, nicht still grün.
+    """Ohne ruff auf dem PATH wird jedes Gate rot, nicht still grün.
 
     Diese Verzweigung lässt sich nicht als Mutation am Baum ausdrücken — sie
     hängt an der Umgebung, nicht an einer Datei. Getestet gehört sie trotzdem:
     Ein übersprungener Check meldete «bestanden», wo «nicht gelaufen» richtig
     wäre.
+
+    Prüfung 18 ist ausdrücklich dabei, obwohl sie die Version und nicht die
+    Gates misst: Sie ist die einzige, deren Gegenstand allein in der Umgebung
+    liegt, und «kein ruff da» ist für sie kein Sonderfall, sondern der
+    schärfste.
     """
     monkeypatch.setenv("PATH", "/nonexistent")
     by_number = {check.number: check for check in all_checks()}
     with pytest.raises(CheckFailed) as raised:
         by_number[number].run(REPO_ROOT)
     assert "ruff liegt nicht auf dem PATH" in str(raised.value)
+
+
+def _fake_ruff(directory: Path, prints: str) -> None:
+    """Ein ausführbares `ruff` auf dem PATH, das `prints` ausgibt."""
+    binary = directory / "ruff"
+    binary.write_text(f"#!/bin/sh\nprintf '%s\\n' {prints!r}\n", encoding="utf-8")
+    binary.chmod(0o755)
+
+
+def test_a_ruff_whose_version_cannot_be_read_is_a_finding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Der Zweig von Prüfung 18, den keine Mutation am Baum erreicht.
+
+    Ändert ruff das Format von `--version`, misst die Prüfung nichts mehr. Ohne
+    diesen Zweig sähe das aus wie «bestanden» — derselbe stille Fall, gegen den
+    die Prüfung selbst steht, eine Ebene höher.
+    """
+    _fake_ruff(tmp_path, "ruff, version 0.16.1")
+    monkeypatch.setenv("PATH", str(tmp_path))
+    by_number = {check.number: check for check in all_checks()}
+    with pytest.raises(CheckFailed) as raised:
+        by_number[18].run(REPO_ROOT)
+    assert "keine Version der Form 'ruff X.Y.Z'" in str(raised.value)
+
+
+def test_a_shadowed_ruff_is_a_finding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Der Anlassfall, nachgestellt: die falsche Version zuerst im PATH.
+
+    Prüfung 12 bleibt dabei grün — sie liest Text, und der Text ist einig.
+    Genau das ist die Lücke, für die es 18 gibt, und deshalb steht sie hier
+    als Test und nicht nur als Absatz im Modul-Docstring.
+    """
+    _fake_ruff(tmp_path, "ruff 0.0.1")
+    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ['PATH']}")
+    by_number = {check.number: check for check in all_checks()}
+
+    by_number[12].run(REPO_ROOT)
+
+    with pytest.raises(CheckFailed) as raised:
+        by_number[18].run(REPO_ROOT)
+    finding = str(raised.value)
+    assert "Der ruff auf dem PATH ist 0.0.1" in finding
+    assert f"{tmp_path}/ruff   <- dieser laeuft" in finding
 
 
 @pytest.mark.parametrize(
