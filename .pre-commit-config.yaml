@@ -14,7 +14,7 @@
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.8
+    rev: v0.16.1
     hooks:
       # Reihenfolge wie in ci.yml: erst linten, dann formatieren.
       - id: ruff-check
