@@ -125,16 +125,16 @@ def cross_references(root: Path) -> str:
     )
 
 
-@register(11, "the core-step count agrees everywhere in SKILL.md")
-def step_count(root: Path) -> str:
-    # Die Zusage dieses Skills ist ein Vorgehen aus DREI Kernschritten;
-    # Schritt 4 und 5 sind Übergabe und zählen nicht mit. Das stand schon
-    # immer im Text («durchläuft die drei Schritte unten», «nach Abschluss
-    # der Probe (Schritt 1-3)»), aber nirgends so, dass eine Prüfung es hätte
-    # lesen können. Deshalb trägt jede Schritt-Überschrift ihre Einordnung
-    # als [Kern] oder [Übergabe].
-    text = read_skill(root)
+def step_kinds(text: str) -> list[str]:
+    """Die Einordnung jeder Schritt-Überschrift, in Dokumentreihenfolge.
 
+    Steht als eigene Funktion, weil zwei Prüfungen sie brauchen: Check 11
+    hält sie gegen das Frontmatter und die Einleitung, Check 19 gegen die
+    Schritt-Aufzählung der beiden READMEs. Ein zweites Mal hingeschrieben
+    wäre sie ein zweiter Ort zum Auseinanderlaufen — und eine Prüfung, die
+    eine andere Aufteilung liest als die daneben, meldete eine Abweichung,
+    die es im Dokument gar nicht gibt.
+    """
     # Zuerst ohne Marker suchen: So unterscheidet der Befund «Überschriften
     # weg» von «Überschriften da, aber unmarkiert».
     raw = re.findall(r"^## Schritt (\d+):(.*)$", text, re.M)
@@ -182,6 +182,20 @@ def step_count(root: Path) -> str:
             "SKILL.md: kein Schritt ist [Kern] — die Zusage wäre ein Vorgehen "
             "aus null Schritten, und das ist nichts"
         )
+    return kinds
+
+
+@register(11, "the core-step count agrees everywhere in SKILL.md")
+def step_count(root: Path) -> str:
+    # Die Zusage dieses Skills ist ein Vorgehen aus DREI Kernschritten;
+    # Schritt 4 und 5 sind Übergabe und zählen nicht mit. Das stand schon
+    # immer im Text («durchläuft die drei Schritte unten», «nach Abschluss
+    # der Probe (Schritt 1-3)»), aber nirgends so, dass eine Prüfung es hätte
+    # lesen können. Deshalb trägt jede Schritt-Überschrift ihre Einordnung
+    # als [Kern] oder [Übergabe].
+    text = read_skill(root)
+    kinds = step_kinds(text)
+    core = sum(1 for k in kinds if k == "Kern")
 
     claimed = core_step_count(text)
     if claimed != core:

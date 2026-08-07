@@ -33,6 +33,13 @@ jobs:
       # ACHTUNG: diese Version und die `rev` in .pre-commit-config.yaml müssen
       # übereinstimmen — Check 16 prüft es, samt der Frage, ob beide Hooks
       # noch da sind.
+      #
+      # Check 16 vergleicht dabei zwei TEXTE. Dass die ruff, die gleich läuft,
+      # auch diese Version trägt, prüft er nicht — genau deshalb gibt es
+      # Check 18. Hier oben ist der Fall harmlos, der Runner ist frisch; auf
+      # einem Arbeitsrechner mit einer älteren ruff weiter vorne im PATH ist er
+      # es nicht: `scripts/validate.sh` meldete dann grün auf einem Baum, den
+      # dieser Job ablehnt. Gemessen genau so, mit ruff 0.15.8 vor 0.16.1.
       - name: Ruff installieren
         run: pip install ruff==0.16.1
 
