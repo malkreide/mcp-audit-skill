@@ -146,3 +146,60 @@ class TestCacheScopeVocabularyInRemediation:
             "to the value set defined by SEP-2549"
         )
         assert '"public"' in hit[0] and '"private"' in hit[0]
+
+
+class TestArch014SaysWhatAbsenceMeans:
+    """An enforced check must not leave a third of the portfolio to reading.
+
+    `ARCH-014` asks what a server retries, how fast and how long. Until
+    2026-08-07 it never said what happens when a server retries *nothing*. On
+    `advisory` that cost nothing. Since the promotion on 2026-08-03 the verdict
+    decides production readiness — and a portfolio run found 15 of 43 servers
+    with no retry path at all.
+
+    The criteria pointed both ways. "Wiederholt wird auch bei Netzwerkfehlern
+    und Timeouts" reads as a requirement to retry; the other eight are
+    vacuously satisfied when nothing retries. Two auditors, two verdicts, same
+    server, and nothing in the file to settle it.
+
+    The check now settles it: absence is a `pass`, because every harm it names
+    — retry storm, blocklist, load without a recipient, multiplicative
+    stacking — presupposes a retry. What that leaves (a transient blip becomes
+    a hard tool error) is loud and belongs to a different question.
+
+    Three tests, and the third is the one with teeth: the rule is only safe as
+    long as the transport level is counted as a retry path. A server with
+    `HTTPTransport(retries=3)` and no loop of its own has the worst possible
+    policy — no jitter, no `Retry-After`, no budget, written by nobody — and it
+    is exactly the shape the absence rule would wave through if that criterion
+    ever went missing.
+    """
+
+    @staticmethod
+    def _text() -> str:
+        return (CHECKS_DIR / "ARCH-014.md").read_text(encoding="utf-8")
+
+    def test_the_check_has_a_section_on_absence(self):
+        assert "## Was gilt, wenn gar nicht wiederholt wird" in self._text()
+
+    def test_the_criteria_say_they_presuppose_a_retry(self):
+        # Without this sentence the list reads as nine unconditional demands,
+        # and the section above it becomes decoration.
+        criteria = self._text().split("## Pass Criteria")[1].split("## Common")[0]
+        assert "setzen voraus, dass überhaupt wiederholt wird" in criteria
+
+    def test_the_transport_level_still_counts_as_a_retry_path(self):
+        # The load-bearing half of the absence rule. If this criterion is ever
+        # softened, "no loop" stops meaning "no retries" and the pass above
+        # starts covering servers with an unwritten policy.
+        criteria = [ln for ln in self._text().splitlines() if ln.startswith("- [ ] ")]
+        hit = [ln for ln in criteria if "Transport-Retries" in ln]
+        assert len(hit) == 1, (
+            "ARCH-014 must carry exactly one pass criterion on transport-level "
+            "retries — it is what keeps the absence rule from covering a "
+            "server whose retry policy nobody wrote"
+        )
+        assert "ohne eigene Schleife" in hit[0], (
+            "the criterion must say it also applies to a server without its "
+            "own loop; that is the case the absence rule would otherwise pass"
+        )

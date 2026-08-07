@@ -30,9 +30,35 @@ Fast jeder Server im Portfolio wiederholt fehlgeschlagene Requests, und bis auf 
 
 **Abgrenzung.** `ARCH-010` fragt, ob eine Wiederholung *sicher* ist (Idempotency-Keys, kompensierende Aktionen); dieser Check fragt, ob sie *angemessen* ist. `OBS-007` regelt, was in der Meldung steht, wenn alle Versuche verbraucht sind. `FID-003` regelt, wie ein degradiertes Ergebnis gekennzeichnet wird. Die Einordnung unter `ARCH` folgt `ARCH-010` und `ARCH-013`: Dort liegt, wie der ausgehende Pfad verdrahtet ist.
 
-**Adoptionsstufe `enforced` (seit 2026-08-03).** Der Check startete `advisory`, und die Zahlen gaben dem recht: Bei der Erhebung las **keiner von elf** Servern `Retry-After`, **keiner** streute seinen Backoff, und drei hatten überhaupt keine Retry-Schleife. Enforced am ersten Tag wäre ein rotes Portfolio gewesen — so werden Checks zurückgenommen statt übernommen.
+## Was gilt, wenn gar nicht wiederholt wird
 
-Die Bedingung, unter der die Stufe zurückgestellt wurde, ist eingelöst: Alle elf Server erfüllen den Check heute. Damit hat er nichts mehr zu beweisen, indem er nicht blockiert — und ab jetzt ist der teure Fall nicht mehr der Rückstand, sondern der zwölfte Server, der ohne Politik dazukommt.
+**Ein Server ohne jeden Wiederholungspfad besteht diesen Check.** Der Satz stand bis zum 2026-08-07 nirgends, und solange die Stufe `advisory` war, kostete das nichts. Seit der Promotion entscheidet er über Production-Readiness — und im Portfolio hängen **15 von 43** Servern daran. Ein enforced Check, dessen Verdikt für ein Drittel des Portfolios von einer Auslegung abhängt, ist kein Check, sondern eine Meinungsverschiedenheit mit Blockierrecht.
+
+**Warum `pass` und nicht `fail`.** Jeder Schaden, den dieser Check benennt, setzt eine Wiederholung voraus: der Retry-Sturm im Gleichtakt, der Weg auf die Sperrliste, die Last ohne Empfänger, die multiplikative Stapelung. Ein Server, der nie wiederholt, verursacht keinen davon. Gemessen an dem, wogegen dieser Check steht, ist er der ideale Gast.
+
+Was er stattdessen hat — ein Verbindungsabriss wird zum harten Tool-Fehler — ist **laut, ehrlich und beim Aufrufer sichtbar**. Das ist eine Frage der Robustheit, nicht der Höflichkeit gegenüber der Quelle. Sie hier mitzuverhandeln hiesse, den Check zwei Dinge gleichzeitig messen zu lassen: genau das Signal, das [§2.5](../SKILL.md) als Grenze zum eigenen Check nennt. Wer sie stellen will, stellt sie woanders.
+
+**Drei Bedingungen, unter denen dieses `pass` gilt** — «kein Retry gefunden» ist die am leichtesten falsch gesehene Tatsache im ganzen Check:
+
+1. **Die Abwesenheit ist festgestellt, nicht angenommen.** Ein leeres Grep-Ergebnis ist eine Leseaufforderung (siehe Modus 1). Wer den ausgehenden Pfad nicht von Hand gelesen hat, hat `todo`, nicht `pass` — §2.6.
+2. **Die Transport-Ebene zählt mit.** `httpx.AsyncHTTPTransport(retries=3)`, `urllib3.Retry`, `requests.adapters.HTTPAdapter(max_retries=…)`, `aiohttp`-Middleware: Das **ist** ein Wiederholungspfad, und zwar der schlechteste — ohne Jitter, ohne `Retry-After`, ohne Budget, von niemandem entworfen. Ein Server mit gesetzten Transport-Retries und ohne eigene Schleife hat keine fehlende Politik, sondern eine ungeschriebene. Das ist ein **`fail`**, kein `pass`.
+3. **Der Fehlerpfad bleibt erkennbar.** Ohne Wiederholung erreicht jede transiente Störung den Aufrufer. Sie muss dort als Fehler ankommen und nicht als leeres Result — das prüft `FID-003`, und ein Server ohne Retry hängt besonders daran.
+
+**Über das Portfolio gemessen (2026-08-07, 43 Server):** 15 ohne jeden Wiederholungspfad, davon **keiner** mit gesetzten Transport-Retries. Bedingung 2 feuert heute also gegen niemanden — was sie nicht überflüssig macht, sondern belegt, dass sie geprüft wurde.
+
+**Adoptionsstufe `enforced` (seit 2026-08-03).** Der Check startete `advisory`, und die Zahlen gaben dem recht: Bei der Erhebung las **keiner von elf** Servern `Retry-After` und **keiner** streute seinen Backoff. Enforced am ersten Tag wäre ein rotes Portfolio gewesen — so werden Checks zurückgenommen statt übernommen. (Dass drei der elf gar keine Retry-Schleife hatten, stand damals ebenfalls in dieser Aufzählung. Nach der Regel oben war das nie ein Befund; die Zeile ist deshalb hier entfernt und nicht bloss umformuliert.)
+
+**Und was die elf waren: eine Stichprobe, kein Portfolio.** Ein Durchlauf über alle 43 Server am 2026-08-07 sagt:
+
+| | Anzahl |
+|---|---|
+| erfüllen den Check mit einer Politik | **22** |
+| Wiederholungspfad vorhanden und verletzt | **6** |
+| kein Wiederholungspfad — `pass` nach der Regel oben | **15** |
+
+Die sechs sind `amtsblatt-mcp`, `bag-health-mcp`, `openlex-mcp`, `swiss-environment-mcp`, `swiss-statistics-mcp` und `zurich-opendata-mcp`; allen fehlen Jitter, `Retry-After` und Wanduhr-Budget, `amtsblatt-mcp` fängt zusätzlich keine Netzwerkfehler und `openlex-mcp` wiederholt keine 5xx.
+
+Die Stufe bleibt trotzdem `enforced`, und der Grund gehört benannt statt vorausgesetzt: Nach [§2.3](../SKILL.md#23-adoptionsstufen) Schritt 3 stützt sie sich damit auf «**der Rückstand ist bewusst akzeptiert**» und nicht mehr auf «die betroffenen Server haben nachgezogen». Sechs benannte Server mit je derselben, dreizeiligen Behebung sind ein Rückstand, den man führt; der Check ist eng geschnitten und hat im Sample keine Fehlalarme — jeder der sechs Befunde ist von Hand am Quelltext bestätigt. Ein Satz, der «alle erfüllen ihn» behauptet hätte, wäre der Fehler aus `OPS-004` gewesen.
 
 Der Durchlauf hat den Check zugleich geschärft. Drei Dinge sind erst dabei aufgefallen und stehen jetzt in den Pass-Pattern:
 
@@ -128,6 +154,11 @@ def test_the_cap_is_a_real_bound_not_a_midpoint():
 grep -rnE 'HTTPTransport\(|transport=|max_retries|Retry\(' src/
 ```
 
+**Dieser Griff gehört auch — und gerade — auf einen Server ohne eigene Schleife.** Dort ist er die einzige Stelle, an der ein Wiederholungspfad noch auftauchen kann, und ein Treffer kippt das Verdikt von `pass` auf `fail`. Zwei Fallen beim Auswerten:
+
+- `transport=` trifft in FastMCP-Servern fast immer den **MCP**-Transport (`mcp.run(transport="stdio")`), nicht den HTTP-Transport. Gemeint ist nur die zweite Bedeutung.
+- `httpx.AsyncHTTPTransport()` **ohne** `retries=` steht auf `0` und ist damit in Ordnung. Der Befund ist ein gesetzter Wert grösser null, nicht die blosse Anwesenheit der Klasse.
+
 Und das Budget messen, statt es zu schätzen:
 
 ```python
@@ -165,6 +196,9 @@ async def test_a_slow_response_is_cut_by_the_wall_clock_deadline(real_sleep):
 
 ## Pass Criteria
 
+Die ersten neun Kriterien setzen voraus, dass überhaupt wiederholt wird. Tut der Server das nicht, greift stattdessen der Abschnitt «Was gilt, wenn gar nicht wiederholt wird» — dann sind nur die drei dort genannten Bedingungen zu prüfen, und die letzten drei Kriterien dieser Liste.
+
+- [ ] **Vorfrage:** Ob wiederholt wird, ist **festgestellt** — eigene Schleife, Bibliotheks-Dekorator **und** Transport-Ebene sind gelesen, nicht nur gegrept
 - [ ] Wiederholt wird nur bei 5xx, 429, Timeout und Verbindungsfehler — **4xx ausser 429 bricht sofort ab**
 - [ ] Der Backoff ist **gestreut** (Jitter), nicht rein deterministisch
 - [ ] Wiederholt wird auch bei **Netzwerkfehlern und Timeouts**, nicht nur bei Status-Codes
@@ -173,7 +207,7 @@ async def test_a_slow_response_is_cut_by_the_wall_clock_deadline(real_sleep):
 - [ ] Es gibt ein **Gesamtbudget in Sekunden**, nicht nur eine Anzahl Versuche
 - [ ] Das Budget hängt an einer **Wanduhr-Deadline**, nicht am Per-Operation-Timeout der HTTP-Bibliothek
 - [ ] Das Budget liegt **unter dem Timeout des aufrufenden MCP-Clients** — sonst arbeitet der Server für niemanden
-- [ ] Wiederholt wird auf **genau einer Ebene**; Transport-Retries der HTTP-Bibliothek stehen nachweislich auf null
+- [ ] Wiederholt wird auf **genau einer Ebene**; Transport-Retries der HTTP-Bibliothek stehen nachweislich auf null. **Das gilt auch für einen Server ohne eigene Schleife** — gesetzte Transport-Retries sind dort keine fehlende Politik, sondern eine ungeschriebene
 - [ ] Schreibende Tools wiederholen nur mit Idempotency-Key (`ARCH-010`)
 - [ ] Nach Erschöpfung: Fehler oder **gekennzeichnet** veralteter Cache — kein stilles Ausliefern alter Zahlen (`FID-003`)
 - [ ] Die Werte sind im Test gebunden, nicht nur im Kommentar behauptet
@@ -188,6 +222,9 @@ async def test_a_slow_response_is_cut_by_the_wall_clock_deadline(real_sleep):
 | Budget nur als Anzahl Versuche | Wächst still mit dem Timeout mit; 4 × 60 s sind vier Minuten |
 | Retry-Budget über dem Client-Timeout | Client gibt zuerst auf; Last ohne Empfänger |
 | Retries auf Transport **und** in der Schleife | Multiplikativ statt additiv: 4 × 4 statt 4 + 4 |
+| Transport-Retries **ohne** eigene Schleife | Sieht aus wie «wiederholt nicht» und ist eine Politik, die niemand entworfen hat — ohne Jitter, ohne `Retry-After`, ohne Budget |
+| «Kein Retry gefunden» aus einem leeren Grep geschlossen | Der Check gilt für jede Client-Bibliothek; ein Grep kennt nur die Namen, die sein Autor bedacht hat |
+| Fehlender Retry als Befund gewertet | Misst Robustheit statt Höflichkeit gegenüber der Quelle — der Check ist dann zwei Checks |
 | Retry auf nicht-idempotentem Write | Doppelte Ausführung (`ARCH-010`) |
 | Stiller Fallback auf alten Cache | Alte Zahlen ohne Kennzeichen (`FID-003`) |
 
