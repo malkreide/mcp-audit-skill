@@ -9,6 +9,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`reference/retry_backoff.py` hatte sechs Defekte, und alle sind mitkopiert
+  worden.** Die Vorlage ist die Quelle, aus der die `*-mcp`-Server ihren Retry
+  übernehmen; `reference/adoption.toml` nennt 18 Übernahmen in 17 Repositories.
+  Die Erhebung vom 3.8.2026 las elf dieser Server: **keiner** las `Retry-After`
+  und **keiner** streute seinen Backoff. Nicht elf unabhängige Auslassungen —
+  eine Vorlage, elfmal kopiert. Was falsch war, im Einzelnen:
+
+  1. **Kein Jitter.** `base_delay * 2 ** (attempt - 1)` ist rein
+     deterministisch. Elf Server hinter derselben Quelle warten nach demselben
+     Ausfall exakt 2s / 4s / 8s und kommen als Welle zurück, genau wenn die
+     Quelle sich erholt — der Retry-Sturm verlängert den Ausfall, den er
+     überbrücken sollte. Jetzt exponentiell in `[0.5x, 1.5x]`.
+  2. **`Retry-After` wurde nie gelesen.** Ein 429 oder 503 ist die Quelle, die
+     genau die Frage beantwortet, die die Backoff-Kurve rät. Jetzt werden beide
+     Formen nach RFC 9110 §10.2.3 gelesen (Sekundenzahl und HTTP-Datum);
+     unlesbar ergibt `None` und fällt auf die Kurve zurück, weil ein
+     kaputter Header kein Absturz auf dem Fehlerpfad werden darf. Der Jitter
+     darauf ist einseitig `[1.0x, 1.25x]`: Die Quelle hat gesagt wann — später
+     ist höflich, früher missachtet die Angabe, die man gerade liest.
+  3. **Kein Deckel auf die einzelne Wartezeit.** Die Leiter wuchs unbegrenzt.
+     Jetzt `MAX_DELAY_SECONDS`, und zwar **nach** dem Jittern:
+     `min(jittered, MAX)`. `min(MAX, base) * jitter` und `min(MAX, base *
+     jitter)` enthalten beide einen Deckel und einen Jitter, nur der zweite
+     ist beschränkt — ein auf 20 s gedeckelter Wert mal 1.5 sind 30 s. Diese
+     Reihenfolge steckte in sechs Servern.
+  4. **Ein Budget in Versuchen statt in Sekunden.** `max_attempts = 4`
+     beschränkt die Zahl und sonst nichts: vier Versuche gegen eine Quelle mit
+     30 s Timeout sind zwei Minuten in einem Tool-Call. Jetzt
+     `TOTAL_BUDGET_SECONDS = 25.0` als Deckel über den ganzen Aufruf — der
+     Anker ist gemessen, nicht geraten: das Python-MCP-SDK liefert
+     `MCP_DEFAULT_TIMEOUT = 30.0`.
+  5. **Das Budget hing an nichts.** Es hängt jetzt an einer
+     Wanduhr-Deadline über `asyncio.timeout`, nicht am httpx-Timeout: httpx
+     begrenzt pro Operation, und sein Read-Timeout beginnt mit jedem Chunk von
+     vorn — eine langsam tröpfelnde Antwort überdauert das Budget, ohne dass
+     ein einzelner Read abläuft.
+  6. **Der teuerste Punkt: der Fehler wurde verpackt.**
+     `raise RuntimeError(f"… after {max_attempts} attempts: {last_error}")`.
+     `httpx.ConnectTimeout`, `ReadTimeout` und `ConnectError` tragen ein
+     **leeres** `str()` — und das sind die einzigen Fehler, die ein echter
+     Ausfall produziert. Die Meldung hörte nach dem Doppelpunkt auf; der
+     CI-Fehler `RuntimeError: Upstream unreachable after retries:` aus dem
+     Ursprungs-Commit von `swiss-efv-mcp` war der Auslöser der
+     portfolioweiten Korrekturrunde. Jetzt `raise last_error`: Der Aufrufende
+     bekommt den Typ und `.response` zurück, statt beides an eine leere
+     Zeichenkette zu verlieren. Typ, Host und die Frage, welches der beiden
+     Limits ausging, stehen im Log. Für den einen Fall ohne Ursprungsfehler —
+     Budget weg, bevor ein Request rausging — gibt es `UpstreamUnavailableError`
+     statt eines nackten `RuntimeError`, den niemand von einem Bug im Server
+     selbst unterscheiden kann.
+
+  Die Datei trägt jetzt eine **Kopfnotiz**: Sie wird kopiert, nicht importiert;
+  eine Änderung an ihr ist eine Portfolio-Änderung und schuldet die Aussage,
+  wer sie schon übernommen hat. `reference/adoption.toml` ist die Liste, und
+  ihre Notiz zum Ist-Zustand ist mitgezogen — die fünf dort als «nicht erfüllt»
+  deklarierten Eigenschaften sind erfüllt, ein `REFERENCE_STALE` darauf ist ab
+  jetzt ein echter Befund und nicht mehr die bekannte Lücke.
+
+  **`reference/response_envelope.py` mit denselben sechs Fragen gegengelesen:
+  nichts Vergleichbares.** Die Datei enthält keinen Netzwerkpfad, keine
+  Wartezeit und keinen `raise` — sie deklariert Pydantic-Modelle und
+  Attributions-Konstanten. Die sechs Fragen greifen dort nicht. Der eine
+  verwandte Punkt ist bereits gelöst: `fallback_stale` in `PROVENANCE_VALUES`
+  ist genau die Zusage, die ein aufgebrauchtes Retry-Budget nach aussen sichtbar
+  macht.
+
 - **Die Zusage sind drei Kernschritte, nicht fünf Schritte.** Schritt 4
   (Übergabe an `github-repo`) und Schritt 5 (Portfolio-Register) sind
   Übergabe und zählen nicht mit. Das stand längst im Text — «durchläuft die
@@ -36,6 +102,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   und genau deshalb unbemerkt veraltet.
 
 ### Added
+
+- **SKILL.md 1.2d «Feldnamen-Inventar».** Die Live-Probe protokolliert ab jetzt
+  die tatsächlichen Feld- und Spaltennamen samt **Schreibweise** und legt die
+  Rohantwort als **aufgezeichnete** Fixture ab. Anlass: Eine Quelle wechselte am
+  3.8.2026 die Schreibweise ihrer CSV-Kopfzeile (`Schulgemeinde` →
+  `schulgemeinde`) und legte vier von sechs Datensätzen eines Servers lahm —
+  während **alle** Unit-Tests grün blieben, weil ihre von Hand geschriebenen
+  Fixtures die alte Schreibweise pinnten. Ein getipptes Fixture ist eine
+  Behauptung über die Quelle, kein Beleg: Es kann per Konstruktion nicht
+  auffallen, wenn die Quelle sich bewegt. Neu auch in der Qualitätschecklist und
+  als Irrtum 14.
 
 - **Die Checks sind testbar geworden: `tools/checks/` statt Heredocs.** Jedes
   Gate ist jetzt eine gewöhnliche Funktion `(root: Path) -> str`, die bei

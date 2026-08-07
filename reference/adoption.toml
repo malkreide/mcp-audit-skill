@@ -16,12 +16,22 @@
 # every one of those is a correct adoption. What must survive a copy is the
 # behaviour, and that is what is written down below.
 #
-# NOTE ON THE CURRENT STATE. Five of the properties declared for
-# `retry_backoff.py` are NOT satisfied by the template as it stands. That is
-# deliberate and it is the 2026-08-03 finding: they are what the eleven servers
-# fixed one at a time while this file kept shipping the defect. The probe will
-# report `REFERENCE_STALE` for each until the template is repaired. Do not delete
-# the properties to make the run green — repairing the template is the fix.
+# NOTE ON THE CURRENT STATE. The five properties below that the template did NOT
+# satisfy — `reads_retry_after`, `jitters`, `caps_after_jitter`,
+# `wall_clock_budget`, `no_bare_runtime_error` — are satisfied as of the
+# 2026-08-07 repair. They were the 2026-08-03 finding: what the eleven surveyed
+# servers had each fixed one at a time while this file kept shipping the defect.
+# `REFERENCE_STALE` on any of them is now a real finding about the template, not
+# the known gap it used to be. Do not delete a property to make a run green —
+# repairing the template is the fix.
+#
+# WHAT THE ADOPTIONS BELOW DO AND DO NOT SAY. A `since` date records when that
+# repository adopted the template's *behaviour*, not when it last matched this
+# file. The eleven servers of the sweep reached these properties ahead of the
+# template; the remaining entries were mapped by the retry-loop sweep and have
+# not been re-read against the repaired version. Anyone changing a property here
+# changes what every listed repository is measured against, and owes the same
+# statement in the changelog: which of them have already taken it.
 
 schema = 1
 
@@ -63,7 +73,7 @@ kind = "handles"
 any_of = ["httpx.RequestError"]
 expect = "present"
 
-# --- What it does NOT hold. These are the 2026-08-03 defects ----------------
+# --- The 2026-08-03 defects, repaired in the template on 2026-08-07 ---------
 
 [[template.property]]
 id = "reads_retry_after"
@@ -73,8 +83,10 @@ any_of = ["retry-after"]
 expect = "present"
 # A header name is on the wire. It is the one string here that no adopting
 # repository can rename, which is what makes it worth matching on. The template
-# computes `base_delay * 2 ** (attempt - 1)` and never looks at what the server
-# asked for — on a 429 that is the wrong number by construction.
+# used to compute `base_delay * 2 ** (attempt - 1)` and never look at what the
+# server asked for — on a 429 that is the wrong number by construction. It now
+# reads both RFC 9110 §10.2.3 forms and falls back to the curve on an
+# unparseable value; falling back must never become a crash on the error path.
 
 [[template.property]]
 id = "jitters"
@@ -115,8 +127,13 @@ any_of = ["RuntimeError"]
 expect = "absent"
 # THE line. Half of these fixes are removals, which is why `expect` exists:
 #     raise RuntimeError(f"Upstream {url} unreachable after {max_attempts} …")
-# It was removed in eleven servers, one at a time, and stayed here. A caller
-# cannot tell it apart from a bug in the server's own code.
+# It was removed in eleven servers, one at a time, and stayed here until
+# 2026-08-07. A caller cannot tell it apart from a bug in the server's own code,
+# and `str(exc)` is EMPTY for httpx.ConnectTimeout, ReadTimeout and
+# ConnectError — the only errors an outage actually produces — so the message
+# stopped at the colon. The template now re-raises the original exception and
+# keeps a named `UpstreamUnavailableError` for the one case with no original to
+# re-raise: the budget spent before a single request went out.
 
 [[template.adoption]]
 repo = "malkreide/swiss-academic-libraries-mcp"
