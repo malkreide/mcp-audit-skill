@@ -6,6 +6,17 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — Die Kettentabelle nannte den Transport-Skill zwei Releases zu alt
+
+`SKILL.md` führte [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) als «v2.0.0, zwölf Regeln». Dort steht inzwischen **v2.2.0 mit dreizehn**: Regel 13 («Ein Guard prüft nicht, was vor ihm abgezweigt wurde») ist dazugekommen, und drei bestehende Regeln haben gelernt.
+
+**Dieselbe Klasse wie die Repo-Description, eine Ebene weiter aussen.** Der `repo-description`-Guard prüft eine Behauptung, die ausserhalb des Repos, aber innerhalb der eigenen Reichweite steht — die Description gehört diesem Repo. Diese hier gehört einem **fremden** Repo: Kein Check hier kann sie lesen, und drüben weiss niemand, dass es sie gibt. Sie altert deshalb geräuschlos und sieht dabei weiterhin wie eine gepflegte Angabe aus. Ein Guard dafür wäre möglich (Tag-Liste des Nachbarn abrufen), aber er hätte dieselbe Eigenschaft wie der Description-Guard: Er kann nur melden, nicht beheben — hier ist die Behebung immerhin ein Commit.
+
+**Die Lücken-Zeile lernt Regel 13 mit.** Bisher: «seine Regeln 2, 6 und 7 hat der Katalog nicht, Regel 5 nur teilweise (`DRIFT-003`)». Neu auch Regel 13 als teilweise gedeckt — [`OPS-005`](./checks/OPS-005.md) führt ausdrücklich den Guard, der nie gegen `main` gelaufen ist, aber nicht den Zweig, der vor dem Merge geschnitten wurde und ihn deshalb nie ausführt. Eine Hälfte, nicht die Regel.
+
+**Nicht geändert:** die Zeilen 333 in beiden READMEs. Sie sagen «seit seiner v2.0.0 zusätzlich `ARCH-015`–…» und benennen damit den Zeitpunkt, an dem diese Checks zum Gegenstand wurden — eine historische Angabe, die durch ein neueres Release nicht falsch wird. Auch die Check-Liste selbst bleibt: Von den vier seit dieser Zuordnung hinzugekommenen Checks trifft keiner eine Transport-Regel, `SEC-028` eingeschlossen (er gehört zur ausgehenden Richtung, die jener Skill ausdrücklich abgrenzt).
+
+
 ---
 
 ## [v2.2.0] — 2026-08-07 — Plausibel, und über die falsche Sache
