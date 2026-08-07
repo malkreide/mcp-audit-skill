@@ -160,9 +160,28 @@ def target_revision(repo: Path) -> dict[str, Any]:
     worktree describes a tree that exists nowhere but this machine. The audit
     is still valid — auditing uncommitted work is a legitimate thing to do —
     but the report must not imply it examined the commit it names.
+
+    **The target must be a repository root, not merely inside one.** `git -C`
+    searches *upwards* until it finds a `.git`. Without the check below, a
+    directory that is not a repository still yields a SHA — the enclosing
+    repository's — and `audit-meta.json` would carry `target_repo` pointing at
+    one tree and `target_sha` naming a commit in another. Forty hex digits,
+    plausible, and about the wrong repository; exactly the claim this anchor
+    exists to prevent.
+
+    Found on a machine whose home directory is itself a git repository, where
+    every temporary directory has an ancestor repo. On CI it never showed:
+    runner temp directories have none, so the guarding test passed for a reason
+    that had nothing to do with the property it names.
     """
     if not repo.is_dir():
         raise TargetRepoError(f"target repo {repo} is not a directory")
+    toplevel = _git(repo, "rev-parse", "--show-toplevel")
+    if Path(toplevel).resolve() != repo.resolve():
+        raise TargetRepoError(
+            f"target repo {repo} is not a git repository root — "
+            f"git resolved it to {toplevel}"
+        )
     sha = _git(repo, "rev-parse", "HEAD")
     dirty = bool(_git(repo, "status", "--porcelain"))
     try:
