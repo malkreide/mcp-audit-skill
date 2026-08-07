@@ -6,6 +6,20 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — §0.5 kennt jetzt den zweiten Fall, und `ruff.toml` beantwortet die offene Frage
+
+Zwei Nachträge aus PR #101, beide gemessen statt vermutet.
+
+**§0.5 hatte eine Lücke, die der eigene Rückvergleich gefunden hat.** Der Body von PR #101 enthielt keine spitzen Klammern — nur die zitierten `grep`-Aufrufe samt Anführungszeichen. Gespeichert stand dort `&#34;`, und weil das Zitat in Backticks steht, wird die Entität wörtlich angezeigt statt aufgelöst: aus einem kopierbaren Befehl wird einer, der nicht läuft. Kein Verlust wie bei `<ID>`, aber derselbe stille Mechanismus und dieselbe Ursachenlage wie beim bereits beschriebenen `&#39;`.
+
+Bemerkenswert ist weniger das Zeichen als der Weg dorthin: Erwartet wurden die Klammern, angeschlagen hat etwas, an das niemand gedacht hatte. Die Regel in §0.5 zieht daraus die Konsequenz — Befehlszeilen in Agenten-Texten kommen ohne Anführungszeichen aus, und **auf eine Liste verdächtiger Zeichen ist kein Verlass**, die ist immer eine Zeichenklasse zu kurz. Der Rückvergleich bleibt der einzige Beleg. Anti-Pattern 11 mitgezogen.
+
+**Und die Frage, die der `line-length`-Kommentar offen liess.** Er beschrieb, dass ein Eintrag keine Kopiertauglichkeit herstellt, sagte aber nicht, ob dieses Repo überhaupt etwas exportiert. Nachgemessen, aus zwei unabhängigen Richtungen: Jeder dokumentierte Aufruf lautet `python "$SKILL_BASE/tools/…"` — die Werkzeuge laufen im Skill-Klon und werden nicht ins Zielrepo kopiert; und kein Pfad schreibt eine `.py` nach draussen, der einzige `shutil.copy` im Repo überträgt Finding-*Markdown* innerhalb eines Audit-Baums.
+
+Exportiert werden `templates/audit-report.md` und `templates/finding.md` — Markdown, das kein Formatter anfasst. Ein Schritt, der `tools/` gegen 88/100/110/120 prüft, hätte damit **keinen Gegenstand**, und ein Gate, das nicht auslösen *kann*, ist genau die Dekoration, vor der `OPS-005` warnt. Die Abwesenheit steht jetzt als Entscheidung in `ruff.toml`, samt der Bedingung, unter der sie fällt: ein `scripts/`-Verzeichnis oder eine `.py`, die von hier aus kopiert wird.
+
+Die Messtabelle im selben Kommentar ist als Momentaufnahme gekennzeichnet und nachgeführt — in vier Stunden ist der Baum von 58 auf 60 Dateien gewachsen, bei 100 von 42 auf 43 betroffene. Die Zahlen altern, die Richtung nicht.
+
 ### Neu — `OBS-008`: Der Server sagt an, dass er bedient (advisory, medium)
 
 Ein MCP-Server auf stdio hat keinen Port, keinen Health-Endpunkt und keinen Exit-Code, solange er läuft. «Läuft» war damit keine Beobachtung, sondern eine Annahme — und der Katalog stellte dazu keine Frage.

@@ -22,19 +22,20 @@ target-version = "py311"
 # Angleichen nach oben wuerde die Regel nicht erfuellen, sondern brechen — und
 # zwar hier, wo sie steht.
 #
-# Gemessen, mit ruff 0.15.8 ueber den ganzen Baum (58 Dateien):
+# Gemessen mit ruff 0.15.8 ueber den ganzen Baum. Momentaufnahme bei 60
+# Dateien — der Baum waechst, die Zahlen altern, die Richtung nicht:
 #
-#     line-length  88 → 58 bereits formatiert
-#     line-length 100 → 42 von 58 wuerden umformatiert
-#     line-length 110 → 43 von 58
-#     line-length 120 → 44 von 58
+#     line-length  88 → 60 bereits formatiert
+#     line-length 100 → 43 von 60 wuerden umformatiert
+#     line-length 110 → 45 von 60
+#     line-length 120 → 46 von 60
 #
-# Diese 42 Dateien enthalten Ausdruecke, die bei 88 umgebrochen sind und bei
-# 100 zusammengezogen wuerden. Auf 100 zu gehen hiesse, 42 Dateien auf Zeilen
-# von bis zu 100 Spalten zu bringen — jede davon ist in einem 88er-Repo ein
-# Umbruch und damit ein roter `ruff format --check`. Der Wechsel wuerde also
-# genau den Bruch *erzeugen*, den `OPS-005` in seiner fuenften Auspraegung
-# beschreibt, statt ihn zu beseitigen.
+# Diese 43 Dateien enthalten Ausdruecke, die bei 88 umgebrochen sind und bei
+# 100 zusammengezogen wuerden. Auf 100 zu gehen hiesse, sie auf Zeilen von bis
+# zu 100 Spalten zu bringen — jede davon ist in einem 88er-Repo ein Umbruch und
+# damit ein roter `ruff format --check`. Der Wechsel wuerde also genau den Bruch
+# *erzeugen*, den `OPS-005` in seiner fuenften Auspraegung beschreibt, statt ihn
+# zu beseitigen.
 #
 # Was dieser Eintrag NICHT leistet: Er macht kopierte Dateien nicht
 # portfoliotauglich. Eine hier bei 88 umgebrochene Zeile will ein 100er-Repo
@@ -44,6 +45,29 @@ target-version = "py311"
 # `OPS-005` Modus 3. Die Konfiguration entscheidet den lokalen Boden, der Guard
 # entscheidet die Kopierbarkeit. Zwei verschiedene Dinge, und nur das erste
 # steht hier.
+#
+# UND DESHALB STEHT HIER KEIN SOLCHER GUARD. Die erste Fassung dieses
+# Kommentars liess offen, ob dieses Repo ueberhaupt Dateien exportiert. Das ist
+# nachgemessen worden, aus zwei unabhaengigen Richtungen:
+#
+#   1. Jeder dokumentierte Aufruf in `SKILL.md` und `.claude/commands/` lautet
+#      `python "$SKILL_BASE/tools/…"`. Die Werkzeuge laufen im Skill-Klon, sie
+#      werden nicht ins Zielrepo kopiert.
+#   2. Kein Pfad schreibt eine `.py` nach draussen. Der einzige `shutil.copy`
+#      im Repo (`tools/carry_forward.py`) uebertraegt Finding-*Markdown*
+#      innerhalb eines Audit-Baums.
+#
+# Was dieses Repo tatsaechlich exportiert, sind `templates/audit-report.md` und
+# `templates/finding.md` — Markdown, das kein Formatter anfasst. Ein Schritt,
+# der `tools/` gegen 88/100/110/120 prueft, haette damit keinen Gegenstand: ein
+# Gate, das nicht ausloesen *kann*, ist die Dekoration, vor der `OPS-005`
+# selbst warnt («Gate gebaut, nie ausgeloest → falsche Sicherheit statt gar
+# keiner»). Die Abwesenheit ist damit eine Entscheidung, nachpruefbar an den
+# zwei Messungen oben.
+#
+# Aendert sich die Voraussetzung — kommt ein `scripts/`-Verzeichnis dazu, wird
+# eine `.py` von hier in andere Repos kopiert —, dann faellt diese Begruendung,
+# und der Schritt aus `OPS-005` Modus 3 gehoert in `.github/workflows/lint.yml`.
 #
 # Gebunden an SKILL.md durch tests/test_ruff_line_length.py: Der Wert hier muss
 # der schmalste der dort geprueften Breiten bleiben.
