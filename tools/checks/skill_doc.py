@@ -25,8 +25,8 @@ RULE_HEADING = re.compile(r"^## Regel (\d+)", re.M)
 # Commit mitgehen — sonst fällt die Prüfung aus, statt eine veraltete Zahl
 # grün durchzulassen.
 RULE_SECTIONS = (
-    ("README.md", "The twelve rules"),
-    ("README.de.md", "Die zwölf Regeln"),
+    ("README.md", "The fourteen rules"),
+    ("README.de.md", "Die vierzehn Regeln"),
 )
 
 PATTERNS = "reference/patterns.py"
@@ -43,6 +43,8 @@ ENGLISH_NUMBERS = {
     "ten": 10,
     "eleven": 11,
     "twelve": 12,
+    "thirteen": 13,
+    "fourteen": 14,
 }
 
 TABLE_HEADING = "### Welche Regel welcher Check ist"

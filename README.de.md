@@ -14,11 +14,11 @@ Companion zu Anthropics `mcp-builder`. Dessen Best Practices decken ab, ob ein S
 
 Das ist eine eigene Fehlerklasse, weil sie still ist. HTTP 200, wohlgeformtes JSON, grüne Tests — und inhaltlich falsch. Ein Server, der zwei Prozent des Bestands durchsucht und das nicht meldet, produziert Antworten, die niemand als falsch erkennt.
 
-Die Leitfrage bei jedem datenabfragenden Tool: *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der zehn Regeln. Und die Stufe darunter, seit Regel 10: *und wenn ich falsch gefragt habe — komme ich von hier zur richtigen Frage?*
+Die Leitfrage bei jedem datenabfragenden Tool: *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der vierzehn Regeln. Und die Stufe darunter, seit Regel 10: *und wenn ich falsch gefragt habe — komme ich von hier zur richtigen Frage?*
 
-## Die zwölf Regeln
+## Die vierzehn Regeln
 
-Die Regeln 1–6 und 10–12 stammen aus Vorfällen, die Regeln 7–9 aus der MCP-Spec 2026-07-28 — der Unterschied wird benannt statt geglättet, hier wie in `SKILL.md`. Die Nummerierung folgt der Reihenfolge, in der die Regeln dazugekommen sind, nicht dieser Gruppierung.
+Die Regeln 1–6 und 10–14 stammen aus Vorfällen, die Regeln 7–9 aus der MCP-Spec 2026-07-28 — der Unterschied wird benannt statt geglättet, hier wie in `SKILL.md`. Die Nummerierung folgt der Reihenfolge, in der die Regeln dazugekommen sind, nicht dieser Gruppierung.
 
 1. **Scope-Parameter explizit senden, nie erben.** Ein weggelassener optionaler Filter bedeutet oft nicht «unbeschränkt», sondern einen willkürlichen Teilausschnitt — eine Tatsache, die ausschliesslich in der Parameterbeschreibung der Spec steht und an einem funktionierenden Call nicht erkennbar ist. Umgekehrt gilt: Wer den Recall bewusst verengt (exakt statt Wildcard, kein Fuzzy), muss die Rubriken oder Datenklassen nennen, die das Risiko tragen, **und** aus der Scope-Aufzählung belegen, dass sie erreichbar sind. Eine Begründung, die für jede beliebige Quelle wortgleich dastünde, ist an nichts gekoppelt.
 2. **Parameter-Gruppen vollständig senden.** Sendet man nur einige Mitglieder einer Gruppe, behalten die übrigen ihren serverseitigen Default. Das Argument kann dann nur erweitern, nie einschränken — ein No-op, der wie Steuerung aussieht.
@@ -32,12 +32,14 @@ Die Regeln 1–6 und 10–12 stammen aus Vorfällen, die Regeln 7–9 aus der MC
 10. **Vorschlagen ist nicht Erweitern.** Auf der Leermenge kürzere Varianten des Begriffs anbieten, den der Aufrufer selbst geschickt hat — und keine davon abfragen. Die Sicherheitseigenschaft: Keine Meldung im Resultat darf einem Begriff zuzuschreiben sein, den der Aufrufer nicht gewählt hat. Der Nachweis ist ein Paar und keine einzelne Assertion — Vorschläge erscheinen, Vorschläge werden nie gesucht (Zähler auf der Upstream-Route). Fällt eine Hälfte weg, besteht die andere trivial.
 11. **Die Leermenge trägt die Anfrage, die sie erzeugt hat.** Scope, Filter und Limits, so wie sie rausgegangen sind — nicht so, wie der Aufrufer sie geschickt hat. «Nichts da» und «falsch gefragt» unterscheiden sich in genau einer Sache, der Anfrage; fehlt sie, hat das Modell zum Unterscheiden nichts in der Hand. Die schärfere Hälfte: Ein Hinweis, der auf jeder Leermenge gleich lautet, trägt kein Bit. Der Nachweis ist wieder ein Paar — das Echo stimmt mit dem abgesetzten Request überein, und zwei verschieden abgesetzte Läufe lesen sich verschieden, insbesondere der, in dem die Best-Effort-Erweiterung aus Regel 1 still ausgefallen ist.
 12. **Abwesenheit ist dreiwertig: nicht erhoben / erhoben und leer / zurückgehalten.** Ein `null` für alle drei macht aus «nicht gemessen» eine Tatsachenbehauptung über den Datensatz, die niemand gemessen hat. Der dritte Wert wird dort *gesetzt*, wo entschieden wurde, nie als Rückfallwert eines Lookups — ein unerwartet fehlender Schlüssel ist ein Schema-Fehler (Regel 6) und kein Zustand. Und was er bedeutet, samt Pflicht des Aufrufers, steht am Feld: Stillschweigen ist bei einem Feld tödlich und beim nächsten folgenlos, und das trägt keine hausweite Konvention.
+13. **Der Feldname ist Teil des Vertrags, samt Schreibweise.** Regel 6 fragt, ob der Schlüssel *da* ist; diese fragt, ob er da ist *in der Schreibweise, die der Code liest*. Eine falsche Gross-/Kleinschreibung liefert eine leere Trefferliste mit der Meldung «nicht gefunden» — kein Fehler, keine Exception, kein Log-Eintrag. An der Parse-Grenze normalisieren, einmal, für alle Leser: Eine Schreibweise fest zu verdrahten reisst beim nächsten Wechsel dasselbe Loch, und eine Quelle, die innerhalb einer Kopfzeile mischt, wechselt. Normalisieren **und dann** bestätigen — Regel 6 gilt danach unverändert, und zwei Schlüssel, die dabei zusammenfallen, sind ein Befund und kein stiller Überschreiber.
+14. **Eine Zahlenspalte, die keine Zahlen enthält.** Quellen unterdrücken kleine Fallzahlen und schreiben «1 bis 5», «<5», «NULL» oder lassen die Zelle leer — gemessen 18.6 % und 18.1 % zweier Tabellen. Der Absturz darauf ist laut und ehrlich; als `0` zu zählen ist schlimmer, denn die Summe bleibt plausibel, ist still zu tief und durch nichts als falsch erkennbar. Diese Zeilen ausnehmen und **kennzeichnen**, im Tool-Result und mit der gemessenen Zahl: Eine Summe, aus der ein Fünftel der Zeilen stillschweigend fehlt, ist keine Summe, sondern eine Untergrenze, die sich als Summe ausgibt. Regel 12 ordnet die einzelne Zelle ein; diese Regel handelt davon, was die Summe mit ihr tut.
 
 ## Voraussetzungen
 
 - Claude Code, Claude Desktop oder claude.ai mit Skill-Unterstützung
 - Die Patterns in `reference/patterns.py` zielen auf FastMCP, httpx und Pydantic v2 — die Regeln selbst sind stack-unabhängig
-- Die Regeln 8 und 9 setzen die MCP-Spec 2026-07-28 voraus: `ttlMs`/`cacheScope` auf den List-Responses und MRTR (`resultType: "input_required"`) existieren vorher nicht. Auf einem älteren oder eingefrorenen Server werden sie als nicht anwendbar abgehakt, nicht als unerfüllt. Die Regeln 1–7 und 10–12 gelten so oder so.
+- Die Regeln 8 und 9 setzen die MCP-Spec 2026-07-28 voraus: `ttlMs`/`cacheScope` auf den List-Responses und MRTR (`resultType: "input_required"`) existieren vorher nicht. Auf einem älteren oder eingefrorenen Server werden sie als nicht anwendbar abgehakt, nicht als unerfüllt. Die Regeln 1–7 und 10–14 gelten so oder so.
 
 ## Installation
 
@@ -61,7 +63,7 @@ Der Skill greift selbstständig, sobald ein Such-, Query- oder Filter-Tool entwo
 
 ```
 .
-├── SKILL.md                  # die zehn Regeln, mit Release-Checkliste
+├── SKILL.md                  # die vierzehn Regeln, mit Release-Checkliste
 ├── reference/
 │   └── patterns.py           # Copy-Paste-Patterns für FastMCP / httpx / Pydantic v2
 ├── scripts/
@@ -90,6 +92,8 @@ Regel 10 und der Zusatz zu Regel 1 kamen nach einem dritten Fall dazu, [`amtsbla
 
 Die Gegenrichtung ist der zweite Fehler desselben Falls: Der Vorschlagsmechanismus, den der Check verlangt, ist als Erlaubnis lesbar, die Vorschläge gleich mitzusuchen — dann liefert der Server Meldungen unter einem Begriff aus, den niemand gewählt hat. Beide Wege laufen in dieselbe Falle, und deshalb ist die Auflösung keine Wahl zwischen ihnen, sondern die Aufteilung.
 
+Die Regeln 13 und 14 kommen aus einem fünften Fall, und wie der dritte ist er ausgeliefert gewesen: [`zh-education-mcp`](https://github.com/malkreide/zh-education-mcp) gegen [`www.bista.zh.ch`](https://www.bista.zh.ch), aufgefallen am 3.8.2026. Zweimal dieselbe Form, an zwei Stellen derselben Zeile. Der **Feldname**: Der Code las `r["Schulgemeinde"]`, die Quelle lieferte `schulgemeinde`, und das Ergebnis war keine Exception, sondern eine leere Trefferliste mit der Meldung «Schulgemeinde nicht gefunden» — ein Ausfall, der wie eine Antwort aussieht. Betroffen waren 4 von 6 genutzten Endpunkten, zwei davon mischen die Schreibweise innerhalb einer Kopfzeile; deshalb heisst die Behebung nicht «auf die neue Schreibweise umstellen», sondern «an der Parse-Grenze normalisieren». Der **Wert**: Die Quelle unterdrückt kleine Fallzahlen und schreibt «1 bis 5» in eine Spalte, die eine Anzahl heisst — 18.6 % und 18.1 % zweier Tabellen, 1.0 % «NULL» in einer dritten. Übertragbar ist die Rangfolge der drei Umgänge, und dass der mittlere überrascht: Der Absturz ist ehrlich, die stille `0` ist es nicht.
+
 Die Regeln 7–9 haben diese Herkunft **nicht**, und der Skill sagt das dort, wo er sie aufstellt. Sie sind aus der MCP-Spec 2026-07-28 hergeleitet: stateless Core ohne `initialize`, Reconnect als Normalfall (Regel 7); `ttlMs`/`cacheScope` auf den List-Responses (Regel 8); MRTR statt serverinitiierter Elicitation (Regel 9). Hergeleitet, nicht gemessen — in diesem Repo ein Unterschied, der genannt gehört. Die Latte für Vorschläge von aussen bleibt unverändert: Sie brauchen weiterhin einen eingetretenen Schaden. Über die tiefere Latte gekommen ist hier eine Protokolländerung, die alle 42 Server des Portfolios gleichzeitig trifft — keine plausibel klingende Empfehlung.
 
 ## Verwandte Repos
@@ -103,14 +107,14 @@ Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihe
 | vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6). Hat diesen Skill unter `companion/` ausgeliefert, bis dieses Repo sein Zuhause wurde. |
 | im Bau | **`mcp-data-fidelity-skill`** | **Dieser Skill:** liefert er, was die Quelle hat? |
 | im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
-| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–6 liegen auf den sechs `FID`-Checks — nicht eins zu eins: Regeln 3 und 4 teilen sich `FID-003`, Regel 5 braucht `FID-005` und `FID-002`, Regel 6 ist `FID-006`. Die Regeln 7–9 liegen ausserhalb von `FID`, in `ARCH-020`, `HITL-006` und `ARCH-018`, die Abgrenzung von Regel 9 gegen die Leermenge in `FID-003`; Regel 10 liegt auf `ARCH-003` (Katalogstand: 113 Checks auf `main`, geschnitten v2.0.0; alle diese Checks sind `advisory` — ausser `ARCH-003`, das `enforced` ist und `always` gilt). Vollständige Tabelle samt der Reichweite, die jeder Check *nicht* abdeckt, in `SKILL.md`. |
+| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–6 liegen auf den sechs `FID`-Checks — nicht eins zu eins: Regeln 3 und 4 teilen sich `FID-003`, Regel 5 braucht `FID-005` und `FID-002`, Regel 6 ist `FID-006`. Die Regeln 7–9 liegen ausserhalb von `FID`, in `ARCH-020`, `HITL-006` und `ARCH-018`, die Abgrenzung von Regel 9 gegen die Leermenge in `FID-003`; Regel 10 liegt auf `ARCH-003` (Katalogstand: 113 Checks auf `main`, geschnitten v2.0.0; alle diese Checks sind `advisory` — ausser `ARCH-003`, das `enforced` ist und `always` gilt). Die Regeln 12, 13 und 14 liegen auf gar keinem Check. Vollständige Tabelle samt der Reichweite, die jeder Check *nicht* abdeckt, in `SKILL.md`. |
 | im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Seine Recall-Floors sind Regel 5, laufend gegen die echte Quelle gemessen. |
 
 Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
 Dazu die beiden Server, aus denen dieser Skill stammt: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die Regeln 1–5 hervorgebracht hat, und [`amtsblatt-mcp`](https://github.com/malkreide/amtsblatt-mcp), dessen [`ARCH-003`-Finding](https://github.com/malkreide/amtsblatt-mcp/blob/main/audits/2026-07-30T105205-Z-amtsblatt-mcp/findings/ARCH-003.md) Regel 10 und den Scope-Zusatz zu Regel 1 hervorgebracht hat.
 
-Wer nach den Regeln 1–6 baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet hier die Behebung. Die Regeln 7–9 sind ausserhalb von `FID` abgedeckt, und diese Checks sind `advisory` — sie werden gezählt, nicht erzwungen. Regel 10 ist die Ausnahme: `ARCH-003` blockiert. Ohne Check ist keine Regel mehr; offen ist nur noch Reichweite, und am weitesten bei Regel 7: Ihr Check misst auf Baseline `2026-07-28`, den Pagination-Verlust gibt es aber auch auf `2025-11-25`. Die Lücken stehen je Zeile in `SKILL.md`.
+Wer nach den Regeln 1–6 baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet hier die Behebung. Die Regeln 7–9 sind ausserhalb von `FID` abgedeckt, und diese Checks sind `advisory` — sie werden gezählt, nicht erzwungen. Regel 10 ist die Ausnahme: `ARCH-003` blockiert. Ohne Check sind drei Regeln — 12, 13 und 14 —, und bei den übrigen ist nur noch Reichweite offen, am weitesten bei Regel 7: Ihr Check misst auf Baseline `2026-07-28`, den Pagination-Verlust gibt es aber auch auf `2025-11-25`. Was Lücke ist und was benannter Rand, steht je Zeile in `SKILL.md`.
 
 ## Changelog
 
@@ -125,7 +129,9 @@ haben.
 Für neue Regeln liegt die Latte höher. Die Regeln 1–6 stammen je aus einem
 konkreten Schaden, der tatsächlich eingetreten ist — und vor allem deshalb lohnt
 sich die Sammlung überhaupt. Regel 10 steht auf derselben Latte: ausgeliefert in
-`amtsblatt-mcp` 0.20.0, gefangen vom Re-Audit, behoben in 0.22.0. Eine plausibel klingende Empfehlung ohne Narbe
+`amtsblatt-mcp` 0.20.0, gefangen vom Re-Audit, behoben in 0.22.0. Ebenso die Regeln 13
+und 14: ausgeliefert in `zh-education-mcp`, am 3.8.2026 an der laufenden Quelle
+aufgefallen, mit gemessenem statt geschätztem Umfang. Eine plausibel klingende Empfehlung ohne Narbe
 dahinter macht den Skill länger und schwächer. Ein Vorschlag sollte den Vorfall
 benennen, ein ✗/✓-Paar mitbringen und seinen **Nachweis** angeben: die zwei
 Calls, das Delta, die Assertion, die eine funktionierende Kontrolle von einer

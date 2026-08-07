@@ -1,17 +1,20 @@
-"""Copy-paste patterns for the twelve data-fidelity rules (FastMCP, httpx, pydantic).
+"""Copy-paste patterns for the fourteen data-fidelity rules (FastMCP, httpx, pydantic).
 
 Each block is self-contained and annotated with the rule it implements. Adapt the
 names; keep the shape. The comments are deliberately verbose — they are the part
 that survives into the target codebase and explains *why* to the next reader.
 
-Rules 1-6 and 10, 11 and 12 come from incidents. Rules 7-9 are derived from MCP
-spec 2026-07-28 and only apply to a server that speaks it — with one exception:
+Rules 1-6 and 10-14 come from incidents. Rules 7-9 are derived from MCP spec
+2026-07-28 and only apply to a server that speaks it — with one exception:
 rule 7 (a total sort order) breaks pagination on every spec version.
 """
 
 from __future__ import annotations
 
+import csv
+import io
 import json
+from collections import Counter
 from datetime import datetime, timedelta
 from typing import Any, Literal
 
@@ -807,5 +810,206 @@ async def test_a_renamed_upstream_key_is_a_finding_not_an_omission() -> None:
     half 1: it measured nothing and reports that correctly. Without half 1, a
     server passes half 2 while still folding "not asked" and "nothing there"
     into one null. Both directions asserted — rule 9's and rule 10's test shape.
+    """
+    ...
+
+
+# ---------------------------------------------------------------------------
+# Rule 13 — the field name is part of the contract, spelling included
+# ---------------------------------------------------------------------------
+
+
+def normalise_keys(row: dict[str, Any]) -> dict[str, Any]:
+    """Fold a row's column names to lower case — once, at the parse boundary.
+
+    Measured on 2026-08-03 against www.bista.zh.ch: the code read
+    ``r["Schulgemeinde"]`` and the source delivered ``schulgemeinde``. No error,
+    no exception, no log line — an empty hit list saying "Schulgemeinde not
+    found". A failure that looks like an answer, which is rule 3's
+    confabulation invitation arriving from a new direction.
+
+    Four of the six endpoints in use had switched, and two of them mix the
+    spelling *inside one header row* (``gebiet_Bezeichnung``,
+    ``staatsangehoerigkeit_ISO2_Code``). That is why the fix is not "move to
+    the new spelling": hard-wiring either one tears the same hole open at the
+    next switch, and this source has already switched within a single corpus.
+
+    Keys only, never values. Lower-casing a *value* to make a comparison
+    "robust" is a recall widening nobody asked for — that belongs under rule 1,
+    with a reason, not in a helper at the parse boundary.
+
+    The collision guard is a hardening over the shipped original, which runs
+    against a header it knows. A copied pattern does not: ``{k.lower(): v}``
+    silently drops one of two keys that differ only in case, and the loss looks
+    exactly like a row that never carried the field — ``payload.get(x, [])``
+    in miniature, where a fallback value is the entire cause.
+    """
+    keys = [(k or "").lower() for k in row]
+    collisions = sorted(k for k, n in Counter(keys).items() if n > 1)
+    if collisions:
+        raise UpstreamSchemaError(
+            f"header collapses under normalisation: {collisions}. "
+            f"Raw keys: {sorted(row)[:10]}"
+        )
+    return dict(zip(keys, row.values(), strict=True))
+
+
+def parse_rows(text: str, *required: str) -> list[dict[str, Any]]:
+    """Normalise, *then* confirm — the order is the whole point.
+
+    Rule 6 has two outcomes: found, or schema error. Applied to a spelling
+    difference it produces the loud one, which beats the silent empty set and
+    is still wrong: the field *is* there. A server built on rule 6 alone would
+    have reported an upstream defect on four of six endpoints on 2026-08-03,
+    and there was none.
+
+    So the two rules run in sequence rather than competing. After normalisation
+    rule 6 applies unchanged and at full strength — a key still missing is
+    missing for real. Normalising *instead of* confirming abolishes rule 6
+    rather than satisfying it: ``.get(k, "")`` over a normalised row is exactly
+    the silent failure this block starts from.
+    """
+    rows = [normalise_keys(r) for r in csv.DictReader(io.StringIO(text))]
+    if rows:
+        absent = [name for name in required if name not in rows[0]]
+        if absent:
+            raise UpstreamSchemaError(
+                f"columns {absent} missing. Keys present: {sorted(rows[0])[:10]}"
+            )
+    return rows
+
+
+async def test_the_reader_does_not_care_how_the_header_is_spelled() -> None:
+    """Rule 13, half 1 — two spellings, one result.
+
+    Feed the same body under ``Schulgemeinde``, ``schulgemeinde`` and
+    ``SchulGemeinde``; every one of them must produce hits. A mock cannot catch
+    this class on its own, for rule 5's and rule 6's reason: the fixture encodes
+    the header the author assumed, and it does so the more reliably the more
+    carefully it was copied from the source's documentation. This half only
+    bites because the parametrisation supplies the spelling the author did NOT
+    assume.
+    """
+    ...
+
+
+async def test_a_genuinely_missing_column_is_still_a_finding() -> None:
+    """Rule 13, half 2 — what is normalised is the name, not the finding.
+
+    A body whose column is called ``gemeinde`` must raise ``UpstreamSchemaError``,
+    not return an empty hit list.
+
+    Without half 2 a server passes half 1 by routing every lookup through
+    ``.get(k, "")``: it is insensitive to any spelling because it is insensitive
+    to any header at all, and it reports the vanished column as an empty set.
+    Without half 1 a server passes half 2 with one spelling wired in and the
+    other correctly reported as a schema error — the state the incident would
+    have filed as "upstream defect" while the source was fine.
+    """
+    ...
+
+
+# ---------------------------------------------------------------------------
+# Rule 14 — a count column that does not hold counts
+# ---------------------------------------------------------------------------
+
+
+def parse_count(value: object) -> int | None:
+    """A count, or ``None`` when the cell does not hold one.
+
+    Sources suppress small case numbers for privacy and write a range instead
+    of a number: "1 bis 5", "<5". Add "NULL" and the empty cell. Measured on
+    2026-08-03 against www.bista.zh.ch: 18.6 % of one lower-secondary table
+    (13902 rows), 18.1 % of a second (62684), 1.0 % "NULL" in a third (35903).
+    Not an edge case — a fifth of the corpus.
+
+    Three ways to handle it, and the middle one is the surprise::
+
+        int("1 bis 5")   -> crash. Loud, bad — but honest: the caller gets no
+                            number and knows it.
+        count it as 0    -> the sum stays plausible, is quietly too low, and is
+                            recognisable as wrong by nothing at all. WORSE than
+                            the crash.
+        exclude and DECLARE it -> right.
+
+    A sum missing a fifth of its rows in silence is not a sum. It is a lower
+    bound passing itself off as one — this skill's failure class applied to a
+    scalar instead of a hit list.
+
+    ``None`` rather than 0 is therefore load-bearing: it forces the caller to
+    decide, and it makes the excluded rows countable for the note below.
+    """
+    raw = str(value if value is not None else "").strip()
+    return int(raw) if raw.isdigit() else None
+
+
+def suppression_note(suppressed: int, total: int) -> str | None:
+    """The line that turns a lower bound back into an honest number.
+
+    In the tool result, not the log — rule 3's argument: the model does not read
+    the log. And carrying the measured numbers rather than a constant, because a
+    sentence that reads the same under every table is rule 11's wallpaper and
+    says nothing about *this* sum.
+
+    ``None`` when there is nothing to declare. A note that is always present is
+    a note that carries no bit.
+    """
+    if suppressed <= 0:
+        return None
+    return (
+        f"\n> **Note:** {suppressed} of {total} rows carry no numeric value "
+        "(the source writes «1 bis 5» instead of a number for small case "
+        "counts). They are **not** included in the totals; the real values are "
+        "correspondingly higher."
+    )
+
+
+def totals_of(rows: list[dict[str, Any]], field: str = "anzahl") -> dict[str, Any]:
+    """Read path for rule 14: the sum and the rows it does not contain.
+
+    ✗ What this deliberately does NOT do::
+
+        total = sum(int(r[field]) for r in rows)                      # crashes
+        total = sum(int(r[field]) if r[field].isdigit() else 0        # worse
+                    for r in rows)
+
+    Rule 12 is next door, not the same: it sorts out the *single cell*, and a
+    suppressed value is already named there — ``withheld``. What it does not
+    answer is what a sum, a share or a ranking does with those cells one
+    processing step later. A server can keep the three states immaculately
+    apart on the field and fold them back together with ``or 0`` on the next
+    line. Rule 3 does not cover it either: it asks for a next step on the
+    *empty* set, and here the hit list is full and a number inside it is wrong.
+    """
+    counted = [parse_count(r.get(field)) for r in rows]
+    suppressed = sum(1 for n in counted if n is None)
+    return {
+        "total": sum(n for n in counted if n is not None),
+        "rows": len(rows),
+        "suppressed": suppressed,
+        "note": suppression_note(suppressed, len(rows)),
+    }
+
+
+async def test_a_suppressed_value_is_excluded_and_declared() -> None:
+    """Rule 14, half 1 — excluded, counted, and named in the result.
+
+    Three rows, one numeric, one "1 bis 5", one "NULL": the total must be the
+    numeric one alone, ``suppressed`` must be 2, and the note must carry those
+    numbers rather than a fixed phrase.
+    """
+    ...
+
+
+async def test_a_clean_table_carries_no_note_and_loses_no_row() -> None:
+    """Rule 14, half 2 — the note is a measurement, not a formula.
+
+    A table without a suppressed row must produce the full total and no note.
+
+    Without half 2 a server passes half 1 by treating every row as suppressed:
+    its total is 0, its note is always there, and both are formally correct.
+    Without half 1 a server passes half 2 by adding up a clean table correctly
+    and quietly under-counting a suppressed one. The test shape used from
+    rule 9 onwards — the separation is asserted in both directions.
     """
     ...
