@@ -7,6 +7,34 @@
 # Die Test-Matrix in .github/workflows/test.yml faehrt 3.11 und 3.13.
 target-version = "py311"
 
+# Markdown bleibt aussen vor — als Entscheidung, nicht als Versehen.
+#
+# Bis ruff 0.15.8 war die Formatierung von Python-Bloecken in Markdown
+# `preview`-only: `ruff format --check .` liess `.md` unberuehrt und meldete
+# «Markdown formatting is experimental, enable preview mode», sobald man eine
+# solche Datei direkt uebergab. Seit 0.16.1 ist sie stabil und standardmaessig
+# an. Der Bump haette dieses Gate damit ueber Nacht auf Dokumentation
+# ausgeweitet, die niemand angefasst hat — genau der Effekt, gegen den der Pin
+# existiert.
+#
+# Gemessen beim Bump: kein einziges `.py` formatiert sich unter 0.16.1 anders,
+# und `ruff check` findet nichts Neues. Betroffen waeren 82 `.md` gewesen — in
+# diesem Repo also der Katalog und SKILL.md, mithin das Produkt. Die
+# Aenderungen sind mechanisch (Kommentar-Ausrichtung, `2 ** x` → `2**x`,
+# umbrochene asserts), aber sie greifen in Code-Beispiele ein, deren Layout
+# hier stellenweise Absicht ist.
+#
+# Das ist kein Argument gegen Markdown-Formatierung, sondern dagegen, sie als
+# Nebenwirkung eines Versions-Bumps einzufuehren. Sie zu uebernehmen ist eine
+# eigene, messbare Aenderung: diese Zeile entfernen, `ruff format .` laufen
+# lassen, die 82 Diffs lesen.
+#
+# `extend-exclude`, nicht `exclude`: `exclude` ERSETZT ruffs Vorgabeliste, und
+# damit waeren `.venv/`, `node_modules/` und Konsorten wieder im Gate.
+# Gemessen: zwei Dateien unter `.venv/` und `node_modules/` werden mit
+# `exclude` beanstandet, mit `extend-exclude` nicht.
+extend-exclude = ["*.md"]
+
 # Zeilenbreite: bewusst 88, und bewusst ausgeschrieben.
 #
 # 88 ist der ruff-Default, dieser Eintrag aendert also nichts an der
