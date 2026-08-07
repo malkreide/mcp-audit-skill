@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-08-07
+
+**Reichweite — dreimal zu klein, einmal zu gross.** Dreizehn Regeln statt zwölf,
+und drei der bestehenden lernen dazu. Kein Anlass von aussen: Weder die drei PRs
+von 2026-07 noch die Spec-Revision stecken darin, sondern der Betrieb der Kette
+selbst. Was die vier Änderungen verbindet, ist eine Grenze, die niemand
+absichtlich gezogen hat — und ausserhalb davon wird nichts rot, also sieht der
+Zustand von innen aus wie Erfolg.
+
+Neu ist **Regel 13** («Ein Guard prüft nicht, was vor ihm abgezweigt wurde»),
+inklusive ihrer räumlichen Hälfte: Behauptungen, die ausserhalb des Repos stehen
+— GitHub-Description, Topics, Registry-Eintrag — erreicht kein Check, der Dateien
+liest. **Regel 6** verlangt jetzt drei Schritte statt zwei, weil eine Ersetzung,
+die ihr Ziel verfehlt, wie ein überlebender Mutant aussieht. **Regel 1** führt den
+Bound bis in den Lock. Und **Regel 7** bekommt mit (d) den Spiegelfall: eine
+`autouse`-Fixture, deren Reichweite nicht zu klein war, sondern zu gross — dort
+wird auch innerhalb davon nichts rot, weil der entschärfte Test seinen Gegenstand
+verloren hat.
+
+**Zur Nummer: `2.1.0` bleibt frei.** Dieses Release folgt auf `2.0.0` und
+überspringt einen Minor, damit die Nummer mit dem Stand von
+[`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) gleichzieht — die
+Kette wird häufiger als Ganzes zitiert als einzeln, und zwei auseinanderlaufende
+Zählungen kosten bei jedem Verweis eine Rückfrage. Die Lücke ist beabsichtigt und
+steht hier, weil eine übersprungene Version sonst wie ein verlorenes Release
+aussieht. Ab hier zählen beide Repos wieder normal weiter; ein Gleichstand ist
+kein Versprechen für kommende Releases.
+
 ### Added
 
 - **Regel 7 bekommt einen vierten Fall: die `autouse`-Fixture, die ein fremdes
