@@ -1,12 +1,65 @@
 # Re-Audit-Warteschlange
 
-**Stand:** 2026-08-04 · **Auslösendes Release:** `v2.0.0` · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+**Stand:** 2026-08-07 · **Auslösendes Release:** `v2.1.0` · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
 
 Diese Datei beantwortet eine Frage: **Welche bestandenen Audits gelten nicht mehr, und warum?**
 
 Sie ist bewusst eine Momentaufnahme mit Datum und keine gepflegte Liste. Ein Dokument, das vorgibt, immer aktuell zu sein, ist nach dem zweiten Release falsch, ohne dass es jemand merkt. Der maschinelle Stand steht im Notion-Tracker (`Audit-Status`); hier steht die **Begründung**, die dort nicht hinpasst.
 
+**Zwei Releases, eine Datei.** Die `v2.0.0`-Auslöser stehen unverändert weiter unten — sie sind nicht dadurch erledigt, dass ein neues Release erschienen ist. Ein Server, der wegen `OBS-001` in der Warteschlange stand und seither nicht reauditiert wurde, steht jetzt wegen `OBS-001` **und** `DEP-001` darin.
+
 ---
+
+## `v2.1.0` — 2026-08-07
+
+### Was gefeuert hat
+
+| Auslöser | Was passiert ist | Reichweite |
+|---|---|---|
+| **§5c** — Prüfkriterium korrigiert | `DEP-001` verlangte eine Obergrenze und liess offen, **welche**. Neu wird sie gemessen: Modus 4a installiert und importiert die höchste vom Cap erlaubte Version, Modus 4b nimmt den Cap testweise weg und verlangt, dass der nächste Major hereinkommt. Ein `pass` von vorher belegt nur, dass ein Deckel dasteht. | `applies_when: always` → **alle 39 abgeschlossenen Audits** |
+| **§5c** — Prüfkriterium korrigiert | `FID-003` kannte zwei Ausgänge; die Rückfrage (`resultType: "input_required"`) ist der dritte und sieht erfolgreich aus. Ein Server, der sie mit der Leermenge vermischt, hat bestanden, weil niemand danach gefragt hat. | `tools_make_external_requests == true` **und** Baseline `2026-07-28` → **noch niemand**, siehe unten |
+
+### `FID-003` wartet, es ist nicht erledigt
+
+Gemessen am 2026-08-07 steht **keiner** der 42 Server im Tracker auf `MCP-Spec-Version: 2026-07-28` — alle 42 auf `2025-11-25`. Der dritte Ausgang kann auf dieser Baseline nicht entstehen, also trifft der Auslöser heute niemanden.
+
+Das ist derselbe Fall wie §5e in `v2.0.0`: ein Auslöser mit benanntem, aber noch nicht eingetretenem Ereignis. Er gehört hierher und **nicht** in die Erledigt-Ablage — der Unterschied zwischen «geprüft und niemand betroffen» und «nicht geprüft» ist genau der, den `SKILL.md` §2.6 eine Ebene höher meint. Wer einen Server auf `2026-07-28` migriert, prüft `FID-003` in demselben Zug mit; die Migration ist ohnehin schon ein §5e-Anlass.
+
+### Der Sweep vom 2026-08-02 hat es nicht vorweggenommen
+
+Naheliegender Einwand: Am 2026-08-02 lief ein Portfolio-Sweep gegen `DEP-001` — 28 Befunde über 24 Server, gedeckelte Abhängigkeiten 61 → 89, alle behoben. Ist damit nicht ohnehin alles frisch?
+
+Nein, und der Grund ist der Kern dieses Auslösers: Der Sweep lief gegen das **alte** Kriterium — *ein Deckel ist da*. Genau die beiden Fragen, die dieses Release ergänzt, hat er nicht gestellt. Ein Repo, das im Sweep sauber wurde, hat einen Deckel, dessen Grenze ungemessen und dessen Wirkung ungeprüft ist. Der Sweep verkleinert die Warteschlange nicht; er hat die Vorbedingung geschaffen, gegen die jetzt gemessen werden kann.
+
+### Reihenfolge
+
+Anders als bei `v2.0.0` gibt es hier keine Stufen: `DEP-001` gilt `always` und trifft alle 39 gleich. Massgeblich ist deshalb der ohnehin nächste Anlass je Server — Refactoring, Migrationswelle, geplantes Re-Audit. §5 verlangt ausdrücklich **kein** automatisches Reaudit aller Server.
+
+Wer nur einen Punkt herausgreifen will: **Modus 4b zuerst.** Ein Deckel ohne Wirkung ist im Diff von einem wirksamen nicht zu unterscheiden, und der Gegenversuch kostet einen Auflösungslauf ohne Cap.
+
+### Nicht in der Warteschlange
+
+| Server | Status | Grund |
+|---|---|---|
+| `amtsblatt-mcp`, `swiss-procurement-mcp` | Findings dokumentiert | Audit läuft; die verschärften Kriterien greifen im laufenden Verfahren, nicht rückwirkend. |
+| `i14y-mcp` | Triagiert | Noch nie auditiert — es gibt kein Ergebnis, das ungültig werden könnte. |
+
+### Herkunft der Zahlen
+
+| Zahl | Herkunft |
+|---|---|
+| 42 Server im Tracker | **gemessen** — `GROUP BY "Audit-Status", "MCP-Spec-Version"` gegen den Notion-Tracker, 2026-08-07 |
+| 39 abgeschlossene Audits | **gemessen** — dieselbe Abfrage: 39 × `Abgeschlossen`, 2 × `Findings dokumentiert`, 1 × `Triagiert` |
+| 0 Server auf `2026-07-28` | **gemessen** — dieselbe Abfrage; alle 42 auf `2025-11-25` |
+| `DEP-001` trifft alle | **abgeleitet** — `applies_when: always` im Katalog |
+| `FID-003` trifft heute niemanden | **abgeleitet** aus der gemessenen Baseline-Verteilung plus der Bedingung im Kriterium |
+| 28 Befunde / 24 Server / 61 → 89 | **übernommen** aus dem CHANGELOG-Eintrag zum Sweep vom 2026-08-02, dort gemessen |
+
+---
+
+## `v2.0.0` — 2026-08-04
+
+*Weiterhin gültig, soweit die genannten Server seither nicht reauditiert wurden.*
 
 ## Warum überhaupt
 
