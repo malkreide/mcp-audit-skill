@@ -122,10 +122,15 @@ def assert_table_matches(ids: list[str], skill: str) -> str:
     # 2) Jeder VERLINKTE Check muss existieren — und nur der.
     #
     # Bewusst nicht jede genannte ID: Der erste Lauf dieses Jobs ist genau
-    # daran falsch angeschlagen. Die Tabelle nennt ein `FID-007`, das es
-    # absichtlich nicht gibt («statt ein `FID-007` zu eröffnen»), und ein
+    # daran falsch angeschlagen. Die Tabelle nannte damals ein `FID-007`, das
+    # es absichtlich nicht gab («statt ein `FID-007` zu eröffnen»), und ein
     # Wächter, der eine korrekte Gegenrede als Fehler meldet, ist der
     # Fehlalarm aus Regel 5. Ein toter *Link* dagegen ist immer ein Befund.
+    #
+    # Das Beispiel ist inzwischen Geschichte — `FID-007` gibt es seit dem
+    # 7.8.2026 wirklich, und die Tabelle verlinkt es bei Regel 14. Die
+    # Unterscheidung bleibt trotzdem richtig, und zwar unabhängig von diesem
+    # einen Fall: Eine Erwähnung kann eine Gegenrede sein, ein Link nie.
     linked = set(LINKED.findall(section))
     gone = sorted(linked - catalogue)
     if gone:
@@ -139,8 +144,14 @@ def assert_table_matches(ids: list[str], skill: str) -> str:
     #    Check» stand. Auch hier zählt der Link und nicht die Erwähnung — und
     #    zwar in dieselbe Richtung nützlich: Gäbe es eines Tages ein echtes
     #    `FID-007`, schlägt dieser Punkt an, obwohl die ID im Text vorkommt.
-    #    Das ist richtig so, denn der Satz, der sie heute nennt («statt ein
+    #    Das ist richtig so, denn der Satz, der sie damals nannte («statt ein
     #    `FID-007` zu eröffnen»), wäre an diesem Tag falsch.
+    #
+    #    DIESER TAG WAR DER 7.8.2026, und der Punkt hat gehalten: `FID-007`
+    #    ging drüben auf, dieser Punkt schlug an, und der Satz oben war
+    #    tatsächlich falsch geworden — er nennt inzwischen keine Nummer mehr.
+    #    Die Vorhersage steht hier stehen geblieben, weil sie eingetroffen
+    #    ist und nicht, obwohl.
     unlinked = sorted(fid - linked)
     if unlinked:
         problems.append(
