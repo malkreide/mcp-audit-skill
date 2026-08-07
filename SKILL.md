@@ -5,7 +5,7 @@ description: Reproduzierbares Audit von MCP-Servern gegen einen versionierten Be
 
 # MCP Audit — Standardisiertes Audit-Vorgehen
 
-Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer sowie den Spec-Migrations-Layer, 115 Checks in zwölf Kategorien auf zwei Spec-Baselines). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
+Dieser Skill kodiert ein reproduzierbares Audit-Verfahren für MCP-Server gegen den im Anhang dokumentierten Best-Practice-Katalog (PDF-Quelle plus Schweiz-, Datentreue- und Identitäts-Layer sowie den Spec-Migrations-Layer, 116 Checks in zwölf Kategorien auf zwei Spec-Baselines). Ziel: bei 30+ Servern im Portfolio dieselbe Methodik anwenden, ohne dass der menschliche Auditor (oder Claude) bei jedem Server das PDF neu interpretiert.
 
 **Das Mantra in drei Zeilen:**
 
@@ -251,7 +251,7 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 |---|---|---|---|
 | `ARCH` | PDF Sec 2 + Anhang A + Custom + Spec 2026-07-28 — Tool-Design, Annotations, Idempotency, Retry-Politik, Repo-Struktur, Versionsquelle, Spec-Versionierung, Stateless-Konformität, Handles, Extensions | 10–22 | 22 / 22 ✅ |
 | `SDK` | PDF Sec 3 — FastMCP, TypeScript, Zod, Lifecycle | 5–7 | 6 / 6 ✅ |
-| `SEC` | PDF Sec 4 + Anhang B + Spec 2026-07-28 — Security (grösste Kategorie) | 20–28 | 27 / 27 ✅ |
+| `SEC` | PDF Sec 4 + Anhang B + Spec 2026-07-28 — Security (grösste Kategorie) | 20–28 | 28 / 28 ✅ |
 | `SCALE` | PDF Sec 5 + Spec 2026-07-28 — Transport, LB, Container, Gateway, Pflichtheader, Abkündigungsfristen | 5–11 | 10 / 10 ✅ |
 | `OBS` | PDF Sec 6 + Anhang B10 + Custom — Logging, Errors, SIEM, Tracing, Bereitschaftsmarker | 5–8 | 8 / 8 ✅ |
 | `HITL` | PDF Sec 7 + Spec 2026-07-28 — Sampling, Human-in-the-Loop, MRTR | 4–6 | 6 / 6 ✅ |
@@ -261,7 +261,7 @@ Bei Exit-1 wird Step 2 nicht gestartet. Der Output zeigt strukturiert, welche Fe
 | `IDENT` | Custom — Identität: User-Agent, `__version__`, Manifest, Doku-Version, Release-Gap, Gesundheit des Artefakts | 5–8 | 7 / 7 ✅ |
 | `DRIFT` | Custom — Upstream-Vertrag und Repo-Prosa: Endpoint-Drift, Fallback-Semantik, Testgüte, CHANGELOG gegen Code | 4–7 | 6 / 6 ✅ |
 | `DEP` | Custom — Auflösungsraum des publizierten Artefakts: Obergrenzen, Major-Wechsel | 1–3 | 1 / 1 ✅ |
-| **Total** | | **~99** | **115 / 115 ✅** |
+| **Total** | | **~99** | **116 / 116 ✅** |
 
 ### 2.2 Severity-Stufen
 
