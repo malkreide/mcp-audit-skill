@@ -1,13 +1,17 @@
 ---
 name: mcp-transport-hardening
-description: Transport-, Bind- und Stateless-Härtung für MCP-Server mit Netz-Transport, über beide Spec-Baselines (2025-11-25 und 2026-07-28). Ergänzend zu mcp-builder, wenn (1) ein Server auf eine neue SDK-Major oder auf Spec 2026-07-28 migriert wird, (2) von stdio auf streamable-http umgestellt oder ein Legacy-HTTP+SSE-Pfad abgelöst wird, (3) Host, Port oder Bind konfiguriert, durchgereicht oder in einer ASGI-Factory gelesen werden, (4) ein Server mit HTTP 421 oder JSON-RPC -32020 antwortet, nicht startet oder «nur lokal erreichbar» ist, (5) eine eingehende Host-/Origin-Allow-List entworfen oder gegen CORS und Auth-Token abgewogen wird, (6) `initialize`, `Mcp-Session-Id`, `server/discover`, `Mcp-Method`/`Mcp-Name`, MRTR-`input_required` oder OAuth-`iss`/CIMD/DCR berührt werden, (7) Transport-Tests per Mutationstest abgenommen werden oder eine Suite hängt statt zu scheitern, oder (8) ein neuer Guard oder CI-Check gemergt wird. Für reine stdio-Server entfallen die Bind- und Header-Regeln, nicht die Stateless-Regeln.
+description: Transport-, Bind-, Start- und Stateless-Härtung für MCP-Server, über beide Spec-Baselines (2025-11-25/2026-07-28). Ergänzend zu mcp-builder, wenn (1) ein Server auf eine neue SDK-Major oder auf Spec 2026-07-28 migriert wird, (2) von stdio auf streamable-http umgestellt oder ein Legacy-HTTP+SSE-Pfad abgelöst wird, (3) Host, Port oder Bind durchgereicht oder in einer ASGI-Factory gelesen werden, (4) ein Server mit HTTP 421 oder JSON-RPC -32020 antwortet, nicht startet, beim Start nichts auf stderr sagt oder «nur lokal erreichbar» ist, (5) eine eingehende Host-/Origin-Allow-List gegen CORS und Auth-Token abgewogen wird, (6) `initialize`, `Mcp-Session-Id`, `server/discover`, `Mcp-Method`/`Mcp-Name`, MRTR oder OAuth-`iss`/CIMD/DCR berührt werden, (7) Tests per Mutationstest abgenommen werden oder eine Suite hängt statt zu scheitern, oder (8) ein neuer Guard oder CI-Check gemergt wird. Der Geltungsbereich folgt der Stelle im Code, nicht dem Transport: Was vor der Transport-Weiche steht, trifft stdio genauso.
 ---
 
 # MCP Transport Hardening — kommt der Server hoch, weist er ab wen er abweisen muss, und bleibt er zustandslos?
 
 Companion zu `mcp-builder`. Dessen Best Practices decken ab, ob ein Server **korrekt gebaut** ist — Naming, Annotations, Pagination, Transport, Fehlerbehandlung. Dieser Skill deckt die Frage daneben ab: **kommt er unter dem konfigurierten Transport überhaupt hoch, weist er ab wen er abweisen muss, und hält er das auch ohne Sitzung durch?**
 
-Das ist eine eigene Fehlerklasse, weil sie ebenfalls still ist — nur anders still als bei `mcp-data-fidelity`. Dort liefert der Server eine plausible Antwort, die inhaltlich falsch ist. Hier liefert er gar keine: grüne Unit-Tests, sauberer Linter, und in Produktion startet der Prozess nicht oder beantwortet jede Anfrage unter einem echten Hostnamen mit HTTP 421. Der Transport-Pfad ist genau der Teil, den eine Testsuite über stdio nie berührt.
+Das ist eine eigene Fehlerklasse, weil sie ebenfalls still ist — nur anders still als bei `mcp-data-fidelity`. Dort liefert der Server eine plausible Antwort, die inhaltlich falsch ist. Hier liefert er gar keine: grüne Unit-Tests, sauberer Linter, und in Produktion startet der Prozess nicht oder beantwortet jede Anfrage unter einem echten Hostnamen mit HTTP 421. Der Transport-Pfad ist genau der Teil, den eine Testsuite gegen importierte Module nie berührt.
+
+**Geltungsbereich: nicht der gefahrene Transport entscheidet, sondern die Stelle im Code.** Die Frage ist nicht «fährt dieser Server HTTP?», sondern «steht die Zeile vor oder hinter der Transport-Weiche?». Alles vor der Weiche — Imports, Settings-Zuweisungen, Lifespan, Bereitschaftsmarker — läuft unter **jedem** Transport, stdio eingeschlossen. Erst hinter der Weiche wird der Transport zur Bedingung: Bind, eingehende Allow-List und Header-Prüfung setzen einen Netz-Transport voraus. Ein stdio-Server ist damit nicht ausgenommen, sondern nur enger im Umfang — und in Regel 14 ist er der Hauptfall.
+
+Diese Abgrenzung stand hier bis `2.2.0` falsch: «nicht nötig für Server, die ausschliesslich über stdio laufen». Widerlegt hat sie `zh-education-mcp` `0.2.4` — die 1.x-Settings-Zuweisung aus Regel 1(b) stand **vor** der Transport-Weiche, also war der Server unter stdio genauso tot wie unter HTTP. Wer den Skill nach seiner eigenen Abgrenzung übersprungen hätte, weil der Server stdio fährt, hätte den Fehler behalten. Der Fall steht ausgeschrieben unter «Woher diese Regeln stammen».
 
 Eine Schicht höher fallen die beiden Klassen allerdings zusammen: Wer das 421 nur daran misst, dass keine Datensätze zurückkommen, reicht es als Leermenge weiter — und dann ist es doch wieder eine plausible, inhaltlich falsche Antwort ([`mcp-data-fidelity`](https://github.com/malkreide/mcp-data-fidelity-skill) Regel 3, `FID-003`). Verlass dich also nicht darauf, dass ein 421 auffällt; sichtbar wird es nur dort, wo der Transport-Pfad selbst geprüft wird.
 
@@ -15,17 +19,22 @@ Eine Schicht höher fallen die beiden Klassen allerdings zusammen: Wer das 421 n
 
 **Die zweite Leitfrage, seit Spec `2026-07-28`:** *Wenn zwei Aufrufer nichts mehr teilen — keinen Handshake, keine Sitzung, keine Verbindung —, sieht der eine dann noch etwas vom anderen, und wird ein Test rot, wenn er es tut?* Ist die Antwort ja, greift eine der Regeln 8–12.
 
-## Wie die dreizehn Regeln geordnet sind
+**Die dritte Leitfrage, und die einzige, die keinen Transport voraussetzt:** *Wenn ich das veröffentlichte Artefakt starte und nichts frage — woran sehe ich, dass es bedient?* Ist die Antwort «am Ausbleiben eines Fehlers», greift Regel 14.
+
+## Wie die vierzehn Regeln geordnet sind
 
 | Block | Regeln | Frage |
 |---|---|---|
 | Bind und Verdrahtung | 1–4 | Kommt er hoch, und weist er richtig ab? |
 | Der Beweis | 5–7, 13 | Woran erkennt man, dass es trägt, und wen deckt der Beweis ab? Gilt auch für 8–12 |
 | Die Stateless-Welt `2026-07-28` | 8–12 | Hält er ohne Sitzung, und spricht er den neuen Umschlag? |
+| Der Bedienzustand | 14 | Sagt er an, dass er hört — oder muss man es annehmen? |
 
-Der Beweisblock steht in der Mitte und nicht am Ende, weil er älter ist als der dritte Block und weil dieses Repo, sein eigenes CHANGELOG und vier Nachbar-Repos «Regel 6» und «Regeln 5–7» namentlich zitieren. Eine Umnummerierung würde die eigene Historie rückwirkend falsch machen — neue Regeln werden deshalb angehängt, nicht eingeschoben. Regel 13 ist der Grund, warum diese Zeile nicht zusammenhängend ist: Sie gehört zum Beweis, kam aber nach 8–12 dazu, und eine ordentliche Nummer war es nicht wert, dieselbe Historie zu brechen.
+Der Beweisblock steht in der Mitte und nicht am Ende, weil er älter ist als der dritte Block und weil dieses Repo, sein eigenes CHANGELOG und vier Nachbar-Repos «Regel 6» und «Regeln 5–7» namentlich zitieren. Eine Umnummerierung würde die eigene Historie rückwirkend falsch machen — neue Regeln werden deshalb angehängt, nicht eingeschoben. Regel 13 ist der Grund, warum diese Zeile nicht zusammenhängend ist: Sie gehört zum Beweis, kam aber nach 8–12 dazu, und eine ordentliche Nummer war es nicht wert, dieselbe Historie zu brechen. Regel 14 gehört der Frage nach, mit der Block 1 anfängt — «kommt er hoch?» —, und steht aus demselben Grund als Letzte.
 
 Der zweite Teil bleibt der teurere: Transportregeln kann man nachschlagen, die Beweisführung nicht. Genau deshalb bekommt jede der Regeln 8–12 ihren Nachweis in der Form der Regeln 5–7 — Mutation benennen, anwenden, protokollieren.
+
+**Welche Regeln stdio betreffen.** Nach der Abgrenzung oben: Regel 1 vollständig (die brechenden Zeilen stehen vor der Weiche), die Regeln 5–7 und 13 vollständig (Beweisführung hat keinen Transport), Regel 14 vollständig — und aus dem Stateless-Block alles, was prozesslokalen Zustand betrifft. Nur die Regeln 2–4 und 9 verlangen einen Netz-Transport. Ein stdio-Server, der diesen Skill überspringt, überspringt also die Mehrheit.
 
 **Zwei Baselines gleichzeitig.** Die Regeln 1–7 gelten unverändert auf beiden Ständen: Bind, Verdrahtung, Host-Allow-List und Beweisführung hängen am Transport, nicht am Lebenszyklus. Die Regeln 8–12 gelten auf `2026-07-28`. Und die beiden Stände stehen nicht nacheinander, sondern nebeneinander — im selben Prozess. Am Portfolio nachgemessen und in `zurich-opendata-mcp`s `pyproject.toml` festgehalten: Der Legacy-`initialize`-Handshake cappt weiter bei `2025-11-25` (ein Client, der `2026-07-28` verlangt, bekommt `2025-11-25` zurück), während derselbe Server daneben einen per-request-Umschlag bedient, der `2026-07-28` erreicht. Ein Stateless-Fehler ist damit für jeden Client unsichtbar, der noch auf der alten Ära spricht.
 
@@ -47,7 +56,9 @@ mcp.run(transport=settings.transport)
 mcp.run(transport=settings.transport, host=settings.host, port=settings.port)
 ```
 
-Nachgemessen statt angenommen: die **Zuweisung** wirft `ValueError`, ein **Lesezugriff** wirft `AttributeError`. Ein Server mit der alten Zeile startet unter HTTP **gar nicht**.
+Nachgemessen statt angenommen: die **Zuweisung** wirft `ValueError`, ein **Lesezugriff** wirft `AttributeError`. Ein Server mit der alten Zeile startet **gar nicht** — und zwar unter **jedem** Transport, nicht nur unter HTTP.
+
+Das ist der Punkt, an dem die frühere Abgrenzung dieses Skills gescheitert ist. Die Zuweisung steht in der Zeile **vor** `mcp.run(...)`, also vor der Transport-Weiche: Sie wirft, bevor irgendetwas entschieden hat, ob dieser Prozess stdio oder HTTP fährt. `zh-education-mcp` `0.2.4`, gemessen am installierten Artefakt aus PyPI in einem leeren Venv, kam mit `transport="stdio"` genau so weit — `ValueError: "Settings" object has no field "host"`, dann still beendet. Die veröffentlichte Fassung war monatelang unbenutzbar, und es fiel niemandem auf, weil nichts das installierte Artefakt startete.
 
 **(c) Tool-Annotations werden snake_case gelesen.**
 
@@ -81,7 +92,20 @@ dependencies = ["mcp[cli]>=2.0.0,<3"]      # pyproject.toml, allein committet
 
 Beide Richtungen sind nötig, und sie widersprechen sich nicht: Der Lock verdeckt die schlechte Auflösung von morgen (deshalb prüft man frisch), und er verdeckt den guten Bound von heute (deshalb muss man ihn mitführen).
 
-**Nachweis:** Die 1.x-Settings-Zuweisung zurückbauen — ein Test muss mit `ValueError` scheitern, nicht das Deployment. Für (c): beide Schreibweisen serialisieren und die JSON vergleichen; sind sie identisch, ist es ein reines Lesethema und der Client bleibt aussen vor. Für den Cap: in einer leeren Umgebung installieren und den Import ausführen — eine Range, die im Lockfile funktioniert, sagt nichts über die Auflösung von morgen. Und für den Lock nicht die Deklaration lesen, sondern die Installation messen: den Installationspfad fahren, den die CI fährt, dann `importlib.metadata.version("mcp")` ausgeben. Steht dort die alte Version, wurde der Lock nicht mitgeführt — und der Bound ist Dekoration.
+**Nachweis:** Die 1.x-Settings-Zuweisung zurückbauen — ein Test muss mit `ValueError` scheitern, nicht das Deployment. Das genügt aber nicht: Ein Test, der die Zuweisung importiert und auslöst, prüft den Checkout. Was Nutzende bekommen, ist das Artefakt. Also zusätzlich **das Konsolen-Skript starten**, in einem leeren Venv gegen die installierte Distribution, unter **stdio** und mit **geschlossenem stdin**, sechs Sekunden lang:
+
+```bash
+# stdin zu = keine Anfrage möglich = was auf stderr steht, ist Selbstauskunft.
+# stdout getrennt halten, dort läuft das Protokoll.
+timeout 6 uv run --no-project --with 'zh-education-mcp==0.2.4' \
+  zh-education-mcp </dev/null >/tmp/out.txt 2>/tmp/err.txt
+echo "exit=$?"        # 124 = Timeout = der Server lief noch. DAS ist der gute Fall.
+cat /tmp/err.txt
+```
+
+`exit=124` heisst: er stand nach sechs Sekunden noch. Jeder andere Exit-Code heisst, dass er sich beendet hat — und genau das ist der Befund, der `zh-education-mcp` `0.2.4` monatelang niemandem auffiel. Die Messung kostet sechs Sekunden und braucht kein HTTP, keinen Port und keinen Client; sie ist die Messung, die diesen Fall gefunden hat. Ob im gleichen Fenster auch eine *Marker*-Zeile erscheint, ist Regel 14 — hier zählt nur, ob der Prozess steht. Und die negative Kontrolle gehört dazu: einmal mit einem ungültigen Argument starten und sehen, dass auf stderr überhaupt etwas ankommt, sonst misst der Aufbau nichts.
+
+Für (c): beide Schreibweisen serialisieren und die JSON vergleichen; sind sie identisch, ist es ein reines Lesethema und der Client bleibt aussen vor. Für den Cap: in einer leeren Umgebung installieren und den Import ausführen — eine Range, die im Lockfile funktioniert, sagt nichts über die Auflösung von morgen. Und für den Lock nicht die Deklaration lesen, sondern die Installation messen: den Installationspfad fahren, den die CI fährt, dann `importlib.metadata.version("mcp")` ausgeben. Steht dort die alte Version, wurde der Lock nicht mitgeführt — und der Bound ist Dekoration.
 
 ## Regel 2 — `host` ist die Saat der Allow-List, kein kosmetischer Parameter
 
@@ -506,15 +530,67 @@ Der Rest ist Handarbeit und steht in keinem YAML: **nach dem Merge einmal gegen 
 
 Für die Kontrollen dieses Skills ist das der Normalfall, nicht der Sonderfall: Der portgenaue Allow-List-Test entsteht in dem Repo, das gerade den 421 hatte; der Zwei-Aufrufer-Test aus Regel 8 in dem, das gerade migriert wird. Die übrige Flotte läuft sie später — oder nie. Es ist dieselbe Form wie beim verschachtelten Server unten in «Woher diese Regeln stammen»: Die Abdeckung hat eine Grenze, die niemand absichtlich gezogen hat, und sie fällt niemandem auf, weil ausserhalb davon nichts rot wird.
 
-**Die Grenze ist nicht nur zeitlich, sondern auch räumlich.** Ein Guard liest Dateien; alles, was **nicht** im Repo liegt, ist damit ausserhalb — GitHub-Description und -Topics, die Beschreibung im Registry-Eintrag, das Deployment-Manifest nebenan, der Text im Marketplace. Diese Stellen tragen oft genau die Behauptung, die im Repo geprüft wird, und keine Prüfung erreicht sie. Nachgemessen: Als dieses Repo von sieben auf zwölf Regeln ging, blieb seine GitHub-Description auf «twelve», während `SKILL.md`, beide READMEs und `reference/patterns.py` von drei Guards auf dreizehn gehalten wurden — der Zählguard war korrekt und deckte den Ort nicht ab, an dem die Zahl zuerst gelesen wird.
+**Die Grenze ist nicht nur zeitlich, sondern auch räumlich.** Ein Guard liest Dateien; alles, was **nicht** im Repo liegt, ist damit ausserhalb — GitHub-Description und -Topics, die Beschreibung im Registry-Eintrag, das Deployment-Manifest nebenan, der Text im Marketplace. Diese Stellen tragen oft genau die Behauptung, die im Repo geprüft wird, und keine Prüfung erreicht sie. Nachgemessen: Als dieses Repo von sieben auf zwölf Regeln ging, blieb seine GitHub-Description auf «twelve», während `SKILL.md`, beide READMEs und `reference/patterns.py` von drei Guards auf dreizehn gehalten wurden — der Zählguard war korrekt und deckte den Ort nicht ab, an dem die Zahl zuerst gelesen wird. Beim Schritt von dreizehn auf vierzehn hat derselbe Ort ein zweites Mal ausgeschlagen, diesmal absichtsvoll: Der Guard existiert jetzt und wird rot — die Description lässt sich aber aus dem Repo heraus nicht schreiben, weil kein Commit sie erreicht. Das ist die Eigenschaft, nicht der Mangel: Ein Guard auf etwas Ausserhalbliegendes kann den Befund melden und nicht beheben, und genau deshalb muss er ihn melden.
 
 Solche Stellen lassen sich prüfen, sie brauchen nur einen Aufruf statt eines Dateilesers. Zwei Eigenschaften sind dabei tragend: Der Vergleich zieht seinen Sollwert aus derselben Quelle wie die übrigen Guards, statt ihn ein zweites Mal zu deklarieren — sonst hat man zwei Wahrheiten, die auseinanderlaufen. Und ein fehlgeschlagener Abruf ist ein **Fehler**, kein Skip: Ein Check, der bei einem Netzproblem grün durchläuft, meldet «bestanden», wo «nicht gelaufen» richtig wäre.
 
 **Nachweis:** Regel 6 auf den Guard selbst angewandt, aber auf `main` statt im PR: die Verletzung, gegen die er geschrieben wurde, dort herstellen und den Lauf ansehen. Wird er nicht rot, war jeder bisherige grüne Lauf ein «nicht gelaufen» und kein «bestanden» — den Unterschied misst [`OPS-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-005.md). Dazu die Zweige benennen, die den Guard nicht kennen: `git branch -r --no-contains <merge-sha>` zählt sie auf. Diese Liste ist der Umfang der Nacharbeit; solange sie nicht leer ist, ist der Guard eingeführt, aber nicht durchgesetzt. Für die räumliche Hälfte: die Behauptung, die der Guard prüft, einmal ausserhalb des Repos suchen — Description, Topics, Registry-Eintrag — und nachsehen, ob sie dort dasselbe sagt. Was dort steht und nicht geprüft wird, ist eine Kopie, die niemand pflegt.
 
+## Regel 14 — Der Server sagt an, dass er hört
+
+Jeder Server hat einen Moment, in dem sich alles entscheidet: Konfiguration gelesen, Clients gebaut, Tools registriert — und ab jetzt wartet er auf Anfragen. Vorher ist er ein Prozess, danach ein Server. Von aussen sind beide Zustände dasselbe: eine PID, die nichts tut. «Läuft» ist damit keine Beobachtung, sondern eine Annahme.
+
+Auf stdio gibt es dafür genau einen Kanal: **stderr**. stdout gehört dem Protokoll und ist für Diagnose gesperrt, ein Exit-Code kommt erst, wenn es zu spät ist, und ein Port existiert nicht. Diese Regel ist deshalb die eine, für die ein stdio-Server nicht der Randfall ist, sondern der Hauptfall.
+
+**Erhebungsstand** (2026-08-03, 42 veröffentlichte Server): 15 sagen beim Start nichts Eigenes — 13 gar nichts, 2 nur den Banner, den das SDK selbst schreibt. Diese 15 sind von aussen nicht unterscheidbar von einem Server, der in der Initialisierung gestorben ist. Der Fall aus Regel 1(b) ist genau das: `zh-education-mcp` `0.2.4` hätte auch im Normalfall geschwiegen, es gab also keinen Unterschied zu bemerken.
+
+```python
+# ✗ vier Fehler — drei in der Log-Zeile, der vierte in ihrer Position
+@asynccontextmanager
+async def lifespan(_):
+    log.info(f"[{datetime.now().isoformat()}] Lifespan gestartet — "
+             f"HTTP-Client bereit, {len(tools)} Tools auf Port {port}")
+    client = await build_http_client()      # was scheitern kann, steht NACH dem Marker
+    yield
+
+# ✓ invarianter Marker, eigenes Feld, und alles Fehlbare davor
+READY_MARKER = "server ready"               # exakter Vergleichswert, kein Fliesstext
+
+@asynccontextmanager
+async def lifespan(_):
+    client = await build_http_client()      # alles, was scheitern kann,
+    tools = register_tools()                # liegt VOR dem Marker
+    log.info(READY_MARKER, tools=len(tools), transport=settings.transport)
+    try:
+        yield
+    finally:
+        await client.aclose()
+```
+
+Vier Eigenschaften machen aus einer Log-Zeile einen Marker, und jede stammt aus einer Messung:
+
+- **Strukturiertes Log: das `event`/`msg`-Feld wird EXAKT verglichen.** Kein Präfix, kein `startswith`, kein «enthält». Gemessener Fehlschlag: `openlex-mcp` war mit dem Marker «Lifespan gestartet» dokumentiert, das Feld lautete tatsächlich `Lifespan gestartet — geteilter HTTP-Client bereit`. Ein Präfix-Vergleich hätte gepasst und wäre in dem Moment gebrochen, in dem jemand den erklärenden Zusatz umformuliert — was niemand als Schnittstellenänderung wahrnimmt, weil es nach Log-Text aussieht. Erklärendes gehört in **eigene Felder**, nicht in das Feld, das den Marker trägt.
+- **Klartext: eine stabile Teilzeichenkette.** Unstrukturierter Text trägt Logger-Namen, Level und Formatierung mit, es gibt kein Feld zum exakten Vergleich. Dann ist die Zusage ein Stück Text, das der Server bewusst als Marker führt und nicht bei jeder Umformulierung mitwandert. Das ist schwächer als die erste Zusage, und das ist der Preis für unstrukturierte Logs — kein Grund, die erste aufzuweichen.
+- **Nie ein Zeitstempel**, und nichts anderes Laufvariables: kein PID, kein Port, keine Dauer, keine konfigurationsabhängige Anzahl. Ein Marker mit Zeitstempel passt beim ersten Lauf und nie wieder. Zeitstempel im Log sind richtig und bleiben — sie dürfen nur nicht Teil dessen sein, worauf verglichen wird.
+- **Der FastMCP-Banner zählt nicht.** Er ist die Ausgabe des SDK, nicht die des Servers: Er erscheint, sobald das Framework-Objekt läuft, also *bevor* der Lifespan Clients gebaut und Konfiguration validiert hat — bei `zh-education-mcp` wäre er erschienen und der Server trotzdem tot gewesen. Und sein Wortlaut gehört jemand anderem und verschwindet beim nächsten SDK-Update, ohne dass ein Release des Servers dazwischenliegt. Dieselbe Mechanik wie beim Versions-Cap in Regel 1: Was jemand anderem gehört, ändert sich ohne eigenen Release.
+
+Dazu, weil ein Marker eine Schnittstelle ist: Er steht **im README**, in genau der Schreibweise, auf die verglichen wird —
+
+```markdown
+Bereitschaftsmarker (stderr, JSON-Feld `event`): `server ready`
+```
+
+Ein Marker, den nur der Quelltext kennt, formuliert das nächste Refactoring um, und das Monitoring bricht, ohne dass jemand eine Schnittstelle geändert zu haben glaubt — dieselbe Doku-Pflicht wie bei `MCP_HOST` in Regel 2 und den Header-Werten in Regel 9.
+
+**Warum das in diesen Skill gehört und nicht nur in den Katalog.** [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor)s `scripts/transport_boot_probe.py` bootet den Server bereits über **seinen eigenen** Entrypoint und spricht MCP mit ihm. Es misst Bereitschaft aber, indem es **fragt** — und ohne Marker kann es «bedient» nicht von «noch am Hochfahren» unterscheiden: Ein langsamer Start und ein stiller Tod ergeben beide einen Timeout. Genau dort, wo seine Meldung diagnostisch werden müsste («the target closed stdin before initialize could be written; stderr: …»), ist der stderr-Anhang leer. Das ist dasselbe Problem, das die Smoke-Stufe vor ihm hatte, eine Ebene weiter: Ein Signal, das nur über eine Anfrage zu bekommen ist, kann den Zustand vor der ersten Anfrage nicht benennen.
+
+**Nachweis:** Das Konsolen-Skript starten wie in Regel 1(b) — leeres Venv, installierte Distribution, stdio, stdin zu, sechs Sekunden — und stderr ansehen. `exit=124` **und** eine Marker-Zeile ist bestanden; `exit=124` mit leerem stderr ist der Fall der 13; ein anderer Exit-Code ist der Fall aus Regel 1(b) und unabhängig vom Marker ein Befund; nur der SDK-Banner ist der Fall der 2 und nicht bestanden. Dann Regel 6 darauf: den Marker-Wortlaut im `event`-Feld um einen erklärenden Zusatz erweitern — der Test muss rot werden, und wird er es nicht, vergleicht er auf Präfix statt exakt. Und den `log.info(READY_MARKER, …)`-Aufruf **vor** den Aufbau der Clients verschieben: Bleibt alles grün, prüft der Test den Eintritt in den Lifespan und nicht den Bedienzustand. Nach Regel 5 gehört dazu die negative Kontrolle, und sie gehört in die Evidenz: einmal mit einem ungültigen Argument starten, wo auf stderr etwas erscheinen **muss**. Bleibt auch das leer, misst der Aufbau nichts, und «kein Marker» wäre kein Ergebnis, sondern ein nicht gelaufener Check.
+
 ---
 
-## Checkliste vor dem Release eines netzgebundenen Servers
+## Checkliste vor dem Release eines Servers
+
+Netzgebunden sind nur die Blöcke, die es sagen. Regel 1, Regel 14 und der Beweisblock gelten unter jedem Transport — sie hängen an Stellen im Code, die vor der Transport-Weiche liegen.
 
 **Der Server (Regeln 1–4)**
 
@@ -530,6 +606,18 @@ Solche Stellen lassen sich prüfen, sie brauchen nur einen Aufruf statt eines Da
 - [ ] Jeder App-bauende Pfad (eigener Builder, SDK-`run()`, SSE) bekommt dieselbe Transport-Security
 - [ ] Allow-List portgenau, Loopback drin, CORS-Origins aufgenommen, kein `*`
 - [ ] Fail-open auf Nicht-Loopback ist sichtbar — Startwarnung im Log
+- [ ] Das Konsolen-Skript im leeren Venv gegen die installierte Distribution gestartet, unter stdio, stdin zu, sechs Sekunden: `exit=124` gesehen, nicht angenommen (Regel 1b)
+
+**Der Bedienzustand (Regel 14) — gilt auch für reine stdio-Server**
+
+- [ ] Beim Erreichen des Bedienzustands wird eine Zeile auf **stderr** geschrieben, nicht auf stdout
+- [ ] Bei strukturiertem Log ist das `event`/`msg`-Feld **exakt** der Marker; Erklärendes steht in eigenen Feldern
+- [ ] Bei Klartext-Log ist eine stabile Teilzeichenkette als Marker benannt
+- [ ] Der Marker enthält keinen Zeitstempel, keinen Port, keine PID, keine konfigurationsabhängige Anzahl
+- [ ] Der Marker stammt aus dem Code des Servers — der SDK-Banner zählt nicht
+- [ ] Alles, was scheitern kann (Konfiguration, Clients, Tool-Registrierung), liegt **vor** dem Marker
+- [ ] Der Marker steht im README, in der Schreibweise, auf die verglichen wird
+- [ ] Negative Kontrolle gelaufen: ein erzwungener Fehlstart erzeugt Ausgabe auf stderr — sonst misst der Aufbau nichts
 
 **Die Stateless-Welt (Regeln 8–12)**
 
@@ -565,6 +653,7 @@ Solche Stellen lassen sich prüfen, sie brauchen nur einen Aufruf statt eines Da
 - [ ] Jeder neue Guard läuft auch auf `main`, nicht nur auf Pull Requests — und ist dort nach dem Merge einmal angesehen worden (Regel 13)
 - [ ] Zweige, die vor dem Merge des Guards geschnitten wurden, auf `main` nachgezogen (`git branch -r --no-contains <merge-sha>`) (Regel 13)
 - [ ] Behauptungen ausserhalb des Repos — GitHub-Description, Topics, Registry-Eintrag — gegen dieselbe Quelle geprüft wie im Repo; fehlgeschlagener Abruf ist ein Fehler, kein Skip (Regel 13)
+- [ ] Der Marker-Vergleich ist per Mutation belegt: erklärender Zusatz ins `event`-Feld → Test rot, und Marker vor den Client-Aufbau verschoben → Test rot (Regeln 6, 14)
 
 ## Woher diese Regeln stammen
 
@@ -579,7 +668,7 @@ Solche Stellen lassen sich prüfen, sie brauchen nur einen Aufruf statt eines Da
 Sechs Dinge daran sind übertragbar:
 
 1. **Nur einer der drei war ein Bug.** Die anderen zwei waren eine fehlende Kontrolle — für das gedachte Deployment vertretbar begründet, aber wer den Server anders betreibt, hatte keinen Weg, sich einzuklinken. Fehlende Konfigurierbarkeit fällt in keinem Test auf, weil nichts falsch ist.
-2. **Grüne Tests und sauberer Linter, und der Prozess startet nicht.** Tool-Tests laufen über stdio und berühren den Transport-Pfad nie. Der Fehler wartet auf das erste HTTP-Deployment.
+2. **Grüne Tests und sauberer Linter, und der Prozess startet nicht.** Tool-Tests importieren Module und berühren den Startpfad nie. Bis `2.2.0` stand hier «der Fehler wartet auf das erste HTTP-Deployment» — das ist falsch, siehe `zh-education-mcp` unten: Er wartet auf den ersten Start, egal unter welchem Transport.
 3. **Der letzte Server auf der alten Major war der, den keine Liste kannte.** `openparldata-mcp` liegt **verschachtelt** in einem anderen Repo und hat eine eigene `pyproject.toml`. Damit ist er durch jede Aufzählung gefallen, die Top-Level-Repos listet — und die Abhängigkeits-Constraint des Elternprojekts hat ihn nie erfasst. Ein Inventar, das Repos zählt statt Deployment-Einheiten, übersieht genau die Fälle, die am längsten unmigriert bleiben.
 4. **Der Mutationstest hat in zwei von drei Repos die Tests korrigiert, nicht den Code** — daraus Regel 6. Eine Kontrolle, deren Entfernung nichts rot macht, ist unbewiesen.
 5. **Ein Test, der hängt statt zu scheitern, ist schlimmer als keiner** — daraus Regel 7. Dass er *hängt* und nicht *scheitert*, ist der Regelfall: Ohne Kontrolle wird die verbotene Anfrage zugelassen, und zugelassen heisst bei einem Stream warten.
@@ -595,6 +684,20 @@ Was am Portfolio dazu **gemessen** ist und nicht angenommen: Der Legacy-`initial
 - **Regel 6, der Diff-Schritt.** Eine Ersetzung lief ins Leere, weil das gesuchte Literal im umbrochenen Text über eine Zeilengrenze fiel. Die Datei blieb unverändert, die Suite grün — und das las sich als überlebender Mutant.
 - **Regel 1, die Lock-Hälfte.** Der Auslöser des SDK-Major-Sprungs war ein unbeschränkter Resolve. Die Bounds danach in `pyproject.toml` zu setzen genügt nicht: Ohne neu aufgelösten Lock installiert das Deployment weiter, was vorher galt — was zu diesem Zeitpunkt auf einer `main` des Portfolios genau so lag.
 - **Regel 7, der Fall (d).** Eine `autouse`-Fixture ersetzte `asyncio.sleep` im Modul `asyncio` selbst und nahm damit jedem Test im Prozess die Übergabe an den Event-Loop. Das ist die Spiegelung der drei Punkte darüber: Nicht die Reichweite war zu klein, sondern zu gross. Rot wird trotzdem nichts — der entschärfte Test hat keinen Gegenstand mehr, an dem er scheitern könnte. Hier ging er rot, weil er die Verschränkung direkt behauptete; das ist Glück und keine Eigenschaft der Fixture.
+
+**Regel 14 und die Korrektur des Geltungsbereichs stammen aus `zh-education-mcp` `0.2.4` (2026-08).** Der Server trug die 1.x-Settings-Zuweisung aus Regel 1(b) noch, gemessen am installierten Artefakt aus PyPI in einem leeren Venv:
+
+```
+ValueError: "Settings" object has no field "host"
+```
+
+Drei Dinge sind daran übertragbar, und das zweite ist die Pointe:
+
+1. **Die veröffentlichte Fassung war monatelang unbenutzbar, und es fiel niemandem auf** — weil nichts das installierte Artefakt startete. Getestet wurde der Checkout; ausgeliefert wurde die Distribution. Das ist die Achse, die `IDENT-007` im Katalog führt.
+2. **Der Fehler war transportunabhängig, und die Abgrenzung dieses Skills behauptete das Gegenteil.** Die Zuweisung stand **vor** der Transport-Weiche. Der Server war unter stdio genauso tot wie unter HTTP — die Description sagte bis `2.2.0` «nicht nötig für Server, die ausschliesslich über stdio laufen», und wer dem gefolgt wäre, hätte den Fehler behalten. Die Abgrenzung war nicht ungenau, sie war widerlegt: Sie hat den Fall ausgeschlossen, der eintrat. Deshalb steht der Geltungsbereich jetzt an der Stelle im Code und nicht am Transport.
+3. **Er wäre auch im Normalfall stumm gestartet** — daraus Regel 14. Es gab keinen Unterschied zu bemerken: Ein Server, der beim Start nichts sagt, sieht im Erfolgsfall genauso aus wie im Fehlerfall. Die Erhebung dazu (2026-08-03, 42 veröffentlichte Server) zählt 15, für die das gilt — 13 ohne jede Ausgabe, 2 nur mit dem SDK-Banner.
+
+Die Messung, die den Fall gefunden hat, kostet nichts und steht jetzt im Nachweis von Regel 1(b): das Konsolen-Skript unter stdio starten, stdin schliessen, sechs Sekunden warten, Exit-Code ansehen.
 
 Regel 13 hat sich beim Schreiben dieses Abschnitts selbst bestätigt: Der Zweig, auf dem sie entstand, war vor dem Merge von `2.0.0` geschnitten. Sieben Regeln wurden zwölf, während er offen lag — und die neue Regel trug bis zum Rebase die Nummer 8, die inzwischen vergeben war.
 
@@ -626,6 +729,7 @@ Die drei Repos berühren dieselben Gegenstände und stellen verschiedene Fragen.
 | Legacy-SSE (Regel 10) | Erkennungsrezept über drei Orte, Migrationspfad, Frist | `SCALE-009`, `SCALE-010` | `spec_probe.py`: Status `LEGACY_TRANSPORT` am Draht |
 | MRTR (Regel 11) | Idempotenz über Retries und der Hänger, den es neu erzeugt | `HITL-006` | — |
 | Auth (Regel 12) | Die Auslassungsfalle und der begründete Negativbefund | `SEC-025`, `SEC-026` | — |
+| Startmarker (Regel 14) | Wo im Lifespan der Marker stehen muss und woran der Vergleich bricht | `OBS-008`: existiert die Marker-Zeile, exakt verglichen und dokumentiert | `transport_boot_probe.py` startet über den eigenen Entrypoint — und braucht den Marker, um «bedient» von «noch am Hochfahren» zu trennen |
 
 Faustregel: **Hier steht, wie man es verdrahtet und woran man sieht, dass es trägt. Der Katalog fragt, ob es da ist. Der Auditor fragt, ob es heute noch da ist.** Wer eine Zeile in zwei Repos schreibt, hat zwei Stellen, die auseinanderlaufen können.
 
@@ -635,7 +739,9 @@ Faustregel: **Hier steht, wie man es verdrahtet und woran man sieht, dass es tr�
 
 Stand des Katalogs: [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) v2.2.0, 116 Checks in zwölf Kategorien auf **zwei Spec-Baselines**. Die Zuordnung ist durch Lesen der Check-Dateien belegt, nicht aus den Titeln geschlossen; die Lücken sind benannt, statt sie durch eine ungefähre Zuordnung zu verdecken:
 
-Beim Nachziehen von v2.0.0 auf v2.2.0 ist die Tabelle **erneut gegen die Check-Dateien gelesen** worden, statt nur die Zahl hochzuzählen — sonst behauptete die Zeile darüber eine Prüfung, die nicht stattgefunden hat. Ergebnis: Alle hier genannten Checks existieren unverändert, und von den vier seit v2.0.0 hinzugekommenen trifft keiner eine dieser Regeln — `OBS-008` (Bereitschaftsmarker auf stderr), `ARCH-022` (Versionsquelle), `FID-006` (Antwortstruktur) und `SEC-028` (Fehler-Taxonomie des Egress-Guards) liegen sämtlich neben Bind, Verdrahtung, Beweis und Stateless. Nur die Zeile zu Regel 4 hat dazugelernt: Die ausgehende Gegenrichtung hat jetzt zwei Checks statt einem.
+Beim Nachziehen von v2.0.0 auf v2.2.0 ist die Tabelle **erneut gegen die Check-Dateien gelesen** worden, statt nur die Zahl hochzuzählen — sonst behauptete die Zeile darüber eine Prüfung, die nicht stattgefunden hat. Ergebnis: Alle hier genannten Checks existieren unverändert, und von den vier seit v2.0.0 hinzugekommenen liegen drei neben Bind, Verdrahtung, Beweis und Stateless — `ARCH-022` (Versionsquelle), `FID-006` (Antwortstruktur) und `SEC-028` (Fehler-Taxonomie des Egress-Guards). Die Zeile zu Regel 4 hat dabei dazugelernt: Die ausgehende Gegenrichtung hat jetzt zwei Checks statt einem.
+
+**Ein Urteil aus diesem Durchgang ist zurückgenommen.** `OBS-008` (Bereitschaftsmarker auf stderr) stand damals in derselben Liste — «liegt neben Bind, Verdrahtung, Beweis und Stateless». Das war korrekt für dreizehn Regeln und ist mit Regel 14 überholt: `OBS-008` ist jetzt der Check zu dieser Regel, und die Zuordnung trägt seine Nummer, statt hier eine zweite Nummerierung zu erfinden. Der Fehler war nicht die Lesung, sondern dass ein «trifft keine Regel» so lange gilt wie der Regelsatz — und der bewegt sich in diesem Repo, nicht im Katalog. Eine Zuordnung altert also aus zwei Richtungen, und die Zeile über der Tabelle nannte bisher nur die eine.
 
 | Regel | Check |
 |---|---|
@@ -652,7 +758,8 @@ Beim Nachziehen von v2.0.0 auf v2.2.0 ist die Tabelle **erneut gegen die Check-D
 | 11 — MRTR | [`HITL-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/HITL-006.md) — «MRTR statt serverinitiierter Requests: `input_required`, Retry, Idempotenz» |
 | 12 — Auth-Härten | [`SEC-025`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-025.md) (RFC-9207-`iss`, greift ab `auth_model == "OAuth-Proxy"`), [`SEC-026`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/SEC-026.md) (CIMD statt DCR, greift ab `auth_model != "none"`) |
 | 13 — der Guard und die Zweige vor ihm | **teilweise.** Wieder [`OPS-005`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-005.md), und diesmal näher: Er führt ausdrücklich den Guard, der nie gegen `main` gelaufen ist — «167 Workflow-Runs in der Repo-Historie, kein einziger ein Test». Das ist die eine Hälfte dieser Regel. Die andere steht nicht darin: der Zweig, der vor dem Merge geschnitten wurde und den Guard deshalb nie ausführt, obwohl er auf `main` seit Wochen grün läuft |
+| 14 — der Server sagt an, dass er hört | [`OBS-008`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OBS-008.md) — «Der Server sagt an, dass er bedient — eine stabile Zeile auf stderr». Deckungsgleich, bis auf die Richtung: Der Check fragt, ob der Marker existiert, richtig sitzt und dokumentiert ist; hier steht, wie man ihn setzt und woran der Vergleich bricht. Dieselbe Erhebung, dieselben drei Marker-Regeln, derselbe `openlex-mcp`-Fall. Der Startbefund daneben — startet das publizierte Artefakt überhaupt? — ist [`IDENT-007`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/IDENT-007.md) und gehört zum Nachweis von Regel 1(b) |
 
-Wer nach den Regeln 1, 3, 4 und 8–12 baut, besteht die dort genannten Checks. Für die Regeln 2 und 6 gilt das nicht: Sie beschreiben Fehler, die dieser Katalog derzeit nicht sieht. Bei den Regeln 5, 7 und 13 liegt je ein Check daneben oder deckt eine Hälfte — `DRIFT-003` fängt bei Regel 5 die Klasse, aber nicht den Transportfall, und `OPS-005` bei Regel 13 den Guard, der nie gegen `main` lief, aber nicht den Zweig, der vor ihm abzweigte. Ein bestandenes Audit ist dort kein Beleg, dass der Nachweis trägt.
+Wer nach den Regeln 1, 3, 4, 8–12 und 14 baut, besteht die dort genannten Checks. Für die Regeln 2 und 6 gilt das nicht: Sie beschreiben Fehler, die dieser Katalog derzeit nicht sieht. Bei den Regeln 5, 7 und 13 liegt je ein Check daneben oder deckt eine Hälfte — `DRIFT-003` fängt bei Regel 5 die Klasse, aber nicht den Transportfall, und `OPS-005` bei Regel 13 den Guard, der nie gegen `main` lief, aber nicht den Zweig, der vor ihm abzweigte. Ein bestandenes Audit ist dort kein Beleg, dass der Nachweis trägt.
 
 **Fünf Checks messen einen Gegenstand, den `2026-07-28` entfernt hat**, und sind für einen Server auf der neuen Baseline nicht mehr anwendbar: `SCALE-002` (Stateful Load Balancing), `SCALE-003` (`Mcp-Session-Id`-Routing im Edge-LB), `SCALE-007` (Stream-Wiederaufnahme via `Last-Event-ID`), `SDK-004` (CORS-Exposure von `Mcp-Session-Id`), `SEC-009` (kryptografische Bindung der Session-ID). Der letzte hat in `ARCH-017` eine Ersatzdimension: Die Sitzungs-ID gibt es nicht mehr, die Frage nach der Ratbarkeit der Referenz schon — sie ist in die Tool-Signatur gewandert, und dort schaut kein Auth-Layer mehr hin. Das ist der Grund, warum ein Server nach der Migration nicht automatisch *weniger* zu prüfen hat.

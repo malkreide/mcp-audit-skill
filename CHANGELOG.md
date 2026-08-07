@@ -7,7 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Regel 14 — «Der Server sagt an, dass er hört».** Vierzehn Regeln statt
+  dreizehn. Jeder Server hat einen Moment, in dem er aufhört, ein Prozess zu
+  sein, und anfängt, ein Server zu sein; von aussen sehen beide Zustände gleich
+  aus. «Läuft» ist damit eine Annahme und keine Beobachtung. Auf stdio gibt es
+  genau einen Kanal, sie zu trennen: stderr — stdout gehört dem Protokoll, ein
+  Exit-Code kommt zu spät, ein Port existiert nicht.
+
+  Vier Marker-Eigenschaften, jede aus einer Messung: das `event`/`msg`-Feld
+  eines strukturierten Logs wird **exakt** verglichen und nicht auf Präfix
+  (gemessener Fehlschlag bei `openlex-mcp` — dokumentiert war «Lifespan
+  gestartet», das Feld lautete «Lifespan gestartet — geteilter HTTP-Client
+  bereit»); Klartext bekommt eine stabile Teilzeichenkette; nie ein Zeitstempel
+  und nichts anderes Laufvariables; und der FastMCP-Banner zählt nicht, weil er
+  die Ausgabe des SDK ist und beim nächsten SDK-Update verschwindet — dieselbe
+  Mechanik wie beim Versions-Cap in Regel 1, eine Ebene höher.
+
+  Erhebungsstand (2026-08-03, 42 veröffentlichte Server): 15 sagen beim Start
+  nichts Eigenes — 13 gar nichts, 2 nur den SDK-Banner.
+
+  **Warum das hierher gehört und nicht nur in den Katalog:**
+  `mcp-continuous-auditor`s `scripts/transport_boot_probe.py` bootet bereits
+  über den eigenen Entrypoint des Ziels und spricht MCP mit ihm. Es misst
+  Bereitschaft aber, indem es **fragt** — ohne Marker kann es «bedient» nicht
+  von «noch am Hochfahren» unterscheiden, ein langsamer Start und ein stiller
+  Tod ergeben beide einen Timeout, und genau dort, wo seine Meldung
+  diagnostisch werden müsste, ist der stderr-Anhang leer. Dasselbe Problem wie
+  bei der Smoke-Stufe vor ihm, eine Ebene weiter.
+
+  Zuordnung: [`OBS-008`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OBS-008.md).
+  Keine zweite Nummerierung erfunden — der Check existiert im Katalog seit
+  v2.1.0 und deckt dieselbe Erhebung, dieselben drei Marker-Regeln und
+  denselben `openlex-mcp`-Fall ab.
+
 ### Changed
+
+- **Der Geltungsbereich hängt nicht am gefahrenen Transport, sondern an der
+  Stelle im Code** — korrigiert in der Description, in `README.md` und in
+  `README.de.md`. Bisher endete die Description mit «nicht nötig für Server,
+  die ausschliesslich über stdio laufen». Diese Abgrenzung ist **widerlegt**
+  und nicht bloss ungenau: Sie hat den Fall ausgeschlossen, der eintrat.
+
+  Der Beleg ist `zh-education-mcp` `0.2.4`. Die 1.x-Settings-Zuweisung aus
+  Regel 1(b) stand **vor** der Transport-Weiche, also warf sie, bevor
+  irgendetwas entschieden hatte, ob dieser Prozess stdio oder HTTP fährt.
+  Gemessen am installierten Artefakt aus PyPI, in einem leeren Venv:
+
+  ```
+  ValueError: "Settings" object has no field "host"
+  ```
+
+  Der Server war unter stdio genauso tot wie unter HTTP. Wer den Skill nach
+  seiner eigenen Abgrenzung übersprungen hätte, weil der Server stdio fährt,
+  hätte den Fehler behalten — die veröffentlichte Fassung war monatelang
+  unbenutzbar, und es fiel niemandem auf, weil nichts das installierte
+  Artefakt startete.
+
+  Neu formuliert ist die Abgrenzung deshalb als Frage an den Code und nicht an
+  das Deployment: «Steht die Zeile vor oder hinter der Transport-Weiche?» Alles
+  davor — Imports, Settings-Zuweisungen, Lifespan, Bereitschaftsmarker — trifft
+  jeden Transport. Nur die Regeln 2–4 und 9 verlangen einen Netz-Transport. Ein
+  stdio-Server ist damit nicht ausgenommen, sondern nur enger im Umfang; bei
+  Regel 14 ist er der Hauptfall.
+
+- **Regel 1(b) bekommt die Messung, die den Fall gefunden hat.** Bisher hiess
+  es «Ein Server mit der alten Zeile startet unter HTTP gar nicht» und der
+  Nachweis war ein Test, der die Zuweisung auslöst. Beides greift zu kurz: Der
+  Satz nennt einen Transport, der nichts zur Sache tut, und der Test prüft den
+  Checkout, während ausgeliefert die Distribution wird. Neu dazu: das
+  Konsolen-Skript im leeren Venv gegen die installierte Distribution starten,
+  unter **stdio**, mit **geschlossenem stdin**, sechs Sekunden lang. `exit=124`
+  heisst, er stand noch; jeder andere Exit-Code ist der Befund. Braucht kein
+  HTTP, keinen Port und keinen Client, und dazu gehört die negative Kontrolle:
+  einmal mit einem ungültigen Argument starten und sehen, dass auf stderr
+  überhaupt etwas ankommt.
+
+- **Ein Urteil aus dem letzten Katalog-Durchgang ist zurückgenommen.**
+  `OBS-008` stand dort in der Liste der vier neuen Checks, die «sämtlich neben
+  Bind, Verdrahtung, Beweis und Stateless» liegen. Das war korrekt für
+  dreizehn Regeln und ist mit Regel 14 überholt. Der Fehler war nicht die
+  Lesung, sondern die stillschweigende Annahme, ein «trifft keine Regel» gelte
+  so lange wie der Katalog — es gilt so lange wie der **Regelsatz**, und der
+  bewegt sich in diesem Repo. Eine Zuordnung altert aus zwei Richtungen; die
+  Zeile über der Tabelle nannte bisher nur die eine.
 
 - **Die Zuordnung Regel → Audit-Check steht wieder auf dem Stand des Katalogs:
   `mcp-audit` v2.2.0, 116 Checks in zwölf Kategorien** (vorher v2.0.0, 112). Die

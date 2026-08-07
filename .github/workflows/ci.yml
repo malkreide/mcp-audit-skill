@@ -124,8 +124,8 @@ jobs:
                   sys.exit(f"{path}: section '## {heading}' not found")
               return len(re.findall(r"^\d+\. ", m.group(1), re.M))
 
-          for path, heading in [("README.md", "The thirteen rules"),
-                                ("README.de.md", "Die dreizehn Regeln")]:
+          for path, heading in [("README.md", "The fourteen rules"),
+                                ("README.de.md", "Die vierzehn Regeln")]:
               got = listed(path, heading)
               if got != expected:
                   sys.exit(f"{path}: lists {got} rules, SKILL.md defines {expected}")
