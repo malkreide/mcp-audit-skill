@@ -18,6 +18,37 @@
 # wieder — die Ausnahme haengt am Vorlagen-Pfad, nicht am Repo.
 target-version = "py311"
 
+# Die Breite steht hier, weil sonst upstream sie stellt.
+#
+# 88 ist ruffs Vorgabe und war bis hierher die geltende Breite — undeklariert.
+# Der Wert aendert also heute keine Zeile; gemessen formatiert sich unter
+# `line-length = 88` nichts anders als vorher, und `ruff check` findet nichts
+# Neues. Was sich aendert, ist die Zustaendigkeit.
+#
+# Der Grund ist derselbe wie beim Versions-Pin, an einer Stelle aber schaerfer.
+# Fuer `check` ist die Breite eine Regel unter vielen: E501 steht im `select`
+# unten und waere beim Abweichen als Befund lesbar. `format` hat kein `select`
+# — dort IST das Ergebnis das Kriterium, und `line-length` ist die einzige
+# Zahl, die entscheidet, wo es umbricht. Bleibt sie undeklariert, ist die
+# Spaltenbreite dieses Repos eine Vorgabe von Astral: Die naechste Aenderung
+# daran formatiert unberuehrten Code um und macht ihn rot, zu einem Zeitpunkt,
+# den niemand hier gewaehlt hat.
+#
+# Beide Gates lesen diese eine Zahl, und Pruefung 17 belegt es als Wirkung
+# statt als Zusicherung: Sie legt zwei Sonden ab — eine Zeile aus genau
+# `line-length` Zeichen und eine aus einer mehr — und verlangt, dass `check`
+# und `format` die erste durchlassen und die zweite beanstanden. Eine
+# `[lint.pycodestyle] max-line-length` daneben liefe damit auf, statt still
+# eine zweite Breite zu setzen.
+#
+# NICHT VERWIRREN LASSEN: `tools/checks/catalogue.py` hat eine Zeile mit 101
+# Zeichen, und `ruff check` beanstandet sie zu Recht nicht. Es ist ein langer
+# URL, und E501 laesst eine ueberlange Zeile aus, die sich nicht umbrechen
+# laesst — Umbrechen waere hier keine Verbesserung. Deshalb sind die Sonden von
+# Pruefung 17 ausdruecklich an Leerzeichen umbrechbar: Aus einem einzigen
+# langen Wort haetten sie nichts gemessen und das als bestanden gemeldet.
+line-length = 88
+
 # Markdown bleibt aussen vor — als Entscheidung, nicht als Versehen.
 #
 # Bis ruff 0.15.8 war die Formatierung von Python-Bloecken in Markdown

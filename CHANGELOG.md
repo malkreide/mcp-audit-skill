@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Prüfung 17 — `line-length` steht in `ruff.toml`, und beide Gates messen
+  auch danach.** Die Breite war bis hierher undeklariert: Es galt ruffs
+  Vorgabe von 88. Der neue Eintrag ändert deshalb heute keine Zeile — gemessen
+  formatiert sich nichts anders und `ruff check` findet nichts Neues. Was sich
+  ändert, ist die Zuständigkeit.
+
+  **Warum das nicht dieselbe Sorte Zahl ist wie der Versions-Pin.** Für
+  `check` wäre die Breite eine Regel unter vielen: E501 steht im `select`, und
+  eine Abweichung wäre als Befund lesbar. `format` hat kein `select` — dort
+  ist das Ergebnis selbst das Kriterium, und `line-length` ist die einzige
+  Zahl, die entscheidet, wo es umbricht. Undeklariert ist die Spaltenbreite
+  dieses Repos damit eine Entscheidung von Astral, und die nächste Änderung
+  daran färbt unberührten Code rot, zu einem Zeitpunkt, den niemand hier
+  gewählt hat. Genau der Effekt, gegen den der Pin schon existiert.
+
+  **Geprüft wird die Wirkung, nicht der Eintrag** — dieselbe Begründung wie
+  bei Prüfung 9. Dass `line-length = 88` dasteht, heisst noch nicht, dass bei
+  88 gemessen wird: `[lint.pycodestyle] max-line-length` setzt für E501 eine
+  zweite Breite, von der der Formatter nichts erfährt. Der Eintrag läse sich
+  danach weiterhin richtig. Die Prüfung legt deshalb zwei Sonden unter
+  `reference/` ab — eine Zeile aus genau `line-length` Zeichen und eine aus
+  einer mehr — und verlangt von `check` **und** `format`, dass sie die erste
+  durchlassen und die zweite beanstanden.
+
+  **Die Sonden sind ausdrücklich an Leerzeichen umbrechbar.** E501 lässt eine
+  überlange Zeile aus, die sich nicht umbrechen lässt; `tools/checks/catalogue.py`
+  hat aus diesem Grund eine Zeile mit 101 Zeichen, die zu Recht durchgeht. Eine
+  Sonde aus einem einzigen langen Wort hätte nichts gemessen und genau das als
+  bestanden gemeldet — der Fehler, gegen den dieses Repository geschrieben ist,
+  im Prüfwerkzeug selbst.
+
+  Sechs Mutationen in `tests/mutations.py`. Sie zielen absichtlich **nicht**
+  auf `line-length` selbst: Wer die Zahl ändert, ändert die geltende Breite
+  mit, und die Prüfung bleibt zu Recht grün. Rot wird sie, wo Deklaration und
+  Wirkung auseinanderlaufen.
+
+  **Grenze, ausdrücklich:** Der Format-Zweig lässt sich nicht über eine zweite
+  Breite herbeiführen — der Formatter hat keine. Die Mutation entzieht ihm
+  stattdessen die Sonde (`[format] exclude`). Ein Formatter, der `line-length`
+  eines Tages ignorierte, ohne dass etwas anderes im Baum sich bewegt, wäre
+  von hier aus erst beim nächsten Lauf zu sehen — nicht vorher.
+
 ### Changed
 
 - **Regel 5 sagt jetzt, was eine Fixture mitbringen muss: Herkunft und Datum.**
