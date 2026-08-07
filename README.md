@@ -16,26 +16,28 @@ That is a class of bug in its own right, because it is silent. HTTP 200, well-fo
 
 The guiding question for every data-querying tool: *if this tool finds nothing, can I tell whether there is nothing there or whether I asked the wrong way?* If the answer is no, one of the ten rules applies. And the step below it, since rule 10: *and if I did ask the wrong way — can I get from here to the right question?*
 
-## The ten rules
+## The twelve rules
 
-Rules 1–6 and 10 come from incidents. Rules 7–9 are derived from MCP spec 2026-07-28 — the difference is stated rather than smoothed over, in the README and in `SKILL.md`. The numbering follows the order the rules were added in, not that grouping.
+Rules 1–6 and 10–12 come from incidents. Rules 7–9 are derived from MCP spec 2026-07-28 — the difference is stated rather than smoothed over, in the README and in `SKILL.md`. The numbering follows the order the rules were added in, not that grouping.
 
 1. **Send scope parameters explicitly, never inherit them.** An omitted optional filter often means an arbitrary slice rather than "unrestricted" — a fact stated only in the spec's parameter description, never visible from a working call. The converse holds too: a deliberate narrowing of recall (exact instead of wildcard, no fuzzy) has to name the rubrics or data classes carrying the risk **and** show, from the scope enumeration, that they are reachable. A rationale that would read the same for any source at all is coupled to nothing.
 2. **Send parameter groups in full.** Send some members of a group and the rest keep their server-side default, so the argument can only widen, never narrow — a no-op that looks like control.
 3. **An empty result carries a next step.** Zero hits are ambiguous. The result needs a concrete `hint` field, in the tool result rather than the README. A transport or authorization failure is not an empty result and must never be formatted as one — it carries a different next step: check the configuration, do not widen the search.
 4. **The tool description is a hallucination surface.** A phrasing that *explains* an empty result causes confabulation more reliably than no phrasing at all. Ask for a retry, never license a conclusion.
-5. **Query syntax in the description, recall in the tests.** Document the query language and its matching granularity; guard recall with live floors, because a mock reproduces the assumption it was written with.
+5. **Query syntax in the description, recall in the tests.** Document the query language and its matching granularity; guard recall with live floors, because a mock reproduces the assumption it was written with. And assert on structured fields with exact equality, never a substring: a prefix assertion holds until the field value grows, and then it keeps holding while meaning something else.
 6. **Confirm the response shape before counting it.** `payload.get("servers", [])` turns an upstream shape change into a valid-looking empty result. A schema mismatch belongs in the error channel, not in an empty list.
 7. **A total, documented sort order.** A relevance score has ties, and an unstable order across page boundaries *loses rows* — the same silent incompleteness as rule 1, arrived at by paging rather than by filtering. Applies on every spec version; on 2026-07-28 it also decides whether a reconnect keeps the client's prompt cache.
 8. **An honest `ttlMs`.** Never longer than the source's actual freshness: a `ttlMs` that outlives the next update lets the client serve an answer the server already knew would be stale. Derive it from `source_freshness`, and set `cacheScope` against `requires_credentials` — too wide a scope on a credential-dependent result is a leak, not a freshness bug.
 9. **`input_required` is not an empty answer.** An MRTR follow-up question looks successful — HTTP 200, well-formed, no hits in it. Keep it strictly apart from a genuine zero-hit: no `hint` on a question, no `inputRequests` on an empty set. A model must never read "question" as "no data", or the reverse.
 10. **Suggesting is not widening.** On an empty result, offer shorter variants of the term the caller sent — and query none of them. The safety property: no row in a result may be attributable to a term the caller did not choose. The Nachweis is a pair, not a single assertion — suggestions appear, suggestions are never searched (a call counter on the upstream route). Drop either half and the other passes trivially.
+11. **An empty result carries the request that produced it.** Scope, filters and limits as they actually went out — not as the caller passed them in. "Nothing there" and "asked wrong" differ in exactly one thing, the request; leave it out and the model has nothing to tell them apart. The sharper half: a hint that reads the same on every empty result carries no information at all. The Nachweis is again a pair — the echo matches the outgoing request, and two runs that went out differently read differently, including the one where rule 1's best-effort scope widening quietly failed.
+12. **Absence is three-valued: not collected / collected and empty / withheld.** One `null` for all three turns "we did not measure this" into a claim about the record that nobody measured. The third value is *set* where the decision was made, never derived from a lookup default — an unexpectedly missing key is a schema error (rule 6), not a state. And what it means, plus what the caller must do about it, is documented per field: silence is fatal on one field and free on the next, and no house-wide convention can carry that difference.
 
 ## Prerequisites
 
 - Claude Code, Claude Desktop, or claude.ai with skill support
 - The patterns in `reference/patterns.py` target FastMCP, httpx and pydantic v2 — the rules themselves are stack-independent
-- Rules 8 and 9 assume MCP spec 2026-07-28: `ttlMs`/`cacheScope` on the list responses and MRTR (`resultType: "input_required"`) do not exist before it. On an older or frozen server they are ticked off as not applicable, not as unmet. Rules 1–7 and 10 apply either way.
+- Rules 8 and 9 assume MCP spec 2026-07-28: `ttlMs`/`cacheScope` on the list responses and MRTR (`resultType: "input_required"`) do not exist before it. On an older or frozen server they are ticked off as not applicable, not as unmet. Rules 1–7 and 10–12 apply either way.
 
 ## Installation
 

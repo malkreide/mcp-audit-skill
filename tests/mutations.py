@@ -234,31 +234,34 @@ MUTATIONS: list[Mutation] = [
     Mutation(
         5,
         "eine Regel fällt aus einem README",
-        regex_sub("README.md", r"^10\. \*\*.*$\n", ""),
-        "listet 9 Regeln",
+        regex_sub("README.md", r"^12\. \*\*.*$\n", ""),
+        "listet 11 Regeln",
     ),
     Mutation(
         5,
         "README-Abschnitt umformuliert",
-        replace("README.de.md", "## Die zehn Regeln", "## Die Regeln"),
-        "Abschnitt '## Die zehn Regeln' nicht gefunden",
+        replace("README.de.md", "## Die zwölf Regeln", "## Die Regeln"),
+        "Abschnitt '## Die zwölf Regeln' nicht gefunden",
     ),
     Mutation(
         5,
         "Docstring-Wendung in patterns.py weg",
-        replace(PATTERNS, "patterns for the ten", "patterns for ten"),
+        replace(PATTERNS, "patterns for the twelve", "patterns for twelve"),
         "die Wendung 'patterns for the <word> ... rules' ist",
     ),
     Mutation(
         5,
         "Docstring nennt eine andere Zahl",
-        replace(PATTERNS, "patterns for the ten", "patterns for the nine"),
+        replace(PATTERNS, "patterns for the twelve", "patterns for the nine"),
         "der Docstring sagt 'nine'",
     ),
     Mutation(
         5,
+        # Das Zahlwort muss eines sein, das ENGLISH_NUMBERS NICHT kennt — mit
+        # Regel 11 und 12 sind 'eleven' und 'twelve' dort eingetragen, und die
+        # Mutation griffe sonst ins Leere, ohne dass etwas rot würde.
         "Zahlwort, das die Tabelle nicht kennt",
-        replace(PATTERNS, "patterns for the ten", "patterns for the eleven"),
+        replace(PATTERNS, "patterns for the twelve", "patterns for the thirteen"),
         "ENGLISH_NUMBERS",
     ),
     Mutation(

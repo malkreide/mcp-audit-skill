@@ -1,12 +1,12 @@
-"""Copy-paste patterns for the ten data-fidelity rules (FastMCP / httpx / pydantic v2).
+"""Copy-paste patterns for the twelve data-fidelity rules (FastMCP, httpx, pydantic).
 
 Each block is self-contained and annotated with the rule it implements. Adapt the
 names; keep the shape. The comments are deliberately verbose — they are the part
 that survives into the target codebase and explains *why* to the next reader.
 
-Rules 1-6 and 10 come from incidents. Rules 7-9 are derived from MCP spec
-2026-07-28 and only apply to a server that speaks it — with one exception: rule 7
-(a total sort order) breaks pagination on every spec version.
+Rules 1-6 and 10, 11 and 12 come from incidents. Rules 7-9 are derived from MCP
+spec 2026-07-28 and only apply to a server that speaks it — with one exception:
+rule 7 (a total sort order) breaks pagination on every spec version.
 """
 
 from __future__ import annotations
@@ -255,6 +255,42 @@ async def test_wildcard_finds_compounds(client: Client) -> None:
     exact = await client.search("Quellensteuer", max_results=100)
     prefix = await client.search("Quellensteuer*", max_results=100)
     assert len(prefix) > len(exact)
+
+
+# ---------------------------------------------------------------------------
+# Rule 5, third part — compare exactly; a substring assertion cannot fail
+# ---------------------------------------------------------------------------
+
+LIFESPAN_MARKER = "Lifespan gestartet — geteilter HTTP-Client bereit"
+
+
+def assert_marker(observed: str) -> None:
+    """Assert on a structured field with equality, never with a substring.
+
+    ✗ What this deliberately does NOT do::
+
+        assert LIFESPAN_MARKER in observed
+        assert observed.startswith("Lifespan gestartet")
+
+    A prefix assertion holds until the field value grows — and then it keeps
+    holding while meaning something else, because from there on it only ever
+    checks the part that never changes. Same failure shape as the mock above: a
+    test that establishes the condition under which the fault cannot occur.
+
+    Measured case: the marker was declared as «Lifespan gestartet» while the
+    field read «Lifespan gestartet — geteilter HTTP-Client bereit». The exact
+    comparison failed although the server was running correctly, and it pointed
+    straight at what was actually wrong — the stale declaration. ``in`` would
+    have stayed green, preserved that declaration, and gone on being green once
+    the tail of the field came to mean something else entirely.
+
+    No tension with the prefix wildcard under rule 5: that one is aimed at a
+    text corpus, this at a value. Full text wants to be fuzzy, a status field
+    does not. Nor with rule 1's "exact instead of wildcard" — there exactness
+    narrows recall against the source and has to be justified; here it only
+    makes the assertion as wide as the field it claims to cover.
+    """
+    assert observed == LIFESPAN_MARKER, f"marker drifted: {observed!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -577,5 +613,199 @@ async def test_suggestions_are_never_searched() -> None:
     Needs its pair to mean anything (rule 9's shape, applied here): a server that
     suggests nothing passes this test trivially, so the other half asserts that
     an empty result carries suggestions AND that each is a variant of the input.
+    """
+    ...
+
+
+# ---------------------------------------------------------------------------
+# Rule 11 — the empty set carries the request that produced it
+# ---------------------------------------------------------------------------
+
+
+class EffectiveRequest(BaseModel):
+    """What actually went out — resolved, not what the caller passed in.
+
+    "Nothing there" and "asked wrong" differ in exactly one thing: the request.
+    Leave it out of the result and the model has nothing to tell them apart, so
+    it does what rule 4 describes — this time without a description having
+    invited it. Rule 3 asks the empty set for a next step; this is the other
+    half of the same answer, and the half that makes the first one checkable.
+
+    The distance between "as sent" and "as received" is rule 1. An omitted scope
+    is resolved to the full scope at runtime, best-effort — meaning the
+    resolution is allowed to fail, and then the search runs unwidened while the
+    empty set afterwards reads like "nothing in the whole corpus". Only
+    ``scope_source`` makes that visible; it is itself an instance of rule 12,
+    three facts that look identical once flattened to a list of ids.
+
+    Credentials never go in here. The echo is scope, filters and limits, not the
+    authentication — an API key in a request echo is a leak, and via too wide a
+    ``cacheScope`` (rule 8) a forwarded one.
+    """
+
+    search_term: str
+    scope_ids: list[int]
+    scope_source: Literal["caller", "resolved", "upstream_default"]
+    fields: list[str]
+    limit: int
+
+
+class SearchResultWithEcho(SearchResult):
+    """Rule 3's envelope, plus the request it answers.
+
+    Mandatory on the empty set. On a result with hits it is cheap and harmless,
+    and as soon as any narrowing was applied ``FID-001`` asks for it anyway. NOT
+    on an ``input_required`` (rule 9): nothing went out, so there is nothing to
+    report — the same reason ``entries`` is absent there instead of empty.
+    """
+
+    request: EffectiveRequest
+
+
+async def search_and_echo(
+    client: Client, term: str, *, max_results: int = 25, **envelope: Any
+) -> SearchResultWithEcho:
+    """Read path for rule 11: one query, and a result that names it.
+
+    ✗ What this deliberately does NOT do::
+
+        entries = await client.search(term)
+        return build_result(entries, term=term)      # says that nothing came
+                                                     # back, nothing about what
+                                                     # went out
+    """
+    resolved = await client._all_scope_ids()
+    entries = await client.search(term, scope_ids=resolved, max_results=max_results)
+    return SearchResultWithEcho(
+        **build_result(entries, term=term, **envelope).model_dump(),
+        request=EffectiveRequest(
+            search_term=term,
+            scope_ids=resolved or [],
+            # Not a cosmetic distinction: "resolved" and "upstream_default"
+            # answer different questions about the same empty set.
+            scope_source="resolved" if resolved else "upstream_default",
+            fields=sorted(SEARCH_FIELDS),
+            limit=max_results,
+        ),
+    )
+
+
+async def test_the_empty_result_carries_what_actually_went_out() -> None:
+    """Rule 11, half 1 — the echo is checked against the request, not the input.
+
+    Called without a scope, the result must report the scope that was actually
+    sent. Comparing the echo with the caller's arguments would pass on a server
+    that never widens anything; compare it with ``route.calls[-1].request``.
+    """
+    ...
+
+
+async def test_two_runs_that_went_out_differently_read_differently() -> None:
+    """Rule 11, half 2 — an echo that always reads the same is not one.
+
+    Let the vocabulary endpoint fail on the second run so rule 1's best-effort
+    widening degrades, and assert the two empty sets do NOT read alike. This is
+    the half that catches the actual incident: a check stage reported the same
+    sentence for 38 of 42 servers, so "stays silent" and "words it differently"
+    became one message — and the one server that never started at all was lost
+    inside it.
+
+    Without half 1 a server passes this with an echo that varies but describes
+    something other than the request. Without half 2 a server passes half 1 with
+    a hard-wired echo, which is exactly the 38 identical lines.
+    """
+    ...
+
+
+# ---------------------------------------------------------------------------
+# Rule 12 — absence is three-valued: not collected / empty in source / withheld
+# ---------------------------------------------------------------------------
+
+
+class FieldValue(BaseModel):
+    """One value slot, carrying the reason it is empty when it is.
+
+    A single ``null`` collapses three different facts: the server never asked
+    for the value (field flag off — rule 2, projection, sub-query not run), the
+    source was asked and holds none, or the value exists and is not handed out
+    (allow-list, personal data, authorisation). Read as "has none", the first of
+    those is a claim about a record that nobody measured.
+    """
+
+    state: Literal["present", "empty_in_source", "not_collected", "withheld"]
+    value: str | None = None
+
+
+def pypi_dist_of(entry: dict[str, Any], *, collected: bool) -> FieldValue:
+    """Set the third value where the decision was made; never derive it.
+
+    ✗ What this deliberately does NOT do::
+
+        return entry.get("pypi_dist")
+
+    This is rule 6 one level down: ``payload.get("servers", [])`` turns a shape
+    change into an empty set, ``entry.get("pypi_dist")`` turns an upstream
+    rename into a run of justified omissions — nothing measured, exit 0. Both
+    times the lookup's fallback value is the entire cause.
+
+    Caught in review rather than shipped, which is worth saying: it establishes
+    the mechanism, not that anyone outside missed it.
+    """
+    if not collected:
+        return FieldValue(state="not_collected")
+    if "pypi_dist" not in entry:
+        raise UpstreamSchemaError(
+            f"'pypi_dist' missing. Keys present: {sorted(entry)[:10]}"
+        )
+    value = entry["pypi_dist"]
+    if not value:
+        return FieldValue(state="empty_in_source")
+    return FieldValue(state="present", value=value)
+
+
+class ServerRecord(BaseModel):
+    """Rule 12's second half: the meaning belongs on the field, with the duty.
+
+    A house-wide "null means unknown" convention hides the thing that matters —
+    silence is fatal on one field and free on the next.
+    """
+
+    pypi_dist: FieldValue = Field(
+        description=(
+            "PyPI distribution. state='not_collected' does NOT mean 'has none': "
+            "nothing was measured, and the caller aborts instead of counting "
+            "the record as checked. state='empty_in_source' means the source "
+            "holds none."
+        )
+    )
+    start_event: FieldValue = Field(
+        description=(
+            "Start marker. state='not_collected' deliberately falls back to the "
+            "default here — unlike pypi_dist, silence costs nothing. That two "
+            "fields share one null and carry two different duties is why this "
+            "sits on the field and not in a convention."
+        )
+    )
+
+
+async def test_a_field_that_was_not_requested_is_not_reported_as_absent() -> None:
+    """Rule 12, half 1 — "not asked" and "asked and empty" are two values.
+
+    Query once with the field projected away and once with it in; the first must
+    read ``not_collected``, never ``empty_in_source``.
+    """
+    ...
+
+
+async def test_a_renamed_upstream_key_is_a_finding_not_an_omission() -> None:
+    """Rule 12, half 2 — the third value is set, not found.
+
+    Feed a payload whose key was renamed upstream and expect an
+    ``UpstreamSchemaError``, not a well-formed record full of omissions.
+
+    Without half 2, a server that marks every field ``not_collected`` passes
+    half 1: it measured nothing and reports that correctly. Without half 1, a
+    server passes half 2 while still folding "not asked" and "nothing there"
+    into one null. Both directions asserted — rule 9's and rule 10's test shape.
     """
     ...
