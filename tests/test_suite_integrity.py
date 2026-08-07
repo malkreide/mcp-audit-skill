@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from conftest import REPO_ROOT, synthetic_manifest
+from conftest import REPO_ROOT, synthetic_manifest, synthetic_metadata
 from mutations import MUTATIONS
 
 from tools.checks import Check, CheckFailed, all_checks, run
@@ -19,10 +19,11 @@ from tools.checks._core import _REGISTRY
 from tools.checks.catalogue import assert_table_matches, parse_manifest
 from tools.checks.readmes import top_release
 from tools.checks.release import assert_tag_matches
-from tools.checks.skill_doc import read_skill
+from tools.checks.repo_metadata import assert_description_matches, parse_metadata
+from tools.checks.skill_doc import read_skill, rule_count
 
 OFFLINE = all_checks(offline_only=True)
-CONTEXT_BOUND = {13, 14}
+CONTEXT_BOUND = {13, 14, 15}
 
 
 def _id(check: Check) -> str:
@@ -158,6 +159,36 @@ def test_catalogue_without_its_manifest_is_a_finding(
     with pytest.raises(CheckFailed) as raised:
         by_number[14].run(REPO_ROOT)
     assert expect in str(raised.value)
+
+
+def test_metadata_without_its_env_var_is_a_finding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Der Zweig, den keine Mutation am Baum erreicht.
+
+    `$REPO_METADATA` ungesetzt heisst: Der Abrufschritt im Workflow ist
+    weggefallen oder umbenannt. Ohne diesen Zweig sähe das aus wie
+    «bestanden», wo «nicht gelaufen» richtig wäre — und ausgerechnet bei
+    dieser Prüfung, deren Gegenstand niemand im Diff sieht.
+    """
+    monkeypatch.delenv("REPO_METADATA", raising=False)
+    by_number = {check.number: check for check in all_checks()}
+    with pytest.raises(CheckFailed) as raised:
+        by_number[15].run(REPO_ROOT)
+    assert "ist nicht gesetzt" in str(raised.value)
+
+
+def test_the_synthetic_description_is_accepted() -> None:
+    """Der gute Fall von Prüfung 15, ohne Netz.
+
+    Was das belegt und was nicht, steht bei `synthetic_metadata` in
+    conftest.py — es belegt den grünen Ausgangspunkt, von dem die sieben
+    Mutationen wegführen, nicht dass die echte Description stimmt.
+    """
+    skill = read_skill(REPO_ROOT)
+    assert_description_matches(
+        parse_metadata(synthetic_metadata(skill)), rule_count(skill)
+    )
 
 
 @pytest.mark.parametrize(

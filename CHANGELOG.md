@@ -9,6 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Prüfung 15 — die Repo-Description nennt dieselbe Regelzahl wie SKILL.md.**
+  Prüfung 5 hält vier Stellen gegeneinander: SKILL.md, beide READMEs und den
+  Docstring von `reference/patterns.py`. Die fünfte lag ausserhalb ihres
+  Zugriffs — die GitHub-Metadaten — und war prompt veraltet: Als Regel 11 und
+  12 dazukamen, sagte die Description weiter «ten data-fidelity rules».
+  Aufgefallen ist das beim Lesen, nicht beim Prüfen.
+
+  **Sie läuft im Wochenplan, nicht im PR-Lauf**, und der Grund ist hier
+  zwingender als bei der Katalog-Prüfung: Die Description lässt sich im Browser
+  ändern, ohne dass ein Diff entsteht. Ein PR-Lauf sähe die Änderung nie und
+  meldete «bestanden» — er könnte diesen Gegenstand prinzipiell nicht
+  bewachen. Dazu das Übliche: Netz vor dem Merge-Button färbt bei einem
+  Aussetzer einen unbeteiligten PR rot.
+
+  Der Abruf steht im Workflow und nicht in der Prüfung — dieselbe Aufteilung
+  wie bei Prüfung 14, aus demselben Grund: Eine Prüfung, die Netz braucht, um
+  zu starten, lässt sich nicht gegen einen Fixture-Baum fahren, und dann bliebe
+  sie selbst ungeprüft. Der neue Job holt die Repo-API **mit** `github.token`
+  statt anonym; anonyme Aufrufe teilen sich ein Kontingent pro Runner-IP, und
+  ein roter Lauf ohne Befund ist die Sorte Meldung, die man nach dem zweiten
+  Mal ignoriert. «Nicht erreichbar» bleibt ein anderer Ausgang als
+  «abgewichen», mit eigenem Text und eigenem Schritt.
+
+  **Sieben Mutationen**, eine je Zweig: Datei weg, kein JSON, Antwort ohne
+  `description`, Description leer, Anker umformuliert, unbekanntes Zahlwort,
+  und der Anlassfall selbst («ten» gegen zwölf Regeln). Dazu der Zweig, den
+  keine Mutation am Baum erreicht — `$REPO_METADATA` ungesetzt, also
+  Abrufschritt weggefallen —, als eigener Test. Der gute Fall im Test ist eine
+  **synthetische** Description, die zu dem passt, was SKILL.md behauptet; sie
+  belegt, dass die Prüfung eine stimmige Description durchlässt, **nicht** dass
+  die echte stimmt. Das bleibt der Job des Wochenplans, und die Grenze steht
+  wie bei `synthetic_manifest` in `conftest.py`.
+
+  Zwei Eigenheiten, die aus den Regeln dieses Skills kommen: Die Prüfung
+  bestätigt die Struktur der API-Antwort, bevor sie liest (Regel 6 — ein
+  `payload.get("description")` machte aus einem Formatwechsel drüben still eine
+  leere Description). Und ihr Befund nennt den Handgriff im Browser statt einer
+  Datei, weil kein Commit diese Stelle behebt.
+
 - **Regel 11 — die Leermenge trägt die Anfrage, die sie erzeugt hat.** Regel 3
   verlangt auf der Leermenge einen nächsten Schritt; diese Regel verlangt die
   andere Hälfte derselben Auskunft: Scope, Filter und Limits, so wie sie
