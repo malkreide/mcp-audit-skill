@@ -32,7 +32,7 @@ jobs:
       # ACHTUNG: diese Version und die `rev` in .pre-commit-config.yaml
       # muessen uebereinstimmen — der Schritt darunter prueft es.
       - name: Ruff installieren
-        run: pip install ruff==0.15.8
+        run: pip install ruff==0.16.1
 
       - name: Formatierung der Referenz-Vorlagen
         run: ruff format --check .
