@@ -84,6 +84,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   einmal mit einem ungültigen Argument starten und sehen, dass auf stderr
   überhaupt etwas ankommt.
 
+- **Der Description-Guard steht jetzt als letzter Schritt der CI, und Regel 13
+  hält den Grund fest.** Beim ersten Lauf dieses Zweigs stand er in der Mitte
+  des Jobs, brach ihn beim erwarteten Befund ab, und die vier Schritte dahinter
+  liefen nicht — Badge-Sync, Ketten-Tabelle und Dateiliste standen im Log als
+  «nicht dran». Ein Guard, den nur ein Mensch von aussen befriedigen kann,
+  verdeckt in dieser Position genau die Guards, die ein Commit befriedigt. Das
+  ist `OPS-005` auf die eigene Pipeline angewandt.
+
 - **Ein Urteil aus dem letzten Katalog-Durchgang ist zurückgenommen.**
   `OBS-008` stand dort in der Liste der vier neuen Checks, die «sämtlich neben
   Bind, Verdrahtung, Beweis und Stateless» liegen. Das war korrekt für
