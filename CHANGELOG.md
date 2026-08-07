@@ -6,6 +6,27 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+---
+
+## [v2.2.0] — 2026-08-07 — Plausibel, und über die falsche Sache
+
+**Ein neuer Check** (`SEC-028`, `high`, `enforced`) — der Katalog wächst von 115 auf **116 in zwölf Kategorien**, 21 davon `advisory`, 1205 Tests. Dazu ein Fix am Ziel-Anker, gefunden auf einer fremden Maschine statt in der CI.
+
+**Die Klammer über beide Punkte:** ein Wert, der richtig aussieht und etwas anderes benennt, als er behauptet. `_resolve_and_validate` wirft `PermissionError` und meldet «Egress-Policy» — auch dann, wenn nur der Resolver gezuckt hat. `target_revision()` liefert vierzig Hexziffern, plausibel, und über ein anderes Repository. In beiden Fällen ist nichts leer, nichts wirft, nichts wird rot; falsch ist allein, worauf der Wert zeigt. Und beide Male ist der Schaden nicht das Falsche selbst, sondern dass es woanders hinführt: einmal in eine Konfiguration, in der nichts zu finden ist, einmal in einen Audit-Trail, der einen fremden Baum bezeugt.
+
+**Einstufung `minor`.** Der neue Check erweitert, ohne Reichweiten bestehender Checks oder Profil-Felder zu ändern — `applies_when` ist wörtlich das von `SEC-005` und `ARCH-014`, das Profil-Schema bleibt unberührt. Der Anker-Fix ist eine Korrektur am Werkzeug, kein Katalogeingriff.
+
+### Re-Audit-Auslöser nach §5: keiner feuert — und das ist geprüft, nicht geschwiegen
+
+| Eintrag | §5-Prüfung | Ergebnis |
+|---|---|---|
+| `SEC-028` (`high`, `enforced`, neu) | Punkt **4**, nicht Punkt 5: «Ein neuer Check ist ein neuer Vertrag. Bestehende Audits sind nicht rückwirkend ungültig.» Die vier Fälle a–d setzen sämtlich eine Änderung an einem **bestehenden** Check voraus — Severity (a), Reichweite (b), Kriterium (c), Adoptionsstufe (d). Keiner trifft zu, weil es vorher nichts gab, das sich hätte ändern können. | **feuert nicht** |
+| Ziel-Anker (`target_revision()`) | §5 regelt Änderungen am **Katalog**, nicht am Werkzeug. Keine Severity, keine Reichweite, kein Prüfkriterium hat sich bewegt. | **feuert nicht** — aber siehe unten |
+
+**Der Anker-Fix hat trotzdem eine Folge für alte Läufe, und sie ist keine §5-Folge.** Ein Lauf, dessen `--target-repo` auf ein Verzeichnis *unterhalb* einer Repo-Wurzel zeigte, nennt in `audit-meta.json` eine SHA aus dem umgebenden Baum. Das macht sein Ergebnis nicht falsch — es macht seinen **Anker** wertlos, und die beiden sind nicht dasselbe. Nachprüfbar mit `git -C <target_repo> rev-parse --show-toplevel`: Kommt ein anderer Pfad zurück als `target_repo`, belegt jener Lauf nicht, was sein Report behauptet. Das gehört in den CHANGELOG und nicht in die Warteschlange — dieselbe Unterscheidung, die §5 bei den Gegenrichtungen von b) und d) trifft.
+
+[`docs/re-audit-queue.md`](docs/re-audit-queue.md) trägt dieses Release deshalb mit einem **leeren** Auslöser-Block. Ein Release, das dort gar nicht auftaucht, wäre von einem Release ohne §5-Prüfung nicht zu unterscheiden — genau der Unterschied, den §2.6 eine Ebene höher meint. Die Auslöser aus `v2.1.0` und `v2.0.0` bleiben darunter stehen; sie sind nicht dadurch erledigt, dass ein neues Release erschienen ist.
+
 ### Hinzugefügt — `SEC-028`: der Egress-Guard muss sagen können, warum er abgewiesen hat
 
 **Ein neuer Check** (`SEC-028`, `high`, `enforced`, `tools_make_external_requests == true`) — der Katalog wächst von 115 auf **116 in zwölf Kategorien**.
