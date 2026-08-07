@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Die Zuordnung Regel → Audit-Check steht wieder auf dem Stand des Katalogs:
+  `mcp-audit` v2.2.0, 116 Checks in zwölf Kategorien** (vorher v2.0.0, 112). Die
+  Angabe war zwei Releases alt — der Katalog ist über `v2.1.0` (`OBS-008`,
+  `ARCH-022`, `FID-006`) und `v2.2.0` (`SEC-028`) gewachsen, während hier
+  unverändert die alte Zahl stand.
+
+  Das ist Regel 13 in ihrer räumlichen Form, eine Ebene weiter aussen als der
+  Description-Guard: eine Behauptung über ein **anderes** Repo. Kein Check hier
+  kann sie prüfen, und drüben weiss keiner, dass sie existiert. Sie fällt
+  deshalb nicht auf, wenn sie altert — sie sieht bloss weiterhin nach einer
+  gemessenen Zahl aus.
+
+  **Nachgelesen statt hochgezählt.** Die Zeile über der Tabelle behauptet, die
+  Zuordnung sei durch Lesen der Check-Dateien belegt; nur die Version zu
+  erhöhen hätte diese Behauptung auf einen Stand ausgedehnt, den niemand
+  geprüft hat. Gelesen wurden alle 27 dort genannten Check-IDs (existieren
+  unverändert, Titel gleich) und die vier seit v2.0.0 hinzugekommenen. Keiner
+  der vier trifft eine dieser Regeln: `OBS-008` (Bereitschaftsmarker auf
+  stderr), `ARCH-022` (Versionsquelle), `FID-006` (Antwortstruktur) und
+  `SEC-028` (Fehler-Taxonomie des Egress-Guards) liegen sämtlich neben Bind,
+  Verdrahtung, Beweis und Stateless. Auch die Liste der fünf Checks, die einen
+  von `2026-07-28` entfernten Gegenstand messen, ist unverändert fünf.
+
+  **Eine Zeile hat dazugelernt:** Die ausgehende Gegenrichtung zu Regel 4 führt
+  der Katalog jetzt in zwei Checks statt einem — `SEC-005` (DNS-Pinning gegen
+  TOCTOU) und `SEC-028` (der Guard sagt unterscheidbar, *warum* er abgewiesen
+  hat). Beide gehören weiterhin nicht in diesen Skill; der Zeiger auf sie ist
+  aber genau die Leistung, die die Abgrenzung verspricht, und ein
+  unvollständiger Zeiger löst sie nur halb ein.
+
 ## [2.2.0] - 2026-08-07
 
 **Reichweite — dreimal zu klein, einmal zu gross.** Dreizehn Regeln statt zwölf,
