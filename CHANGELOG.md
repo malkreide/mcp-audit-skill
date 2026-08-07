@@ -6,6 +6,33 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `OPS-009`: die Fixture braucht eine Herkunft
+
+**Ein neuer Check** (`OPS-009`, `high`, **`advisory`**, `tools_make_external_requests == true`) — der Katalog wächst von 118 auf **119 in zwölf Kategorien**, 24 davon `advisory`.
+
+Ein handgeschriebener Mock kodiert die Annahme seines Autors und kann sie deshalb **prinzipiell** nicht widerlegen: Produktivcode und Fixture stammen aus demselben Kopf, zur selben Stunde, aus derselben Lektüre der Dokumentation. Wo beide irren, irren beide gleich — und die Suite bleibt dauerhaft grün.
+
+**Der Katalog kannte die Folge viermal und die Ursache nie:**
+
+| Check | Was der Mock nicht bemerken konnte |
+|---|---|
+| `DRIFT-004` | dass der Endpoint verschwunden ist |
+| `FID-006` | dass die Felder eine Ebene tiefer liegen |
+| `DRIFT-007` | dass die Kopfzeile ihre Schreibweise gewechselt hat |
+| `FID-007` | dass eine Zählspalte `1 bis 5` enthält |
+
+Vier Checks, vier Fundstücke, **eine** Ursache. Jeder sagt «gegen die echte Antwort prüfen», keiner sagt, woher die Antwort kommt, die im Repo liegt. Der Skill [`mcp-data-fidelity`](https://github.com/malkreide/mcp-data-fidelity-skill) nennt die Regel zweimal; der Katalog nirgends.
+
+**Was der Check verlangt und was nicht.** Er verlangt **nicht**, dass Unit-Tests live gehen — `OPS-001` trennt Unit und Live aus guten Gründen. Er verlangt, dass die Fixture einmal von der **Quelle** kam und dass im Repo steht, **wann**. Ohne Datum ist «aufgezeichnet» nach zwei Jahren von «ausgedacht» nicht mehr zu unterscheiden: Die Datei sieht gleich aus.
+
+**§2.5 durchlaufen.** `OPS-001` regelt die **Struktur** der Testlandschaft und sagt ausdrücklich «Unit-Tests verwenden `respx`» — und schweigt darüber, womit `respx` antwortet. `DRIFT-004` verlangt Live-Verifikation der **Endpoint-Konstanten**; ein Server kann ihn erfüllen und trotzdem hundert Unit-Tests gegen einen nie verglichenen Handmock fahren. Eigene Dimension: **die Herkunft der Testdaten**, nicht die Struktur der Suite und nicht die Adresse der Quelle.
+
+**Adoptionsstufe `advisory` nach §2.3, und hier ist die Lücke am grössten.** Über 43 Portfolio-Repos haben **41 kein Fixture-Verzeichnis** und **keines** ein Aufnahmedatum. `enforced` am Merge-Tag wäre ein zu 100 % rotes Portfolio — der buchstäblichste Fall der Form, gegen die §2.3 existiert.
+
+**Re-Audit-Auslöser nach §5: feuert nicht.** Punkt 4 — neuer Check, neuer Vertrag. `OPS-001` und `DRIFT-004` bleiben unverändert.
+
+**Gegenprobe geführt**, drei Mutationen: `adoption: enforced` (5 Tests fallen), Check-Datei entfernt (24 fallen), `OPS-009` aus dem Advisory-Satz beider READMEs gestrichen (2 fallen).
+
 ### Hinzugefügt — `FID-007`: eine Zahlenspalte, die keine Zahlen enthält
 
 **Ein neuer Check** (`FID-007`, `high`, **`advisory`**, `tools_make_external_requests == true`) — der Katalog wächst von 117 auf **118 in zwölf Kategorien**, 23 davon `advisory`.
