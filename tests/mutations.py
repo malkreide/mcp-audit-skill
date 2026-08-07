@@ -610,4 +610,53 @@ MUTATIONS: list[Mutation] = [
         ),
         "nennt ['tools/checks/_core.py']",
     ),
+    # 17 — die deklarierte Breite ist die, die beide Gates durchsetzen
+    #
+    # Die Mutationen zielen absichtlich NICHT auf `line-length` selbst: Wer die
+    # Zahl dort ändert, ändert die geltende Breite mit, und die Prüfung bleibt
+    # zu Recht grün. Rot wird sie, wo Deklaration und Wirkung auseinanderlaufen
+    # — und das geht auf der Lint-Seite über `[lint.pycodestyle]`, das für E501
+    # eine zweite Breite setzt, von der der Formatter nichts erfährt.
+    Mutation(
+        17,
+        "line-length gestrichen",
+        regex_sub("ruff.toml", r"^line-length = \d+$\n", ""),
+        "nennt kein 'line-length = <N>'",
+    ),
+    Mutation(
+        17,
+        "eine zweite Breite für E501, weiter als die deklarierte",
+        append("ruff.toml", "\n[lint.pycodestyle]\nmax-line-length = 200\n"),
+        "das Lint-Gate misst WEITER",
+    ),
+    Mutation(
+        17,
+        "eine zweite Breite für E501, enger als die deklarierte",
+        append("ruff.toml", "\n[lint.pycodestyle]\nmax-line-length = 60\n"),
+        "das Lint-Gate misst ENGER",
+    ),
+    Mutation(
+        17,
+        # Ohne E501 im Ruleset ist die Zahl auf der Lint-Seite Zierde. Der
+        # Befund nennt beide Ursachen, weil die Sonde sie nicht auseinanderhält
+        # — gemessen wird die Wirkung, und die ist dieselbe.
+        "E501 fällt aus dem Ruleset",
+        regex_sub("ruff.toml", r'^select = \["E", ', 'select = ["E4", "E7", '),
+        "E501 steht nicht mehr im `select`",
+    ),
+    Mutation(
+        17,
+        # Der Format-Zweig. Er lässt sich nicht über eine zweite Breite
+        # herbeiführen — der Formatter hat keine —, wohl aber, indem man ihm
+        # die Sonde entzieht.
+        "[format] exclude nimmt der Sonde das Format-Gate",
+        append("ruff.toml", '\n[format]\nexclude = ["reference/*"]\n'),
+        "der Formatter bricht WEITER",
+    ),
+    Mutation(
+        17,
+        "eine Sondendatei liegt schon da",
+        write("reference/_line_length_probe_at.py", "# von Hand hierher geraten\n"),
+        "liegt schon da",
+    ),
 ]
