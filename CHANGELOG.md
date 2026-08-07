@@ -6,6 +6,34 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `FID-006` ist scharf über das Portfolio gelaufen: 0 von 42
+
+Der Check war `advisory` mit der Begründung «bis ein Durchlauf sagt, wie viele Server die Antwortstruktur bestätigen». Der Durchlauf hat stattgefunden. 43 Repos, **42 anwendbar** (`swiss-public-data-mcp` hat keine `pyproject.toml` und keinen Server — das ist das Portfolio-Meta-Repo).
+
+| Hälfte A — Struktur bestätigen | von 42 | | Hälfte B — Feldnamen | von 42 |
+|---|---:|---|---|---:|
+| stiller Default auf dem Wurzelpfad | **28** | | gemischte Schreibweise fest verdrahtet | **28** |
+| Wurzelpfad mit einem Raise bestätigt | 3 | | an der Parse-Grenze normalisiert | **1** |
+| eigener **Struktur**-Fehlertyp | **0** | | Feldnamen gegen die echte Antwort gehalten | **0** |
+| gelesene Felder auf dem ersten Eintrag bestätigt | **0** | | | |
+
+**Erfüllen den Check: 0 von 42.** Die Stufe bleibt deshalb `advisory`. Das ist die andere Entscheidung als bei `ARCH-014`, und der Unterschied ist der Grund: Dort waren es sechs benannte Server mit je derselben dreizeiligen Behebung — ein bewusst akzeptierter Rückstand nach §2.3 Schritt 3. Hier ist der Rückstand das ganze Portfolio, und ein Gate, das jeden Server rot färbt, wird abgeschaltet statt befolgt.
+
+**Der Durchlauf hat trotzdem geliefert, wofür er gebraucht wurde: Das Kriterium ist schneidbar.** Acht Server sprechen mit CKAN und prüfen alle brav das `success`-Envelope — und dann trennt sie eine Zeile. `zurich-opendata-mcp` schreibt `data["result"]` und scheitert laut auf einem fehlenden Wurzelschlüssel; die anderen **sieben** schreiben `data.get("result", {})` und machen aus jeder Formänderung eine Leermenge. Dieselbe Quelle, dasselbe Envelope, entgegengesetztes Verhalten. Ein Kriterium, das die beiden nicht auseinanderhält, wäre nicht durchsetzbar; dieses tut es. Der Check verlässt `advisory`, wenn die acht CKAN-Server nachgezogen haben — eine gemeinsame Form, eine gemeinsame Behebung.
+
+**Zwei Funde, die nur das Lesen von Hand ergeben hat:**
+
+- `swisstopo-mcp` liest **dasselbe Feld in zwei Schreibweisen**, `identDN` und `IdentDN`, in einem Server. Das ist die BISTA-Form aus dem Belegfall — heute, in Produktion, ohne dass etwas rot ist.
+- `swiss-courts-mcp` hat die Fehlerklasse ohne diesen Check erkannt. Sein `UpstreamBlockedError` fängt den Bot-Schutz von entscheidsuche.ch, der mit **HTTP 200** und einem anderen JSON-Körper antwortet; der Docstring begründet das mit «Ohne Erkennung läse sich das wie `total == 0` (stille Leere)». Das ist `FID-006` in eigenen Worten.
+
+**Und die aus `DRIFT-007` übernommene Zahl hält.** «Acht CSV-lesende Server, sieben verdrahten die Schreibweise fest, einer normalisiert» stand bisher als übernommene Angabe in der Advisory-Begründung. Nachgemessen: es sind genau diese acht, und `zh-education-mcp` ist der eine.
+
+**Drei Korrekturen am Messwerkzeug, jede hat die Zahlen bewegt** — sie stehen im Kopf des Skripts und in der Warteschlange, weil eine Zahl ohne ihre Fehlversuche nicht nachvollziehbar ist: ein Zeilen-Grep setzte ein Dutzend Repos wegen `scripts/check_version_sync.py` auf die Leseliste (ein Skript, das eine Lockfile liest, ist kein Server, der seine Quelle liest); Argument-Validierung (`if not search_term.strip(): raise`) zählte als bestätigter Wurzelpfad; und Taint nur innerhalb einer Funktion sah in neunzehn Repos «kein einziger Feldzugriff», weil die vorherrschende Form hier ein `_get_json()`-Helfer ist, der `resp.json()` zurückgibt, während die Aufrufer die Felder lesen. Ebenso korrigiert: die dreizehn `Upstream*Error`-Klassen sind **keine** Struktur-Fehlertypen — von Hand gelesen betreffen alle die Erreichbarkeit.
+
+**Ein neuer Wächter, und bewusst nur einer.** Die Zahlen selbst sind **nicht** gepinnt: Sie sind eine Momentaufnahme, und ein reparierter Server würde einen Test rot machen — der sicherste Weg, einen Wächter zu löschen. Gepinnt ist der Widerspruch: `tests/test_catalog_criteria.py` lässt `FID-006` nicht `enforced` werden, solange die eigene Tabelle «0 erfüllen den Check» sagt. Wer promoviert, misst vorher neu.
+
+**Gegenprobe geführt**, drei Mutationen plus eine Umkehrprobe: auf `enforced` gehoben ohne neue Messung (6 Tests fallen, darunter der neue) · Abschnitt «Stand im Portfolio» entfernt (2) · Ergebniszeile aus der Tabelle gestrichen (1) · und die Umkehrprobe — `enforced` **mit** einer von null verschiedenen Zahl bleibt grün, der Wächter ist einseitig und blockiert die Promotion nicht grundsätzlich.
+
 ### Geändert — `FID-006` übernimmt die Feldnamen, `DRIFT-007` wird zurückgezogen
 
 `DRIFT-007` («Feldnamen sind Teil des Vertrags») stand vier Tage im Katalog und war nie in einem Release. Er geht in `FID-006` auf. Der Katalog schrumpft von 120 auf **119 in zwölf Kategorien**, 24 davon `advisory`; `DRIFT` hat wieder 6 Checks, `FID` behält 7.

@@ -267,3 +267,55 @@ class TestFid006CarriesTheFieldNameHalf:
             "not hold it stable — confirming alone was what DRIFT-007 argued "
             "is insufficient there"
         )
+
+
+class TestFid006PortfolioStateMatchesItsStage:
+    """A check may not claim `enforced` while its own run says nothing passes.
+
+    `FID-006` now carries the result of its portfolio run: 0 of 42 servers meet
+    it. That number is *not* pinned here — it is a snapshot, and pinning it
+    would turn a repaired server into a red test, which is the surest way to
+    get a guard deleted.
+
+    What is pinned is the contradiction. §2.3 lets a check go `enforced` when
+    the affected servers have caught up *or* the backlog is consciously
+    accepted; `ARCH-014` took the second road with six named servers and one
+    three-line fix each. "Every server in the portfolio" is not that road, and
+    a check that blocks production readiness while its own text says no server
+    has ever met it is not a strict gate — it is a gate that gets switched off,
+    which is the failure mode §2.3 exists to prevent.
+
+    So the rule is one-directional: the promotion is allowed, but not while the
+    stated pass count is still zero. Whoever promotes must re-run first and
+    write the new number down.
+    """
+
+    @staticmethod
+    def _text() -> str:
+        return (CHECKS_DIR / "FID-006.md").read_text(encoding="utf-8")
+
+    def test_the_check_states_a_measured_portfolio_state(self):
+        text = self._text()
+        assert "## Stand im Portfolio" in text, (
+            "FID-006 is advisory on the strength of a portfolio run; the run's "
+            "result belongs in the check, not only in the queue document"
+        )
+
+    def test_it_is_not_enforced_while_nothing_passes(self):
+        text = self._text()
+        stage = re.search(r"^adoption:\s*(\w+)", text, re.MULTILINE)
+        assert stage is not None, "FID-006 must state an adoption stage"
+        row = [ln for ln in text.splitlines() if "erfüllen den Check" in ln]
+        assert len(row) == 1, (
+            "FID-006's portfolio table must carry exactly one row stating how "
+            "many servers meet the check"
+        )
+        passes_nobody = re.search(r"\*\*0\*\*\s*\|?\s*$", row[0]) is not None
+        if stage.group(1) == "enforced":
+            assert not passes_nobody, (
+                "FID-006 is `enforced` while its own portfolio table still says "
+                "0 servers pass. §2.3 allows promotion on a consciously "
+                "accepted backlog — not on a backlog that is the entire "
+                "portfolio. Re-run the sweep and write down the new number "
+                "before promoting."
+            )
