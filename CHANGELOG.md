@@ -9,6 +9,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **CI-Schritt «Ruff-Version (Pin ↔ laufendes Programm)».** Der Schritt
+  «Ruff-Pin-Sync» vergleicht `ci.yml` mit `.pre-commit-config.yaml` — das sind
+  **zwei Texte**. Dass die ruff, die den Schritt «Formatierung der
+  Referenz-Vorlagen» gefahren hat, diese Version trägt, hat er nie gemessen und
+  meldete trotzdem «beide Stellen stimmen überein».
+
+  Für dieses Repo ist das nicht theoretisch, und `ruff.toml` sagt selbst warum:
+  Bis 0.15.8 liess `ruff format --check .` Markdown unberührt, seit 0.16.1 ist
+  die Formatierung von Python-Blöcken in Markdown stabil und standardmässig an.
+  Genau der Unterschied, gegen den der Pin existiert — und den der Pin bis
+  jetzt nur behauptet hat. Dieses Repo fährt als einziges Gate den Formatter;
+  läuft er auf einer anderen Version, gibt es keinen zweiten Check, der es
+  auffängt.
+
+  Gemessen beim Nachziehen, ohne Manipulation: Auf einer Maschine mit
+  `/root/.local/bin/ruff` (0.15.8) vor `/usr/local/bin/ruff` (0.16.1) meldete
+  der Pin-Sync `Ruff-Pin OK (0.16.1; beide Stellen stimmen überein)`, während
+  `ruff format --check .` auf 0.15.8 lief. 0.15.8 ist kein ausgedachter Wert —
+  es ist die Version, die das Portfolio sonst führt, also genau die, die auf
+  einem Arbeitsrechner liegt.
+
+  Der Pin wird aus `ci.yml` gelesen statt im Schritt hinterlegt: eine dritte
+  Stelle für dieselbe Zahl wäre eine dritte Stelle zum Auseinanderlaufen. Die
+  Ausgabeform von `ruff --version` ist selbst ein Anker und trägt einen eigenen
+  Befund — ändert upstream sie, sagt der Schritt das, statt stillschweigend
+  nichts mehr zu vergleichen. Ein fehlender Pin und eine fehlende ruff sind
+  ebenfalls Fehler, kein Grund zum Überspringen.
+
+  Reine Shell, aus demselben Grund wie der Schritt darüber: in einem Repo,
+  dessen einziger Python-Code Vorlagen sind, wäre ein eigenes Modul samt Tests
+  unverhältnismässig.
+
+  Nachgezogen aus `mcp-data-source-probe-skill` (dort Check 18). Die zweite
+  Prüfung von dort — die READMEs zählen auf, was SKILL.md definiert — hat
+  dieses Repo bereits als «Rule count is consistent across SKILL.md, both
+  READMEs and patterns.py»; sie war die Vorlage für den Port in der anderen
+  Richtung und wurde hier nicht dupliziert.
+
+  Gegenprobe, jeder Zweig einmal absichtlich gebrochen: falsche Version auf dem
+  PATH (rot, nennt beide Zahlen und den Fundort), Pin entfernt (rot, «Anker
+  weg»), ruff nicht auf dem PATH (rot, FAIL statt skip), `ruff --version` in
+  anderer Ausgabeform (rot, zeigt auf die Ausgabe statt auf eine Abweichung).
+  Mit der gepinnten 0.16.1 im PATH: grün.
+
 - **Regel 14 — «Der Server sagt an, dass er hört».** Vierzehn Regeln statt
   dreizehn. Jeder Server hat einen Moment, in dem er aufhört, ein Prozess zu
   sein, und anfängt, ein Server zu sein; von aussen sehen beide Zustände gleich
