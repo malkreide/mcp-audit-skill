@@ -6,10 +6,19 @@
 #   description  — die GitHub-Repo-Description gegen die Zahl der Regeln in
 #                  SKILL.md (Pruefung 15)
 #
-# ZUM DATEINAMEN: Er ist enger als der Inhalt geworden. Er bleibt trotzdem,
-# weil zwei Befundtexte namentlich auf ihn zeigen (tools/checks/catalogue.py
-# und tools/checks/repo_metadata.py) und ein umbenannter Workflow seine
-# Lauf-Historie verliert. Wer ihn umbenennt, zieht beide Stellen mit.
+# ZUM DATEINAMEN: Bis 1.8.0 hiess diese Datei `catalogue-drift.yml`, nach dem
+# einzigen Waechter, den sie damals trug. Mit Pruefung 15 wurde der Name enger
+# als der Inhalt, und ein Name, der nur noch die Haelfte beschreibt, schickt
+# den Lesenden zur falschen Erwartung. Der Preis der Umbenennung steht dabei,
+# damit ihn niemand zweimal zahlt: GitHub fuehrt Workflows unter ihrem
+# DATEIPFAD, die Laeufe von `catalogue-drift.yml` haengen also weiter unter dem
+# alten Eintrag und tauchen unter diesem hier nicht auf.
+#
+# Drei Stellen zeigen namentlich hierher und gehoeren beim naechsten Umbenennen
+# mit: die Befundtexte in tools/checks/catalogue.py und
+# tools/checks/repo_metadata.py — beide sagen, wo der Abruf steht, den sie
+# selbst nicht machen — und der historische Verweis in tools/checks/_core.py.
+# Keine Pruefung faengt einen toten Verweis darauf; das ist ein benannter Rand.
 #
 # ZWEI JOBS UND NICHT ZWEI SCHRITTE: Sie sind voneinander unabhaengig, und ein
 # Netzaussetzer bei der einen Quelle soll die andere nicht mitnehmen. Ein roter
@@ -32,7 +41,7 @@
 # des Repos. Bewusst kein Issue-Opener: Das braucht Schreibrechte und eine
 # Deduplizierung, und beides ist mehr Maschinerie als die Sache traegt.
 
-name: catalogue-drift
+name: weekly-drift
 
 on:
   schedule:

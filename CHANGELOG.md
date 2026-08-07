@@ -105,7 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   kommt.
 
   Vorher standen dieselben Prüfungen als Python-Heredocs in `ci.yml` und
-  `catalogue-drift.yml`. Ein Heredoc lässt sich nur ausführen, indem man das
+  `catalogue-drift.yml` (heute `weekly-drift.yml`). Ein Heredoc lässt sich nur
+  ausführen, indem man das
   ganze Repository in genau den Zustand bringt, den es beanstanden soll;
   entsprechend war von keiner einzigen belegt, dass sie überhaupt beisst. Der
   Ruff-Gate-Wächter aus dem vorigen Eintrag ist genau daraus entstanden — er
@@ -232,6 +233,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `mcp-data-source-probe-skill` führt dieselbe Sonde als Check 12.
 
 ### Changed
+
+- **`catalogue-drift.yml` heisst jetzt `weekly-drift.yml`.** Der Name stammt aus
+  der Zeit, als die Datei genau einen Wächter trug; mit Prüfung 15 beschreibt er
+  die Hälfte ihres Inhalts und schickt den Lesenden zur falschen Erwartung.
+
+  **Der Preis steht im Kopf der Datei**, damit ihn niemand zweimal zahlt:
+  GitHub führt Workflows unter ihrem **Dateipfad**, nicht unter ihrem
+  `name:`-Feld. Die bisherigen Läufe hängen weiter unter dem alten Eintrag und
+  tauchen unter dem neuen nicht auf — die Historie ist nicht weg, aber sie ist
+  woanders. Genau deshalb stand der alte Name eine Runde länger, als er
+  gestimmt hat.
+
+  Drei Stellen zeigten namentlich auf die Datei und sind mitgezogen: die
+  Befundtexte in `tools/checks/catalogue.py` und `tools/checks/repo_metadata.py`
+  — beide sagen, wo der Abruf steht, den sie selbst nicht machen — und der
+  historische Verweis in `tools/checks/_core.py`, der jetzt beide Namen nennt,
+  weil die Aussage über 1.7.0 sonst nicht mehr auffindbar wäre. Der Eintrag zu
+  1.7.0 weiter unten bleibt unverändert: Dort hiess die Datei so, und ein
+  CHANGELOG, der seine eigene Vergangenheit umschreibt, taugt als Beleg nichts.
+
+  **Benannter Rand:** Keine Prüfung fängt einen toten Verweis auf einen
+  Workflow-Pfad. Prüfung 2 hält `REFERENCED_FILES` gegen den Baum, aber die
+  Liste ist von Hand gepflegt und kennt die `.github/`-Pfade nicht. Ein
+  Wächter dafür wäre möglich; er ist hier nicht gebaut, und das steht hier,
+  statt dass es niemandem auffällt.
 
 - **Regel 5 um den Vergleich erweitert: exakt, nicht Teilzeichenkette.** Der
   Satz, der dort schon stand — *ein Test, der die Bedingung herstellt, unter der
