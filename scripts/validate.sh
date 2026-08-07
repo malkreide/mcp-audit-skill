@@ -22,10 +22,15 @@
 # einzelner Lauf jedes Problem statt nur des ersten. Exit 0 nur, wenn alle
 # bestanden haben.
 #
-# Ohne Netz und ohne Tag-Kontext vollständig durchlaufbar. Die zwei Prüfungen,
-# die beides brauchen — Tag gegen CHANGELOG (13) und Katalog-Drift (14) —,
-# sind als `offline=False` markiert und bleiben hier aussen vor; die CI ruft
-# sie dort auf, wo ihr Kontext existiert.
+# Ohne Netz und ohne Tag-Kontext vollständig durchlaufbar. Die drei Prüfungen,
+# die einen Kontext brauchen, den ein frischer Clone nicht mitbringt — Tag
+# gegen CHANGELOG (13), Katalog-Drift (14), Repo-Description (15) —, sind als
+# `offline=False` markiert und bleiben hier aussen vor; die CI ruft sie dort
+# auf, wo ihr Kontext existiert.
+#
+# Dass hier «zwei» stand, nachdem 15 dazugekommen war, hat keine Prüfung
+# gefangen: `test_the_offline_runner_leaves_the_context_bound_checks_out` hält
+# die Registry gegen eine Menge im Testcode, nicht gegen diesen Kommentar.
 
 set -eu
 

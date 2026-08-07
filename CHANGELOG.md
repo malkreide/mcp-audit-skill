@@ -9,6 +9,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Prüfung 16 — jeder genannte Workflow-Pfad existiert.** Der Rand, den die
+  Umbenennung im vorigen Eintrag benannt und offen gelassen hat. Drei Stellen
+  zeigten namentlich auf `catalogue-drift.yml`; gefunden hat sie ein `grep` von
+  Hand. Prüfung 2 hält `REFERENCED_FILES` gegen den Baum, aber die Liste ist
+  von Hand gepflegt und kennt die `.github/`-Pfade nicht — ein toter Verweis
+  auf einen Workflow war damit ungeprüft, und er liest sich weiterhin richtig.
+
+  Gesucht wird über die **Dateiendung**, nicht über eine gepflegte Liste: Eine
+  neue Datei ist von selbst erfasst, und genau das Vergessen ist der Fehler,
+  um den es geht. Erkannt wird der Vollpfad **und** der blosse Dateiname —
+  letzterer nur, wenn er zum Vokabular gehört, sonst schlüge jede
+  `.pre-commit-config.yaml` in der Prosa an. Der blosse Name ist kein Detail:
+  Eine der drei Fundstellen von damals nannte die Datei genau so.
+
+  **`RETIRED`, und die Ausnahme gilt pro Datei.** Eine Umbenennung hinterlässt
+  Erwähnungen, die richtig bleiben — im CHANGELOG steht, wie die Datei damals
+  hiess. Ein pauschaler Freibrief für den alten Namen hätte aber den Anlassfall
+  nicht gefangen: `catalogue.py` nannte ihn als **lebenden** Zeiger. Deshalb
+  trägt jeder Eintrag die Liste der Dateien, in denen der alte Name stehen
+  darf, plus Nachfolger und Zeitpunkt — beides landet im Befund, damit dieser
+  sagt, wohin die Stelle gehört.
+
+  **Drei Wächter über die Tabelle selbst**, weil eine Ausnahmeliste stiller
+  veraltet als das, wovor sie ausnimmt — ein toter Verweis fällt beim Lesen
+  auf, ein überflüssiger Freibrief nie: ein `RETIRED`-Pfad, den es wieder gibt
+  (der Eintrag nähme sonst einen lebenden Workflow von der Prüfung aus); eine
+  Datei unter `historical_in`, die die Erwähnung gar nicht mehr enthält; und
+  der Fall, dass im ganzen Baum keine einzige Erwähnung gefunden wird. Fünf
+  Mutationen, davon drei auf die Tabelle, dazu ein eigener Test für den
+  dritten Wächter — den erreicht keine Mutation, ohne den Baum zu zerstören.
+
+  **Grenze, ausdrücklich:** Geprüft wird die Richtung «Verweis → Datei». Ein
+  Workflow, den niemand erwähnt, ist **kein** Befund — er muss nicht
+  dokumentiert sein, um zu laufen, und eine Prüfung, die das verlangt, erzwingt
+  Prosa statt Korrektheit.
+
 - **Prüfung 15 — die Repo-Description nennt dieselbe Regelzahl wie SKILL.md.**
   Prüfung 5 hält vier Stellen gegeneinander: SKILL.md, beide READMEs und den
   Docstring von `reference/patterns.py`. Die fünfte lag ausserhalb ihres
@@ -253,11 +289,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   1.7.0 weiter unten bleibt unverändert: Dort hiess die Datei so, und ein
   CHANGELOG, der seine eigene Vergangenheit umschreibt, taugt als Beleg nichts.
 
-  **Benannter Rand:** Keine Prüfung fängt einen toten Verweis auf einen
-  Workflow-Pfad. Prüfung 2 hält `REFERENCED_FILES` gegen den Baum, aber die
-  Liste ist von Hand gepflegt und kennt die `.github/`-Pfade nicht. Ein
-  Wächter dafür wäre möglich; er ist hier nicht gebaut, und das steht hier,
-  statt dass es niemandem auffällt.
+  **Benannter Rand, inzwischen geschlossen:** Keine Prüfung fing einen toten
+  Verweis auf einen Workflow-Pfad — Prüfung 2 hält `REFERENCED_FILES` gegen den
+  Baum, aber die Liste ist von Hand gepflegt und kennt die `.github/`-Pfade
+  nicht. Der Rand stand hier als offener; Prüfung 16 im Eintrag oben hat ihn
+  geschlossen.
 
 - **Regel 5 um den Vergleich erweitert: exakt, nicht Teilzeichenkette.** Der
   Satz, der dort schon stand — *ein Test, der die Bedingung herstellt, unter der

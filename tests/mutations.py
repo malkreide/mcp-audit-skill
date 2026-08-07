@@ -35,6 +35,13 @@ from pathlib import Path
 PATTERNS = "reference/patterns.py"
 MANIFEST = "manifest.txt"
 METADATA = "repo-metadata.json"
+WORKFLOWS = ".github/workflows"
+
+# Der Name, den `weekly-drift.yml` bis 1.8.0 trug. Er steht hier, weil eine
+# Mutation die zurückgezogene Datei wieder anlegen muss — und deshalb nennt
+# `RETIRED` in tools/checks/workflows.py diese Datei ausdrücklich als eine der
+# Stellen, an denen der alte Name stehen darf.
+RETIRED_NAME = "catalogue-drift.yml"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -557,5 +564,50 @@ MUTATIONS: list[Mutation] = [
         "Description nach einer neuen Regel nicht nachgezogen",
         write(METADATA, '{"description": "Skill with ten data-fidelity rules"}\n'),
         "DRIFT — die Repo-Description ist gegenüber SKILL.md veraltet",
+    ),
+    # 16 — jeder genannte Workflow-Pfad existiert
+    #
+    # Zwei Mutationen auf die Verweise, drei auf die Ausnahmetabelle. Die
+    # Gewichtung ist Absicht: Eine Ausnahmeliste veraltet genauso still wie
+    # das, wovor sie ausnimmt, und sie tut es unauffälliger — ein toter
+    # Verweis fällt beim Lesen auf, ein überflüssiger Freibrief nie.
+    Mutation(
+        16,
+        "Workflow-Verzeichnis weg",
+        remove(".github/workflows"),
+        f"{WORKFLOWS}/ fehlt",
+    ),
+    Mutation(
+        16,
+        # Genau der Anlassfall: Bei der Umbenennung blieb ein Befundtext auf
+        # dem alten Namen stehen. Gefunden hat ihn ein grep von Hand.
+        "ein Befundtext zeigt weiter auf den alten Namen",
+        replace("tools/checks/catalogue.py", "weekly-drift.yml", RETIRED_NAME),
+        "als lebender Zeiger genannt",
+    ),
+    Mutation(
+        16,
+        # Der Suchtext trägt hier bewusst kein `.github/` — sonst stünde in
+        # DIESER Datei ein Vollpfad auf eine Datei, die es nie gab, und die
+        # Prüfung schlüge auf dem echten Baum an.
+        "Tippfehler im Pfad",
+        replace("scripts/validate.sh", "workflows/ci.yml", "workflows/cci.yml"),
+        "existiert aber nicht",
+    ),
+    Mutation(
+        16,
+        "der zurückgezogene Workflow ist wieder da",
+        write(f"{WORKFLOWS}/{RETIRED_NAME}", "name: zurueck\n"),
+        "gibt es im Baum aber wieder",
+    ),
+    Mutation(
+        16,
+        "eine Ausnahme ohne Gegenstand",
+        replace(
+            "tools/checks/_core.py",
+            f"`{RETIRED_NAME}` — der Datei, die heute\n`weekly-drift.yml` heisst",
+            "`weekly-drift.yml`",
+        ),
+        "nennt ['tools/checks/_core.py']",
     ),
 ]

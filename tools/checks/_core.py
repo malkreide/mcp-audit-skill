@@ -63,9 +63,9 @@ class Check:
 
     `offline` markiert, ob die Prüfung ohne Netz und ohne Tag-Kontext läuft.
     `scripts/validate.sh` fährt nur die Offline-Prüfungen — der Runner muss in
-    einem frischen Clone vollständig durchlaufen. Die beiden übrigen ruft die
-    CI dort auf, wo ihr Kontext existiert: die Tag-Prüfung im Tag-Lauf, die
-    Katalog-Prüfung im Wochenplan.
+    einem frischen Clone vollständig durchlaufen. Die übrigen ruft die CI dort
+    auf, wo ihr Kontext existiert: die Tag-Prüfung im Tag-Lauf, Katalog-Drift
+    und Repo-Description im Wochenplan.
     """
 
     number: int
