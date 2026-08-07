@@ -69,6 +69,44 @@ class TestTargetRevision:
         with pytest.raises(TargetRepoError):
             target_revision(plain)
 
+    def test_a_directory_inside_another_repo_is_not_that_repo(self, tmp_path: Path):
+        """The enclosing repository's SHA must not be handed out as the target's.
+
+        This case used to be untested and only accidentally green: `git -C`
+        searches upwards, so a plain directory yields a SHA whenever *any*
+        ancestor is a repository. CI never sees one — runner temp directories
+        have no repo above them — so the test above passed for a reason that had
+        nothing to do with the property it names. It went red on a machine whose
+        home directory is a git repository, which put an ancestor above every
+        temporary path.
+
+        Built here on purpose rather than left to the environment: the
+        expensive half of the bug was that the missing check was invisible
+        wherever the ancestor happened not to exist.
+        """
+        outer = tmp_path / "enclosing-repo"
+        outer.mkdir()
+        _git(outer, "init", "-q", ".")
+        _git(outer, "config", "user.email", "audit@example.test")
+        _git(outer, "config", "user.name", "Audit")
+        (outer / "f.txt").write_text("x\n", encoding="utf-8")
+        _git(outer, "add", "-A")
+        _git(outer, "commit", "-qm", "initial")
+
+        inner = outer / "not-a-repo-either"
+        inner.mkdir()
+        assert not (inner / ".git").exists()
+
+        with pytest.raises(TargetRepoError) as excinfo:
+            target_revision(inner)
+        # The message has to name the tree git actually found, or the reader
+        # cannot tell this apart from «there is no repository at all».
+        assert "not a git repository root" in str(excinfo.value)
+
+    def test_the_repository_root_itself_still_works(self, repo: Path):
+        """The guard must not reject the ordinary case it sits in front of."""
+        assert target_revision(repo)["target_sha"] == _git(repo, "rev-parse", "HEAD")
+
     def test_missing_directory_is_an_error(self, tmp_path: Path):
         with pytest.raises(TargetRepoError):
             target_revision(tmp_path / "nope")

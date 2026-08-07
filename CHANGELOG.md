@@ -6,6 +6,26 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben — Der Ziel-Anker nannte die Revision eines fremden Repositorys
+
+`target_revision()` prüfte nie, ob das Verzeichnis, das es bekommt, **selbst** ein Repository ist. `git -C <ordner> rev-parse HEAD` sucht aufwärts, bis es ein `.git` findet — also liefert jeder Ordner eine SHA, sobald irgendein Vorfahre ein Repository ist. In `audit-meta.json` stand dann `target_repo` mit dem einen Baum und `target_sha` mit einem Commit aus einem anderen. Vierzig Hexziffern, plausibel, und über das falsche Repo.
+
+Das ist genau die Behauptung, gegen die der Anker in `v1.7.0` gebaut wurde. Er hielt fest, *woran* ein Lauf hängt — und konnte still an etwas anderem hängen, als er nannte.
+
+**Gefunden auf einer fremden Maschine, nicht in der CI.** Der Wächter dafür existierte («ein Nicht-Repo ist ein Fehler, keine leere SHA»), war aber nur zufällig grün: Auf den Runnern liegt das Temp-Verzeichnis unter keinem Repository, also scheiterte `rev-parse` dort ohnehin. Rot wurde der Test erst auf einem Rechner, dessen **Home-Verzeichnis** ein Git-Repository ist — damit hat jeder temporäre Pfad einen Vorfahren. Der Test prüfte also nicht die genannte Eigenschaft, sondern eine Eigenschaft der Umgebung.
+
+Behoben durch drei Zeilen vor dem `rev-parse HEAD`: `--show-toplevel` holen und gegen den übergebenen Pfad vergleichen. Das Ziel muss die **Wurzel** eines Repositorys sein; ein Unterverzeichnis ist ab jetzt ein Fehler mit benanntem Fundort («git resolved it to …») statt einer stillen Fremd-SHA. Die milde Variante — Unterverzeichnis erlauben und `target_repo` auf die gefundene Wurzel korrigieren — wurde verworfen: `--target-repo` benennt das auditierte Repo, und ein Zeiger auf `src/` ist eher ein Vertipper als eine Absicht.
+
+Der neue Test baut den Vorfahren-Fall **absichtlich** auf, statt sich darauf zu verlassen, dass es ihn nicht gibt. Die Gegenprobe zeigt alle drei Zustände, und die dritte Zeile ist der Grund für den Test:
+
+| Lauf | Ergebnis |
+|---|---|
+| mit Fix, Temp unter einem Repo | grün |
+| ohne Fix, Temp unter einem Repo | beide Tests rot — der gemeldete Fehler, reproduziert |
+| ohne Fix, gewöhnliches Temp (= CI) | **nur der neue Test rot**, der alte grün |
+
+**Für bestehende Audit-Läufe:** Betroffen ist nur, wessen `--target-repo` auf ein Verzeichnis zeigte, das keine Repo-Wurzel ist — dann nennt `audit-meta.json` eine SHA aus dem umgebenden Baum. Nachprüfbar mit `git -C <target_repo> rev-parse --show-toplevel`: Kommt ein anderer Pfad zurück als `target_repo`, ist der Anker jenes Laufs wertlos. Kein §5-Fall — §5 regelt Änderungen am Katalog, nicht am Werkzeug —, aber ein Lauf mit falschem Anker belegt nicht, was sein Report behauptet.
+
 ---
 
 ## [v2.1.0] — 2026-08-07 — Der Katalog misst, was passiert, statt zu lesen, wie es aussieht
