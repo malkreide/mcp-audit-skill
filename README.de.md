@@ -126,7 +126,7 @@ Die drei Repos berühren dieselben Gegenstände und stellen verschiedene Fragen.
 
 **Hier steht, wie man es verdrahtet und woran man sieht, dass es trägt. Der Katalog fragt, ob es da ist. Der Auditor fragt, ob es heute noch da ist.**
 
-Gegen `mcp-audit` v2.0.0 (112 Checks in zwölf Kategorien, zwei Spec-Baselines): Regel 1 ist `SDK-006` plus `DEP-001`, Regel 3 ist `ARCH-013`, Regel 4 ist `SEC-024` (mit `SEC-005` als ausgehender Gegenrichtung), Regel 8 ist `ARCH-015`/`ARCH-016`/`ARCH-017`, Regel 9 ist `SCALE-008`, Regel 10 ist `SCALE-009`/`SCALE-010`, Regel 11 ist `HITL-006`, Regel 12 ist `SEC-025`/`SEC-026`. Für die Regeln 2 und 6 gibt es keinen Check; bei den Regeln 5, 7 und 13 liegt je einer daneben oder deckt eine Hälfte — die vollständige Zuordnung in [SKILL.md](SKILL.md) benennt die Lücken, statt sie zu überdecken, dazu die fünf Checks, die einen von `2026-07-28` entfernten Gegenstand messen, und die Spec-Änderungen, die dieser Skill bewusst dem Katalog überlässt.
+Gegen `mcp-audit` v2.2.0 (116 Checks in zwölf Kategorien, zwei Spec-Baselines): Regel 1 ist `SDK-006` plus `DEP-001`, Regel 3 ist `ARCH-013`, Regel 4 ist `SEC-024` (die ausgehende Gegenrichtung sind zwei Checks, `SEC-005` und `SEC-028`), Regel 8 ist `ARCH-015`/`ARCH-016`/`ARCH-017`, Regel 9 ist `SCALE-008`, Regel 10 ist `SCALE-009`/`SCALE-010`, Regel 11 ist `HITL-006`, Regel 12 ist `SEC-025`/`SEC-026`. Für die Regeln 2 und 6 gibt es keinen Check; bei den Regeln 5, 7 und 13 liegt je einer daneben oder deckt eine Hälfte — die vollständige Zuordnung in [SKILL.md](SKILL.md) benennt die Lücken, statt sie zu überdecken, dazu die fünf Checks, die einen von `2026-07-28` entfernten Gegenstand messen, und die Spec-Änderungen, die dieser Skill bewusst dem Katalog überlässt.
 
 ## Changelog
 
