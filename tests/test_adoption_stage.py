@@ -179,6 +179,14 @@ class TestRealCatalogUnchanged:
         # says how many actually consume a suppressed source — the check is
         # broad by `applies_when` and narrow in fact, and only a run can tell
         # the two apart.
+        # OPS-009 (unreleased) takes the ordinary bridge with the widest gap of
+        # the four: of 43 portfolio repos, 41 have no fixture directory at all
+        # and not one carries a recording date. Enforced on merge day would be
+        # a 100 % red portfolio — the most literal possible instance of the
+        # failure mode §2.3 exists to prevent. Advisory until a run says
+        # whether "one recorded fixture per external endpoint" is the right
+        # granularity, or whether per-endpoint is too fine for servers that
+        # front a dozen of them.
         assert advisory_ids(parse_catalog(CHECKS_DIR)) == [
             "ARCH-015",
             "ARCH-016",
@@ -197,6 +205,7 @@ class TestRealCatalogUnchanged:
             "OPS-006",
             "OPS-007",
             "OPS-008",
+            "OPS-009",
             "SCALE-008",
             "SCALE-009",
             "SCALE-010",
