@@ -221,6 +221,43 @@ async def search_terms(search_term: str, fields: str = "") -> SearchResult:
 
 
 # ---------------------------------------------------------------------------
+# Rule 5 — the fixture carries its provenance, and its date
+# ---------------------------------------------------------------------------
+
+# "A mock reproduces its author's assumption" says what a mock cannot do. The
+# positive duty next to it: where a fixture came from and WHEN it was recorded
+# belongs in the repository. Without the date, "recorded" is indistinguishable
+# from "invented" after two years — the file looks the same either way, and
+# nobody can tell whether it shows yesterday's shape or the one from three
+# schema changes ago.
+#
+# Measured, from the same incident as rules 13 and 14, read from the test suite
+# instead of the server: the fixtures pinned the old header and the old cell
+# values, so they stayed green while the server found nothing against the real
+# source. No test was written wrongly. The fixture was old, and nothing about
+# it said so.
+#
+# ✗ What this deliberately does NOT do:
+#
+#     _PAGE = "Schulgemeinde,anzahl\nUster,412\n"
+#
+# The date is the part that does the work, not the origin line: it turns the
+# distance between recording and today into a readable number instead of a
+# feeling. It does NOT replace the recall canary below — the canary measures
+# the source, the provenance dates the mock.
+_PAGE_CSV = (
+    # Recorded 2026-08-03 from GET {BISTA_API}/{EP_SEK1}, first two data rows,
+    # verbatim. Header deliberately in the source's spelling of that day — it
+    # had already switched once before (rule 13). Refresh with
+    # `python scripts/record_fixtures.py`, which is the reason this is a
+    # repeatable step and not a remembered one.
+    "schulgemeinde,anzahl\n"
+    "Uster,412\n"
+    "Bonstetten,1 bis 5\n"  # suppressed count, delivered exactly like this
+)
+
+
+# ---------------------------------------------------------------------------
 # Rule 5 — the recall canary. Mocks cannot catch this class; only live can.
 # ---------------------------------------------------------------------------
 

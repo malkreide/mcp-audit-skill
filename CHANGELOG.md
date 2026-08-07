@@ -9,6 +9,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Regel 5 sagt jetzt, was eine Fixture mitbringen muss: Herkunft und Datum.**
+  Der Skill nannte die Mock-Blindheit an vier Stellen — Regel 5, Regel 6 und
+  seit gestern die Regeln 13 und 14, jedes Mal als «warum Mocks das nicht
+  fangen». Die positive Pflicht daneben stand nirgends: **wo** die Fixture
+  herkommt und **wann** sie aufgezeichnet wurde.
+
+  Aufgefallen ist das über [`OPS-009`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-009.md)
+  im Nachbarrepo, dessen `pdf_ref` «Katalog-Lücke gegen mcp-data-fidelity-skill»
+  lautet. Der Katalog hat die Lücke an sich selbst gefunden — beim Nachlesen
+  war sie hier genauso offen. Ein Skill, der viermal sagt «der Mock kann das
+  nicht widerlegen», ohne je zu sagen, woher der Mock stammt, beschreibt das
+  Problem vollständig und die Pflicht gar nicht.
+
+  **Der Beleg ist derselbe Vorfall wie bei den Regeln 13 und 14**, nur aus der
+  Testsuite gelesen statt aus dem Server: `zh-education-mcp` schreibt in
+  `test_schema_drift.py` selbst, dass die Fixtures «die alte Kopfzeile und die
+  alten Zellwerte pinnten, also grün blieben, während der Server gegen die
+  echte Quelle nichts mehr fand». Kein Test war falsch geschrieben — die
+  Fixture war alt, und das war ihr nicht anzusehen.
+
+  **Warum das Datum und nicht nur die Herkunft.** «Aufgezeichnet» ohne
+  Zeitpunkt ist nach zwei Jahren von «ausgedacht» nicht zu unterscheiden; die
+  Datei sieht gleich aus. Das Datum macht den Abstand zu einer lesbaren Zahl
+  statt zu einem Gefühl.
+
+  **Warum als Zusatz zu Regel 5 und nicht als Regel 15.** Dieselbe Prüfung wie
+  bei 13 und 14, diesmal mit dem umgekehrten Ausgang: Regel 5 trägt bereits
+  «Mocks bilden die eigene Annahme ab» und die Live-Untergrenzen. Die datierte
+  Herkunft **schärft** dieses Kriterium, statt eine eigene Dimension zu
+  eröffnen — sie erzwingt kein `oder`, das mit «Recall in die Tests» nichts zu
+  tun hätte. Der Canary ersetzt sie nicht und sie ihn nicht: Der eine misst die
+  Quelle, die andere datiert den Mock.
+
+  Dazu ein Muster in `reference/patterns.py` (`_PAGE_CSV`), ein
+  Checklisten-Punkt und die Tabellenzeile 5, die `OPS-009` als vierten Teil der
+  Regel führt statt als Lücke. Reichweite, die auch dort offen bleibt: dass der
+  Abruf **wiederholbar** danebenliegt statt ein Handgriff im Gedächtnis zu
+  sein, verlangt der Check nicht.
+
+### Changed
+
 - **Zuordnungstabelle nachgezogen: die Regeln 13 und 14 haben Checks, keine 24
   Stunden nachdem sie hier als «kein Check deckt sie ab» geschrieben wurden.**
   Gefunden hat es **Prüfung 14** im Wochenplan, von Hand ausgelöst: 113 gegen
