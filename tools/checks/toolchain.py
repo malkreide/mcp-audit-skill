@@ -12,11 +12,22 @@ weiter unten.
 
 Ein fehlender Pin ist ebenfalls ein Befund, nicht ein Grund zum Überspringen:
 Dann hat der Vergleich nicht stattgefunden.
+
+Check 18 schliesst die Lücke, die Check 16 offen lässt, und der Unterschied
+ist der ganze Punkt: Check 16 vergleicht ZWEI TEXTE miteinander. Er belegt,
+dass beide Dateien dieselbe Zahl nennen — nicht, dass die ruff, die gleich
+Checks 12, 13 und 14 fährt, diese Zahl trägt. Ein `ruff` weiter vorne auf dem
+PATH als das gerade installierte macht Check 16 grün melden («Ruff-Pin 0.16.1
+… stimmen überein»), während der Lauf daneben auf einer anderen Version
+stattfindet. Genau die Auskunft, gegen die dieses Repository angeschrieben
+ist: eine Prüfung, die etwas bestätigt, das sie nicht gemessen hat.
 """
 
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 from ._core import CheckFailed, register
@@ -30,6 +41,11 @@ HOOK_REV = re.compile(
     re.S | re.M,
 )
 REQUIRED_HOOKS = ("ruff-check", "ruff-format")
+
+# Die Ausgabe von `ruff --version` ist selbst ein Anker: «ruff 0.16.1». Ändert
+# upstream ihre Form, darf diese Prüfung nicht stillschweigend nichts mehr
+# vergleichen — sie sagt dann, dass sie die Antwort nicht lesen konnte.
+VERSION_LINE = re.compile(r"^ruff\s+(?P<version>\d\S*)")
 
 
 def _read(root: Path, name: str) -> str:
@@ -88,3 +104,72 @@ def ruff_pin_sync(root: Path) -> str:
         f"Ruff-Pin {ci_pin.group('version')} in {CI} und {HOOKS}, "
         f"{len(REQUIRED_HOOKS)} Hooks vorhanden"
     )
+
+
+@register(18, "the ruff on PATH is the pinned one")
+def ruff_version_matches_pin(root: Path) -> str:
+    # Der Pin kommt aus ci.yml, nicht aus einer Konstante hier. Eine dritte
+    # Stelle für dieselbe Zahl wäre eine dritte Stelle zum Auseinanderlaufen —
+    # dieselbe Begründung, aus der ruff nicht in requirements-dev.txt steht.
+    ci = _read(root, CI)
+    pinned = CI_PIN.search(ci)
+    if not pinned:
+        raise CheckFailed(
+            f"{CI} nennt kein 'ruff==<version>' — Anker weg. Ohne ihn hat "
+            "diese Prüfung nichts, wogegen sie die laufende ruff hält, und "
+            "sie hätte genau deshalb Erfolg gemeldet.\n"
+            "  Check 16 meldet dasselbe und ist die Stelle, an der das zu "
+            "reparieren ist."
+        )
+    expected = pinned.group("version")
+
+    # FAIL statt skip, wie bei den Gates selbst: Eine übersprungene Prüfung
+    # meldete «bestanden», wo «nicht gelaufen» richtig wäre.
+    found_at = shutil.which("ruff")
+    if found_at is None:
+        raise CheckFailed(
+            "ruff liegt nicht auf dem PATH — diese Prüfung kann die laufende "
+            f"Version nicht ermitteln.\n    pip install ruff=={expected}"
+        )
+
+    done = subprocess.run(
+        ["ruff", "--version"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if done.returncode != 0:
+        raise CheckFailed(
+            f"`ruff --version` endete mit {done.returncode} — die laufende "
+            f"Version liess sich nicht ermitteln:\n"
+            f"{done.stdout}{done.stderr}".rstrip()
+        )
+
+    line = VERSION_LINE.match(done.stdout.strip())
+    if not line:
+        raise CheckFailed(
+            "`ruff --version` antwortet nicht in der Form 'ruff <version>' — "
+            f"gelesen wurde {done.stdout.strip()!r}.\n"
+            "  Der Anker ist die Ausgabeform selbst. Hat upstream sie "
+            "geändert, gehört VERSION_LINE in tools/checks/toolchain.py "
+            "nachgezogen; ohne das vergliche diese Prüfung nichts mehr und "
+            "meldete es nicht."
+        )
+    running = line.group("version")
+
+    if running != expected:
+        raise CheckFailed(
+            f"Die ruff auf dem PATH ist {running}, gepinnt ist {expected}.\n"
+            f"  Gefunden unter: {found_at}\n"
+            "  Die Checks 12, 13 und 14 fahren dann eine andere Version als "
+            "die CI. Beide Richtungen kosten: Eine ältere lässt durch, was im "
+            "Pull Request rot wird; eine neuere beanstandet, was die CI "
+            "durchlässt. Check 16 merkt es nicht — er vergleicht zwei Texte "
+            "miteinander, nicht den Text mit dem laufenden Programm.\n"
+            f"    pip install ruff=={expected}\n"
+            "  Ist die richtige Version schon installiert, liegt eine zweite "
+            "weiter vorne auf dem PATH:\n"
+            "    which -a ruff"
+        )
+
+    return f"ruff {running} auf dem PATH, wie in {CI} gepinnt"

@@ -156,6 +156,79 @@ def test_a_missing_ruff_is_a_finding_not_a_skip(
     assert "ruff liegt nicht auf dem PATH" in str(raised.value)
 
 
+def _fake_ruff(directory: Path, output: str, *, code: int = 0) -> Path:
+    """Ein `ruff` auf dem PATH, das sagt, was der Test braucht.
+
+    Die Verzweigung hängt an der Umgebung, nicht an einer Datei — als
+    Mutation am Baum ist sie nicht ausdrückbar.
+    """
+    shim = directory / "ruff"
+    shim.write_text(
+        f'#!/bin/sh\nprintf "%s\\n" "{output}"\nexit {code}\n', encoding="utf-8"
+    )
+    shim.chmod(0o755)
+    return shim
+
+
+def test_check_18_catches_what_16_cannot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Die Daseinsberechtigung von Check 18, als Test.
+
+    Check 16 vergleicht ci.yml mit .pre-commit-config.yaml — zwei Texte. Auf
+    einem Rechner, auf dem eine ANDERE ruff weiter vorne im PATH liegt, sagt
+    er weiter «beide Stellen stimmen überein» und hat damit recht: Die zwei
+    Dateien tun es. Nur fahren die Gates 12, 13 und 14 daneben eine Version,
+    die niemand gepinnt hat, und der Lauf meldet grün auf einem Baum, den die
+    CI ablehnen kann.
+
+    Wird dieser Test rot, weil 16 die Lage plötzlich selbst bemerkt, ist das
+    eine gute Nachricht mit Handlungsbedarf: Dann ist 18 überflüssig geworden
+    und sollte gehen, statt als Zierde stehenzubleiben.
+    """
+    _fake_ruff(tmp_path, "ruff 9.9.9")
+    monkeypatch.setenv("PATH", str(tmp_path))
+    by_number = {check.number: check for check in all_checks()}
+
+    by_number[16].run(REPO_ROOT)
+
+    with pytest.raises(CheckFailed) as raised:
+        by_number[18].run(REPO_ROOT)
+    message = str(raised.value)
+    assert "Die ruff auf dem PATH ist 9.9.9" in message
+    assert "which -a ruff" in message
+
+
+def test_check_18_needs_a_ruff_it_can_ask(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ohne ruff ist das ein Befund, kein Skip — wie bei den Gates selbst."""
+    monkeypatch.setenv("PATH", "/nonexistent")
+    by_number = {check.number: check for check in all_checks()}
+
+    with pytest.raises(CheckFailed) as raised:
+        by_number[18].run(REPO_ROOT)
+    assert "ruff liegt nicht auf dem PATH" in str(raised.value)
+
+
+def test_check_18_says_so_when_it_cannot_read_the_answer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Die Ausgabeform von `ruff --version` ist selbst ein Anker.
+
+    Änderte upstream sie, verglichen wir nichts mehr. Ein Befund, der auf die
+    Ausgabe zeigt, ist die einzige Antwort, die niemanden in die falsche
+    Datei schickt.
+    """
+    _fake_ruff(tmp_path, "astral ruff, version 0.16.1")
+    monkeypatch.setenv("PATH", str(tmp_path))
+    by_number = {check.number: check for check in all_checks()}
+
+    with pytest.raises(CheckFailed) as raised:
+        by_number[18].run(REPO_ROOT)
+    assert "antwortet nicht in der Form" in str(raised.value)
+
+
 def test_a_crashing_check_is_reported_as_a_defect_not_as_a_finding() -> None:
     """Ein kaputter Check darf den Lauf weder mitnehmen noch sich tarnen.
 

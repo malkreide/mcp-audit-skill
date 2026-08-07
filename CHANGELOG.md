@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Hinzugefügt — Check 18: die ruff auf dem PATH ist die gepinnte
+
+Check 16 vergleicht den Pin in `.github/workflows/ci.yml` mit der `rev` in
+`.pre-commit-config.yaml`. Das sind **zwei Texte**. Dass die ruff, die
+Check 12, 13 und 14 gleich fährt, diese Version trägt, hat er nie gemessen —
+und meldete trotzdem «beide Stellen stimmen überein», was sich liest, als
+wäre es geprüft.
+
+Gemessen auf dem Rechner, auf dem dieser Eintrag entstand: `/root/.local/bin/ruff`
+(0.15.8) lag vor `/usr/local/bin/ruff` (0.16.1). `bash scripts/validate.sh`
+lief vollständig grün — inklusive Check 16 mit der Zeile «Ruff-Pin 0.16.1 …
+stimmen überein» — während beide Gates auf 0.15.8 liefen. Genau die
+Bruchstelle, gegen die der Pin existiert, nur eine Ebene tiefer: nicht zwei
+Dateien, die auseinanderlaufen, sondern eine Datei und das laufende Programm.
+
+Die Richtung ist dabei egal und beide Fälle kosten. Eine ältere ruff lässt
+durch, was im Pull Request rot wird; eine neuere beanstandet, was die CI
+durchlässt. 0.15.8 ist kein ausgedachter Wert — es ist die Version, die das
+Portfolio sonst führt, also genau die, die auf einem Arbeitsrechner liegt.
+
+Der Pin wird aus `ci.yml` gelesen, nicht hier hinterlegt: Eine dritte Stelle
+für dieselbe Zahl wäre eine dritte Stelle zum Auseinanderlaufen — dieselbe
+Begründung, aus der ruff nicht in `requirements-dev.txt` steht. Die Ausgabe
+von `ruff --version` ist selbst ein Anker; ändert upstream ihre Form, sagt der
+Befund das, statt stillschweigend nichts mehr zu vergleichen.
+
+### Hinzugefügt — Check 19: beide READMEs zählen die Schritte auf, die SKILL.md führt
+
+Check 11 hält die Zusage «drei Kernschritte» innerhalb von SKILL.md zusammen
+(Frontmatter, `[Kern]`/`[Übergabe]`-Markierungen, Zahlwort der Einleitung),
+Check 15 hält die GitHub-Description dagegen. Nicht erreicht waren die beiden
+READMEs — und die zählen dieselben Schritte ein zweites Mal auf, als Prosa:
+`- **Step 1 — …**` bis `- **Steps 4–6 — Handover.**`, je einmal pro Sprache.
+
+Käme ein vierter Kernschritt dazu, listeten sie weiter drei einzeln und
+`Steps 4–6` als Übergabe. Vollständig aussehend und falsch, und nichts wäre
+rot geworden — die Abdeckung hatte eine Grenze, die niemand absichtlich
+gezogen hat. Das Schwester-Repo `mcp-transport-hardening-skill` prüft die
+Entsprechung (Regelzahl gegen beide READMEs) seit Längerem; hier fehlte sie.
+
+Geprüft wird beides, was die Aufzählung behauptet: dass die einzeln genannten
+Schritte genau die `[Kern]`-Schritte sind, und dass die Sammelzeile dort
+anfängt, wo der Kern aufhört, und dort endet, wo SKILL.md endet. Eine
+Sammelzeile, die zu früh anfängt, zählt einen Kernschritt zur Übergabe; eine,
+die zu früh endet, lässt einen Schritt ganz aus.
+
+Nur EINZELNE Nennungen zählen als Kernschritt — dieselbe Unterscheidung, die
+das Schwester-Repo teuer gelernt hat: `Steps 4–6` als Aufzählungspunkt
+mitzuzählen hiesse, drei Schritte für einen zu nehmen.
+
+Die Aufteilung kommt aus `step_kinds()` in `tools/checks/skill_doc.py`, das
+Check 11 und Check 19 sich teilen. Ein zweites Mal hingeschrieben wäre sie ein
+zweiter Ort zum Auseinanderlaufen, und eine Prüfung, die eine andere
+Aufteilung liest als die daneben, meldete eine Abweichung, die es im Dokument
+gar nicht gibt.
+
 ### Behoben — die Zuordnung von `seco-labor-mcp` konnte den Server nicht beschreiben
 
 `seco-labor-mcp` hält `compute_delay` und `parse_retry_after` in

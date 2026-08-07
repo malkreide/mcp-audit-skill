@@ -652,4 +652,108 @@ MUTATIONS: list[Mutation] = [
         append("reference/retry_backoff.py", "\ndef (:\n"),
         "Check 2 meldet dasselbe",
     ),
+    # 18 — the ruff on PATH is the pinned one
+    #
+    # Die Prüfung hält eine Datei gegen ein laufendes Programm. Am Baum
+    # mutierbar ist deshalb nur die Datei — der Effekt ist derselbe: Pin und
+    # laufende Version sagen Verschiedenes. Die Gegenrichtung (dieselbe
+    # ci.yml, eine andere ruff auf dem PATH) hängt an der Umgebung und steht
+    # als Test in tests/test_suite_integrity.py.
+    Mutation(
+        18,
+        "der Pin nennt eine Version, die nicht läuft",
+        regex_sub(
+            ".github/workflows/ci.yml",
+            r"ruff==\d[^\s\"']*",
+            "ruff==0.0.1",
+        ),
+        "gepinnt ist 0.0.1",
+    ),
+    Mutation(
+        18,
+        "der Pin ist ganz weg",
+        regex_sub(
+            ".github/workflows/ci.yml",
+            r"ruff==\d[^\s\"']*",
+            "ruff",
+        ),
+        "Anker weg",
+    ),
+    Mutation(
+        18,
+        "ci.yml weg",
+        remove(".github/workflows/ci.yml"),
+        "ohne die Datei gibt es nichts zu vergleichen",
+    ),
+    # 19 — both READMEs enumerate the steps SKILL.md defines
+    #
+    # Der erste Satz nimmt der README einen Schritt, den SKILL.md führt — der
+    # Fall, für den die Prüfung da ist. Der zweite greift sie selbst an: jeden
+    # Weg, auf dem sie aufhören könnte zu prüfen, ohne rot zu werden.
+    Mutation(
+        19,
+        "die englische README verliert einen Kernschritt",
+        regex_sub(
+            "README.md",
+            r"^- \*\*Step 3 — .*$",
+            "- **Nothing to see here.** Placeholder.",
+        ),
+        "SKILL.md markiert 3 als [Kern]",
+    ),
+    Mutation(
+        19,
+        "die deutsche README verliert einen Kernschritt",
+        regex_sub(
+            "README.de.md",
+            r"^- \*\*Schritt 3 — .*$",
+            "- **Nichts zu sehen.** Platzhalter.",
+        ),
+        "SKILL.md markiert 3 als [Kern]",
+    ),
+    Mutation(
+        19,
+        "die Sammelzeile lässt den letzten Schritt aus",
+        replace(
+            "README.md",
+            "- **Steps 4\u20136 — Handover.**",
+            "- **Steps 4\u20135 — Handover.**",
+        ),
+        "lässt einen Schritt ganz aus",
+    ),
+    Mutation(
+        19,
+        "die Sammelzeile schluckt einen Kernschritt",
+        replace(
+            "README.de.md",
+            "- **Schritte 4\u20136 — Übergabe.**",
+            "- **Schritte 3\u20136 — Übergabe.**",
+        ),
+        "zählt einen Kernschritt zur Übergabe",
+    ),
+    Mutation(
+        19,
+        "die Sammelzeile ist ganz weg",
+        regex_sub(
+            "README.md",
+            r"^- \*\*Steps 4\u20136 — .*$",
+            "- **Handover.** Inputs for repository creation.",
+        ),
+        "keine Sammelzeile",
+    ),
+    Mutation(
+        19,
+        "der Abschnitt heisst anders",
+        replace("README.md", "\n## Features\n", "\n## What it does\n"),
+        "Abschnitt '## Features' nicht gefunden",
+    ),
+    Mutation(
+        19,
+        "die Aufzählung ist umformuliert",
+        regex_sub(
+            "README.de.md",
+            r"^- \*\*Schritt (\d+) — ",
+            r"- **Phase \1 — ",
+        ),
+        "kein Aufzählungspunkt",
+    ),
 ]
