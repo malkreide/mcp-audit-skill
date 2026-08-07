@@ -19,19 +19,85 @@
 # NOTE ON THE CURRENT STATE. The five properties below that the template did NOT
 # satisfy — `reads_retry_after`, `jitters`, `caps_after_jitter`,
 # `wall_clock_budget`, `no_bare_runtime_error` — are satisfied as of the
-# 2026-08-07 repair. They were the 2026-08-03 finding: what the eleven surveyed
-# servers had each fixed one at a time while this file kept shipping the defect.
-# `REFERENCE_STALE` on any of them is now a real finding about the template, not
-# the known gap it used to be. Do not delete a property to make a run green —
-# repairing the template is the fix.
+# 2026-08-07 repair. `REFERENCE_STALE` on any of them is now a real finding about
+# the template, not the known gap it used to be. Do not delete a property to make
+# a run green — repairing the template is the fix.
+#
+# WHO THE ELEVEN ARE. This note used to say the eleven surveyed servers had each
+# fixed these properties ahead of the template. Read against the servers on
+# 2026-08-07, that is backwards, and the correction is the reason the sweep
+# existed: the eleven are the repositories that still carry the defect. Six
+# repositories reached the properties before the template did; the other ELEVEN
+# did not, and a whole-repository grep finds ZERO occurrences of `retry-after`
+# and ZERO of `random`/`secrets` in every one of them. That is the 2026-08-03
+# finding stated exactly: over eleven servers, none read `Retry-After` and none
+# jittered — because they all had this template.
+#
+# The eleven, and what each still needs (2026-08-07):
+#
+#   swiss-academic-libraries-mcp   retry-after, jitter, cap, budget
+#   swiss-energy-mcp               retry-after, jitter, cap, budget
+#   swiss-cultural-heritage-mcp    retry-after, jitter, cap, budget
+#   hn-tech-signal-mcp             retry-after, jitter, cap, budget
+#   seco-labor-mcp                 retry-after, jitter, cap, budget  (BOTH entries)
+#   lobbywatch-mcp                 retry-after, jitter, cap, budget + bare RuntimeError
+#   swiss-electricity-mcp          retry-after, jitter, cap, budget
+#   i14y-mcp                       retry-after, jitter, cap, budget
+#   swiss-holidays-mcp             retry-after, jitter, cap, budget
+#   swiss-housing-mcp              retry-after, jitter, cap, budget + bare RuntimeError
+#   swiss-procurement-mcp          retry-after, jitter, cap, budget
+#
+# Eleven repositories, TWELVE adoptions: `seco-labor-mcp` appears twice
+# (`server.py` and `uvg.py`). Counting adoptions gives twelve and counting
+# servers gives eleven; the sweep counted servers.
+#
+# `swiss-housing-mcp/src/swiss_housing_mcp/gwr.py:86` still carries the line
+# verbatim — `raise RuntimeError(f"Upstream unreachable after retries:
+# {last_error}")` — the one whose empty `str()` produced the CI message that
+# stopped at the colon.
 #
 # WHAT THE ADOPTIONS BELOW DO AND DO NOT SAY. A `since` date records when that
 # repository adopted the template's *behaviour*, not when it last matched this
-# file. The eleven servers of the sweep reached these properties ahead of the
-# template; the remaining entries were mapped by the retry-loop sweep and have
-# not been re-read against the repaired version. Anyone changing a property here
-# changes what every listed repository is measured against, and owes the same
-# statement in the changelog: which of them have already taken it.
+# file, and NO `since` was moved by the 2026-08-07 reading: nothing about it
+# changes when a repository adopted anything. What the reading adds is the
+# grouping below — which side of the repair each entry is on, measured rather
+# than assumed. Anyone changing a property here changes what every listed
+# repository is measured against, and owes the same statement in the changelog:
+# which of them have already taken it.
+#
+# THREE FINDINGS ABOUT THE PROPERTIES THEMSELVES, from the same reading. They are
+# about the probe's ability to measure, not about any server, and they are
+# recorded here because a property that cannot measure is worse than a missing
+# one — it reports with confidence.
+#
+#   `caps_after_jitter` is a FALSE NEGATIVE on every correct adoption, and the
+#   two ways of reading it are MUTUALLY EXCLUSIVE. All six repaired servers bind
+#   the jittered value first and then cap it (`jittered = …` /
+#   `return min(jittered, MAX)`), so a `wraps` that asks whether a `random.*`
+#   call sits lexically inside `min`'s arguments — the question the property's
+#   own comment describes — finds nothing in any of them. Read lexically, it
+#   fails 6 of 6 servers that hold the behaviour it names.
+#
+#   The template writes `min` directly around the jitter expression and so
+#   passes the lexical reading and fails a name-binding one; the servers do the
+#   reverse. No single expression satisfies both, because the choice IS whether
+#   a name is bound. That is the finding: `wraps` has to accept either shape, or
+#   it measures a coding habit instead of the ordering it exists to check. Until
+#   it does, this property's verdict says more about who wrote the line than
+#   about whether the cap binds.
+#
+#   `wall_clock_budget` is a FALSE POSITIVE on `i14y-mcp`. It calls
+#   `time.perf_counter()` twice (client.py:147 and :150) to compute `elapsed_ms`
+#   for a log line. Nothing is bounded. `kind = "calls"` cannot distinguish
+#   timing something from limiting it, and i14y is the case where that matters:
+#   without reading the two lines it counts as a server with a budget.
+#
+#   `no_bare_runtime_error` fails on `swiss-efv-mcp` — the repository this
+#   template's repair was written against. Its client.py:315 and :334 both raise
+#   `RuntimeError`. The reference is right about the five properties it was
+#   consulted for and wrong about this one; the template does NOT copy it here,
+#   and raises the original exception with a named `UpstreamUnavailableError`
+#   for the single case that has no original.
 
 schema = 1
 
@@ -135,6 +201,61 @@ expect = "absent"
 # keeps a named `UpstreamUnavailableError` for the one case with no original to
 # re-raise: the budget spent before a single request went out.
 
+# --- Held the properties before the template did (read 2026-08-07) ---------
+#
+# Six repositories, each of which reached `reads_retry_after`, `jitters`,
+# `caps_after_jitter` and `wall_clock_budget` on its own while this file kept
+# shipping the defect. They are why the repair above has a shape to copy rather
+# than a design to invent. `swiss-efv-mcp` is the one the repair was written
+# against — and the one that still raises `RuntimeError`, so it is in this group
+# for five properties and not the sixth.
+
+[[template.adoption]]
+repo = "malkreide/srgssr-mcp"
+file = "src/srgssr_mcp/_http.py"
+symbol = "_request_with_retry"
+since = "2026-04-30"
+
+[[template.adoption]]
+repo = "malkreide/zh-education-mcp"
+file = "src/zh_education_mcp/http_client.py"
+symbol = "_http_get"
+since = "2026-05-30"
+
+[[template.adoption]]
+repo = "malkreide/parlament-mcp"
+file = "src/parlament_mcp/transcripts.py"
+symbol = "_fetch"
+since = "2026-07-19"
+
+[[template.adoption]]
+repo = "malkreide/termdat-mcp"
+file = "src/termdat_mcp/client.py"
+symbol = "fetch_with_retry"
+since = "2026-07-19"
+
+[[template.adoption]]
+repo = "malkreide/swiss-efv-mcp"
+file = "src/swiss_efv_mcp/client.py"
+symbol = "EFVClient._fetch_with_retry"
+since = "2026-07-25"
+
+[[template.adoption]]
+repo = "malkreide/lindas-mcp"
+file = "src/lindas_mcp/lindas/client.py"
+symbol = "run_query"
+since = "2026-07-26"
+
+# --- Still carrying the 2026-08-03 defect (read 2026-08-07) ----------------
+#
+# TWELVE adoptions in ELEVEN repositories — `seco-labor-mcp` is here twice. This
+# is the set the sweep counted: none of them reads `Retry-After`, none jitters,
+# none caps a wait, none bounds the call in seconds. Until an entry moves to the
+# group above, the defect this file used to ship is still running there.
+#
+# Fixing them is not a change to this repository, and this manifest is the only
+# place that says which they are — which is the whole reason it exists.
+
 [[template.adoption]]
 repo = "malkreide/swiss-academic-libraries-mcp"
 file = "src/swiss_academic_libraries_mcp/api_client.py"
@@ -172,34 +293,10 @@ symbol = "LobbywatchClient._download_dump"
 since = "2026-04-21"
 
 [[template.adoption]]
-repo = "malkreide/srgssr-mcp"
-file = "src/srgssr_mcp/_http.py"
-symbol = "_request_with_retry"
-since = "2026-04-30"
-
-[[template.adoption]]
-repo = "malkreide/zh-education-mcp"
-file = "src/zh_education_mcp/http_client.py"
-symbol = "_http_get"
-since = "2026-05-30"
-
-[[template.adoption]]
 repo = "malkreide/swiss-electricity-mcp"
 file = "src/swiss_electricity_mcp/api_client.py"
 symbol = "_fetch_with_retry"
 since = "2026-06-03"
-
-[[template.adoption]]
-repo = "malkreide/parlament-mcp"
-file = "src/parlament_mcp/transcripts.py"
-symbol = "_fetch"
-since = "2026-07-19"
-
-[[template.adoption]]
-repo = "malkreide/termdat-mcp"
-file = "src/termdat_mcp/client.py"
-symbol = "fetch_with_retry"
-since = "2026-07-19"
 
 [[template.adoption]]
 repo = "malkreide/i14y-mcp"
@@ -218,18 +315,6 @@ repo = "malkreide/swiss-housing-mcp"
 file = "src/swiss_housing_mcp/gwr.py"
 symbol = "fetch_with_retry"
 since = "2026-07-24"
-
-[[template.adoption]]
-repo = "malkreide/swiss-efv-mcp"
-file = "src/swiss_efv_mcp/client.py"
-symbol = "EFVClient._fetch_with_retry"
-since = "2026-07-25"
-
-[[template.adoption]]
-repo = "malkreide/lindas-mcp"
-file = "src/lindas_mcp/lindas/client.py"
-symbol = "run_query"
-since = "2026-07-26"
 
 [[template.adoption]]
 repo = "malkreide/swiss-procurement-mcp"
