@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`line-length` steht jetzt in `ruff.toml`** — ausdrücklich, obwohl 88 der
+  ruff-Default ist.
+
+  Der Grund liegt nicht in diesem Repo, sondern im Zielrepo.
+  `reference/patterns.py` ist eine Copy-Paste-Vorlage: Ihr Inhalt wandert in
+  fremde Codebasen, und die bringen ihre eigene ruff-Konfiguration mit. Steht
+  dort `line-length = 100`, formatiert der erste `ruff format`-Lauf den
+  kopierten Block um — und wer das sieht, liest es als Fehler in der Vorlage
+  statt als zwei Konfigurationen, die schlicht verschieden sind.
+
+  Gemessen an `reference/patterns.py` mit 0.16.1: zwischen 88 und 100 ändern
+  sich **32 Zeilen**. Nicht kosmetisch, sondern strukturell — bei 88
+  mehrzeilig, bei 100 einzeilig.
+
+  An diesem Baum ändert der Eintrag nichts: 88 ist, wonach die Datei schon
+  formatiert ist, kein Byte an `patterns.py` bewegt sich, `ruff format --check
+  .` bleibt grün. Er ändert, was ein Lesender im Zielrepo daraus schliesst.
+
+  Dass der Eintrag wirkt und keine Zierde ist, ist nachgemessen: auf 100
+  gestellt wird `ruff format --check .` rot (exit 1), auf 88 grün (exit 0).
+
+  Denselben Grund führt `mcp-data-source-probe-skill` in seiner `ruff.toml`.
+
 - **CI-Schritt «Ruff-Version (Pin ↔ laufendes Programm)».** Der Schritt
   «Ruff-Pin-Sync» vergleicht `ci.yml` mit `.pre-commit-config.yaml` — das sind
   **zwei Texte**. Dass die ruff, die den Schritt «Formatierung der
