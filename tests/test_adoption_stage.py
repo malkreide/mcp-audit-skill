@@ -171,6 +171,14 @@ class TestRealCatalogUnchanged:
         # Advisory until a run says whether the normalisation criterion is cut
         # correctly, in particular how often pass-pattern B (confirm instead of
         # normalise) is the honest answer rather than an excuse.
+        # FID-007 (unreleased) likewise, and here the numbers are stark: of 43
+        # portfolio repos exactly one knows that a count column can hold a
+        # non-number (`zh-education-mcp`, after the incident). Enforced at
+        # `high` on merge day would fail every server that sums anything, for a
+        # property none of them was ever asked to have. Advisory until a run
+        # says how many actually consume a suppressed source — the check is
+        # broad by `applies_when` and narrow in fact, and only a run can tell
+        # the two apart.
         assert advisory_ids(parse_catalog(CHECKS_DIR)) == [
             "ARCH-015",
             "ARCH-016",
@@ -182,6 +190,7 @@ class TestRealCatalogUnchanged:
             "ARCH-022",
             "DRIFT-007",
             "FID-006",
+            "FID-007",
             "HITL-006",
             "OBS-008",
             "OPS-005",
