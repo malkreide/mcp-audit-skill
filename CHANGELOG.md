@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Regel 7 bekommt einen vierten Fall: die `autouse`-Fixture, die ein fremdes
+  Modul patcht.** `monkeypatch.setattr(modul.asyncio, "sleep", ...)` liest sich,
+  als bliebe der Griff in `modul` — aber `modul.asyncio` ist das Modul `asyncio`,
+  dasselbe Objekt, das jeder andere Import im Prozess hält. Mit `autouse=True`
+  gilt der Griff für jeden Test der Suite, auch für die, die davon nichts wissen.
+  Die bestehende Falle (b) betrifft die *Ebene* eines Patches (Instanz gegen
+  Klasse); diese betrifft sein *Ziel* — wem der Name gehört, auf den er zeigt.
+
+  Real passiert ist damit das Stilllegen einer Parallelitätsprüfung. Der Test
+  liess zwei Coroutinen ineinandergreifen und benutzte dafür `asyncio.sleep(0)`,
+  den Standardweg, dem Event-Loop das Wort zu geben. Der Ersatz gab es nicht
+  weiter: Eine `async`-Funktion, die zurückkehrt, ohne etwas abzuwarten,
+  suspendiert nie. Er wurde rot, und das war Glück — er behauptete die
+  Verschränkung direkt. Hätte er die Nebenläufigkeit indirekt geprüft, an einem
+  Zähler oder einer Reihenfolge, wäre er grün geblieben und hätte nichts mehr
+  abgesichert.
+
+  Damit schliesst der Fall eine Lücke in Regel 6: Der Mutationstest ist dort das
+  Abnahmekriterium, und dies ist genau der Fall, in dem er grün bleibt, ohne
+  etwas zu prüfen — nicht weil die Mutation nicht ankam, sondern weil der Test,
+  der sie hätte fangen sollen, seinen Gegenstand vorher an die Fixture verloren
+  hat.
+
+  Zwei Eigenschaften tragen im ✓-Muster, und sie sind unabhängig voneinander:
+  Der Produktivcode hält einen Modul-Alias (`_sleep = asyncio.sleep`), auf den
+  die Fixture zielt, damit die Reichweite am Namen ablesbar ist statt aus der
+  Importkette erschlossen — und der Ersatz nimmt die *Dauer* weg, nicht die
+  *Übergabe an den Event-Loop* (`await asyncio.sleep(0)` statt `return None`).
+  Der Nachweis ist Regel 6 auf die Fixture selbst angewandt, dazu ein Grep auf
+  jedes `setattr`, dessen Ziel ein importiertes Fremdmodul ist.
+
+  Die Regelzahl bleibt bei dreizehn: Das ist ein Fall innerhalb von Regel 7,
+  keine neue Regel. `reference/patterns.py` trägt das Muster als lauffähigen
+  Block, beide READMEs die Kurzfassung.
+
+### Added
+
 - **Ein Guard auf die GitHub-Description, und Regel 13 bekommt ihre räumliche
   Hälfte.** Der Zählguard deckt `SKILL.md`, beide READMEs und
   `reference/patterns.py` ab — und war korrekt, während die Description des
@@ -30,12 +67,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sich nicht per Commit korrigieren, sie hängt am Repo. Die Fehlermeldung nennt
   den Befehl.
 
-Dreizehn Regeln statt zwölf, und zwei der bestehenden lernen dazu. Diese drei
+Dreizehn Regeln statt zwölf, und drei der bestehenden lernen dazu. Diese vier
 Änderungen stammen weder aus den drei PRs von 2026-07 noch aus der Spec-Revision,
-sondern aus dem Betrieb der Kette selbst. Sie haben untereinander dieselbe Form:
-Etwas ist eingeführt, aber nicht dort angekommen, wo es hätte wirken müssen —
-und ausserhalb der Reichweite wird nichts rot, also sieht der Zustand von innen
-aus wie Erfolg.
+sondern aus dem Betrieb der Kette selbst. Die ersten drei haben untereinander
+dieselbe Form: Etwas ist eingeführt, aber nicht dort angekommen, wo es hätte
+wirken müssen — und ausserhalb der Reichweite wird nichts rot, also sieht der
+Zustand von innen aus wie Erfolg. Der vierte, Regel 7(d), ist deren Spiegelung:
+Dort war die Reichweite nicht zu klein, sondern zu gross — und rot wird auch
+innerhalb davon nichts, weil der entschärfte Test seinen Gegenstand verloren hat.
 
 ### Added
 

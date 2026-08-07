@@ -23,7 +23,9 @@ removable in a test.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import sys
 from collections.abc import Sequence
 from typing import Any
 
@@ -531,6 +533,67 @@ def test_the_sse_path_is_wired(settings: Any, monkeypatch: Any) -> None:
     assert built[0]["port"] == settings.port  # rule 3: the port travels too
 
 
+# --- Rule 7(d): a fixture must not reach into a foreign module ---------------
+
+# The production side of the pattern. Aliasing the call once, at module level, is
+# what lets a fixture skip the wait without touching `asyncio` itself. The alias
+# has to be used at EVERY call site: leave one `await asyncio.sleep(...)` in
+# place and the fixture patches past it — the same no-op as a mutation that
+# misses its target (rule 6).
+_sleep = asyncio.sleep
+
+
+async def poll_until_ready(deadline_s: float, delay_s: float = 0.05) -> None:
+    """Stand-in for any production loop that waits. Note `_sleep`, not `asyncio.sleep`."""
+    waited = 0.0
+    while waited < deadline_s:
+        await _sleep(delay_s)
+        waited += delay_s
+
+
+@pytest.fixture(autouse=True)
+def _no_sleep(monkeypatch: Any) -> None:
+    """Skip the WAIT, keep the HANDOVER — and patch a name this repository owns.
+
+    Two independent mistakes live in the one-liner this replaces:
+
+        monkeypatch.setattr(server.asyncio, "sleep", _instant)
+
+    (1) WRONG TARGET. It reads as a local handle on `server`, but `server.asyncio`
+    IS the module `asyncio` — the same object every other import in the process
+    holds. With `autouse=True` that reaches every test in the suite, including
+    the ones that never asked for it. Rule 7(b) is about the LEVEL of a patch;
+    this is about its TARGET: who owns the name it points at.
+
+    (2) WRONG REPLACEMENT. An `async def` that returns without awaiting anything
+    never suspends. `asyncio.sleep(0)` is the standard way to hand the event loop
+    the word, so a replacement that drops the await removes the point at which
+    another coroutine gets to run. A concurrency test built on it then asserts
+    interleaving over a run that has none.
+
+    That is the trap without a symptom. Ours went red — but only because it
+    claimed the interleaving directly. Had it checked concurrency indirectly, via
+    a counter, an ordering or a result, it would have stayed green and secured
+    nothing. It is also the case rule 6 cannot catch on its own: the mutation
+    lands, and the test that should have caught it lost its subject to the
+    fixture first.
+
+    Proof, and it is rule 6 applied to the fixture itself: swap `_instant` for a
+    version without the `await`. If no test loses its assertion, no test was
+    checking the concurrency it claims. Alongside that, a grep — a `setattr`
+    whose target is an imported foreign module is a finding on sight:
+
+        grep -rnE 'setattr\\(\\s*([A-Za-z_][A-Za-z0-9_.]*\\.)?(asyncio|time|socket|os|random|subprocess)\\s*,' tests/
+    """
+
+    async def _instant(_delay: float) -> None:
+        await asyncio.sleep(0)  # duration gone, handover to the loop kept
+
+    # In a real repository this is the module under test:
+    #     monkeypatch.setattr(server, "_sleep", _instant)
+    monkeypatch.setattr(sys.modules[__name__], "_sleep", _instant)
+
+
 # NOTE ON RUNNING THE SUITE (rule 7): run it under a timeout
 # (`pytest --timeout=30`). That turns every hang into a failure with a stack
 # trace, which is the difference between a named finding and "the suite is
@@ -539,6 +602,10 @@ def test_the_sse_path_is_wired(settings: Any, monkeypatch: Any) -> None:
 # And run each branch test alone AND in the full suite. The instance-patch trap
 # in `_patch_run` only ever shows up in the second — passing alone is precisely
 # the symptom.
+#
+# Then read the autouse fixtures once, from the point of view of a test that did
+# NOT ask for them. That is where 7(d) lives: a fixture that is right for the
+# three tests it was written for and quietly defuses the fourth.
 
 
 # ===========================================================================
