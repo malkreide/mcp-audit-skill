@@ -57,7 +57,7 @@ class TestRealCatalog:
         assert counts == {
             "ARCH": 22,
             "DEP": 1,
-            "DRIFT": 6,
+            "DRIFT": 7,
             "CH": 8,
             "FID": 6,
             "HITL": 6,
