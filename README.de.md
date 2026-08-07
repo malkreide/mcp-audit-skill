@@ -358,7 +358,7 @@ Katalog prüft, ob sie da ist.
 
 ## Status
 
-**Version:** v2.0.0 — Zwei Protokollstände, und ein Katalog der sagt gegen welchen er misst. CI auf Ubuntu + Windows × py3.11 + py3.13. Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
+**Version:** v2.1.0 — Der Katalog misst, was passiert, statt zu lesen, wie es aussieht. CI auf Ubuntu + Windows × py3.11 + py3.13. Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
 
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`) und Templates (Finding, Audit-Report)

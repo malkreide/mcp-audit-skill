@@ -357,7 +357,7 @@ control is there.
 
 ## Status
 
-**Version:** v2.0.0 — two protocol revisions, and a catalogue that says which one it measures against. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
+**Version:** v2.1.0 — the catalogue measures what happens instead of reading what it looks like. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
 
 **Completeness:**
 - ✅ Methodology (`SKILL.md`) and templates (finding, audit report)

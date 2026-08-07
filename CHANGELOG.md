@@ -6,6 +6,29 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+---
+
+## [v2.1.0] — 2026-08-07 — Der Katalog misst, was passiert, statt zu lesen, wie es aussieht
+
+**Drei neue Checks** (`OBS-008`, `ARCH-022`, `FID-006`, alle `advisory`) — der Katalog wächst von 112 auf **115 in zwölf Kategorien**, 21 davon `advisory`, 1199 Tests. Dazu geschärfte Verifikation an `DEP-001`, `ARCH-003`, `ARCH-020`, `FID-003` und `IDENT-002`, eine neue Doku-Seite, und zwei Nachträge aus dem Werkzeug darunter.
+
+**Die Klammer über fast alle Punkte** steht in der neuen `docs/semantik-statt-gestalt.md`: Ein Check greift semantisch, nicht über die Form. Die Runde liefert dazu vier Belege, und alle vier ersetzen ein Lesen durch ein Ausführen — `DEP-001` **löst auf**, `ARCH-022` **importiert**, `OBS-008` **startet**, `ARCH-003` **zählt Requests**. Wo vorher ein Muster im Quelltext genügte, muss jetzt etwas laufen und ein Ergebnis liefern.
+
+### Re-Audit-Auslöser nach §5: einer feuert, einer wartet — beide `§5c`
+
+Die meisten Änderungen dieser Runde haben ihre Nicht-Auslösung selbst geprüft und im jeweiligen Eintrag festgehalten: `ARCH-003` und `ARCH-020` sind `medium`, die drei neuen Checks sind `advisory`, und Punkt 5 greift erst ab `high`. Zwei Einträge haben die Frage gar nicht gestellt — `DEP-001` und `FID-003`, beide `high` und beide `enforced`. Nachgeholt:
+
+| Check | Warum §5c | Reichweite | Status |
+|---|---|---|---|
+| `DEP-001` (`high`, `always`) | Der Check verlangte eine Obergrenze und liess offen, **welche**. Ein `pass` von vorher belegt, dass ein Deckel dasteht — nicht, dass er die richtige Grenze zieht (Modus 4a), und nicht, dass er überhaupt etwas tut (Modus 4b). Beides war nie gemessen. | `always` → **39 abgeschlossene Audits** | **feuert jetzt** |
+| `FID-003` (`high`) | Der dritte Ausgang — die Rückfrage — ist neu Pass-Kriterium. Ein Server, der `input_required` mit der Leermenge vermischt, hat vorher bestanden, weil niemand danach gefragt hat. | `tools_make_external_requests == true` **und** Baseline `2026-07-28` | **feuert noch nicht** — gemessen am 2026-08-07 steht **kein einziger** der 42 Server auf `2026-07-28`; der Auslöser greift pro Server bei seiner Migration |
+
+**Der Portfolio-Sweep vom 2026-08-02 zählt nicht als Erledigung.** 28 Befunde über 24 Server, gedeckelte Abhängigkeiten 61 → 89 — aber gelaufen ist er gegen das alte Kriterium, *Deckel vorhanden*, nicht gegen das neue. Ein Repo, das in diesem Sweep sauber wurde, hat damit einen Deckel, dessen Grenze und Wirkung weiterhin ungemessen sind.
+
+`FID-003` ist damit derselbe Fall wie §5e in `v2.0.0`: ein Auslöser mit benanntem, aber noch nicht eingetretenem Ereignis. Er steht in der Warteschlange als *wartend* und nicht als *erledigt* — das ist der Unterschied, den §2.6 eine Ebene höher meint.
+
+Die Server-Liste steht in [`docs/re-audit-queue.md`](docs/re-audit-queue.md), auf den Stand dieses Release gebracht, mit der Herkunft jeder Zahl.
+
 ### Geändert — §0.5 kennt jetzt den zweiten Fall, und `ruff.toml` beantwortet die offene Frage
 
 Zwei Nachträge aus PR #101, beide gemessen statt vermutet.
