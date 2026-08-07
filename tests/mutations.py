@@ -659,4 +659,24 @@ MUTATIONS: list[Mutation] = [
         write("reference/_line_length_probe_at.py", "# von Hand hierher geraten\n"),
         "liegt schon da",
     ),
+    # 18 — der ruff auf dem PATH ist der gepinnte
+    #
+    # Zwei Mutationen, und beide bewegen den PIN statt des Binaries. Das ist
+    # die einzige Seite, die im Baum liegt: Welcher `ruff` auf dem PATH steht,
+    # ist eine Eigenschaft der Umgebung und keine Datei, die sich mutieren
+    # liesse. Die Umgebungszweige — gar kein ruff, und ein ruff, dessen
+    # `--version` sich nicht lesen lässt — stehen als eigene Tests in
+    # `test_suite_integrity.py`.
+    Mutation(
+        18,
+        "der Pin nennt eine andere Version als das Binary",
+        regex_sub(".github/workflows/ci.yml", r"ruff==\d\S*", "ruff==0.0.1"),
+        "gepinnt ist 0.0.1",
+    ),
+    Mutation(
+        18,
+        "Pin in ci.yml gelöst",
+        regex_sub(".github/workflows/ci.yml", r"ruff==\d\S*", "ruff"),
+        "nennt kein 'ruff==<version>'",
+    ),
 ]
