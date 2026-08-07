@@ -146,6 +146,15 @@ class TestRealCatalogUnchanged:
         # data-source server for a property none of them was ever asked to
         # have. Advisory until a portfolio run says how many confirm the shape.
         #
+        # It stays advisory for a second reason since the field-name half moved
+        # in (the check formerly filed as DRIFT-007, withdrawn as a separate
+        # entry). The run behind that half: of the eight servers that read CSV,
+        # seven hardcode the header spelling and one normalises it. Enforced at
+        # `high` would fail seven of eight for a property none of them was ever
+        # asked to have. The run also has to say whether the normalisation
+        # criterion is cut correctly — in particular how often pass-pattern B
+        # (normalise) is genuinely unavailable rather than merely skipped.
+        #
         # OBS-008 (unreleased) takes the ordinary bridge, and the survey behind it
         # says why: of 42 published servers, 15 emit nothing at all within six
         # seconds on a closed stdin. Enforced on merge day would fail more than
@@ -163,14 +172,6 @@ class TestRealCatalogUnchanged:
         # right to block; advisory until a portfolio run says how often the
         # shape occurs and how often the double measurement disagrees with a
         # single run.
-        # DRIFT-007 (unreleased) takes the ordinary bridge. The portfolio run
-        # behind it is the reason: of the eight servers that read CSV, seven
-        # hardcode the header spelling and one normalises it. Enforced at
-        # `high` on merge day would fail seven of eight for a property none of
-        # them was ever asked to have — the exact shape §2.3 exists to prevent.
-        # Advisory until a run says whether the normalisation criterion is cut
-        # correctly, in particular how often pass-pattern B (confirm instead of
-        # normalise) is the honest answer rather than an excuse.
         # FID-007 (unreleased) likewise, and here the numbers are stark: of 43
         # portfolio repos exactly one knows that a count column can hold a
         # non-number (`zh-education-mcp`, after the incident). Enforced at
@@ -205,7 +206,6 @@ class TestRealCatalogUnchanged:
             "ARCH-020",
             "ARCH-021",
             "ARCH-022",
-            "DRIFT-007",
             "FID-006",
             "FID-007",
             "HITL-006",

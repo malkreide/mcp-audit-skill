@@ -203,3 +203,67 @@ class TestArch014SaysWhatAbsenceMeans:
             "the criterion must say it also applies to a server without its "
             "own loop; that is the case the absence rule would otherwise pass"
         )
+
+
+class TestFid006CarriesTheFieldNameHalf:
+    """A merged check must keep what it absorbed, or the merge is a deletion.
+
+    `DRIFT-007` existed for four days: field-name spelling as part of the
+    contract, evidenced by BISTA changing `Schulgemeinde` to `schulgemeinde`
+    and taking out four of six datasets while every unit test stayed green. It
+    was withdrawn as a separate entry because it shared FID-006's cause, its
+    test boundary and its subject — but withdrawing it moved the evidence into
+    a file that has no test of its own.
+
+    That is the risk this class exists for. Nothing in the catalogue's other
+    guards can tell the difference between "FID-006 covers the spelling half"
+    and "FID-006 is back to what it was before the merge": both parse, both
+    count as one FID check, both keep the README numbers right. The half would
+    disappear silently, and the incident behind it would be uncovered without
+    anything turning red.
+
+    Three properties, and the third is the one with teeth: normalising at the
+    parse boundary is what makes this more than a rename of DRIFT-007 into a
+    reference. Without that criterion the check is back to "confirm the shape",
+    which the withdrawal argued was *not* sufficient for a source that changes
+    its own spelling.
+    """
+
+    @staticmethod
+    def _text() -> str:
+        return (CHECKS_DIR / "FID-006.md").read_text(encoding="utf-8")
+
+    def test_the_title_names_both_halves(self):
+        # The title is what an auditor reads in the manifest and the report.
+        # "Antwortstruktur bestätigen" alone sends them looking for a separate
+        # check on field names, and there is none any more.
+        head = self._text().split("---")[1]
+        assert "Feldnamen" in head, (
+            "FID-006's frontmatter title must name the field-name half; it is "
+            "the only place the withdrawal of DRIFT-007 is visible to someone "
+            "reading the manifest"
+        )
+
+    def test_the_evidence_that_moved_in_is_still_there(self):
+        # A check without its finding is an opinion. This one is the reason
+        # the field-name half is `high` and not `medium`.
+        text = self._text()
+        assert "Schulgemeinde" in text and "schulgemeinde" in text, (
+            "the BISTA finding is the evidence for the field-name half; "
+            "without it the criteria below rest on nothing"
+        )
+
+    def test_normalising_at_the_parse_boundary_is_a_criterion(self):
+        # The load-bearing half. Confirming per endpoint gives a server that
+        # reads a source with unstable spelling six correct checks that all
+        # break on the next change — loudly instead of silently, which is
+        # better, but still broken. If this criterion goes, the merge has
+        # quietly reduced DRIFT-007 to a cross-reference.
+        criteria = [ln for ln in self._text().splitlines() if ln.startswith("- [ ] ")]
+        hit = [ln for ln in criteria if "normalisiert" in ln and "genau einer" in ln]
+        assert len(hit) == 1, (
+            "FID-006 must carry exactly one pass criterion requiring the "
+            "spelling to be normalised at a single point when the source does "
+            "not hold it stable — confirming alone was what DRIFT-007 argued "
+            "is insufficient there"
+        )
