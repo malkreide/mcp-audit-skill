@@ -47,7 +47,7 @@ Gemessen über alle 43 Repos, **42 anwendbar** — `swiss-public-data-mcp` hat k
 
 **Zwei Funde, die nur das Lesen von Hand ergeben hat:**
 
-- `swisstopo-mcp` liest **dasselbe Feld in zwei Schreibweisen** — `identDN` und `IdentDN` — in einem Server. Das ist die BISTA-Form, heute, in Produktion.
+- `swisstopo-mcp` liest dasselbe Feld als `identDN` **und** `IdentDN`. **Beim Nachlesen korrigiert:** Der Server fängt beide Schreibweisen bereits ab — das ist kein stiller Ausfall und nicht die BISTA-Form, sondern eine handgeschriebene Alternation je Lesestelle über vier Felder. Der Befund bleibt einer, aber ein anderer: Die Quelle hält ihre Schreibweise nicht stabil, und die Antwort darauf gehört an die Parse-Grenze statt an jede Lesestelle. Behoben am 2026-08-07.
 - `swiss-courts-mcp` hat die Fehlerklasse unabhängig erkannt und benannt. `UpstreamBlockedError` fängt den Bot-Schutz von entscheidsuche.ch, der mit **HTTP 200** und einem anderen JSON antwortet; der Docstring sagt: «Ohne Erkennung läse sich das wie `total == 0` (stille Leere).» Das ist `FID-006` in eigenen Worten, geschrieben ohne den Check.
 
 ### Nachgemessen nach dem CKAN-Sweep (2026-08-07, später am Tag)

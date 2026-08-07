@@ -6,6 +6,18 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `swisstopo-mcp` präzisiert: kein stiller Ausfall, aber ein Befund
+
+Der Portfolio-Durchlauf zu `FID-006` meldete: «`swisstopo-mcp` liest dasselbe Feld in zwei Schreibweisen — `identDN` und `IdentDN` — in einem Server. Das ist die BISTA-Form, heute, in Produktion.» Der Eintrag steht weiter unten in diesem Abschnitt und **war zu stark**.
+
+Beim Nachlesen vor der Behebung: Der Server fängt **beide** Schreibweisen bereits ab, `entry.get("identDN") or entry.get("IdentDN")`. Es gab dort keinen stillen Ausfall. Was es gab, ist eine handgeschriebene Alternation je Lesestelle, über vier Felder hinweg — `egrid`/`EGRID`, `number`/`Number`, `identDN`/`IdentDN`, `municipality`/`MunicipalityName`.
+
+Der Befund bleibt einer, aber ein anderer, und er ist genau der, für den Pass-Pattern B geschrieben ist: Die Quelle hält ihre Schreibweise nachweislich nicht stabil — der bestehende Testdocstring des Servers sagt es selbst, «cantonal endpoints disagree on the casing» —, und die Antwort darauf sind vier Annahmen, die alle **heute** stimmen, statt einer Normalisierung an der Parse-Grenze.
+
+**Warum das hier steht und nicht stillschweigend in der Formulierung verschwindet.** Ein Durchlauf, dessen Befunde sich beim Nachlesen als schwächer erweisen, ist genau der Fall, den `OPS-004` meint: Wer nur die Formulierung glättet, hat den Katalog korrigiert, aber nicht die Methode. Die Zahlen des Durchlaufs sind davon unberührt — `swisstopo-mcp` zählte auch vorher unter «verdrahtet mindestens einen gemischt geschriebenen Feldnamen fest», und das stimmt weiterhin.
+
+Behoben in [`swisstopo-mcp#62`](https://github.com/malkreide/swisstopo-mcp/pull/62): `_lower_keys()` senkt die Schlüssel an genau einer Stelle, die Ausgabeschlüssel behalten ihre eigene Schreibweise, und `gemeindename` bleibt von `municipality` getrennt — normalisiert wird die Schreibweise, nicht die Identität des Namens.
+
 ### Geändert — `FID-006` nachgemessen: sieben Reparaturen, eine Zahl Bewegung
 
 Der CKAN-Sweep hat sieben Server umgestellt (`wsl-envidat`, `swiss-energy`, `swiss-electricity`, `swiss-democracy`, `swiss-transport`, `swiss-cultural-heritage`, `seco-labor`). Alle acht CKAN-Server bestätigen ihren Wurzelpfad jetzt. Die Zahlen im Check und in der Warteschlange sind nachgezogen.
