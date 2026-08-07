@@ -247,6 +247,7 @@ S–M — Pro Server einen halben bis ganzen Tag. Jitter und die `Retry-After`-A
 
 - `ARCH-010` — ob eine Wiederholung sicher ist; dieser Check fragt, ob sie angemessen ist
 - `ARCH-013` — derselbe ausgehende Pfad, andere Frage
+- `SEC-028` — ob der Egress-Guard die Information liefert, an der diese Politik entscheidet
 - `OBS-007` — was in der Meldung steht, wenn alle Versuche verbraucht sind
 - `FID-003` — ein degradiertes Ergebnis muss als solches erkennbar sein
 - `OPS-001` — Live-Suite: dieselbe Retry-Leiter, multipliziert über die Tests

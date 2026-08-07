@@ -6,6 +6,33 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `SEC-028`: der Egress-Guard muss sagen können, warum er abgewiesen hat
+
+**Ein neuer Check** (`SEC-028`, `high`, `enforced`, `tools_make_external_requests == true`) — der Katalog wächst von 115 auf **116 in zwölf Kategorien**.
+
+`SEC-004` fragt, ob die aufgelöste IP erlaubt ist. `SEC-005` fragt, ob sie auch die benutzte ist. Der neue Check fragt das Dritte: Verlassen die beiden Lagen, an denen ein Egress-Guard scheitert, ihn **unterscheidbar**?
+
+| Lage | Eigenschaft | Richtige Behandlung |
+|---|---|---|
+| Host löst auf interne/nicht-routbare Adresse auf | deterministisch | kein Retry, Meldung nennt die Policy |
+| Die Auflösung selbst scheitert (`gaierror`, Resolver-Timeout) | transient | Retry, Meldung nennt die Policy **nicht** |
+
+**Der Befund** (`zh-education-mcp`, `src/zh_education_mcp/http_client.py`, 2026-08-03): `_resolve_and_validate(host)` wirft `PermissionError` in beiden Zweigen. Daraus zwei Schäden mit einer Ursache — die Retry-Schleife überspringt `PermissionError` bewusst und wiederholt damit auch das DNS-Zucken nicht (beobachtet: drei aufeinanderfolgende Tool-Aufrufe scheiterten, der vierte ging durch), und beide Lagen melden «Ausgehende Anfrage durch Egress-Policy blockiert», was Nutzende bei einem Auflösungsfehler in eine Konfiguration schickt, in der nichts zu finden ist.
+
+**Warum `SEC` und nicht `OBS`, und warum `high`.** Der zweite Schaden hat eine Sicherheitsrichtung: Wer die Meldung dreimal sieht und dreimal ein DNS-Zucken vorfindet, lernt sie als Rauschen — und der vierte Fall ist der echte Policy-Verstoss. Eine Kontrolle, die von einer Störung nicht zu unterscheiden ist, wird wie eine Störung behandelt.
+
+**§2.5 durchlaufen, alle drei Fragen, bevor die Datei entstand:**
+
+1. *Gibt es den Check schon und `applies_when` schliesst den Fall aus?* Nein. `ARCH-014` (Retry-Politik) hat wörtlich dieselbe Klausel und greift bei genau diesen Servern.
+2. *Prüft ein vorhandener Check die richtige Sache am falschen Umfang?* Das war der ernsthafte Kandidat, und die Antwort ist nein. `ARCH-014` prüft die **Entscheidung** der Retry-Politik — was wiederholt wird, wie schnell, wie lange. Gemessen an dem, was sie sehen kann, ist die Politik im Befund **korrekt**: Sie überspringt einen Typ, der laut Namen ein Policy-Verstoss ist. Die Verification von `ARCH-014` zu erweitern hiesse, sie über die Herkunft der Exception urteilen zu lassen, die sie fängt — ein anderer Gegenstand, und es würde ein `oder` in die Pass-Criteria zwingen, das mit «begrenzt, gestreut, gehorsam» nichts zu tun hat. Genau das Signal, das §2.5 als Grenze zum neuen Check nennt.
+3. *Eigene Dimension?* Ja: **Unterscheidbarkeit am Werfort.** `ARCH-014` prüft die Entscheidung, `OBS-001` den Kanal (beide Lagen sind Execution Errors und liegen auf demselben — OBS-001 ist erfüllt und die Verwechslung trotzdem da), `OBS-007` die Nachvollziehbarkeit (ein Log ist für Menschen nach dem Vorfall, ein Diskriminator für Code während des Vorfalls). Die Abgrenzung zu allen dreien steht als Tabelle im Check, damit ein Server für eine Ursache nicht mehrere Findings erzeugt — der Fehler, den `SEC-004`/`SEC-005` bis v1.3.1 hatten.
+
+**Adoptionsstufe `enforced`, und was daran ungemessen ist.** Die Reichweite ist wörtlich die von `SEC-005`, also dieselbe Servermenge, für die `SEC-005` die Stufe bereits mit einer Tabelle begründet hat; der Aufwand hier ist kleiner (`S` — zwei Exception-Klassen, ein Zweig, eine Meldungsabbildung, zwei Tests). **Ungemessen ist, wie viele davon heute bestehen.** Die Vermutung — wenige, weil ein einziger `PermissionError` die naheliegende Art ist, einen Guard zu schreiben — steht im Check als Vermutung und nicht als Zahl, weil ein Portfolio-Durchlauf sie in einer Stunde ersetzen kann. Was die Stufe umkehren würde und welche drei Stellen dann zu ändern sind, steht ebenfalls dort.
+
+**Kein Re-Audit-Auslöser.** Punkt 4 der Katalog-Versionierung ist eindeutig: Ein neuer Check macht bestehende Audits nicht rückwirkend ungültig. Die vier Fälle unter Punkt 5 (a–d) setzen sämtlich eine Änderung an einem **bestehenden** Check voraus; keiner trifft zu. `docs/re-audit-queue.md` bleibt unberührt.
+
+**Der Description-Guard wird rot, bis die Repo-Description die neue Zahl nennt.** Sie liegt ausserhalb des Repos, also korrigiert sie kein Commit — `python tools/check_repo_description.py --repo malkreide/mcp-audit-skill` gibt den fertigen Text aus. Das ist der Guard, der genau dafür gebaut wurde, und er tut hier zum ersten Mal seit seinem Merge, wofür er da ist.
+
 ### Behoben — Der Ziel-Anker nannte die Revision eines fremden Repositorys
 
 `target_revision()` prüfte nie, ob das Verzeichnis, das es bekommt, **selbst** ein Repository ist. `git -C <ordner> rev-parse HEAD` sucht aufwärts, bis es ein `.git` findet — also liefert jeder Ordner eine SHA, sobald irgendein Vorfahre ein Repository ist. In `audit-meta.json` stand dann `target_repo` mit dem einen Baum und `target_sha` mit einem Commit aus einem anderen. Vierzig Hexziffern, plausibel, und über das falsche Repo.

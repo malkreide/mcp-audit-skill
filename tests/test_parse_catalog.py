@@ -66,7 +66,7 @@ class TestRealCatalog:
             "OPS": 8,
             "SCALE": 10,
             "SDK": 6,
-            "SEC": 27,
+            "SEC": 28,
         }
 
     def test_severity_distribution_known_set(self):
