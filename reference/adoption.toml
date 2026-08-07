@@ -1,8 +1,19 @@
 # Reference-adoption manifest for mcp-data-source-probe-skill.
 #
-# Checked by `scripts/reference_drift_probe.py` in mcp-continuous-auditor:
+# Read from two sides.
+#
+# Against the SERVERS, by `scripts/reference_drift_probe.py` in
+# mcp-continuous-auditor — did each adopting repository keep the behaviour?
 #
 #     python scripts/reference_drift_probe.py --target <this-repo> --repos-root ~/src
+#
+# Against the TEMPLATES in this repository, by Check 17 (`bash
+# scripts/validate.sh`) — does `reference/` still hold what is declared here?
+# That side ran nowhere until 1.8.0, which is how a template violating five of
+# its own declared properties reached eleven servers: it compiled, it imported,
+# it passed both ruff gates, and nothing read this file. A property added below
+# is now enforced locally on the next run, not only wherever the auditor is
+# checked out.
 #
 # WHAT THIS FILE IS. `reference/` ships code that gets copied into servers. After
 # the copy the two halves drift apart in both directions and neither side looks

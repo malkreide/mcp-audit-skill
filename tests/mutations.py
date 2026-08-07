@@ -555,4 +555,101 @@ MUTATIONS: list[Mutation] = [
         regex_sub(".pre-commit-config.yaml", r"^\s*- id: ruff-format\s*$", ""),
         "führt ['ruff-format'] nicht mehr",
     ),
+    # 17 — the templates hold what the adoption manifest claims
+    #
+    # Zwei Sorten Mutation, und beide werden gebraucht. Die ersten zwei nehmen
+    # der Vorlage eine zugesicherte Eigenschaft — der Fall, für den die Prüfung
+    # da ist. Der Rest greift die Prüfung selbst an: jeden Weg, auf dem sie
+    # aufhören könnte zu prüfen, ohne rot zu werden. Der zweite Satz ist der
+    # wichtigere, denn genau so ist der Ursprungsdefekt durchgekommen — nicht
+    # weil ein Gate rot war und ignoriert wurde, sondern weil keines hinsah.
+    Mutation(
+        17,
+        "der Jitter fällt aus der Vorlage",
+        replace("reference/retry_backoff.py", "random.random()", "0.5"),
+        "jitters — erwartet present",
+    ),
+    Mutation(
+        17,
+        "die Vorlage verpackt den Fehler wieder in ein RuntimeError",
+        replace(
+            "reference/retry_backoff.py",
+            "    raise last_error\n",
+            '    raise RuntimeError(f"Upstream {url} unreachable: {last_error}")\n',
+        ),
+        "no_bare_runtime_error — erwartet absent",
+    ),
+    Mutation(
+        17,
+        "Manifest weg",
+        remove("reference/adoption.toml"),
+        "Anker weg",
+    ),
+    Mutation(
+        17,
+        "Manifest ohne [[template]]",
+        write("reference/adoption.toml", "schema = 1\nunmapped_ok = []\n"),
+        "enthält kein [[template]]",
+    ),
+    Mutation(
+        17,
+        "Zuordnung zeigt auf eine Datei, die es nicht gibt",
+        replace(
+            "reference/adoption.toml",
+            'file = "reference/retry_backoff.py"\nsymbol = "fetch_with_retry"',
+            'file = "reference/retry_fortgezogen.py"\nsymbol = "fetch_with_retry"',
+        ),
+        "zeigt auf eine Datei, die es nicht gibt",
+    ),
+    Mutation(
+        17,
+        "Zuordnung nennt ein Symbol, das es nicht gibt",
+        replace(
+            "reference/adoption.toml",
+            'file = "reference/retry_backoff.py"\nsymbol = "fetch_with_retry"',
+            'file = "reference/retry_backoff.py"\nsymbol = "fetch_with_backoff"',
+        ),
+        "es gibt keine Funktion dieses Namens",
+    ),
+    Mutation(
+        17,
+        "Eigenschaft mit einer Art, die die Prüfung nicht kennt",
+        replace("reference/adoption.toml", 'kind = "literal"', 'kind = "irgendwie"'),
+        "kennt sie nicht",
+    ),
+    Mutation(
+        17,
+        "Eigenschaft ohne gültiges expect",
+        replace(
+            "reference/adoption.toml", 'expect = "absent"', 'expect = "vielleicht"'
+        ),
+        "Erlaubt sind 'present' und 'absent'",
+    ),
+    Mutation(
+        17,
+        "Vorlage ohne deklarierte Eigenschaft",
+        regex_sub(
+            "reference/adoption.toml",
+            r"^\[\[template\.property\]\]$",
+            "[[template.merkmal]]",
+        ),
+        "deklariert keine Eigenschaft",
+    ),
+    Mutation(
+        17,
+        "eine neue Vorlage, die niemand zugeordnet hat",
+        write("reference/_mutant.py", "WERT = 1\n"),
+        "ohne [[template]]-Eintrag",
+    ),
+    # Eine unlesbare Vorlage muss ein BEFUND sein, kein Absturz. Der
+    # Unterschied ist der ganze Punkt von `CheckFailed`: «die Prüfung ist
+    # abgestürzt» schickt den Lesenden nach tools/checks, «die Vorlage parst
+    # nicht» nach reference/. Diese Mutation ist entstanden, weil genau das
+    # hier zuerst falsch war.
+    Mutation(
+        17,
+        "Vorlage parst nicht",
+        append("reference/retry_backoff.py", "\ndef (:\n"),
+        "Check 2 meldet dasselbe",
+    ),
 ]

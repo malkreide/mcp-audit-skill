@@ -159,6 +159,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Check 17: die Vorlagen müssen halten, was `adoption.toml` über sie
+  behauptet.** Das Manifest deklariert je Vorlage eine Handvoll Eigenschaften.
+  Gelesen wurden sie bisher ausschliesslich von
+  `reference_drift_probe.py` in `mcp-continuous-auditor` — also in einem anderen
+  Repository, und dort **gegen die Server**. Für die Vorlage selbst nahm die
+  Liste niemand in die Hand.
+
+  Das ist die Lücke, durch die der Defekt kam. `reference/retry_backoff.py`
+  verletzte fünf der sieben Eigenschaften, die einen halben Meter weiter über
+  sie deklariert waren, und wurde in dem Zustand in elf Server kopiert. Kein
+  Schritt wurde rot, weil kein Schritt hinsah: Die Datei kompilierte (Check 2),
+  importierte (Check 3) und bestand beide Ruff-Gates (13, 14). Alle vier haben
+  recht — sie prüfen die **Form**, und die war in Ordnung. Die **Zusage**
+  beanstandete niemand.
+
+  **Gegenprobe, nicht Behauptung:** Gegen die Fassung von vor der Reparatur
+  gefahren, meldet Check 17 genau die fünf Eigenschaften, die in elf Server
+  kopiert wurden — `reads_retry_after`, `jitters`, `caps_after_jitter`,
+  `wall_clock_budget`, `no_bare_runtime_error`.
+
+  **Die Werte stehen nur im Manifest.** `any_of`, `outer`, `inner` und `expect`
+  werden gelesen, nicht nachgebaut. Eine zweite Kopie der Liste in
+  `tools/checks/` driftete von der ersten weg, und eine gedriftete Prüfung, die
+  grün meldet, ist schlimmer als keine — dieselbe Begründung, aus der
+  `scripts/validate.sh` die Gates nicht ein zweites Mal hinschreibt.
+
+  **`wraps` akzeptiert beide Formen**, und das ist gemessen: Eine rein
+  lexikalische Lesart fällt bei 6 von 6 Servern durch, die genau das Verhalten
+  haben, das die Eigenschaft beschreibt (siehe den Befund oben). Die Prüfung
+  nimmt `min(x * random.random(), MAX)` und `jittered = …` / `min(jittered,
+  MAX)` gleichermassen an.
+
+  Sieben der zehn Mutationen greifen nicht die Vorlage an, sondern **die
+  Prüfung**: Manifest weg, kein `[[template]]`, Zuordnung ins Leere, Symbol
+  unauffindbar, unbekannte `kind`, ungültiges `expect`, Vorlage ohne
+  Eigenschaft, neue Vorlage ohne Zuordnung. Der Ursprungsdefekt kam nicht durch
+  ein rotes Gate, das jemand ignoriert hat, sondern dadurch, dass keines hinsah
+  — also ist «hört still auf zu prüfen» der Fall, der abgedeckt gehört.
+
+  Dabei fiel ein Defekt in der Prüfung selbst auf: Eine Vorlage mit Syntaxfehler
+  liess sie **abstürzen** statt einen Befund zu melden. «Die Prüfung ist
+  abgestürzt» schickt den Lesenden nach `tools/checks/`, «die Vorlage parst
+  nicht» nach `reference/` — das ist der Unterschied, für den es `CheckFailed`
+  gibt. Behoben, mit eigener Mutation.
+
 - **SKILL.md 1.2d «Feldnamen-Inventar».** Die Live-Probe protokolliert ab jetzt
   die tatsächlichen Feld- und Spaltennamen samt **Schreibweise** und legt die
   Rohantwort als **aufgezeichnete** Fixture ab. Anlass: Eine Quelle wechselte am
