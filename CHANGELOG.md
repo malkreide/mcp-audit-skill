@@ -6,6 +6,38 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `ARCH-014` sagt jetzt, was ein Server ohne Wiederholung bekommt
+
+`ARCH-014` fragt, **was** wiederholt wird, **wie schnell** und **wie lange**. Was ein Server bekommt, der **gar nicht** wiederholt, stand nirgends.
+
+Solange die Stufe `advisory` war, kostete das nichts. Seit der Promotion am 2026-08-03 entscheidet das Verdikt über Production-Readiness — und ein Durchlauf über alle 43 Portfolio-Server am 2026-08-07 fand **15** ohne jeden Wiederholungspfad. Ein enforced Check, dessen Ausgang für ein Drittel des Portfolios von einer Auslegung abhängt, ist kein Check, sondern eine Meinungsverschiedenheit mit Blockierrecht.
+
+**Die Kriterien zeigten in beide Richtungen.** «Wiederholt wird auch bei Netzwerkfehlern und Timeouts» liest sich als Pflicht zu wiederholen; die übrigen acht sind vakuum-erfüllt, wenn nichts wiederholt. Zwei Auditoren, zwei Verdikte, derselbe Server.
+
+**Die Regel: Abwesenheit ist ein `pass`.** Jeder Schaden, den dieser Check benennt — Retry-Sturm im Gleichtakt, Weg auf die Sperrliste, Last ohne Empfänger, multiplikative Stapelung —, setzt eine Wiederholung voraus. Ein Server, der nie wiederholt, verursacht keinen davon; gemessen an dem, wogegen dieser Check steht, ist er der ideale Gast. Was er stattdessen hat (ein Verbindungsabriss wird zum harten Tool-Fehler), ist laut, ehrlich und beim Aufrufer sichtbar — eine Frage der **Robustheit**, nicht der Höflichkeit gegenüber der Quelle. Sie hier mitzuverhandeln hiesse, den Check zwei Dinge messen zu lassen: das Signal, das §2.5 als Grenze zum eigenen Check nennt.
+
+**Drei Bedingungen, und die zweite ist die tragende:**
+
+1. Die Abwesenheit ist **festgestellt**, nicht angenommen — sonst `todo` nach §2.6.
+2. **Die Transport-Ebene zählt mit.** `httpx.AsyncHTTPTransport(retries=3)`, `urllib3.Retry`, `HTTPAdapter(max_retries=…)` **sind** ein Wiederholungspfad, und zwar der schlechteste: ohne Jitter, ohne `Retry-After`, ohne Budget, von niemandem entworfen. Ein Server mit gesetzten Transport-Retries und ohne eigene Schleife hat keine fehlende Politik, sondern eine ungeschriebene — das ist ein **`fail`**.
+3. Der Fehlerpfad bleibt erkennbar (`FID-003`).
+
+**Re-Audit-Auslöser nach §5.** Die Abwesenheitsregel **feuert nicht**: §5 kennt keinen Auslöser für eine Lockerung, und sie kann kein `production_ready: true` ungültig machen. Bedingung 2 ist dagegen eine echte Verschärfung (§5b/c) und **feuert** — trifft aber gemessen **niemanden**: Von den 15 Servern ohne Schleife setzt **keiner** Transport-Retries. Das steht als eigener Block in [`docs/re-audit-queue.md`](docs/re-audit-queue.md), weil der Unterschied zwischen «geprüft und niemand betroffen» und «nicht geprüft» genau der ist, den §2.6 eine Ebene höher meint.
+
+**Und die Zahlen im Check sind korrigiert.** Die Promotion stützte sich auf «alle elf Server erfüllen den Check heute». Elf war eine **Stichprobe**; das Portfolio hat 43:
+
+| | Anzahl |
+|---|---|
+| erfüllen den Check mit einer Politik | 22 |
+| Wiederholungspfad vorhanden und verletzt | **6** |
+| kein Wiederholungspfad — `pass` nach der neuen Regel | 15 |
+
+Die sechs sind `amtsblatt-mcp`, `bag-health-mcp`, `openlex-mcp`, `swiss-environment-mcp`, `swiss-statistics-mcp`, `zurich-opendata-mcp`. Die Stufe bleibt `enforced` und stützt sich damit nach §2.3 Schritt 3 auf «**Rückstand bewusst akzeptiert**» statt auf «die betroffenen Server haben nachgezogen» — sechs benannte Server mit je derselben, dreizeiligen Behebung, jeder Befund von Hand am Quelltext bestätigt. Ein Satz, der weiter «alle erfüllen ihn» behauptet hätte, wäre der Fehler aus `OPS-004` gewesen.
+
+**Gegen Drift gepinnt.** Die Regel entscheidet über 15 Server und wurde von nichts erzwungen — dieselbe Ausgangslage wie beim Advisory-Satz, der beim ersten Anlass driftete. `tests/test_catalog_criteria.py` hält jetzt drei Eigenschaften fest: dass der Abschnitt existiert, dass die Pass Criteria ihre Voraussetzung nennen, und dass das Transport-Kriterium seinen Zusatz «auch ohne eigene Schleife» behält.
+
+**Gegenprobe geführt**, drei Mutationen, jede schlägt an ihrem eigenen Test an: Abschnitt entfernt · konditionalen Vorsatz gestrichen · Transport-Kriterium auf den alten Wortlaut zurückgedreht.
+
 ### Hinzugefügt — `OPS-010`: die Gegenprobe wird ein Abnahmekriterium, nicht eine Gewohnheit
 
 **Ein neuer Check** (`OPS-010`, `high`, **`advisory`**, `applies_when: always`) — der Katalog wächst von 119 auf **120 in zwölf Kategorien**, 25 davon `advisory`.

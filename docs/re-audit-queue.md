@@ -2,6 +2,40 @@
 
 **Stand:** 2026-08-07 · **Letztes geprüftes Release:** `v2.2.0` (feuert nichts) · **Jüngste offene Auslöser:** `v2.1.0` · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
 
+---
+
+## Unreleased — `ARCH-014`, Klarstellung zur Abwesenheit
+
+### Was gefeuert hat
+
+| Auslöser | §5-Prüfung | Ergebnis |
+|---|---|---|
+| **Die Abwesenheitsregel** — ein Server ohne Wiederholungspfad besteht `ARCH-014` | §5 kennt keinen Auslöser für eine **Lockerung**. Die Regel verwandelt mögliche `fail` in `pass`; sie kann kein `production_ready: true` ungültig machen, und genau das ist es, wogegen §5 schützt. | **feuert nicht** |
+| **§5b/c** — Reichweite des Transport-Kriteriums präzisiert | «Transport-Retries stehen nachweislich auf null» galt bisher erkennbar für Server **mit** eigener Schleife. Es gilt jetzt ausdrücklich auch für Server **ohne** — dort kippt ein gesetzter Wert das Verdikt von `pass` auf `fail`. Das ist eine echte Verschärfung. | **feuert — trifft heute niemanden** |
+
+### Warum der zweite Eintrag trotzdem hier steht
+
+Gemessen am 2026-08-07 über alle 43 Portfolio-Server: **15** haben keinen Wiederholungspfad, und **keiner von ihnen** setzt Transport-Retries. Der Auslöser feuert also gegen eine leere Menge.
+
+Das gehört hierher und nicht in die Erledigt-Ablage — derselbe Fall wie `FID-003` in `v2.1.0`. Der Unterschied zwischen «geprüft und niemand betroffen» und «nicht geprüft» ist der, den [`SKILL.md` §2.6](../SKILL.md) eine Ebene höher meint. Wer einen Server baut oder erbt, der `httpx.AsyncHTTPTransport(retries=3)` setzt und sonst nichts wiederholt, prüft `ARCH-014` in demselben Zug mit.
+
+### Was der Durchlauf sonst geändert hat, ohne §5 zu sein
+
+Die Zahlen im Check selbst. Die Promotion vom 2026-08-03 stützte sich auf «alle elf Server erfüllen den Check heute» — elf war eine **Stichprobe**, das Portfolio hat 43. Der Durchlauf sagt: 22 erfüllen ihn mit einer Politik, 15 haben keinen Pfad (nach der neuen Regel `pass`), und **sechs** verletzen ihn.
+
+`amtsblatt-mcp` · `bag-health-mcp` · `openlex-mcp` · `swiss-environment-mcp` · `swiss-statistics-mcp` · `zurich-opendata-mcp`
+
+Das ist **kein** §5-Auslöser: Kein Kriterium hat sich für diese sechs bewegt, sie waren schon vorher verletzt, und ihre Audits sind dadurch nicht ungültig geworden — sie waren nie gültig. Es ist ein offener Rückstand, kein Re-Audit. Die Adoptionsstufe bleibt `enforced` und stützt sich damit nach [§2.3](../SKILL.md#23-adoptionsstufen) Schritt 3 auf «Rückstand bewusst akzeptiert» statt auf «die betroffenen Server haben nachgezogen». Der Unterschied steht jetzt im Check; ihn nicht zu schreiben wäre der Fehler aus `OPS-004` gewesen.
+
+### Herkunft der Zahlen
+
+| Zahl | Herkunft |
+|---|---|
+| 43 Server gescannt | **gemessen** — alle nicht-archivierten `*-mcp`-Repos unter `malkreide`, flach geklont, 2026-08-07 |
+| 22 / 6 / 15 | **gemessen** — mechanischer Scan über `src/`, jeder Treffer **und** jeder Nicht-Treffer von Hand am Quelltext nachgelesen |
+| 0 der 15 mit Transport-Retries | **gemessen** — `grep` auf `HTTPTransport(`, `urllib3`, `Retry(`, `max_retries`; alle Treffer waren der MCP-Transport, nicht der HTTP-Transport |
+| 11 Server der Promotion | **übernommen** aus dem Check-Text vom 2026-08-03, dort erhoben |
+
 Diese Datei beantwortet eine Frage: **Welche bestandenen Audits gelten nicht mehr, und warum?**
 
 Sie ist bewusst eine Momentaufnahme mit Datum und keine gepflegte Liste. Ein Dokument, das vorgibt, immer aktuell zu sein, ist nach dem zweiten Release falsch, ohne dass es jemand merkt. Der maschinelle Stand steht im Notion-Tracker (`Audit-Status`); hier steht die **Begründung**, die dort nicht hinpasst.
