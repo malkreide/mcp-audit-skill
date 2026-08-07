@@ -28,7 +28,12 @@ target-version = "py311"
 # Nebenwirkung eines Versions-Bumps einzufuehren. Sie zu uebernehmen ist eine
 # eigene, messbare Aenderung: diese Zeile entfernen, `ruff format .` laufen
 # lassen, die 82 Diffs lesen.
-exclude = ["*.md"]
+#
+# `extend-exclude`, nicht `exclude`: `exclude` ERSETZT ruffs Vorgabeliste, und
+# damit waeren `.venv/`, `node_modules/` und Konsorten wieder im Gate.
+# Gemessen: zwei Dateien unter `.venv/` und `node_modules/` werden mit
+# `exclude` beanstandet, mit `extend-exclude` nicht.
+extend-exclude = ["*.md"]
 
 # Zeilenbreite: bewusst 88, und bewusst ausgeschrieben.
 #
