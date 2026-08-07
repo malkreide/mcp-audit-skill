@@ -181,9 +181,32 @@ class TestRealCatalogUnchanged:
         # and still 0 meeting the check, because nothing yet confirms the read
         # fields on the first entry or holds anything against a real response.
         #
-        # So the exit condition is restated: it leaves advisory when a run shows
-        # servers confirming the *fields they read*, not just the root. That is
-        # the criterion no server in the portfolio has ever met.
+        # A third round followed (2026-08-07): the non-CKAN sources of the same
+        # servers — GeoAdmin, LINDAS SPARQL, Dodis — plus two levels *below* an
+        # already-confirmed CKAN `result`, plus a spelling normalisation in
+        # `swisstopo-mcp`. Portfolio-wide after all three: 28 -> 25 with a
+        # silent root default, 1 -> 2 normalising at the parse boundary, and
+        # still 0 meeting the check.
+        #
+        # Three rounds, three servers moved, and the line that decides the
+        # verdict never left zero. Two findings from those rounds belong here
+        # because they shape what the next one should do:
+        #
+        #   - The defect *migrates downward*. Two of this round's seven were
+        #     leftovers of the CKAN sweep itself: it confirmed `result` and
+        #     stopped, while the formatters read one level deeper with a
+        #     default. Closing a level means checking the next one.
+        #   - The scan's hit rate is poor on purpose-built terms: 17 sites
+        #     hand-read, 7 real, 10 not — an `error` branch in the server's own
+        #     aggregate, a genuinely optional field of a CKAN row, an
+        #     already-confirmed structure. A default is only a defect where the
+        #     absence is the reader's mistake and not the source's statement.
+        #
+        # So the exit condition stands, unchanged and now three times
+        # unmoved: it leaves advisory when a run shows servers confirming the
+        # *fields they read* and holding them against a *real* response. That
+        # is the criterion no server in the portfolio has ever met, and no
+        # amount of root-path repair reaches it.
         #
         # OBS-008 (unreleased) takes the ordinary bridge, and the survey behind it
         # says why: of 42 published servers, 15 emit nothing at all within six

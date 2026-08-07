@@ -69,6 +69,24 @@ Der Check bleibt damit auf 0 von 42 und `advisory`. Die beiden Kriterien, die ni
 
 **Und eine zweite Messfalle, dieselbe Klasse.** Die erste Nachmessung ergab unverändert 28 — weil die Reparatur ihre eigene Begründung mitbringt: Die neuen Docstrings zitieren `data.get("result", {})` wörtlich, und ein Textzähler liest das als unveränderten Befund. Erst mit entfernten Kommentaren und Docstrings kommt 27 heraus. Dieselbe Falle wie beim `OPS-009`-Zähler und beim Quelltext-Test in `swiss-transport-mcp`.
 
+### Zweite Nachmessung, nach der Fremdquellen-Nachlese (2026-08-07)
+
+Fünf weitere PRs: `swiss-energy-mcp` (GeoAdmin `identify`/`find`), `swiss-electricity-mcp` (LINDAS SPARQL), `swiss-cultural-heritage-mcp` (Dodis Solr) — plus die zwei Ebenen unter dem bereits bestätigten CKAN-`result` in `wsl-envidat-mcp` und `swiss-transport-mcp`. Dazu `swisstopo-mcp` mit der Schreibweisen-Normalisierung.
+
+| | Erhebung | nach dem CKAN-Sweep | jetzt |
+|---|---:|---:|---:|
+| mit mindestens einem stillen Root-Default | 28 | 27 | **25** |
+| mit eigenem **Struktur**-Fehlertyp | 0 | 7 | 7 |
+| Wurzelpfad irgendwo mit einem Raise bestätigt | 3 | 10 | 10 |
+| normalisieren an der Parse-Grenze | 1 | 1 | **2** |
+| **erfüllen den Check** | 0 | 0 | **0** |
+
+**Drei Runden, drei Server Bewegung.** `wsl-envidat-mcp` und `swiss-transport-mcp` haben ihren letzten stillen Default verloren, `swiss-democracy-mcp` schon in der Runde davor. Die anderen bedienen weitere Quellen mit demselben Idiom.
+
+**Der Fehler wandert nach unten.** Zwei der sieben Fundstellen dieser Runde waren Reste des CKAN-Sweeps selbst: Der Fix bestätigte `result` und hörte dort auf, während die Formatierer eine Ebene tiefer weiterlasen. Wer eine Ebene schliesst, sollte die nächste mitprüfen — das ist die Lehre, die in den nächsten Durchlauf gehört.
+
+**Und die Trefferquote des Scans ist ausdrücklich schlecht.** 17 Fundstellen wurden nachgelesen, **7** waren echte Befunde, **10** keine: ein `error`-Zweig im eigenen Aggregat (`swiss-cultural-heritage`), ein echtes Optionalfeld einer CKAN-Zeile (`swiss-electricity`), das eigene Ergebnis-Dict (`seco-labor`), eine bereits bestätigte Struktur (`swiss-energy`). Ein Default ist nur dort ein Fehler, wo die Abwesenheit ein Irrtum des Lesers ist und keine Aussage der Quelle. Ein Scan, der 10 von 17 falsch anklagt, ist als Leseliste brauchbar und als Urteil unbrauchbar.
+
 ### Herkunft der Zahlen
 
 | Zahl | Herkunft |
@@ -78,6 +96,7 @@ Der Check bleibt damit auf 0 von 42 und `advisory`. Die beiden Kriterien, die ni
 | 0 eigene Struktur-Fehlertypen | **gemessen** — die 13 `Upstream*Error`-Klassen von Hand gelesen; alle betreffen Erreichbarkeit («unreachable after all retries», «budget was gone»), keine die Form |
 | 8 CSV-Server, 7 fest verdrahtet, 1 normalisiert | **bestätigt** — die aus `DRIFT-007` übernommene Zahl hält dem Durchlauf stand |
 | 27 / 7 / 10 nach dem Sweep | **gemessen** — Kommentare und Docstrings entfernt, sonst zählt die Begründung der Reparatur als Befund; die 10 von Hand ausgezählt, weil das Werkzeug Bestätigungen in Helfern nicht sieht |
+| 25 / 7 / 10 / 2 nach der Nachlese | **gemessen** — dasselbe Verfahren; 7 von 17 Fundstellen als echte Befunde von Hand bestätigt, 10 verworfen und je Repo im PR benannt |
 | 4 von 6 Endpunkten schreiben klein, 2 gross, 2 mischen innerhalb der Kopfzeile | **übernommen** aus dem `DRIFT-007`-Text vom 2026-08-03, dort am Belegfall erhoben |
 | Audits mit `FID-006: pass` im Fenster seit `v2.1.0` | **nicht gemessen** — von diesem Repo aus nicht erhebbar |
 
