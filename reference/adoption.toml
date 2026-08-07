@@ -33,10 +33,9 @@
 # of the 2026-08-07 repair. Do not delete a property to make a run green —
 # repairing the template is the fix.
 #
-# THE TWO READERS OF THIS FILE DISAGREE, AND THAT IS FINDING 4 BELOW. Check 17
-# reports all eight properties satisfied; `reference_drift_probe.py` reports
-# three of them "implemented nowhere" across the template and all 23 sites. The
-# code is the same code. Read finding 4 before acting on either number.
+# THE TWO READERS OF THIS FILE ONCE DISAGREED — finding 4 below, fixed on
+# 2026-08-07. Both now scope a property the same way, and a `REFERENCE_STALE`
+# on any of the eight is a real finding.
 #
 # WHO THE ELEVEN WERE. On 2026-08-07 (morning) this note named eleven servers
 # that still carried the defect: none read `Retry-After`, none jittered, none
@@ -143,14 +142,14 @@
 # file containing `retry-after`, a file containing `random.random`, and a
 # wall-clock budget. Check 17 is right and the portfolio run is wrong.
 #
-# THE FIX IS ON THE PROBE, NOT HERE. Neither the template nor any adoption is
-# defective, so there is nothing in this file to repair — and lowering a
-# property to make the portfolio run green would delete a real guarantee to
-# silence a measurement bug, which is the one move the note at the top forbids.
-# `reference_drift_probe.py` has to learn the scope Check 17 already
-# implements. Until it does, a `REFERENCE_STALE` on `reads_retry_after`,
-# `jitters` or `caps_after_jitter` is a probe artefact and must not be filed
-# against a server.
+# FIXED ON THE PROBE, 2026-08-07 (mcp-continuous-auditor#81).
+# `reference_drift_probe.py::load_symbol` now follows calls into named
+# functions of the same file, with `ast.walk` and `setdefault` — line for line
+# what Check 17 does. A `REFERENCE_STALE` on `reads_retry_after`, `jitters` or
+# `caps_after_jitter` is a REAL finding again; the caveat that used to stand
+# here ("probe artefact, do not file against a server") is withdrawn, and
+# deleting it rather than softening it is the point. A caveat that outlives its
+# cause is the same defect as a roster that outlives its reading.
 #
 # FINDING 5 (2026-08-07 evening): `no_bare_runtime_error` now fires on
 # `lobbywatch-mcp` for the wrong reason. The retry-exhaustion `RuntimeError`
@@ -377,10 +376,30 @@ file = "src/hn_tech_signal_mcp/server.py"
 symbol = "_request_with_retry"
 since = "2026-03-22"
 
+# `also` — the one adoption in this file that does not fit in one file.
+#
+# `seco-labor-mcp` keeps `compute_delay` and `parse_retry_after` in
+# `retry_policy.py` and calls them from TWO retry loops, in `server.py` and
+# `uvg.py`. Neither file holds all eight properties alone: the loops carry the
+# error handling and the budget, the policy module carries the jitter, the cap
+# and the header name. Until 2026-08-07 the manifest could only choose which
+# half to under-report, and it under-reported the half with three properties in
+# it — six findings against a server that holds every one of them.
+#
+# `also` lists further files whose functions the entry symbol may CALL. It does
+# not put those files in scope: only what the entry actually reaches is
+# followed, exactly as within one file. A path that cannot be read is a loud
+# finding about a stale mapping, never a silent skip.
+#
+# Supported by `reference_drift_probe.py` since mcp-continuous-auditor#81.
+# Check 17 does not read adoptions at all — it validates templates, and a
+# template is one file — so the field is meaningless there and ignored.
+
 [[template.adoption]]
 repo = "malkreide/seco-labor-mcp"
 file = "src/seco_labor_mcp/server.py"
 symbol = "_fetch_text_cached"
+also = ["src/seco_labor_mcp/retry_policy.py"]
 since = "2026-04-01"
 
 [[template.adoption]]
@@ -423,6 +442,7 @@ since = "2026-07-26"
 repo = "malkreide/seco-labor-mcp"
 file = "src/seco_labor_mcp/uvg.py"
 symbol = "_fetch_bytes"
+also = ["src/seco_labor_mcp/retry_policy.py"]
 since = "2026-08-05"
 
 
