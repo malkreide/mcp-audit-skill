@@ -187,6 +187,15 @@ class TestRealCatalogUnchanged:
         # whether "one recorded fixture per external endpoint" is the right
         # granularity, or whether per-endpoint is too fine for servers that
         # front a dozen of them.
+        # OPS-010 (unreleased) takes the ordinary bridge, and its own subject
+        # says why it must: of 42 portfolio repos with a test directory, 9 show
+        # any trace of a counter-check, and 11 patch a foreign module's asyncio
+        # process-wide. Enforced at `high` on merge day would fail three
+        # quarters of the portfolio for a practice the catalogue itself only
+        # ever asked for check by check. It is also the check with the largest
+        # judgement component — "central assurance" is not greppable — so the
+        # run has to say whether the criterion is auditable at all before it
+        # may block.
         assert advisory_ids(parse_catalog(CHECKS_DIR)) == [
             "ARCH-015",
             "ARCH-016",
@@ -206,6 +215,7 @@ class TestRealCatalogUnchanged:
             "OPS-007",
             "OPS-008",
             "OPS-009",
+            "OPS-010",
             "SCALE-008",
             "SCALE-009",
             "SCALE-010",
