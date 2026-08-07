@@ -1,6 +1,6 @@
 ---
 name: mcp-data-fidelity
-description: Datentreue-Regeln für MCP-Server-Tools, die eine externe Datenquelle abfragen — damit ein Server nicht still unvollständig liefert. Verwende diesen Skill ergänzend zu mcp-builder immer wenn (1) ein Such-, Query- oder Filter-Tool für einen MCP-Server entworfen oder implementiert wird, (2) eine Tool-Description dafür geschrieben oder überarbeitet wird, (3) jemand meldet, ein Server finde nichts, zu wenig oder weniger als die offizielle Oberfläche («findet nichts», «leeres Ergebnis», «Web-UI zeigt mehr», «zu wenig Treffer», «Recall», «Scope»), (4) ein Modell auf ein leeres Tool-Result hin eine Antwort erfunden hat oder ein Fuzzy-/Vorschlags-Fallback entworfen wird, (5) optionale API-Parameter (Filter, Facetten, Feld-Flags, Limits) in Requests übersetzt werden, (6) Tests dafür geschrieben werden, oder (7) ein Server auf MCP-Spec 2026-07-28 migriert wird und dabei Sortierreihenfolge, `ttlMs`/`cacheScope` oder MRTR-Rückfragen (`input_required`) festgelegt werden. Nicht nötig für Server ohne externe Datenquelle.
+description: Datentreue-Regeln für MCP-Server-Tools, die eine externe Datenquelle abfragen — damit ein Server nicht still unvollständig liefert. Verwende diesen Skill ergänzend zu mcp-builder immer wenn (1) ein Such-, Query- oder Filter-Tool für einen MCP-Server entworfen oder gebaut wird, (2) eine Tool-Description dafür geschrieben wird, (3) jemand meldet, ein Server finde nichts, zu wenig oder weniger als die offizielle Oberfläche («findet nichts», «leeres Ergebnis», «Web-UI zeigt mehr», «Recall», «Scope»), (4) ein Modell auf ein leeres Tool-Result hin etwas erfunden hat oder ein Fuzzy-Fallback entworfen wird, (5) optionale API-Parameter (Filter, Facetten, Feld-Flags) in Requests übersetzt werden, (6) Tests dafür geschrieben werden, (7) ein Server auf MCP-Spec 2026-07-28 migriert wird (Sortierreihenfolge, `ttlMs`/`cacheScope`, MRTR), oder (8) eine Antwort geparst wird — Kopfzeilen, Spaltennamen, Schreibweise, Zahlenspalten mit unterdrückten Werten («1 bis 5»), Summen. Nicht nötig für Server ohne externe Datenquelle.
 ---
 
 # MCP Data Fidelity — liefert der Server, was die Quelle hat?
@@ -9,13 +9,15 @@ Companion zu `mcp-builder`. Dessen Best Practices decken ab, ob ein Server **kor
 
 Das ist eine eigene Fehlerklasse, weil sie still ist. HTTP 200, wohlgeformtes JSON, grüne Tests — und inhaltlich falsch. Ein Server, der zwei Prozent des Bestands durchsucht und das nicht meldet, produziert Antworten, die niemand als falsch erkennt.
 
-**Die Leitfrage bei jedem datenabfragenden Tool:** *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der zwölf Regeln unten.
+**Die Leitfrage bei jedem datenabfragenden Tool:** *Wenn dieses Tool nichts findet — kann ich unterscheiden, ob es nichts gibt oder ob ich falsch gefragt habe?* Ist die Antwort nein, greift eine der vierzehn Regeln unten.
 
 Seit Regel 10 steht die Stufe darunter daneben: *und wenn ich falsch gefragt habe — komme ich von hier zur richtigen Frage?* Die erste Frage entscheidet, ob das Modell schweigen darf. Die zweite, ob es weiterkommt, ohne sich einen Treffer zu erfinden.
 
 Regel 11 liefert das Material für die erste Frage: Wer nicht mitliest, **welche Anfrage** die Leermenge erzeugt hat, kann «nichts da» von «falsch gefragt» prinzipiell nicht trennen — er kann die Leitfrage nur raten. Regel 12 stellt beide Fragen eine Ebene tiefer, am einzelnen Feld: Ein `null` beantwortet sie genauso wenig wie ein `[]`.
 
-Die Regeln 1–6 und 10–12 stammen aus Vorfällen, die Regeln 7–9 aus der Spec 2026-07-28. Der Unterschied ist ausgewiesen und nicht kosmetisch — siehe den Abschnitt vor Regel 7. Die Nummerierung folgt der Reihenfolge, in der die Regeln dazugekommen sind, nicht dieser Gruppierung.
+Die Regeln 13 und 14 setzen dort an, wo die Antwort die Quelle bereits verlassen hat und der eigene Code sie liest: Regel 13 am Namen des Feldes, Regel 14 an seinem Inhalt. Beide erzeugen einen Ausfall, der wie eine Antwort aussieht — die eine eine leere Trefferliste, die andere eine Zahl, die zu tief ist.
+
+Die Regeln 1–6 und 10–14 stammen aus Vorfällen, die Regeln 7–9 aus der Spec 2026-07-28. Der Unterschied ist ausgewiesen und nicht kosmetisch — siehe den Abschnitt vor Regel 7. Die Nummerierung folgt der Reihenfolge, in der die Regeln dazugekommen sind, nicht dieser Gruppierung.
 
 ---
 
@@ -211,11 +213,11 @@ Der Unterschied liegt in der Behandlung des **unerwarteten** Falls: `.get(x, [])
 
 ## Regeln aus der Spec 2026-07-28 — belegt durch den Mechanismus, nicht durch einen Schaden
 
-Die Regeln 1–6 stehen hier, weil etwas kaputtgegangen ist: eine Suche über 1 von 23 Klassifikationen, eine Registry-Abfrage eine Ebene daneben. Die Regeln 10 bis 12 stehen hinter diesem Abschnitt und gehören trotzdem zur ersten Gruppe — sie sind später dazugekommen, nicht anders belegt. Wie weit der Beleg bei 11 und 12 trägt, steht bei ihnen: der eine ist in einem Nachbarwerkzeug gemessen, der andere im Review abgefangen statt ausgeliefert. Für die Regeln 7–9 gilt das nicht, und das gehört gesagt, statt sie stillschweigend danebenzustellen. Ihr Beleg ist der **Mechanismus**: Die Spec 2026-07-28 hat drei Felder eingeführt oder abgeschafft, aus denen sich dieselbe stille Unvollständigkeit ableiten lässt wie aus einem vergessenen Filter — nachrechenbar, aber noch nicht nachgemessen. Fällt einer der drei in freier Wildbahn auf, gehört der Vorfall hierher; bis dahin sind es Regeln mit Herleitung statt mit Narbe.
+Die Regeln 1–6 stehen hier, weil etwas kaputtgegangen ist: eine Suche über 1 von 23 Klassifikationen, eine Registry-Abfrage eine Ebene daneben. Die Regeln 10 bis 14 stehen hinter diesem Abschnitt und gehören trotzdem zur ersten Gruppe — sie sind später dazugekommen, nicht anders belegt. Wie weit der Beleg bei 11 und 12 trägt, steht bei ihnen: der eine ist in einem Nachbarwerkzeug gemessen, der andere im Review abgefangen statt ausgeliefert. Die Regeln 13 und 14 sind wieder ausgeliefert gewesen, in einem Server des Portfolios, und ihre Zahlen sind an der laufenden Quelle gemessen. Für die Regeln 7–9 gilt das nicht, und das gehört gesagt, statt sie stillschweigend danebenzustellen. Ihr Beleg ist der **Mechanismus**: Die Spec 2026-07-28 hat drei Felder eingeführt oder abgeschafft, aus denen sich dieselbe stille Unvollständigkeit ableiten lässt wie aus einem vergessenen Filter — nachrechenbar, aber noch nicht nachgemessen. Fällt einer der drei in freier Wildbahn auf, gehört der Vorfall hierher; bis dahin sind es Regeln mit Herleitung statt mit Narbe.
 
 Das Contributing-Kriterium dieses Repos bleibt davon unberührt: Ein **Vorschlag** von aussen braucht weiterhin einen eingetretenen Schaden. Was hier über die tiefere Latte kommt, ist eine Protokolländerung, die alle 42 Server des Portfolios gleichzeitig betrifft — nicht eine plausible Empfehlung.
 
-**Geltungsbereich.** Regel 7 gilt unabhängig von der Spec-Version; instabile Sortierung zerlegt Pagination auch auf 2025-06-18. Dasselbe gilt für die Regeln 10 bis 12 und für alles vor Regel 7. Die Regeln 8 und 9 setzen 2026-07-28 voraus — `ttlMs`/`cacheScope` auf den List-Responses und MRTR (`resultType: "input_required"`) existieren vorher nicht. Wer einen Server der Wave D oder ein eingefrorenes Repo prüft, hakt sie als nicht anwendbar ab, statt sie zu erfüllen.
+**Geltungsbereich.** Regel 7 gilt unabhängig von der Spec-Version; instabile Sortierung zerlegt Pagination auch auf 2025-06-18. Dasselbe gilt für die Regeln 10 bis 14 und für alles vor Regel 7. Die Regeln 8 und 9 setzen 2026-07-28 voraus — `ttlMs`/`cacheScope` auf den List-Responses und MRTR (`resultType: "input_required"`) existieren vorher nicht. Wer einen Server der Wave D oder ein eingefrorenes Repo prüft, hakt sie als nicht anwendbar ab, statt sie zu erfüllen.
 
 ## Regel 7 — Deterministische Reihenfolge, dokumentiert
 
@@ -650,6 +652,152 @@ async def test_a_renamed_upstream_key_is_a_finding_not_an_omission():
 
 Ohne die zweite besteht ein Server die erste, der jedes Feld als `not_collected` ausweist — er hat nie etwas gemessen und meldet das formal korrekt. Ohne die erste besteht ein Server die zweite, der die Umbenennung sauber meldet und trotzdem «nicht gefragt» und «nichts vorhanden» in dasselbe `null` legt. Das ist die Testform aus den Regeln 9 und 10: Die Trennung wird in beide Richtungen assertiert.
 
+## Regel 13 — Der Feldname ist Teil des Vertrags, samt Schreibweise
+
+Regel 6 fragt, ob der Schlüssel **da** ist. Diese Regel fragt das, was direkt daneben liegt und genauso still ausfällt: ob er da ist **in der Schreibweise, die der Code liest**.
+
+Belegfall (3.8.2026, [`www.bista.zh.ch`](https://www.bista.zh.ch)): Der Code las `r["Schulgemeinde"]`, die Quelle lieferte `schulgemeinde`. Kein Fehler, keine Exception, kein Log-Eintrag — eine leere Trefferliste mit der Meldung «Schulgemeinde nicht gefunden». Das ist dieselbe Konfabulations-Einladung wie Regel 3, aus einer neuen Richtung: **ein Ausfall, der wie eine Antwort aussieht.**
+
+Der Umfang entscheidet über die Behebung. Betroffen waren 4 von 6 genutzten Endpunkten derselben Quelle, und zwei davon mischen die Schreibweise **innerhalb einer Kopfzeile** (`gebiet_Bezeichnung`, `staatsangehoerigkeit_ISO2_Code`). Damit fällt der naheliegende Handgriff aus: Eine Schreibweise fest zu verdrahten hätte beim nächsten Wechsel dasselbe Loch gerissen, nur in die andere Richtung — und die Quelle hat ihn innerhalb eines Bestands bereits vollzogen.
+
+Muster: **an der Parse-Grenze normalisieren, einmal, für alle Leser.**
+
+```python
+# ✗ Jeder Leser trägt seine eigene Annahme über die Kopfzeile. Ein Wechsel
+#   upstream trifft sie einzeln, und keiner von ihnen meldet etwas.
+rows = list(csv.DictReader(io.StringIO(resp.text)))
+hits = [r for r in rows if r.get("Schulgemeinde", "") == gemeinde]
+
+# ✓ Eine Stelle kennt die Schreibweise, und danach kennt sie niemand mehr.
+rows = [_normalise_keys(r) for r in csv.DictReader(io.StringIO(resp.text))]
+hits = [r for r in rows if r.get("schulgemeinde", "") == gemeinde]
+```
+
+**Nur der Schlüssel, nie der Wert.** Die Normalisierung fasst Feldnamen an, nicht Feldinhalte. Ein Wert kleinzuschreiben, um einen Vergleich «robuster» zu machen, ist eine Recall-Verbreiterung, die niemand angefordert hat — sie gehört unter Regel 1 begründet und nicht in eine Hilfsfunktion an der Parse-Grenze.
+
+**Zwei Schlüssel, die zusammenfallen, sind ein Befund.** `{k.lower(): v for k, v in row.items()}` verliert stillschweigend einen von zwei Schlüsseln, die sich nur in der Schreibweise unterscheiden — und der Verlust sieht aus wie eine Zeile, die das Feld nie hatte. Das ist `payload.get("servers", [])` in klein: Der Rückfallwert einer Operation wird zur ganzen Ursache. Die Kollision gehört in den Fehlerkanal, wie jede andere Strukturabweichung.
+
+**Abgrenzung gegen Regel 6, und sie ist der Grund für eine eigene Regel.** Regel 6 kennt genau zwei Ausgänge: gefunden oder Schema-Fehler. Auf eine Schreibweisen-Abweichung angewandt, liefert sie den lauten Ausgang — richtig gegenüber dem stillen Nullbefund und trotzdem falsch, denn das Feld **ist** da. Ein Server nach Regel 6 allein hätte am 3.8.2026 auf 4 von 6 Endpunkten einen Upstream-Defekt gemeldet, den es nicht gab. Die beiden Regeln stehen deshalb in einer Reihenfolge und nicht in Konkurrenz: **erst normalisieren, dann bestätigen.** Nach der Normalisierung gilt Regel 6 unverändert und mit voller Schärfe — ein Schlüssel, der dann noch fehlt, fehlt wirklich. Wer normalisiert, *statt* zu bestätigen, hat Regel 6 abgeschafft und nicht erfüllt: `.get(k, "")` über einer normalisierten Zeile ist genau der stille Ausfall, mit dem dieser Abschnitt anfängt.
+
+Dieselbe Reihenfolge gilt gegenüber Regel 12: Dort ist ein unerwartet fehlender Schlüssel ein Schema-Fehler und kein Zustand. Das bleibt so — die Normalisierung entscheidet nur, welche Schlüssel als «vorhanden» gelten, nicht, was mit den fehlenden geschieht.
+
+**Warum Mocks das nicht fangen:** aus demselben Grund wie bei den Regeln 5 und 6. Die Fixture kodiert die Kopfzeile, die der Autor angenommen hat. Ein Mock, dessen Header `Schulgemeinde` schreibt, bestätigt den Fehler, statt ihn zu finden — und er tut es umso zuverlässiger, je sorgfältiger er aus der Doku der Quelle abgeschrieben wurde.
+
+**Nachweis / Test.** Ein **Paar**, aus demselben Grund wie bei den Regeln 10 bis 12:
+
+```python
+@respx.mock
+async def test_the_reader_does_not_care_how_the_header_is_spelled():
+    """Regel 13, Hälfte 1: Zwei Schreibweisen, ein Ergebnis."""
+    for header in ("Schulgemeinde", "schulgemeinde", "SchulGemeinde"):
+        respx.get(CSV_URL).mock(
+            return_value=httpx.Response(200, text=f"{header},anzahl\nUster,12\n")
+        )
+        result = await search_tool(schulgemeinde="Uster")
+        assert result.entries, f"{header!r} liefert nichts — Schreibweise verdrahtet"
+
+@respx.mock
+async def test_a_genuinely_missing_column_is_still_a_finding():
+    """Regel 13, Hälfte 2: Normalisiert wird der Name, nicht der Befund."""
+    respx.get(CSV_URL).mock(
+        return_value=httpx.Response(200, text="gemeinde,anzahl\nUster,12\n")
+    )
+    with pytest.raises(UpstreamSchemaError):
+        await search_tool(schulgemeinde="Uster")
+```
+
+Ohne die zweite besteht ein Server die erste, der jede Abfrage über `.get(k, "")` laufen lässt — er ist gegen jede Schreibweise unempfindlich, weil er gegen jede Kopfzeile unempfindlich ist, und meldet die verschwundene Spalte als Leermenge. Ohne die erste besteht ein Server die zweite, der eine Schreibweise verdrahtet und die andere korrekt als Schema-Fehler meldet — genau der Zustand, den der Belegfall als «Upstream-Defekt» ausgewiesen hätte, obwohl die Quelle in Ordnung war.
+
+**`@pytest.mark.live`.** Die gemischte Kopfzeile ist nur an der echten Antwort zu sehen — der Mock hat sie per Konstruktion nicht. Ein Canary über alle genutzten Endpunkte, der die Rohheader gegen ihre normalisierte Form hält, meldet den nächsten Wechsel als Information statt als Ausfall:
+
+```python
+@pytest.mark.live
+@pytest.mark.parametrize("endpoint", ENDPOINTS)
+async def test_the_raw_header_is_reported_not_assumed(endpoint):
+    raw = await client.raw_header(endpoint)
+    assert raw, f"{endpoint}: keine Kopfzeile"
+    normalised = [k.lower() for k in raw]
+    assert len(set(normalised)) == len(normalised), (
+        f"{endpoint}: {raw} fällt nach der Normalisierung zusammen"
+    )
+```
+
+## Regel 14 — Eine Zahlenspalte, die keine Zahlen enthält
+
+Quellen unterdrücken kleine Fallzahlen aus Datenschutzgründen und schreiben statt einer Zahl einen Bereich: «1 bis 5», «<5». Dazu kommen «NULL» und die leere Zelle. Das ist kein Randfall, sondern eine Eigenschaft amtlicher Statistik — gemessen am 3.8.2026 auf [`www.bista.zh.ch`](https://www.bista.zh.ch): **18.6 %** einer Sek-I-Tabelle (13902 Zeilen), **18.1 %** einer zweiten (62684 Zeilen), **1.0 %** «NULL» in einer dritten (35903 Zeilen).
+
+Die Bewertung ist der Kern der Regel, und der mittlere Ausgang ist der, der überrascht:
+
+| Umgang | Was er kostet |
+|---|---|
+| `int("1 bis 5")` | Absturz. Laut, schlecht — aber ehrlich: Der Aufrufer bekommt keine Zahl und weiss es |
+| als `0` zählen | Die Summe bleibt plausibel, ist still zu tief und durch nichts als falsch erkennbar. **Schlimmer als der Absturz** |
+| ausnehmen und **kennzeichnen** | richtig |
+
+**Eine Summe, aus der ein Fünftel der Zeilen stillschweigend fehlt, ist keine Summe — sie ist eine Untergrenze, die sich als Summe ausgibt.**
+
+Dass die Null schlechter abschneidet als der Absturz, ist die ganze Ordnung dieser Tabelle: Ein Absturz kostet einen Vorfall, eine stille Null kostet jede Entscheidung, die danach auf der Zahl beruht. Es ist die Fehlerklasse dieses Skills, angewandt auf einen Skalar statt auf eine Trefferliste — HTTP 200, wohlgeformtes JSON, eine Zahl, die niemand als falsch erkennt.
+
+```python
+# ✗ Zwei Zeilen, zwei Fehler. Die erste stürzt ab, die zweite ist schlimmer.
+total = sum(int(r["anzahl"]) for r in rows)
+total = sum(int(r["anzahl"]) if r["anzahl"].isdigit() else 0 for r in rows)
+
+# ✓ Ausnehmen und kennzeichnen — die Zahl der ausgenommenen Zeilen ist Teil
+#   des Resultats, nicht ein Detail im Log.
+counted = [_parse_count(r.get("anzahl")) for r in rows]
+total = sum(n for n in counted if n is not None)
+suppressed = sum(1 for n in counted if n is None)
+note = _suppression_note(suppressed, len(rows))   # None, wenn es keine gibt
+```
+
+**Der Hinweis gehört ins Tool-Result**, aus demselben Grund wie bei Regel 3 — das Log liest das Modell nicht. Und er trägt die **tatsächlichen Zahlen** (`{suppressed} von {total}`), nicht eine Konstante: Ein Satz, der unter jeder Tabelle gleich lautet, ist die Tapete aus Regel 11 und sagt nichts über *diese* Summe.
+
+**Abgrenzung gegen Regel 12, und sie ist die Naht zwischen beiden.** Regel 12 ordnet die **einzelne Zelle** ein, und ein unterdrückter Wert ist dort bereits benannt: `withheld` — der Wert existiert, wird aber nicht ausgeliefert. Was Regel 12 nicht beantwortet, ist die Frage eine Verarbeitungsstufe später: **was eine Summe, eine Quote oder eine Rangfolge mit diesen Zellen tut.** Ein Server kann die drei Zustände am Feld mustergültig auseinanderhalten und sie in der nächsten Zeile mit `or 0` wieder zusammenfallen lassen. Regel 12 hält sie auseinander, Regel 14 hält sie auseinander *im abgeleiteten Wert* — und verlangt, dass die Ableitung sagt, wie viele Zeilen sie nicht enthält.
+
+Ebenso wenig deckt Regel 3 den Fall: Sie verlangt einen nächsten Schritt auf der **Leermenge**. Hier ist die Trefferliste voll, und falsch ist eine Zahl darin.
+
+**Warum Mocks das nicht fangen:** dieselbe Antwort wie bei den Regeln 5, 6 und 13, mit einem Zusatz. Die Fixture enthält die Werte, die der Autor erwartet hat, und «1 bis 5» erwartet niemand, der die Feldbeschreibung «Anzahl (Integer)» gelesen hat. Der Zusatz ist der Anteil: Eine handgeschriebene Fixture mit einer unterdrückten Zeile unter zwanzig bildet 5 % ab, gemessen sind 18.6 % — die Grössenordnung des Fehlers ist am Mock prinzipiell nicht abzulesen. Sie kommt aus der Probe (siehe `mcp-data-source-probe`, Abschnitt 1.2c) oder gar nicht.
+
+**Nachweis / Test.** Wieder ein Paar, und die zweite Hälfte ist die, die den trivialen Server aussortiert:
+
+```python
+@respx.mock
+async def test_a_suppressed_value_is_excluded_and_declared():
+    """Regel 14, Hälfte 1: ausgenommen, gezählt und im Resultat genannt."""
+    respx.get(CSV_URL).mock(return_value=httpx.Response(
+        200, text="gemeinde,anzahl\nUster,12\nBonstetten,1 bis 5\nAffoltern,NULL\n"
+    ))
+    result = await counts_tool()
+    assert result.total == 12, "unterdrückte Zeile in der Summe — als 0 gezählt?"
+    assert result.suppressed == 2
+    assert "2 von 3" in result.note, "der Hinweis nennt die Zahl nicht"
+
+@respx.mock
+async def test_a_clean_table_carries_no_note_and_loses_no_row():
+    """Regel 14, Hälfte 2: Der Hinweis ist eine Messung, keine Floskel."""
+    respx.get(CSV_URL).mock(return_value=httpx.Response(
+        200, text="gemeinde,anzahl\nUster,12\nBonstetten,7\n"
+    ))
+    result = await counts_tool()
+    assert result.total == 19 and result.suppressed == 0
+    assert result.note is None, "Hinweis ohne Anlass — er trägt kein Bit mehr"
+```
+
+Ohne die zweite besteht ein Server die erste, der jede Zeile für unterdrückt hält: Seine Summe ist 0, sein Hinweis steht immer da, und beides ist formal korrekt. Ohne die erste besteht ein Server die zweite, der auf einer sauberen Tabelle richtig rechnet und auf einer unterdrückten still zu tief summiert. Das ist die Testform aus den Regeln 9 bis 12 — die Trennung wird in beide Richtungen assertiert.
+
+**`@pytest.mark.live`.** Der Anteil unterdrückter Zeilen ist eine Eigenschaft der Quelle und bewegt sich. Als Canary taugt er trotzdem, mit einer Ober- und einer Untergrenze statt einer Zahl: Fällt er auf null, hat entweder die Quelle ihre Praxis geändert — oder der eigene Parser hat angefangen, etwas als Zahl zu lesen, was keine ist.
+
+```python
+@pytest.mark.live
+async def test_the_suppressed_share_stays_in_the_expected_band():
+    result = await counts_tool()
+    share = result.suppressed / result.rows
+    assert 0.05 < share < 0.40, (
+        f"{share:.1%} unterdrückt — Quelle umgestellt oder Parser zu grosszügig?"
+    )
+```
+
 ---
 
 ## Checkliste vor dem Release eines datenabfragenden Tools
@@ -680,6 +828,11 @@ Ohne die zweite besteht ein Server die erste, der jedes Feld als `not_collected`
 - [ ] Jedes Feld, das fehlen kann, unterscheidet «nicht erhoben», «erhoben und leer» und «zurückgehalten» — nicht ein `null` für alle drei (Regel 12)
 - [ ] «Nicht erhoben» wird dort gesetzt, wo entschieden wurde, nie als Rückfallwert eines Lookups; ein unerwartet fehlender Schlüssel endet im Fehlerkanal (Regel 12, Regel 6)
 - [ ] Am Feld dokumentiert, was der dritte Wert bedeutet und was der Aufrufer daraufhin tun muss — pro Feld, nicht als hausweite Konvention (Regel 12)
+- [ ] Feldnamen werden an der Parse-Grenze normalisiert, einmal für alle Leser; keine Schreibweise steht in einem Leser fest verdrahtet (Regel 13)
+- [ ] Nach der Normalisierung wird die Struktur weiterhin bestätigt — normalisieren *und* bestätigen, nicht statt (Regel 13, Regel 6)
+- [ ] Zwei Schlüssel, die nach der Normalisierung zusammenfallen, enden im Fehlerkanal statt in einem stillen Überschreiber (Regel 13)
+- [ ] Jede Zahlenspalte auf Nicht-Zahlen geprüft — unterdrückte Fallzahlen («1 bis 5», «<5»), «NULL», leere Zelle — und keiner dieser Werte wird als `0` gezählt (Regel 14)
+- [ ] Jede Summe, Quote und Rangfolge weist im Tool-Result aus, wie viele Zeilen sie nicht enthält, mit der gemessenen Zahl statt einer Konstante (Regel 14, Regel 11)
 - [ ] Gegen die offizielle Oberfläche der Quelle verglichen, jedes Delta erklärt
 
 ## Woher diese Regeln stammen
@@ -705,6 +858,14 @@ Regel 11 kommt aus einem vierten Fall, und der liegt ausserhalb dieses Skills: e
 
 Regel 12 ist der einzige Eintrag dieser Liste, der **im Review abgefangen** wurde statt draussen aufzufallen: ein gültiger Befund an eigenem Code, an dem ein umbenanntes Feld jeden Eintrag zur begründeten Auslassung gemacht hätte — nichts gemessen, Exit 0. Belegt ist damit der Mechanismus, und zwar am laufenden Objekt; nicht belegt ist, dass ihn draussen jemand übersieht. Der Unterschied ist kleiner als der zu einer Herleitung aus der Spec und grösser als keiner, und deshalb steht er hier.
 
+Die Regeln 13 und 14 kommen aus einem fünften Fall, und der ist wie der dritte ausgeliefert gewesen: [`zh-education-mcp`](https://github.com/malkreide/zh-education-mcp) gegen [`www.bista.zh.ch`](https://www.bista.zh.ch), aufgefallen am 3.8.2026. Zweimal dieselbe Form, an zwei verschiedenen Stellen derselben Zeile.
+
+Der eine ist der **Feldname**: Der Code las `r["Schulgemeinde"]`, die Quelle lieferte `schulgemeinde`. Das Ergebnis war keine Exception, sondern eine leere Trefferliste mit der Meldung «Schulgemeinde nicht gefunden» — ein Ausfall, der wie eine Antwort aussieht. Betroffen waren 4 von 6 genutzten Endpunkten, und zwei davon mischen die Schreibweise innerhalb einer Kopfzeile (`gebiet_Bezeichnung`, `staatsangehoerigkeit_ISO2_Code`). Das ist der Grund, warum die Behebung nicht «auf die neue Schreibweise umstellen» heisst, sondern «an der Parse-Grenze normalisieren»: Die Quelle hat den Wechsel innerhalb eines Bestands bereits vollzogen, und die verdrahtete Gegenrichtung wäre dasselbe Loch gewesen.
+
+Der andere ist der **Wert**: Die Quelle unterdrückt kleine Fallzahlen und schreibt «1 bis 5» in eine Spalte, die eine Anzahl heisst. Gemessen 18.6 % und 18.1 % in zwei Tabellen, 1.0 % «NULL» in einer dritten. Übertragbar daran ist die Rangfolge der drei Umgänge, und dass der mittlere überrascht: Der Absturz ist laut und ehrlich, die stille `0` ist beides nicht. Eine Summe, aus der ein Fünftel der Zeilen stillschweigend fehlt, ist keine Summe, sondern eine Untergrenze, die sich als Summe ausgibt.
+
+Was beide mit `termdat-mcp#11` teilen: Keiner der Fälle war ein Fehler im Aufbau des Servers, und keiner hätte sich an einer Fixture zeigen können. Der eine kodiert die Kopfzeile, die der Autor angenommen hat, der andere die Werte, die er erwartet hat.
+
 Die Regeln 7–9 haben diese Herkunft **nicht**. Sie kommen aus der Spec 2026-07-28 und sind aus deren Mechanik hergeleitet: stateless Core ohne `initialize` (Regel 7), `ttlMs`/`cacheScope` auf den List-Responses (Regel 8), MRTR statt serverinitiierter Elicitation (Regel 9). Hergeleitet, nicht gemessen — was in diesem Repo ein Unterschied ist und deshalb dabeisteht.
 
 ## Verwandte Skills
@@ -723,7 +884,7 @@ Daneben, nicht Teil der Kette: `mcp-builder` — generische Bauanleitung von Ant
 
 ### Welche Regel welcher Check ist
 
-Stand des Katalogs: `mcp-audit` auf `main` — 113 Checks in zwölf Kategorien auf zwei Spec-Baselines, davon sechs in der Kategorie `FID`. Geschnitten ist v2.0.0 (112 Checks); die drei Änderungen, die diese Tabelle zuletzt bewegt haben, stehen drüben unter `[Unreleased]` und sind dort als v2.1.0 eingestuft. Die Zuordnung ist nicht eins zu eins — `FID-003` trägt vier Regeln, `ARCH-020` zwei, Regel 5 braucht zwei Checks und Regel 9 drei. Ohne Check ist seit `FID-006` nur noch Regel 12, und Regel 10 bringt mit `ARCH-003` den einzigen **`enforced`** Check dieser Tabelle mit — alle anderen sind `advisory`:
+Stand des Katalogs: `mcp-audit` auf `main` — 113 Checks in zwölf Kategorien auf zwei Spec-Baselines, davon sechs in der Kategorie `FID`. Geschnitten ist v2.0.0 (112 Checks); die drei Änderungen, die diese Tabelle zuletzt bewegt haben, stehen drüben unter `[Unreleased]` und sind dort als v2.1.0 eingestuft. Die Zuordnung ist nicht eins zu eins — `FID-003` trägt vier Regeln, `ARCH-020` zwei, Regel 5 braucht zwei Checks und Regel 9 drei. Ohne Check sind seit `FID-006` die Regeln 12, 13 und 14, und Regel 10 bringt mit `ARCH-003` den einzigen **`enforced`** Check dieser Tabelle mit — alle anderen sind `advisory`:
 
 | Regel | Check |
 |---|---|
@@ -738,9 +899,11 @@ Stand des Katalogs: `mcp-audit` auf `main` — 113 Checks in zwölf Kategorien a
 | 9 — `input_required` ist keine leere Antwort | [`HITL-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/HITL-006.md) — «MRTR statt serverinitiierter Requests», dazu [`ARCH-018`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-018.md) für `resultType` auf allen Results und, seit dessen Erweiterung, [`FID-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-003.md) für die Abgrenzung gegen den Null-Treffer. Die Aufteilung steht drüben in beiden Checks ausgeschrieben: `HITL-006` prüft die Retry-Idempotenz und dass `input_required` nicht für gewöhnliche **Fehler** benutzt wird, `FID-003` die Disjunktheit gegen die **Leermenge** — kein `hint` auf einer Rückfrage, kein `inputRequests` auf einem Null-Treffer, und `entries` fehlt bei der Rückfrage, statt leer zu sein. **Reichweite:** Die drei Kriterien in `FID-003` sind doppelt bedingt — auf `2026-07-28` und darauf, dass das Tool `input_required` überhaupt zurückgeben kann; `FID-003` selbst trägt unverändert kein `spec_baseline`. Und dass der beantwortete Retry tatsächlich **Treffer** liefert, verlangt drüben nur der Idempotenz-Test bei `write_capable: true`; für lesende Server steht dieser Nachweis allein hier |
 | 10 — Vorschlagen ist nicht Erweitern | [`ARCH-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-003.md) — «‹Not Found›-Anti-Pattern: Heuristiken statt leerer Antworten», `severity: medium`, `applies_when: always`, ohne `adoption`-Feld und damit **`enforced`**. Der Check ist der Grund für diese Regel und zugleich ihre Gegenprobe: Er verlangt auf der Leermenge einen Fuzzy-Match **oder** einen Vorschlagsmechanismus plus `match_type`, und der Vorschlags-Arm erfüllt beide Seiten. **Reichweite:** Was drüben fehlt, ist die Disjunktheit — beide Modi lesen die **Antwort**, keiner misst den **Request**. Kein Kriterium verbietet, den Vorschlag gleich abzufragen und seine Treffer unter `results` zu mischen; das Pass-Pattern des Checks tut es sogar (`match_type: "fuzzy"` auf einer gemeinsamen Liste). Der Zähler auf der Upstream-Route steht bis auf Weiteres allein hier — als dritter Modus vorgeschlagen in [`mcp-audit-skill#102`](https://github.com/malkreide/mcp-audit-skill/issues/102), mit §2.5 beantwortet (Frage 2: Reichweite, nicht neue Regel). Nebenan liegt [`DRIFT-002`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/DRIFT-002.md) («Fallback verengt, erweitert nie») — dieselbe Form eine Ebene weiter: dort wird ein anderer *Datensatz* substituiert, hier eine andere *Abfrage* |
 | 11 — Die Leermenge trägt die Anfrage | [`FID-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-003.md) für die Leermenge selbst, dazu [`FID-001`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-001.md) für die eine Hälfte, die drüben schon steht: Eine **bewusst gewählte** Einschränkung muss im Tool-Result sichtbar sein. **Reichweite:** Das deckt die Verengung ab, die jemand gewählt hat — nicht die, die *passiert* ist. Der Anlassfall dieser Regel ist die ausgefallene Scope-Erweiterung aus Regel 1: Sie steht in keinem Argument, niemand hat sie gewählt, und kein Kriterium von `FID-001` misst sie. Ebenso wenig geprüft ist die zweite Hälfte — dass zwei verschieden abgesetzte Läufe sich verschieden lesen. Ein `hint`, der auf jeder Leermenge derselbe ist, erfüllt `FID-003` heute; dass er damit kein Bit trägt, steht allein hier |
-| 12 — Abwesenheit ist dreiwertig | **Kein Check deckt sie ab** — die einzige Zeile dieser Tabelle, für die das noch gilt. Am nächsten liegen [`FID-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-003.md) und [`ARCH-018`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-018.md): Beide trennen Zustände eines **Results** — Leermenge, Fehler, `resultType` —, keiner die Zustände eines **Feldes**. Am nächsten in der Form liegt [`FID-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-006.md), und der Abstand ist genau eine Ebene: `payload.get("servers", [])` ist drüben ein Fail-Pattern, `entry.get("pypi_dist")` ist keines. **Reichweite:** Ob daraus eine Erweiterung von `FID-006` wird oder ein eigener Check, ist nach [§2.5 «Reichweite vor neuer Regel»](https://github.com/malkreide/mcp-audit-skill/blob/main/SKILL.md) zu entscheiden und hier **nicht** entschieden — anders als bei Zeile 10, wo die drei Fragen beantwortet unten stehen. Bis dahin ist das ein fehlender Check und kein benannter Rand, und es steht so da |
+| 12 — Abwesenheit ist dreiwertig | **Kein Check deckt sie ab** — die erste von drei Zeilen, für die das gilt. Am nächsten liegen [`FID-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-003.md) und [`ARCH-018`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-018.md): Beide trennen Zustände eines **Results** — Leermenge, Fehler, `resultType` —, keiner die Zustände eines **Feldes**. Am nächsten in der Form liegt [`FID-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-006.md), und der Abstand ist genau eine Ebene: `payload.get("servers", [])` ist drüben ein Fail-Pattern, `entry.get("pypi_dist")` ist keines. **Reichweite:** Ob daraus eine Erweiterung von `FID-006` wird oder ein eigener Check, ist nach [§2.5 «Reichweite vor neuer Regel»](https://github.com/malkreide/mcp-audit-skill/blob/main/SKILL.md) zu entscheiden und hier **nicht** entschieden — anders als bei Zeile 10, wo die drei Fragen beantwortet unten stehen. Bis dahin ist das ein fehlender Check und kein benannter Rand, und es steht so da |
+| 13 — Der Feldname samt Schreibweise | **Kein Check deckt sie ab.** Am nächsten liegt [`FID-006`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-006.md), und der Abstand ist nicht eine Ebene wie bei Zeile 12, sondern eine Fallunterscheidung: Sein Fail-Pattern ist `payload.get("servers", [])`, sein Pass-Pattern der `UpstreamSchemaError`, dessen Meldung die tatsächlich vorhandenen Schlüssel nennt. Auf eine Schreibweisen-Abweichung angewandt ist das Pass-Pattern die **richtige Diagnose mit der falschen Folge** — es meldet einen Upstream-Defekt, den es nicht gibt, für ein Feld, das die Quelle liefert. Ein Server, der nach `FID-006` gebaut ist und keine Normalisierung hat, besteht den Check heute und wäre am 3.8.2026 auf 4 von 6 Endpunkten rot geworden. **Reichweite:** Kein Kriterium des Katalogs verlangt, dass Feldnamen an genau einer Stelle normalisiert werden, und keines verbietet die verdrahtete Schreibweise im einzelnen Leser. Ob daraus eine Erweiterung von `FID-006` wird oder ein eigener Check, ist nach [§2.5 «Reichweite vor neuer Regel»](https://github.com/malkreide/mcp-audit-skill/blob/main/SKILL.md) zu entscheiden und hier **nicht** entschieden — wie bei Zeile 12 |
+| 14 — Eine Zahlenspalte ohne Zahlen | **Kein Check deckt sie ab.** Am nächsten liegt [`FID-003`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/FID-003.md): Der Hinweis auf die ausgenommenen Zeilen ist genau der «nächste Schritt im Tool-Result», den der Check verlangt — nur verlangt er ihn auf der **Leermenge**, und hier ist die Trefferliste voll und eine Zahl darin falsch. Daneben liegt [`ARCH-018`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/ARCH-018.md), der Zustände eines Results trennt, nicht Werte in einer Spalte. **Reichweite:** Kein Kriterium misst einen **abgeleiteten** Wert — Summe, Quote, Rangfolge — gegen die Zeilen, die nicht in ihn eingegangen sind. Die Rangfolge der drei Umgänge (Absturz ehrlich, stille `0` schlimmer, ausnehmen und kennzeichnen richtig) steht in keinem Check-Kriterium; ein Server, der `or 0` rechnet, besteht drüben alles. Auch diese Zuordnung ist nach §2.5 offen und hier nicht entschieden |
 
-Wer nach den Regeln 1–5 baut, besteht die `FID`-Checks; Regel 6 liegt seit `FID-006` ebenfalls dort, allerdings `advisory` — der Check verlässt diesen Stand erst nach dem ersten Portfolio-Durchlauf, der zeigt, wie viele Server die Antwortstruktur überhaupt bestätigen. Die Regeln 7–9 laufen über `ARCH-020`, `HITL-006`, `ARCH-018` und die `2026-07-28`-Kriterien von `FID-003` und sind ebenfalls durchweg `advisory` — sie blockieren also nicht, sie werden gezählt. Regel 10 ist die Ausnahme: `ARCH-003` ist `enforced` und gilt `always`, ein Verstoss dagegen blockiert. Regel 11 liegt zur Hälfte auf `FID-001` und `FID-003`, Regel 12 auf keinem Check — was je Zeile offen bleibt, steht dort unter «Reichweite», und bei Zeile 12 ist es ausdrücklich eine Lücke und kein Rand.
+Wer nach den Regeln 1–5 baut, besteht die `FID`-Checks; Regel 6 liegt seit `FID-006` ebenfalls dort, allerdings `advisory` — der Check verlässt diesen Stand erst nach dem ersten Portfolio-Durchlauf, der zeigt, wie viele Server die Antwortstruktur überhaupt bestätigen. Die Regeln 7–9 laufen über `ARCH-020`, `HITL-006`, `ARCH-018` und die `2026-07-28`-Kriterien von `FID-003` und sind ebenfalls durchweg `advisory` — sie blockieren also nicht, sie werden gezählt. Regel 10 ist die Ausnahme: `ARCH-003` ist `enforced` und gilt `always`, ein Verstoss dagegen blockiert. Regel 11 liegt zur Hälfte auf `FID-001` und `FID-003`, die Regeln 12, 13 und 14 auf keinem Check — was je Zeile offen bleibt, steht dort unter «Reichweite», und bei diesen drei Zeilen ist es ausdrücklich eine Lücke und kein Rand.
 
 **Warum die Zeilen 7–9 nicht in `FID` liegen:** Die drei Regeln kommen aus der Spec, und der Katalog ordnet Spec-Checks nach dem Ort der Änderung ein — Caching und Reihenfolge nach `ARCH`, MRTR nach `HITL`. Die Datentreue-Hälfte davon stand hier bis zuletzt als offen und ist inzwischen abgedeckt — aber nicht durch neue `FID`-Checks: `ARCH-020` hat den Pagination-Schnitt und die `ttlMs`-Ableitung in sich aufgenommen, statt ein `FID-007` zu eröffnen, weil beides an denselben zwei Grössen hängt wie der bestehende Check; und die Disjunktheit gegen den Null-Treffer ist nach `FID-003` gegangen, weil sie an der Leermenge hängt und nicht am Rückfrageprotokoll.
 

@@ -9,6 +9,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Regel 13 — «Der Feldname ist Teil des Vertrags, samt Schreibweise».**
+  Belegfall vom 3.8.2026, `zh-education-mcp` gegen `www.bista.zh.ch`: Der Code
+  las `r["Schulgemeinde"]`, die Quelle lieferte `schulgemeinde`. Kein Fehler,
+  keine Exception, kein Log-Eintrag — eine leere Trefferliste mit der Meldung
+  «Schulgemeinde nicht gefunden». Dieselbe Konfabulations-Einladung wie Regel 3,
+  aus einer neuen Richtung: ein Ausfall, der wie eine Antwort aussieht.
+
+  **Warum das Regel 6 nicht schon abdeckt**, und die Prüfung dieser Frage stand
+  vor dem Schreiben: Regel 6 kennt zwei Ausgänge, gefunden oder Schema-Fehler.
+  Auf eine Schreibweisen-Abweichung angewandt liefert sie den lauten — besser
+  als der stille Nullbefund und trotzdem falsch, denn das Feld **ist** da. Ein
+  Server nach Regel 6 allein hätte am 3.8.2026 auf 4 von 6 Endpunkten einen
+  Upstream-Defekt gemeldet, den es nicht gab. Regel 13 nimmt Regel 6 nichts weg:
+  Die beiden stehen in einer Reihenfolge — erst normalisieren, dann bestätigen —
+  und wer normalisiert *statt* zu bestätigen, hat Regel 6 abgeschafft.
+
+  **Der Umfang entscheidet über die Behebung.** Betroffen waren 4 von 6
+  genutzten Endpunkten derselben Quelle, und zwei davon mischen die Schreibweise
+  innerhalb einer Kopfzeile (`gebiet_Bezeichnung`,
+  `staatsangehoerigkeit_ISO2_Code`). Eine Schreibweise fest zu verdrahten hätte
+  beim nächsten Wechsel dasselbe Loch gerissen — deshalb heisst das Muster
+  «an der Parse-Grenze normalisieren, einmal, für alle Leser» und nicht «auf die
+  neue Schreibweise umstellen».
+
+  **Zwei Zusätze über die ausgelieferte Vorlage hinaus**, beide begründet:
+  Normalisiert wird nur der Schlüssel, nie der Wert — ein kleingeschriebener
+  *Wert* ist eine Recall-Verbreiterung, die unter Regel 1 begründet gehört. Und
+  zwei Schlüssel, die dabei zusammenfallen, enden im Fehlerkanal statt in einem
+  stillen Überschreiber: `{k.lower(): v}` verliert einen von beiden, und der
+  Verlust sieht aus wie eine Zeile, die das Feld nie hatte — `payload.get(x, [])`
+  in klein.
+
+  Warum Mocks das nicht fangen: wie bei den Regeln 5 und 6. Die Fixture kodiert
+  die Kopfzeile, die der Autor angenommen hat, und tut es umso zuverlässiger, je
+  sorgfältiger sie aus der Doku der Quelle abgeschrieben wurde.
+
+- **Regel 14 — «Eine Zahlenspalte, die keine Zahlen enthält».** Quellen
+  unterdrücken kleine Fallzahlen aus Datenschutzgründen und schreiben «1 bis 5»,
+  «<5», «NULL» oder lassen die Zelle leer. Gemessen am 3.8.2026 auf
+  `www.bista.zh.ch`: 18.6 % einer Sek-I-Tabelle (13902 Zeilen), 18.1 % einer
+  zweiten (62684 Zeilen), 1.0 % «NULL» in einer dritten (35903 Zeilen).
+
+  **Die Bewertung ist der Kern der Regel**, und der mittlere Ausgang ist der,
+  der überrascht: `int("1 bis 5")` stürzt ab — laut, schlecht, aber ehrlich. Als
+  `0` zu zählen ist **schlimmer als der Absturz**: Die Summe bleibt plausibel,
+  ist still zu tief und durch nichts als falsch erkennbar. Richtig ist,
+  auszunehmen und zu **kennzeichnen**. Kernsatz: Eine Summe, aus der ein Fünftel
+  der Zeilen stillschweigend fehlt, ist keine Summe — sie ist eine Untergrenze,
+  die sich als Summe ausgibt.
+
+  **Warum das Regel 12 nicht schon abdeckt.** Regel 12 ordnet die einzelne
+  **Zelle** ein, und ein unterdrückter Wert ist dort bereits benannt:
+  `withheld`. Unbeantwortet bleibt die Frage eine Verarbeitungsstufe später —
+  was eine Summe, eine Quote oder eine Rangfolge mit diesen Zellen tut. Ein
+  Server kann die drei Zustände am Feld mustergültig auseinanderhalten und sie
+  in der nächsten Zeile mit `or 0` wieder zusammenfallen lassen. Regel 3 greift
+  ebenso wenig: Sie verlangt einen nächsten Schritt auf der **Leermenge**, hier
+  ist die Trefferliste voll und eine Zahl darin falsch.
+
+  Der Hinweis gehört ins Tool-Result und trägt die gemessenen Zahlen, nicht eine
+  Konstante — sonst ist er die Tapete aus Regel 11.
+
+- **`reference/patterns.py` um beide Muster ergänzt**, nach den ausgelieferten
+  Vorlagen in `zh-education-mcp/src/zh_education_mcp/data.py`: `normalise_keys`
+  und `parse_rows` für Regel 13, `parse_count`, `suppression_note` und
+  `totals_of` für Regel 14 — samt den Kommentaren, die begründen, warum `None`
+  und nicht `0`. Dazu je ein Testpaar in der Form der Regeln 9 bis 12: Die
+  Trennung wird in beide Richtungen assertiert, weil eine Hälfte allein trivial
+  besteht (ein Server, der jede Zeile für unterdrückt hält, summiert 0 und
+  meldet das formal korrekt).
+
+- **Checkliste und beide READMEs nachgezogen**, im selben Commit — die Zahl der
+  Regeln steht an fünf Stellen, und Prüfung 5 hält vier davon gegeneinander.
+  `RULE_SECTIONS` und `ENGLISH_NUMBERS` in `tools/checks/skill_doc.py` sind
+  mitgegangen, ebenso die vier Mutationen in `tests/mutations.py`, die auf das
+  Zahlwort zeigen. Die fünfte Stelle liegt ausserhalb des Baums: **Die
+  GitHub-Repo-Description sagt weiterhin «twelve data-fidelity rules» und muss
+  im Browser auf «fourteen» gezogen werden** — Prüfung 15 wird im nächsten
+  Wochenlauf sonst zu Recht rot. Genau der Fall, für den sie geschrieben wurde.
+
+- **Zwei neue Zeilen in der Zuordnungstabelle, beide ohne Check.** Für Regel 13
+  liegt `FID-006` am nächsten, und der Abstand ist keine Ebene, sondern eine
+  Fallunterscheidung: Sein Pass-Pattern ist auf diesen Fall die richtige
+  Diagnose mit der falschen Folge. Für Regel 14 liegt `FID-003` am nächsten,
+  verlangt seinen nächsten Schritt aber auf der Leermenge. Ob daraus je eine
+  Erweiterung oder ein eigener Check wird, ist nach §2.5 des Katalogs zu
+  entscheiden und hier **nicht** entschieden — wie bei Zeile 12. Damit stehen
+  drei Regeln ohne Check da statt einer, und die Sätze in beiden READMEs, die
+  «ohne Check ist keine Regel mehr» sagten, sind mitgezogen.
+
 - **Prüfung 16 — jeder genannte Workflow-Pfad existiert.** Der Rand, den die
   Umbenennung im vorigen Eintrag benannt und offen gelassen hat. Drei Stellen
   zeigten namentlich auf `catalogue-drift.yml`; gefunden hat sie ein `grep` von
