@@ -50,6 +50,25 @@ Gemessen über alle 43 Repos, **42 anwendbar** — `swiss-public-data-mcp` hat k
 - `swisstopo-mcp` liest **dasselbe Feld in zwei Schreibweisen** — `identDN` und `IdentDN` — in einem Server. Das ist die BISTA-Form, heute, in Produktion.
 - `swiss-courts-mcp` hat die Fehlerklasse unabhängig erkannt und benannt. `UpstreamBlockedError` fängt den Bot-Schutz von entscheidsuche.ch, der mit **HTTP 200** und einem anderen JSON antwortet; der Docstring sagt: «Ohne Erkennung läse sich das wie `total == 0` (stille Leere).» Das ist `FID-006` in eigenen Worten, geschrieben ohne den Check.
 
+### Nachgemessen nach dem CKAN-Sweep (2026-08-07, später am Tag)
+
+Sieben Server wurden repariert — `wsl-envidat-mcp`, `swiss-energy-mcp`, `swiss-electricity-mcp`, `swiss-democracy-mcp`, `swiss-transport-mcp`, `swiss-cultural-heritage-mcp`, `seco-labor-mcp`. Alle acht CKAN-Server bestätigen ihren Wurzelpfad jetzt.
+
+| | Erhebung | jetzt |
+|---|---:|---:|
+| mit mindestens einem stillen Root-Default | 28 | **27** |
+| mit eigenem **Struktur**-Fehlertyp | 0 | **7** |
+| Wurzelpfad irgendwo mit einem Raise bestätigt | 3 | **10** |
+| **erfüllen den Check** | 0 | **0** |
+
+**Sieben Reparaturen, eine Zahl Bewegung — und das ist die Aussage, nicht die Enttäuschung.** Nur `swiss-democracy-mcp` hat seinen **letzten** stillen Default verloren. Die übrigen sechs bedienen weitere Quellen mit demselben Idiom: GeoAdmin `find`/`identify` in `swiss-energy-mcp`, AMSTAT-Zeilen in `seco-labor-mcp`, die Ebene unter dem bestätigten `result` in `wsl-envidat-mcp`. Eine Kohorte zu reparieren repariert **einen Pfad**, nicht **einen Server** — und die Gesamtzahl misst Server.
+
+Der Check bleibt damit auf 0 von 42 und `advisory`. Die beiden Kriterien, die niemand erfüllt, hat der Sweep nicht angefasst: die gelesenen Felder auf dem ersten Eintrag bestätigen, und Struktur oder Feldnamen gegen eine **echte** Antwort halten.
+
+**Das Messwerkzeug hat die Reparatur nicht gesehen.** `tools/sweeps/fid006_sweep.py` meldete nach dem Sweep unverändert 13 Repos mit einem Wurzelpfad-Guard. Ursache: Seine Taint-Analyse beginnt am Parse-Aufruf, die neuen Bestätigungen sitzen aber in Helfern, die die Antwort als *Parameter* bekommen — derselbe Helfer-Blindfleck, der in diesem Portfolio schon zweimal zugeschlagen hat. Die Zahl **10** ist von Hand ausgezählt (drei aus der Erhebung plus die sieben reparierten, jeweils Klasse **und** Aufrufstelle geprüft). Die Einschränkung steht jetzt im Kopf des Skripts.
+
+**Und eine zweite Messfalle, dieselbe Klasse.** Die erste Nachmessung ergab unverändert 28 — weil die Reparatur ihre eigene Begründung mitbringt: Die neuen Docstrings zitieren `data.get("result", {})` wörtlich, und ein Textzähler liest das als unveränderten Befund. Erst mit entfernten Kommentaren und Docstrings kommt 27 heraus. Dieselbe Falle wie beim `OPS-009`-Zähler und beim Quelltext-Test in `swiss-transport-mcp`.
+
 ### Herkunft der Zahlen
 
 | Zahl | Herkunft |
@@ -58,6 +77,7 @@ Gemessen über alle 43 Repos, **42 anwendbar** — `swiss-public-data-mcp` hat k
 | 28 / 3 / 0 / 0 / 1 (Hälfte A) und 28 / 13 / 1 / 0 (Hälfte B) | **gemessen** — AST-Lauf ab der Parse-Grenze über Funktionsgrenzen hinweg, jede Einstufung von Hand nachgelesen |
 | 0 eigene Struktur-Fehlertypen | **gemessen** — die 13 `Upstream*Error`-Klassen von Hand gelesen; alle betreffen Erreichbarkeit («unreachable after all retries», «budget was gone»), keine die Form |
 | 8 CSV-Server, 7 fest verdrahtet, 1 normalisiert | **bestätigt** — die aus `DRIFT-007` übernommene Zahl hält dem Durchlauf stand |
+| 27 / 7 / 10 nach dem Sweep | **gemessen** — Kommentare und Docstrings entfernt, sonst zählt die Begründung der Reparatur als Befund; die 10 von Hand ausgezählt, weil das Werkzeug Bestätigungen in Helfern nicht sieht |
 | 4 von 6 Endpunkten schreiben klein, 2 gross, 2 mischen innerhalb der Kopfzeile | **übernommen** aus dem `DRIFT-007`-Text vom 2026-08-03, dort am Belegfall erhoben |
 | Audits mit `FID-006: pass` im Fenster seit `v2.1.0` | **nicht gemessen** — von diesem Repo aus nicht erhebbar |
 
