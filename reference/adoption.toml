@@ -29,43 +29,43 @@
 #
 # NOTE ON THE CURRENT STATE. The five properties below that the template did NOT
 # satisfy — `reads_retry_after`, `jitters`, `caps_after_jitter`,
-# `wall_clock_budget`, `no_bare_runtime_error` — are satisfied as of the
-# 2026-08-07 repair. `REFERENCE_STALE` on any of them is now a real finding about
-# the template, not the known gap it used to be. Do not delete a property to make
-# a run green — repairing the template is the fix.
+# `wall_clock_budget`, `no_bare_runtime_error` — are satisfied **in the code** as
+# of the 2026-08-07 repair. Do not delete a property to make a run green —
+# repairing the template is the fix.
 #
-# WHO THE ELEVEN ARE. This note used to say the eleven surveyed servers had each
-# fixed these properties ahead of the template. Read against the servers on
-# 2026-08-07, that is backwards, and the correction is the reason the sweep
-# existed: the eleven are the repositories that still carry the defect. Six
-# repositories reached the properties before the template did; the other ELEVEN
-# did not, and a whole-repository grep finds ZERO occurrences of `retry-after`
-# and ZERO of `random`/`secrets` in every one of them. That is the 2026-08-03
-# finding stated exactly: over eleven servers, none read `Retry-After` and none
-# jittered — because they all had this template.
+# THE TWO READERS OF THIS FILE DISAGREE, AND THAT IS FINDING 4 BELOW. Check 17
+# reports all eight properties satisfied; `reference_drift_probe.py` reports
+# three of them "implemented nowhere" across the template and all 23 sites. The
+# code is the same code. Read finding 4 before acting on either number.
 #
-# The eleven, and what each still needs (2026-08-07):
+# WHO THE ELEVEN WERE. On 2026-08-07 (morning) this note named eleven servers
+# that still carried the defect: none read `Retry-After`, none jittered, none
+# capped a wait, none bounded the call in seconds — because they all had this
+# template. That reading was correct when it was written.
 #
-#   swiss-academic-libraries-mcp   retry-after, jitter, cap, budget
-#   swiss-energy-mcp               retry-after, jitter, cap, budget
-#   swiss-cultural-heritage-mcp    retry-after, jitter, cap, budget
-#   hn-tech-signal-mcp             retry-after, jitter, cap, budget
-#   seco-labor-mcp                 retry-after, jitter, cap, budget  (BOTH entries)
-#   lobbywatch-mcp                 retry-after, jitter, cap, budget + bare RuntimeError
-#   swiss-electricity-mcp          retry-after, jitter, cap, budget
-#   i14y-mcp                       retry-after, jitter, cap, budget
-#   swiss-holidays-mcp             retry-after, jitter, cap, budget
-#   swiss-housing-mcp              retry-after, jitter, cap, budget + bare RuntimeError
-#   swiss-procurement-mcp          retry-after, jitter, cap, budget
+# READ AGAIN ON 2026-08-07 (evening): all eleven have since been repaired.
+# Every one of them now reads `Retry-After`, jitters, caps after the jitter and
+# hangs its budget off a wall-clock deadline. They have moved to the group of
+# entries below that hold the properties, and the note that called them
+# outstanding is gone rather than softened — a manifest that keeps a stale
+# roster is the same defect as a template that keeps a stale fix, one layer
+# out. Nobody reading this file should have to guess which sentence is current.
 #
-# Eleven repositories, TWELVE adoptions: `seco-labor-mcp` appears twice
-# (`server.py` and `uvg.py`). Counting adoptions gives twelve and counting
-# servers gives eleven; the sweep counted servers.
+# THE COUNT THAT CHANGED WITH THEM. Eleven repositories, TWELVE adoptions:
+# `seco-labor-mcp` appears twice (`server.py` and `uvg.py`). Counting adoptions
+# gives twelve and counting servers gives eleven; the sweep counted servers.
+# Both entries are repaired.
 #
-# `swiss-housing-mcp/src/swiss_housing_mcp/gwr.py:86` still carries the line
-# verbatim — `raise RuntimeError(f"Upstream unreachable after retries:
-# {last_error}")` — the one whose empty `str()` produced the CI message that
-# stopped at the colon.
+# `swiss-housing-mcp/src/swiss_housing_mcp/gwr.py` no longer carries the bare
+# `raise RuntimeError(f"Upstream unreachable after retries: {last_error}")` —
+# the line whose empty `str()` produced the CI message that stopped at the
+# colon, and the one this whole round started from.
+#
+# FIVE NEW ADOPTIONS, same day. An `ARCH-014` run of the audit catalogue over
+# all 43 portfolio servers found six that violated the check. Five of them had
+# rolled their own retry and now take this template's properties; they are
+# declared below with `since = "2026-08-07"`. The sixth, `swiss-environment-mcp`,
+# is deliberately NOT listed — see the note at the end of the adoption list.
 #
 # WHAT THE ADOPTIONS BELOW DO AND DO NOT SAY. A `since` date records when that
 # repository adopted the template's *behaviour*, not when it last matched this
@@ -114,6 +114,52 @@
 #   consulted for and wrong about this one; the template does NOT copy it here,
 #   and raises the original exception with a named `UpstreamUnavailableError`
 #   for the single case that has no original.
+#
+# FINDING 4 (2026-08-07 evening): THE TWO READERS OF THIS MANIFEST SCOPE IT
+# DIFFERENTLY, so the same code reads as compliant here and defective in the
+# portfolio run. This file says at the top that it is read from two sides. It
+# does not say that the two sides mean different things by `symbol`.
+#
+#   tools/checks/adoption.py::_scope    the symbol PLUS the module functions it
+#                                       calls, followed to HELPER_DEPTH
+#   reference_drift_probe.py::load_symbol   the symbol, and nothing else
+#
+# It only matters once a template extracts helpers, and the 2026-08-07 repair
+# did exactly that:
+#
+#     reference/retry_backoff.py:131   `retry-after` literal   in parse_retry_after
+#     reference/retry_backoff.py:169   random.random()         in compute_delay
+#     reference/retry_backoff.py:175   random.random()         in compute_delay
+#     reference/retry_backoff.py:180   fetch_with_retry starts HERE
+#
+# `fetch_with_retry` calls `compute_delay` and touches neither directly. The
+# helper-following reader sees both; the single-symbol reader sees neither and
+# says so with full confidence. Every one of the 23 adoption sites made the same
+# extraction, which is why the portfolio verdict reads "implemented nowhere"
+# rather than singling anyone out — a finding that indicts everything indicts
+# nothing, and that shape is the tell.
+#
+# Verified by hand against all eleven repaired servers on 2026-08-07: each has a
+# file containing `retry-after`, a file containing `random.random`, and a
+# wall-clock budget. Check 17 is right and the portfolio run is wrong.
+#
+# THE FIX IS ON THE PROBE, NOT HERE. Neither the template nor any adoption is
+# defective, so there is nothing in this file to repair — and lowering a
+# property to make the portfolio run green would delete a real guarantee to
+# silence a measurement bug, which is the one move the note at the top forbids.
+# `reference_drift_probe.py` has to learn the scope Check 17 already
+# implements. Until it does, a `REFERENCE_STALE` on `reads_retry_after`,
+# `jitters` or `caps_after_jitter` is a probe artefact and must not be filed
+# against a server.
+#
+# FINDING 5 (2026-08-07 evening): `no_bare_runtime_error` now fires on
+# `lobbywatch-mcp` for the wrong reason. The retry-exhaustion `RuntimeError`
+# this property was written about is gone. What remains inside
+# `_download_dump` are `RuntimeError("Lobbywatch dump format unexpected")` and
+# `RuntimeError("Lobbywatch dump shape invalid")` — assertions about the SHAPE
+# of a payload that arrived, not about an upstream that did not. The property
+# cannot tell the two apart, and on this reading it reports a defect that was
+# repaired while pointing at code that was never the subject.
 
 schema = 1
 
@@ -292,15 +338,20 @@ file = "src/lindas_mcp/lindas/client.py"
 symbol = "run_query"
 since = "2026-07-26"
 
-# --- Still carrying the 2026-08-03 defect (read 2026-08-07) ----------------
+# --- Repaired after the template (carried the defect until 2026-08-07) -----
 #
-# TWELVE adoptions in ELEVEN repositories — `seco-labor-mcp` is here twice. This
-# is the set the sweep counted: none of them reads `Retry-After`, none jitters,
-# none caps a wait, none bounds the call in seconds. Until an entry moves to the
-# group above, the defect this file used to ship is still running there.
+# TWELVE adoptions in ELEVEN repositories — `seco-labor-mcp` is here twice.
+# This is the set the 2026-08-03 sweep counted, and every one of them has since
+# taken the properties. The group is kept separate from the six above rather
+# than merged into them, because the two say different things: those reached
+# the behaviour BEFORE this file did and are why the repair had a shape to
+# copy; these took it AFTER, and their `since` dates are older than their
+# repair. A single list would lose that, and the distinction is the only
+# evidence this manifest holds about which direction a fix travelled.
 #
-# Fixing them is not a change to this repository, and this manifest is the only
-# place that says which they are — which is the whole reason it exists.
+# The `since` dates are unchanged on purpose. `since` records when a repository
+# adopted the template's behaviour, not when it last matched this file — see the
+# note at the top.
 
 [[template.adoption]]
 repo = "malkreide/swiss-academic-libraries-mcp"
@@ -373,6 +424,72 @@ repo = "malkreide/seco-labor-mcp"
 file = "src/seco_labor_mcp/uvg.py"
 symbol = "_fetch_bytes"
 since = "2026-08-05"
+
+
+# --- Took the properties on 2026-08-07, from the ARCH-014 portfolio run ----
+#
+# Five servers that had rolled their own retry loop and were never adopters of
+# this template. An `ARCH-014` run of the audit catalogue over all 43 portfolio
+# servers found six violations; these five took this template's properties as
+# the repair, and are declared here so the next change to the template knows
+# its blast radius includes them.
+#
+# They are NOT byte copies, and the manifest does not ask them to be — the
+# properties are the contract. `swiss-statistics-mcp` is the sharpest case: it
+# retries through `tenacity`, so the properties live in a `wait` callable and
+# an `asyncio.timeout` around the ladder rather than in a hand-written loop.
+# A probe that wanted the template's control flow would report it as unadopted;
+# a probe that asks for the behaviour finds it.
+#
+# `zurich-opendata-mcp` also had a SECOND retrying level — an
+# `AsyncHTTPTransport(retries=2)` under its own loop, which multiplies rather
+# than adds. The template has no property for that because the template has no
+# transport; it is recorded here because the next reader of this list will
+# wonder why one repair was larger than the other four.
+
+[[template.adoption]]
+repo = "malkreide/zurich-opendata-mcp"
+file = "src/zurich_opendata_mcp/retry.py"
+symbol = "fetch_with_retry"
+since = "2026-08-07"
+
+[[template.adoption]]
+repo = "malkreide/bag-health-mcp"
+file = "src/bag_health_mcp/server.py"
+symbol = "_get_with_retry"
+since = "2026-08-07"
+
+[[template.adoption]]
+repo = "malkreide/openlex-mcp"
+file = "src/openlex_mcp/api_client.py"
+symbol = "fetch_zhlex_metadata"
+since = "2026-08-07"
+
+[[template.adoption]]
+repo = "malkreide/swiss-statistics-mcp"
+file = "src/swiss_statistics_mcp/server.py"
+symbol = "_retrying_http"
+since = "2026-08-07"
+
+[[template.adoption]]
+repo = "malkreide/amtsblatt-mcp"
+file = "src/amtsblatt_mcp/_http.py"
+symbol = "_get_with_retry"
+since = "2026-08-07"
+
+# --- Why `swiss-environment-mcp` is not in this list -----------------------
+#
+# It was the sixth violation of the same `ARCH-014` run and is repaired, but it
+# did not adopt THIS template. Its retry lives in `sparql_client.py`, a vendored
+# copy held byte-identical with `fedlex-mcp` — a sibling arrangement with its
+# own contract, and the repair was to restore that identity rather than to copy
+# from here.
+#
+# Declaring it an adoption would put one file under two mapping regimes: this
+# manifest would measure it by property while the vendored-copy manifest
+# measures it by bytes, and a change here would be reported as drift there. The
+# two are tracked separately on purpose. `mcp-continuous-auditor` grew
+# `vendored_copy_probe.py` for that side on the same day.
 
 
 # ===========================================================================

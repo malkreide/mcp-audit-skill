@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Geändert — das Adoptionsregister nennt elf Server als defekt, die es nicht mehr sind
+
+`reference/adoption.toml` führte elf Repositories unter «Still carrying the
+2026-08-03 defect». Eine erneute Lesung am 2026-08-07 (abends) sagt: **alle elf
+sind repariert.** Jedes liest heute `Retry-After`, streut seinen Backoff,
+deckelt nach dem Jitter und hängt sein Budget an eine Wanduhr-Deadline.
+
+Sie stehen jetzt in einer eigenen Gruppe — «repariert *nach* der Vorlage» —
+und nicht bei den sechs, die die Eigenschaften *vor* ihr erreicht hatten. Die
+beiden sagen Verschiedenes: Jene sind der Grund, warum die Reparatur eine Form
+zum Abschreiben hatte; diese haben sie danach übernommen. Eine gemeinsame Liste
+verlöre die Richtung, in die ein Fix gewandert ist, und das ist der einzige
+Beleg, den dieses Manifest darüber führt.
+
+Der Satz, der sie als ausstehend führte, ist **entfernt** und nicht abgemildert.
+Ein Register, das ein veraltetes Verzeichnis behält, hat denselben Defekt wie
+eine Vorlage, die einen veralteten Fix behält — eine Ebene weiter aussen.
+
+### Hinzugefügt — fünf neue Adoptionen aus dem `ARCH-014`-Portfolio-Durchlauf
+
+Ein Durchlauf des Audit-Katalogs über alle 43 Portfolio-Server fand sechs
+Verstösse gegen `ARCH-014`. Fünf davon hatten ihren Retry selbst gebaut und
+übernehmen jetzt die Eigenschaften dieser Vorlage: `zurich-opendata-mcp`,
+`bag-health-mcp`, `openlex-mcp`, `swiss-statistics-mcp`, `amtsblatt-mcp`.
+
+Der sechste, `swiss-environment-mcp`, steht **nicht** in der Liste, und die
+Begründung steht daneben: Sein Retry liegt in einer vendored copy, die
+byte-identisch mit `fedlex-mcp` gehalten wird. Ihn hier zu führen stellte eine
+Datei unter zwei Zuordnungsregime — hier nach Eigenschaft gemessen, dort nach
+Bytes — und eine Änderung hier erschiene dort als Drift.
+
+Damit: 24 Adoptionen statt 19.
+
+### Behoben — zwei Befunde über die Eigenschaften selbst (4 und 5)
+
+**Finding 4: Die beiden Leser dieses Manifests scopen es verschieden.** Die
+Datei sagt in ihrem Kopf, sie werde von zwei Seiten gelesen. Sie sagte nicht,
+dass die beiden Seiten Verschiedenes unter `symbol` verstehen:
+
+| Leser | Scope |
+|---|---|
+| `tools/checks/adoption.py::_scope` (Check 17) | das Symbol **plus die Modulfunktionen, die es aufruft** |
+| `reference_drift_probe.py::load_symbol` | das Symbol, sonst nichts |
+
+Das fällt erst auf, seit die Reparatur vom 2026-08-07 Helfer ausgelagert hat:
+`retry-after` liegt in `parse_retry_after`, `random.random()` in
+`compute_delay`, und `fetch_with_retry` ruft beide nur auf. Check 17 sieht sie,
+die Portfolio-Sonde nicht — und meldet `reads_retry_after`, `jitters` und
+`caps_after_jitter` als «implemented nowhere», über eine Vorlage, die alle drei
+implementiert, und 23 Stellen, die es auch tun.
+
+Ein Befund, der alles anklagt, klagt nichts an; diese Form ist das Erkennungs-
+zeichen. Von Hand gegen alle elf reparierten Server geprüft: Check 17 hat recht.
+Die Behebung gehört auf die Sonde und nicht in diese Datei — eine Eigenschaft
+abzuschwächen, um einen Lauf grün zu bekommen, wäre genau der Zug, den die Notiz
+im Kopf verbietet.
+
+**Finding 5: `no_bare_runtime_error` feuert auf `lobbywatch-mcp` aus dem
+falschen Grund.** Der `RuntimeError` nach erschöpften Versuchen, um den es
+ging, ist weg. Übrig sind in `_download_dump` zwei Zusicherungen über die
+**Form** einer angekommenen Antwort. Die Eigenschaft kann beides nicht
+unterscheiden.
+
 ### Changed
 
 - **`wall_clock_budget` konnte keine Schranke von einer Stoppuhr unterscheiden —
