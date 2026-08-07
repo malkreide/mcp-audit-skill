@@ -20,6 +20,15 @@ Three corrections got made along the way, and each one moved the numbers:
    the helper, which reads nothing at all, and reports the portfolio as having
    no field reads. Propagation to a fixpoint fixes it.
 
+A fourth limitation showed up only when the sweep was re-run after the CKAN
+repair, and it is the one to know before trusting a second reading: this script
+**cannot see a confirmation that lives in a helper**. Taint starts at the parse
+call, and a helper like `_ckan_result(payload, action)` receives the response as
+a *parameter* — so a repo that moved its root-path check into exactly such a
+helper still reports zero guards. After seven servers were repaired this way,
+the run reported the guard count unchanged at 13. Those numbers were hand-
+counted instead; do not read a flat `A_guarded` as "nothing improved".
+
 Still a read-list, not a verdict. Every classification is re-read by hand.
 """
 

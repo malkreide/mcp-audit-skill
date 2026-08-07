@@ -171,8 +171,19 @@ class TestRealCatalogUnchanged:
         # envelope, one line apart. A criterion that could not tell those two
         # apart would not be worth enforcing.
         #
-        # It leaves advisory when the eight CKAN servers have moved, since they
-        # are one shared shape and one shared fix.
+        # The eight CKAN servers have since moved (2026-08-07): all eight now
+        # confirm their root path and carry a dedicated schema error type. It
+        # did not change the verdict, and the reason is the useful part —
+        # repairing a cohort repairs a *path*, not a *server*. Only one of the
+        # seven lost its last silent default; the rest front further sources
+        # with the same idiom. Portfolio-wide: 28 -> 27 with a silent root
+        # default, 0 -> 7 with a schema error type, 3 -> 10 confirming the root,
+        # and still 0 meeting the check, because nothing yet confirms the read
+        # fields on the first entry or holds anything against a real response.
+        #
+        # So the exit condition is restated: it leaves advisory when a run shows
+        # servers confirming the *fields they read*, not just the root. That is
+        # the criterion no server in the portfolio has ever met.
         #
         # OBS-008 (unreleased) takes the ordinary bridge, and the survey behind it
         # says why: of 42 published servers, 15 emit nothing at all within six

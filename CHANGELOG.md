@@ -6,6 +6,29 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `FID-006` nachgemessen: sieben Reparaturen, eine Zahl Bewegung
+
+Der CKAN-Sweep hat sieben Server umgestellt (`wsl-envidat`, `swiss-energy`, `swiss-electricity`, `swiss-democracy`, `swiss-transport`, `swiss-cultural-heritage`, `seco-labor`). Alle acht CKAN-Server bestätigen ihren Wurzelpfad jetzt. Die Zahlen im Check und in der Warteschlange sind nachgezogen.
+
+| | Erhebung | jetzt |
+|---|---:|---:|
+| mit mindestens einem stillen Root-Default | 28 | **27** |
+| mit eigenem **Struktur**-Fehlertyp | 0 | **7** |
+| Wurzelpfad irgendwo mit einem Raise bestätigt | 3 | **10** |
+| **erfüllen den Check** | 0 | **0** |
+
+**Sieben Reparaturen, und die Gesamtzahl bewegt sich um eins.** Das ist die Aussage, nicht die Enttäuschung: Nur `swiss-democracy-mcp` hat seinen **letzten** stillen Default verloren. Die übrigen sechs bedienen weitere Quellen mit demselben Idiom — GeoAdmin `find`/`identify`, AMSTAT-Zeilen, die Ebene unter dem inzwischen bestätigten `result`. Eine Kohorte zu reparieren repariert **einen Pfad**, nicht **einen Server**, und die Gesamtzahl misst Server.
+
+Die Stufe bleibt `advisory`. Die beiden Kriterien, die niemand erfüllt, hat der Sweep nicht berührt: die gelesenen Felder auf dem ersten Eintrag bestätigen, und Struktur oder Feldnamen gegen eine **echte** Antwort halten. Die Ausstiegsbedingung in `tests/test_adoption_stage.py` ist entsprechend neu formuliert — sie zeigt jetzt auf die Felder, nicht mehr auf die CKAN-Kohorte.
+
+**Zwei Messfallen, dieselbe Klasse, beide beim Nachmessen aufgelaufen:**
+
+1. **Die Reparatur bringt ihre eigene Begründung mit.** Die neuen Docstrings zitieren `data.get("result", {})` wörtlich, und ein Textzähler liest das als unveränderten Befund — die erste Nachmessung ergab deshalb wieder 28. Erst mit entfernten Kommentaren und Docstrings kommt 27 heraus. Dieselbe Falle wie beim `OPS-009`-Zähler und beim Quelltext-Test in `swiss-transport-mcp`.
+
+2. **Das Messwerkzeug sieht Bestätigungen in Helfern nicht.** `tools/sweeps/fid006_sweep.py` meldete nach dem Sweep unverändert 13 Repos mit einem Wurzelpfad-Guard, obwohl sieben dazugekommen sind: Seine Taint-Analyse beginnt am Parse-Aufruf, die neuen Bestätigungen sitzen aber in Helfern, die die Antwort als *Parameter* bekommen. Das ist der Helfer-Blindfleck, der in diesem Portfolio schon zweimal zugeschlagen hat — im `reference_drift_probe` des Auditors und in der ersten Fassung dieses Skripts. Die **10** oben ist von Hand ausgezählt, Klasse **und** Aufrufstelle je Server geprüft; die Einschränkung steht jetzt im Kopf des Skripts, damit die nächste Lesung nicht «nichts verbessert» meldet.
+
+**Gegenprobe geführt**, zwei Mutationen plus die Umkehrprobe: auf `enforced` gehoben, während die Tabelle weiter null sagt (6 Tests fallen, darunter der Wächter aus dem letzten Release) · Abschnitt «Stand im Portfolio» entfernt (2) · und die Umkehrprobe — `enforced` **mit** einer von null verschiedenen Zahl bleibt grün. Der Wächter greift also auch auf der neuen zweispaltigen Tabelle und bleibt einseitig.
+
 ### Geändert — `FID-006` ist scharf über das Portfolio gelaufen: 0 von 42
 
 Der Check war `advisory` mit der Begründung «bis ein Durchlauf sagt, wie viele Server die Antwortstruktur bestätigen». Der Durchlauf hat stattgefunden. 43 Repos, **42 anwendbar** (`swiss-public-data-mcp` hat keine `pyproject.toml` und keinen Server — das ist das Portfolio-Meta-Repo).
