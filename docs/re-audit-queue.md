@@ -21,13 +21,51 @@ Der Eintrag steht trotzdem hier, weil §5c gefeuert hat. Ein Auslöser, der gepr
 
 **Wen es beträfe, wenn der Check enforced wäre:** jeden Server, dessen Audit `FID-006` seit `v2.1.0` (2026-08-07) als `pass` geführt hat, ohne dass die Schreibweise gegen die echte Antwort gehalten wurde. Das Fenster ist kürzer als 24 Stunden. Wie viele Audits darin liegen, ist von hier aus **nicht gemessen** — die Audit-Ergebnisse liegen in den Server-Repos und im Notion-Tracker, nicht in diesem Repo. Bei der Promotion auf `enforced` (§5d) ist genau das die Zahl, die erhoben werden muss.
 
+### Der scharfe Durchlauf, 2026-08-07
+
+Gemessen über alle 43 Repos, **42 anwendbar** — `swiss-public-data-mcp` hat keine `pyproject.toml` und keinen Server, das ist das Portfolio-Meta-Repo.
+
+| Hälfte A — Struktur bestätigen | von 42 |
+|---|---:|
+| lesen den Wurzelpfad mindestens einmal mit stillem Default (`.get("result", {})`) | **28** |
+| bestätigen den Wurzelpfad irgendwo mit einem Raise | 3 |
+| tragen einen eigenen **Struktur**-Fehlertyp | **0** |
+| bestätigen die gelesenen Felder auf dem ersten Eintrag | **0** |
+| halten die Struktur in einem Test gegen die echte Antwort | 1 |
+| **erfüllen die Hälfte vollständig** | **0** |
+
+| Hälfte B — Feldnamen | von 42 |
+|---|---:|
+| verdrahten mindestens einen gemischt geschriebenen Feldnamen fest | **28** |
+| lesen nur kleingeschriebene Namen — die Frage beisst heute nicht | 13 |
+| normalisieren an der Parse-Grenze | **1** (`zh-education-mcp`) |
+| halten Feldnamen gegen die echte Antwort | **0** |
+
+**Das ist 0 von 42, nicht ein Rückstand.** `ARCH-014` blieb `enforced`, weil sechs benannte Server mit je derselben dreizeiligen Behebung ein bewusst akzeptierter Rückstand sind (§2.3 Schritt 3). Hier ist es das ganze Portfolio, und ein Gate, das jeden Server rot färbt, wird abgeschaltet statt befolgt — genau die Form, gegen die §2.3 existiert. `FID-006` bleibt `advisory`.
+
+**Was der Durchlauf über das Kriterium selbst sagt.** Es ist schneidbar, und das war die offene Frage. Acht Server sprechen mit CKAN, alle prüfen das `success`-Envelope — und dann trennen sie sich in einer Zeile: `zurich-opendata-mcp` schreibt `data["result"]` und scheitert laut, die anderen sieben schreiben `data.get("result", {})` und machen aus einer Formänderung eine Leermenge. Ein Kriterium, das diese beiden nicht auseinanderhält, wäre nicht durchsetzbar. Dieses tut es.
+
+**Zwei Funde, die nur das Lesen von Hand ergeben hat:**
+
+- `swisstopo-mcp` liest **dasselbe Feld in zwei Schreibweisen** — `identDN` und `IdentDN` — in einem Server. Das ist die BISTA-Form, heute, in Produktion.
+- `swiss-courts-mcp` hat die Fehlerklasse unabhängig erkannt und benannt. `UpstreamBlockedError` fängt den Bot-Schutz von entscheidsuche.ch, der mit **HTTP 200** und einem anderen JSON antwortet; der Docstring sagt: «Ohne Erkennung läse sich das wie `total == 0` (stille Leere).» Das ist `FID-006` in eigenen Worten, geschrieben ohne den Check.
+
 ### Herkunft der Zahlen
 
 | Zahl | Herkunft |
 |---|---|
+| 43 Repos gescannt, 42 anwendbar | **gemessen** — alle nicht-archivierten `*-mcp`-Repos unter `malkreide`, frisch gezogen am 2026-08-07 |
+| 28 / 3 / 0 / 0 / 1 (Hälfte A) und 28 / 13 / 1 / 0 (Hälfte B) | **gemessen** — AST-Lauf ab der Parse-Grenze über Funktionsgrenzen hinweg, jede Einstufung von Hand nachgelesen |
+| 0 eigene Struktur-Fehlertypen | **gemessen** — die 13 `Upstream*Error`-Klassen von Hand gelesen; alle betreffen Erreichbarkeit («unreachable after all retries», «budget was gone»), keine die Form |
+| 8 CSV-Server, 7 fest verdrahtet, 1 normalisiert | **bestätigt** — die aus `DRIFT-007` übernommene Zahl hält dem Durchlauf stand |
 | 4 von 6 Endpunkten schreiben klein, 2 gross, 2 mischen innerhalb der Kopfzeile | **übernommen** aus dem `DRIFT-007`-Text vom 2026-08-03, dort am Belegfall erhoben |
-| 8 von 8 CSV-lesenden Servern: 7 verdrahten fest, 1 normalisiert | **übernommen** aus dem Portfolio-Durchlauf hinter `DRIFT-007`; steht jetzt als Advisory-Begründung in `tests/test_adoption_stage.py` |
 | Audits mit `FID-006: pass` im Fenster seit `v2.1.0` | **nicht gemessen** — von diesem Repo aus nicht erhebbar |
+
+**Drei Korrekturen am Messwerkzeug, jede hat die Zahlen bewegt** — sie stehen im Kopf von `fid006_ast.py` und gehören hierher, weil eine Zahl ohne ihre Fehlversuche nicht nachvollziehbar ist:
+
+1. Ein Zeilen-Grep setzte ein Dutzend Repos wegen `scripts/check_version_sync.py` auf die Leseliste — ein Skript, das eine Lockfile liest, ist kein Server, der seine Quelle liest.
+2. Argument-Validierung zählte als bestätigter Wurzelpfad. `if not search_term.strip(): raise` sagt nichts über die Form, die ankam.
+3. Taint nur innerhalb einer Funktion sah in neunzehn Repos «kein einziger Feldzugriff». Die vorherrschende Form hier ist ein `_get_json()`-Helfer, der `resp.json()` zurückgibt, während die Aufrufer die Felder lesen — gemessen wurde der Helfer, der nichts liest.
 
 ---
 

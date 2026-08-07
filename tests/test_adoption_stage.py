@@ -140,20 +140,39 @@ class TestRealCatalogUnchanged:
         # by one.
         #
         # FID-006 (v2.1.0) takes the ordinary bridge, not the migration one: it
-        # is baseline-independent, so it does not leave with the cohort. Its
-        # fail pattern — `payload.get("servers", [])` — is the normal idiom, so
-        # enforced at `high` on merge day would have failed almost every
-        # data-source server for a property none of them was ever asked to
-        # have. Advisory until a portfolio run says how many confirm the shape.
+        # is baseline-independent, so it does not leave with the cohort. It is
+        # the one check on this list whose portfolio run has now happened, and
+        # the numbers are the reason it does not move yet — not a placeholder.
         #
-        # It stays advisory for a second reason since the field-name half moved
-        # in (the check formerly filed as DRIFT-007, withdrawn as a separate
-        # entry). The run behind that half: of the eight servers that read CSV,
-        # seven hardcode the header spelling and one normalises it. Enforced at
-        # `high` would fail seven of eight for a property none of them was ever
-        # asked to have. The run also has to say whether the normalisation
-        # criterion is cut correctly — in particular how often pass-pattern B
-        # (normalise) is genuinely unavailable rather than merely skipped.
+        # Measured 2026-08-07 over all 43 repos, 42 of them applicable
+        # (`swiss-public-data-mcp` has no pyproject and no server; it is the
+        # portfolio meta-repo). Every classification hand-read:
+        #
+        #   half A, confirm the shape
+        #     28/42  read the response root at least once with a silent default
+        #      3/42  confirm the root anywhere with a raise
+        #      0/42  carry a dedicated *structure* error type — the thirteen
+        #            `Upstream*Error` classes are all about reachability
+        #      0/42  confirm the fields they read on the first entry
+        #      0/42  pass the half outright
+        #   half B, field names
+        #     28/42  hardcode at least one mixed-case field name
+        #      1/42  normalise at the parse boundary (`zh-education-mcp`)
+        #      0/42  hold field names against a real response
+        #
+        # So enforced at `high` on any day would fail 42 of 42. That is not the
+        # ratio §2.3 calls "backlog consciously accepted"; it is the whole
+        # portfolio, and a gate that red is one that gets switched off.
+        #
+        # What the run also settled, and what the check needed it for: the
+        # criterion is cuttable. It separates `zurich-opendata-mcp`
+        # (`data["result"]`, loud on a missing root) from the seven other CKAN
+        # servers (`data.get("result", {})`, silent) — the same source, the same
+        # envelope, one line apart. A criterion that could not tell those two
+        # apart would not be worth enforcing.
+        #
+        # It leaves advisory when the eight CKAN servers have moved, since they
+        # are one shared shape and one shared fix.
         #
         # OBS-008 (unreleased) takes the ordinary bridge, and the survey behind it
         # says why: of 42 published servers, 15 emit nothing at all within six
