@@ -4,6 +4,33 @@
 
 ---
 
+## Unreleased — `FID-006` übernimmt die Feldnamen, `DRIFT-007` zurückgezogen
+
+### Was gefeuert hat
+
+| Auslöser | §5-Prüfung | Ergebnis |
+|---|---|---|
+| **`DRIFT-007` zurückgezogen** | Der Check war nie in einem Release — er stand vier Tage unter `[Unreleased]`. Es existiert kein Audit, das gegen ihn gemessen hat, also auch keins, das ungültig werden könnte. Unabhängig davon nennt §5b die Gegenrichtung (Reichweite verengt) ausdrücklich als CHANGELOG-Sache und nicht als Warteschlangen-Sache. | **feuert nicht** |
+| **§5c** — `FID-006` bekommt Kriterien zu Feldnamen | Der Check wies bisher einen Server als bestanden aus, der die Antwortstruktur bestätigt **und** die Schreibweise fest verdrahtet. Genau diese Kombination hat im Belegfall vier von sechs Datensätzen still ausfallen lassen. Das ist «ein Kriterium, das am Ziel vorbeiging» — §5c im Wortlaut. | **feuert — kippt kein Verdikt** |
+
+### Warum der zweite Eintrag kein Verdikt kippt
+
+`FID-006` ist `advisory`. Er meldet und urteilt nicht; kein `production_ready: true` stützt sich darauf, dass sein Finding folgenlos blieb — dieselbe Begründung wie bei den vierzehn Migrations-Checks in `v2.0.0` weiter unten. Was sich ändert, ist der Inhalt künftiger Findings, nicht die Gültigkeit vergangener Verdikte.
+
+Der Eintrag steht trotzdem hier, weil §5c gefeuert hat. Ein Auslöser, der geprüft und für folgenlos befunden wurde, ist von einem nicht geprüften Auslöser nur unterscheidbar, wenn er aufgeschrieben ist — derselbe Grund, aus dem `v2.2.0` weiter unten einen Abschnitt hat, in dem nichts feuert.
+
+**Wen es beträfe, wenn der Check enforced wäre:** jeden Server, dessen Audit `FID-006` seit `v2.1.0` (2026-08-07) als `pass` geführt hat, ohne dass die Schreibweise gegen die echte Antwort gehalten wurde. Das Fenster ist kürzer als 24 Stunden. Wie viele Audits darin liegen, ist von hier aus **nicht gemessen** — die Audit-Ergebnisse liegen in den Server-Repos und im Notion-Tracker, nicht in diesem Repo. Bei der Promotion auf `enforced` (§5d) ist genau das die Zahl, die erhoben werden muss.
+
+### Herkunft der Zahlen
+
+| Zahl | Herkunft |
+|---|---|
+| 4 von 6 Endpunkten schreiben klein, 2 gross, 2 mischen innerhalb der Kopfzeile | **übernommen** aus dem `DRIFT-007`-Text vom 2026-08-03, dort am Belegfall erhoben |
+| 8 von 8 CSV-lesenden Servern: 7 verdrahten fest, 1 normalisiert | **übernommen** aus dem Portfolio-Durchlauf hinter `DRIFT-007`; steht jetzt als Advisory-Begründung in `tests/test_adoption_stage.py` |
+| Audits mit `FID-006: pass` im Fenster seit `v2.1.0` | **nicht gemessen** — von diesem Repo aus nicht erhebbar |
+
+---
+
 ## Unreleased — `ARCH-014`, Klarstellung zur Abwesenheit
 
 ### Was gefeuert hat

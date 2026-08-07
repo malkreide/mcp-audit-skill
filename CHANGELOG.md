@@ -6,6 +6,30 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `FID-006` übernimmt die Feldnamen, `DRIFT-007` wird zurückgezogen
+
+`DRIFT-007` («Feldnamen sind Teil des Vertrags») stand vier Tage im Katalog und war nie in einem Release. Er geht in `FID-006` auf. Der Katalog schrumpft von 120 auf **119 in zwölf Kategorien**, 24 davon `advisory`; `DRIFT` hat wieder 6 Checks, `FID` behält 7.
+
+**Der Grund ist nicht Sparsamkeit, sondern Doppelbefund.** Beide Checks prüfen dasselbe Objekt — die Namen, die der Code an der Antwort anfasst —, haben dieselbe Ursache (der Leser nimmt eine Form an, die er nie bestätigt) und dieselbe Testgrenze (der Mock trägt die Annahme und bestätigt sie dauerhaft). Ihre Pass-Kriterien mussten einander zitieren: `DRIFT-007`s Weg B war «dann greift `FID-006`». Zwei Checks, die sich gegenseitig als Ausweg nennen, sind ein Check mit zwei Abschnitten — und über 43 Server wären sie ein Befundpaar auf derselben Datei gewesen, das niemand einzeln abarbeitet.
+
+**Was `FID-006` dabei gewonnen hat, ist mehr als eine Umbenennung.** Der Check verlangte bisher **bestätigen**: gelesene Felder gegen die echte Antwort halten, bei Abweichung laut scheitern. Für die BISTA-Quelle des Belegfalls ist das nicht genug, und `DRIFT-007` war deswegen überhaupt entstanden — vier der sechs genutzten Endpunkte schreiben klein, zwei gross, zwei mischen **innerhalb einer Kopfzeile**. Wer dort pro Endpunkt streng auf die heute geltende Schreibweise prüft, hat sechs korrekte Prüfungen und scheitert beim nächsten Wechsel genauso vollständig — nur laut statt leise. Deshalb ist **Normalisieren an der Parse-Grenze** jetzt ein eigenes Pass-Kriterium von `FID-006` und nicht nur ein Vorschlag: Bestätigen sagt, dass der Ausfall auffällt; Normalisieren, dass er nicht eintritt.
+
+Konkret trägt `FID-006` jetzt:
+
+- den zweiten Belegfall (`zh-education-mcp` / BISTA, 2026-08-03: `Schulgemeinde` → `schulgemeinde`, vier von sechs Datensätzen still ausgefallen, acht Tools betroffen, **alle Unit-Tests grün**),
+- Pass-Pattern B (`_normalise_keys` an der Stelle, an der die Rohzeile entsteht) neben dem bisherigen Pass-Pattern A,
+- vier zusätzliche Pass-Kriterien (keine gewechselte Schreibweise fest verdrahtet · Normalisierung an **genau einer** Stelle mit begründendem Docstring · normalisiert wird die Schreibweise, nicht die Identität des Namens · die Gegenprobe läuft zusätzlich gegen die jeweils andere Schreibweise),
+- fünf zusätzliche Common-Failure-Zeilen, darunter die, die den Preis der Zusammenlegung benennt: **nur die Hülle bestätigt und die Schreibweise fest verdrahtet ist hier nicht grün**,
+- einen erweiterten Titel — «Antwortstruktur **und Feldnamen** bestätigen, bevor gezählt wird». Ein Auditor, der im Manifest nur «Antwortstruktur» liest, sucht sonst nach einem eigenen Check für Feldnamen, und es gibt keinen mehr.
+
+**Gegen stilles Verschwinden gepinnt.** Eine Zusammenlegung ist eine Löschung, wenn niemand prüft, dass das Übernommene bleibt — und keiner der bestehenden Wächter kann «`FID-006` deckt die Schreibweise» von «`FID-006` ist wieder wie vorher» unterscheiden: Beides parst, beides zählt als ein `FID`-Check, beides lässt alle Zahlen stimmen. `tests/test_catalog_criteria.py` hält deshalb drei Eigenschaften fest: dass der Titel beide Hälften nennt, dass der BISTA-Beleg im Text steht, und — die tragende — dass das Normalisierungs-Kriterium existiert.
+
+**`OPS-009` zählt jetzt richtig.** Seine Tabelle «was ein Handmock nicht bemerken konnte» nannte vier Checks; es sind drei, weil zwei der vier Fundstücke jetzt in derselben Datei stehen. Die Fundstücke bleiben vier — geändert hat sich, wie viele Checks sie tragen.
+
+**§5-Prüfung.** Die Rücknahme von `DRIFT-007` feuert **nicht**: Der Check war nie in einem Release, kein Audit hat je gegen ihn gemessen, und §5b nennt die Gegenrichtung (Reichweite verengt) ausdrücklich als CHANGELOG-Sache. Die Verschärfung von `FID-006` **feuert nach §5c** und kippt trotzdem kein Verdikt, weil der Check `advisory` ist. Beides steht mit Begründung in [`docs/re-audit-queue.md`](docs/re-audit-queue.md).
+
+**Gegenprobe geführt**, sechs Mutationen, jede schlägt an: `DRIFT-007` zurück in den Katalog gelegt (26 Tests fallen) · Normalisierungs-Kriterium aus `FID-006` gestrichen (1) · Titel auf den alten Wortlaut zurückgedreht (1) · BISTA-Beleg entfernt (1) · `FID-006` auf `enforced` gehoben (5) · `FID-006` aus dem Advisory-Satz beider READMEs gestrichen (2).
+
 ### Geändert — `ARCH-014` sagt jetzt, was ein Server ohne Wiederholung bekommt
 
 `ARCH-014` fragt, **was** wiederholt wird, **wie schnell** und **wie lange**. Was ein Server bekommt, der **gar nicht** wiederholt, stand nirgends.
