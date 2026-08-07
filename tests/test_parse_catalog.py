@@ -59,7 +59,7 @@ class TestRealCatalog:
             "DEP": 1,
             "DRIFT": 7,
             "CH": 8,
-            "FID": 6,
+            "FID": 7,
             "HITL": 6,
             "IDENT": 7,
             "OBS": 8,

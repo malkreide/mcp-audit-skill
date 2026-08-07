@@ -6,6 +6,32 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `FID-007`: eine Zahlenspalte, die keine Zahlen enthält
+
+**Ein neuer Check** (`FID-007`, `high`, **`advisory`**, `tools_make_external_requests == true`) — der Katalog wächst von 117 auf **118 in zwölf Kategorien**, 23 davon `advisory`.
+
+Amtliche Quellen unterdrücken kleine Fallzahlen und schreiben statt der Zahl `1 bis 5`, `<5`, `NULL`, `k.A.` oder gar nichts. Die Spalte heisst weiterhin «Anzahl» — ein Teil ihrer Zellen ist keine Zahl.
+
+**Drei Verhaltensweisen, drei Bewertungen, und die mittlere ist der Gegenstand:**
+
+| Verhalten | Bewertung |
+|---|---|
+| Absturz | **laut und schlecht** — der Nutzende sieht «unerwarteter interner Fehler» |
+| als `0` zählen | **still und schlimmer** — die Summe bleibt plausibel, ist zu tief, und durch nichts als falsch erkennbar |
+| ausnehmen **und** kennzeichnen | **richtig** |
+
+**Der Befund** (`zh-education-mcp` / BISTA, 2026-08-03): **18.6 %** der Sek-I-Zeilen und **18.1 %** der Staatsangehörigkeits-Zeilen tragen `1 bis 5` statt einer Zahl. Fast jede fünfte Zeile — kein Randfall.
+
+**Die Kennzeichnung ist der Check, nicht das Ausnehmen.** Wer die Zeile stillschweigend überspringt, liefert dieselbe zu tiefe Zahl wie der, der `0` zählt, nur ohne den Umweg. Der Check verlangt deshalb, dass das **Tool-Result** die Zahl der ausgenommenen Zeilen nennt und die Richtung der Abweichung benennt («die echten Werte liegen höher»). Das Modus-2-Testmuster stellt beide Varianten nebeneinander und zeigt, dass sie **dieselbe Zahl** liefern — was sie unterscheidet, ist ausschliesslich der Hinweis.
+
+**§2.5 durchlaufen.** Der Check schliesst eine Lücke zwischen zwei bestehenden: `FID-003` behandelt die **Leermenge** (es kam nichts), `DRIFT-002` den **Fallback** (es kam ein anderer Datensatz). Hier kommt der richtige Datensatz, vollständig, und ein Fünftel seiner Zellen trägt keinen addierbaren Wert. `FID-006` prüft, ob das Feld am erwarteten **Ort** liegt — hier liegt es dort und trägt etwas anderes, als sein Name verspricht. Eigene Dimension: **die Klasse des Werts**, nicht seine Anwesenheit und nicht seine Lage.
+
+**Adoptionsstufe `advisory` nach §2.3.** Über 43 Portfolio-Repos kennt **genau einer** die Unterdrückungsmarker — `zh-education-mcp`, nach dem Vorfall. `enforced` auf `high` am Merge-Tag träfe jeden Server, der irgendetwas summiert. Der Check ist über `applies_when` breit und in der Sache schmal; nur ein Durchlauf kann die beiden auseinanderhalten.
+
+**Re-Audit-Auslöser nach §5: feuert nicht.** Punkt 4 — neuer Check, neuer Vertrag. `FID-003`, `FID-006` und `DRIFT-002` bleiben unverändert.
+
+**Gegenprobe geführt**, drei Mutationen: `adoption: enforced` (5 Tests fallen), Check-Datei entfernt (24 fallen), `FID-007` aus dem Advisory-Satz beider READMEs gestrichen (2 fallen).
+
 ### Hinzugefügt — `DRIFT-007`: die Schreibweise eines Feldnamens ist Teil des Vertrags
 
 **Ein neuer Check** (`DRIFT-007`, `high`, **`advisory`**, `tools_make_external_requests == true`) — der Katalog wächst von 116 auf **117 in zwölf Kategorien**, 22 davon `advisory`.

@@ -1,9 +1,9 @@
 # mcp-audit-skill
 
-> Claude-Skill für systematische Audits von MCP-Servern gegen einen kuratierten Best-Practice-Standards-Korpus. **117 Checks**, 12 Kategorien, auf doppelter Spec-Baseline (`2025-11-25` und `2026-07-28`), mit Schweiz-Compliance-Layer für die öffentliche Verwaltung und Datentreue-Layer für Datenquellen-Server.
+> Claude-Skill für systematische Audits von MCP-Servern gegen einen kuratierten Best-Practice-Standards-Korpus. **118 Checks**, 12 Kategorien, auf doppelter Spec-Baseline (`2025-11-25` und `2026-07-28`), mit Schweiz-Compliance-Layer für die öffentliche Verwaltung und Datentreue-Layer für Datenquellen-Server.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Checks: 117](https://img.shields.io/badge/Checks-117-blue.svg)](./checks/)
+[![Checks: 118](https://img.shields.io/badge/Checks-118-blue.svg)](./checks/)
 [![Coverage: A1–A9, B1–B12, C1–C4](https://img.shields.io/badge/Best--Practice%20Coverage-A1%E2%80%93A9%2C%20B1%E2%80%93B12%2C%20C1%E2%80%93C4-success)](./CHANGELOG.md)
 [![MCP Spec: 2025-11-25 + 2026-07-28](https://img.shields.io/badge/MCP%20Spec-2025--11--25%20%2B%202026--07--28-orange)](https://modelcontextprotocol.io/specification/)
 
@@ -70,18 +70,18 @@ Mit installiertem Slash-Command:
 > /audit-mcp .
 ```
 
-Output: Profil-getriebene Auswahl der ~30 anwendbaren Checks aus 117, automatisierte Verifikation aller `automated`/`config_check`/`documentation_check`-Modi, Findings-Stubs für `code_review`/`runtime_test`-Modi, vollständiger Audit-Report nach Template — alles in `<repo>/audits/YYYY-MM-DD-<server-name>/`.
+Output: Profil-getriebene Auswahl der ~30 anwendbaren Checks aus 118, automatisierte Verifikation aller `automated`/`config_check`/`documentation_check`-Modi, Findings-Stubs für `code_review`/`runtime_test`-Modi, vollständiger Audit-Report nach Template — alles in `<repo>/audits/YYYY-MM-DD-<server-name>/`.
 
 ## Standards-Provenance
 
-Die 117 Checks stammen aus zwei kuratierten Best-Practice-Dokumenten plus fünf eigenen Layern (Schweiz-Compliance, Datentreue, Identität, Upstream-Drift, Abhängigkeitsauflösung) in auditierbarer Form. Jeder Check trägt im Frontmatter eine `pdf_ref`-Referenz auf seine Quelle.
+Die 118 Checks stammen aus zwei kuratierten Best-Practice-Dokumenten plus fünf eigenen Layern (Schweiz-Compliance, Datentreue, Identität, Upstream-Drift, Abhängigkeitsauflösung) in auditierbarer Form. Jeder Check trägt im Frontmatter eine `pdf_ref`-Referenz auf seine Quelle.
 
 | Quelle | Inhalt | Abgeleitete Checks |
 |---|---|---|
 | **Hauptkatalog** «MCP Server-Entwicklung — Best Practices & Standards» | Architektur, SDK-Patterns, Security, Skalierung, Observability, Human-in-the-Loop | 54 Checks (v0.1–v0.4) |
 | **Architektur-Anhang** «Architektur und Sicherheit von MCP-Servern» | Sektion A (Architektur, A1–A9), Sektion B (Sicherheit, B1–B12), Sektion C (Operative Praxis, C1–C4); schliesst u.a. Lethal-Trifecta-, Idempotency- und Egress-Control-Lücken | 14 Checks (v0.5) |
 | **Schweiz-Compliance-Layer** | revDSG, EDÖB-Meldepflicht, ISDS Stadt Zürich, OGD-Lizenz-Compliance, Volksschule-spezifische Datenschutz-Anforderungen | 8 Checks (`CH-*`) |
-| **Datentreue-Layer** | Scope-Defaults, Recall gegen Ground Truth, Leermenge ≠ Abwesenheit, Query-Syntax, Antwortstruktur bestätigen bevor gezählt wird. Abgeleitet aus einem realen Portfolio-Vorfall ([termdat-mcp#11](https://github.com/malkreide/termdat-mcp/issues/11)) und aus einer Registry-Abfrage, die eine Ebene über den Feldern las | 6 Checks (`FID-*`) |
+| **Datentreue-Layer** | Scope-Defaults, Recall gegen Ground Truth, Leermenge ≠ Abwesenheit, Query-Syntax, Antwortstruktur bestätigen bevor gezählt wird, unterdrückte Zahlwerte. Abgeleitet aus einem realen Portfolio-Vorfall ([termdat-mcp#11](https://github.com/malkreide/termdat-mcp/issues/11)) und aus einer Registry-Abfrage, die eine Ebene über den Feldern las | 7 Checks (`FID-*`) |
 | **Identitäts-Layer** | User-Agent, `__version__`, Manifest-Version, dokumentierte Version — als was sich ein Server nach aussen ausgibt; dazu die Frage, ob das publizierte Artefakt überhaupt noch startet. Abgeleitet aus einem Portfolio-Sweep über 30 Server und aus zwei toten Releases auf dem Index | 7 Checks (`IDENT-*`) |
 | **Upstream-Drift-Layer** | Der Vertrag mit der Quelle ändert sich, und nichts bemerkt es: abgeschaffte Endpoints, Fallbacks die den Datensatz austauschen, Assertions die auch der Fehlerfall erfüllt — dazu Prosa im Repo, die dem Code widerspricht. Abgeleitet aus einem realen Portfolio-Vorfall ([meteoswiss-mcp#33](https://github.com/malkreide/meteoswiss-mcp/issues/33), #35, #37) und aus einem CHANGELOG, das Gemergtes als ausstehend führte | 7 Checks (`DRIFT-*`) |
 | **Dependency-Layer** | Eine Range ohne Obergrenze überlässt die Wahl der Major-Version dem, der als Nächstes publiziert: Das veröffentlichte Artefakt ändert sich, ohne dass jemand es publiziert. Abgeleitet daraus, dass `mcp` 2.0.0 am 2026-07-28 `mcp.server.fastmcp` entfernte und zwei Releases tötete, an denen nichts falsch war | 1 Check (`DEP-*`) |
@@ -232,11 +232,11 @@ Dann in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`. Der Workflow l
 | `HITL` | Sampling, Human-in-the-Loop, Multi Round-Trip Requests | Hauptkatalog Sec 7 + Spec 2026-07-28 | 6 | 2 critical · 3 high · 1 medium |
 | `CH` | DSG/EDÖB, ISDS Stadt Zürich, Volksschule | Custom | 8 | 2 critical · 4 high · 2 medium |
 | `OPS` | Test-Strategie, Doku-Standard, Phasenarchitektur, Audit-Redlichkeit, Pipeline-Ehrlichkeit, reproduzierbare Urteile, ausführbare Anleitungen, prüfbare Guards | Anhang C + Custom | 8 | — · 5 high · 3 medium |
-| `FID` | Datentreue: Scope-Defaults, Recall, Leermengen, Query-Syntax, Antwortstruktur | Custom | 6 | 1 critical · 3 high · 2 medium |
+| `FID` | Datentreue: Scope-Defaults, Recall, Leermengen, Query-Syntax, Antwortstruktur, unterdrückte Zahlwerte | Custom | 7 | 1 critical · 4 high · 2 medium |
 | `IDENT` | Identität: User-Agent, `__version__`, Manifest, Doku-Version, Release-Gap, Gesundheit des Artefakts | Custom | 7 | — · 3 high · 3 medium · 1 low |
 | `DRIFT` | Upstream-Vertrag und Repo-Prosa: Endpoint-Drift, Fallback-Semantik, Testgüte, CHANGELOG gegen Code, Feldnamen-Schreibweise | Custom | 7 | — · 4 high · 3 medium |
 | `DEP` | Auflösungsraum des publizierten Artefakts: Obergrenzen, Major-Wechsel | Custom | 1 | — · 1 high |
-| **Total** | | | **117** | **16 critical · 59 high · 41 medium · 1 low** |
+| **Total** | | | **118** | **16 critical · 60 high · 41 medium · 1 low** |
 
 ## Severity-Stufen
 
@@ -256,7 +256,7 @@ Severity sagt, **wie schlimm** ein Verstoss ist. Die Adoptionsstufe sagt, **ob d
 | `enforced` | Der Katalog hält das Portfolio daran fest | Ein `fail` auf `critical`/`high` blockiert Production-Readiness |
 | `advisory` | Der Check meldet, urteilt aber noch nicht | Finding wird erzeugt, gezählt und mit voller Severity geführt — blockiert aber nicht |
 
-Das Feld ist optional; fehlt es, gilt `enforced`. Von 117 Checks sind genau zweiundzwanzig `advisory`: `ARCH-022`, `DRIFT-007`, `FID-006`, `OBS-008`, `OPS-005`, `OPS-006`, `OPS-007`, `OPS-008` — dazu die vierzehn Migrations-Checks `ARCH-015`, `ARCH-016`, `ARCH-017`, `ARCH-018`, `ARCH-019`, `ARCH-020`, `ARCH-021`, `HITL-006`, `SCALE-008`, `SCALE-009`, `SCALE-010`, `SEC-025`, `SEC-026` und `SEC-027`. `DEP-001`, `DRIFT-006`, `OBS-007` und `ARCH-014` gingen denselben Weg und sind inzwischen auf `enforced` promoviert — die Brücke soll eine Handvoll neuer Checks tragen, nicht volllaufen.
+Das Feld ist optional; fehlt es, gilt `enforced`. Von 118 Checks sind genau dreiundzwanzig `advisory`: `ARCH-022`, `DRIFT-007`, `FID-006`, `FID-007`, `OBS-008`, `OPS-005`, `OPS-006`, `OPS-007`, `OPS-008` — dazu die vierzehn Migrations-Checks `ARCH-015`, `ARCH-016`, `ARCH-017`, `ARCH-018`, `ARCH-019`, `ARCH-020`, `ARCH-021`, `HITL-006`, `SCALE-008`, `SCALE-009`, `SCALE-010`, `SEC-025`, `SEC-026` und `SEC-027`. `DEP-001`, `DRIFT-006`, `OBS-007` und `ARCH-014` gingen denselben Weg und sind inzwischen auf `enforced` promoviert — die Brücke soll eine Handvoll neuer Checks tragen, nicht volllaufen.
 
 **Neunzehn sind nicht neunzehn gewöhnliche Checks auf der Brücke.** Vierzehn davon sind die Migrations-Kohorte, die geschlossen abgeht; fünf sind gewöhnlich, und vier Checks sind bereits auf `enforced` hinübergegangen. Das ist der Mechanismus bei der Arbeit, nicht die volllaufende Brücke — und der Wächter misst es genauso: Die Quote in `tests/test_adoption_stage.py` zählt den Rest ohne die Kohorte.
 
@@ -276,7 +276,7 @@ python tools/aggregate_results.py aggregate verification-results.json \
 ## Audit-Workflow (Kurzform)
 
 1. **Profil laden** — Server-Eigenschaften aus Notion-Audit-Tracker oder via Inferenz aus dem Repo
-2. **Katalog laden** — alle 117 Checks parsen
+2. **Katalog laden** — alle 118 Checks parsen
 3. **Applicability-Filter** — nur passende Checks selektieren (z.B. stdio-only-Server überspringt OAuth-Checks)
 4. **Check-Ausführung** — automatisiert (grep, AST, Config-Scan) oder als Code-Review-TODO pro Check
 5. **Findings dokumentieren** — `templates/finding.md`
@@ -364,7 +364,7 @@ Katalog prüft, ob sie da ist.
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`) und Templates (Finding, Audit-Report)
 - ✅ Reference-Summary
-- ✅ Check-Katalog: **117 Checks, alle 12 Kategorien vollständig**
+- ✅ Check-Katalog: **118 Checks, alle 12 Kategorien vollständig**
 - ✅ Slash-Command für Claude Code (`/audit-mcp <repo>`)
 - ✅ Portfolio-Batch-Audit (`audit-portfolio.sh` für Multi-Server-Runs)
 - ✅ Inventar-Gate (`./audit-portfolio.sh --verify-inventory`) — findet Server, die in `portfolio.yaml` fehlen, inklusive verschachtelter

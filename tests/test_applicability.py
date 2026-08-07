@@ -336,8 +336,8 @@ class TestRealCatalog:
         # DRIFT-006, 94 mit OBS-007, 95 mit ARCH-014, 96 mit OPS-006,
         # 98 mit OPS-008, 112 mit den vierzehn Spec-Checks aus v2.0.0,
         # 113 mit FID-006 aus v2.1.0, 115 mit OBS-008 und ARCH-022,
-        # 116 mit SEC-028, 117 mit DRIFT-007)
-        assert len(results) == 117
+        # 116 mit SEC-028, 117 mit DRIFT-007, 118 mit FID-007)
+        assert len(results) == 118
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
         # test fails loudly only on grammar drift.
