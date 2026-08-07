@@ -18,6 +18,30 @@
 # wieder — die Ausnahme haengt am Vorlagen-Pfad, nicht am Repo.
 target-version = "py311"
 
+# Markdown bleibt aussen vor — als Entscheidung, nicht als Versehen.
+#
+# Bis ruff 0.15.8 war die Formatierung von Python-Bloecken in Markdown
+# `preview`-only: `ruff format --check .` liess `.md` unberuehrt. Seit 0.16.1
+# ist sie stabil und standardmaessig an. Der Bump auf 0.16.1 haette das Gate
+# damit ueber Nacht auf Dokumentation ausgeweitet — genau der Effekt, gegen den
+# der Pin existiert.
+#
+# Gemessen beim Bump: kein einziges `.py` formatiert sich unter 0.16.1 anders,
+# `ruff check` findet nichts Neues. Betroffen waere genau eine Datei gewesen:
+# SKILL.md, also der Skill selbst.
+#
+# Das nimmt `reference/` NICHT aus irgendeinem Gate — die Ausnahme oben bleibt
+# die einzige, die Python betrifft, und die Mutationen 9 pruefen das weiterhin.
+# Markdown-Formatierung zu uebernehmen ist eine eigene, messbare Aenderung:
+# diese Zeile entfernen, `ruff format .` laufen lassen, Diff lesen.
+#
+# `extend-exclude`, nicht `exclude`: `exclude` ERSETZT ruffs Vorgabeliste, und
+# damit waeren `.venv/`, `node_modules/` und Konsorten wieder im Gate.
+# Gemessen: zwei Dateien unter `.venv/` und `node_modules/` werden mit
+# `exclude` beanstandet, mit `extend-exclude` nicht.
+extend-exclude = ["*.md"]
+
+
 [lint]
 # E/W  pycodestyle — syntaxnahe Fehler und Zeilenlaenge.
 # F    pyflakes — ungenutzte Importe, tote Namen, doppelte Argumente.

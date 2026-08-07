@@ -38,7 +38,7 @@ jobs:
       # uebereinstimmen — Pruefung 12 prueft es, samt der Frage, ob beide Hooks
       # noch da sind.
       - name: Ruff installieren
-        run: pip install ruff==0.15.8
+        run: pip install ruff==0.16.1
 
       - name: Abhaengigkeiten der Testsuite installieren
         run: pip install -r requirements-dev.txt
