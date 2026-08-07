@@ -6,6 +6,30 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — `FID-006` zum zweiten Mal nachgemessen: drei Runden, drei Server
+
+Die Fremdquellen-Nachlese ist durch — fünf weitere PRs über GeoAdmin, LINDAS SPARQL, Dodis Solr und die zwei Ebenen unter einem bereits bestätigten CKAN-`result`, dazu die Schreibweisen-Normalisierung in `swisstopo-mcp`. Die Zahlen im Check und in der Warteschlange sind nachgezogen.
+
+| | Erhebung | nach dem CKAN-Sweep | jetzt |
+|---|---:|---:|---:|
+| mit mindestens einem stillen Root-Default | 28 | 27 | **25** |
+| mit eigenem **Struktur**-Fehlertyp | 0 | 7 | 7 |
+| Wurzelpfad irgendwo mit einem Raise bestätigt | 3 | 10 | 10 |
+| normalisieren an der Parse-Grenze | 1 | 1 | **2** |
+| **erfüllen den Check** | 0 | 0 | **0** |
+
+**Drei Reparatur-Runden, und die Zeile, auf die es ankommt, steht unverändert auf null.** Das ist die Auskunft dieses Checks, kein Scheitern der Runden: Repariert wurden Pfade — acht CKAN-Server, drei Fremdquellen, zwei Ebenen darunter, eine Normalisierung. Bewegt hat sich die Serverzahl um drei (`swiss-democracy-mcp`, `wsl-envidat-mcp`, `swiss-transport-mcp` haben ihren letzten stillen Default verloren).
+
+Ein Server erfüllt den Check erst, wenn er die **gelesenen Felder** bestätigt und sie gegen eine **echte** Antwort hält. Keine der drei Runden hat das angefasst, und kein Mass an Wurzelpfad-Reparatur erreicht es. Die Ausstiegsbedingung in `tests/test_adoption_stage.py` steht deshalb unverändert — jetzt zum dritten Mal unbewegt.
+
+**Zwei Befunde aus den Runden, die in den nächsten Durchlauf gehören:**
+
+1. **Der Fehler wandert nach unten.** Zwei der sieben Fundstellen der letzten Runde waren Reste des CKAN-Sweeps selbst: Er bestätigte `result` und hörte dort auf, während die Formatierer eine Ebene tiefer weiterlasen. Wer eine Ebene schliesst, muss die nächste mitprüfen.
+
+2. **Die Trefferquote des Scans ist schlecht, und das ist keine Panne.** 17 Fundstellen nachgelesen, **7** echte Befunde, **10** keine: ein `error`-Zweig im eigenen Aggregat, ein echtes Optionalfeld einer CKAN-Zeile, das eigene Ergebnis-Dict, eine bereits bestätigte Struktur. Ein Default ist nur dort ein Fehler, wo die Abwesenheit ein **Irrtum des Lesers** ist und keine **Aussage der Quelle**. Ein Scan, der 10 von 17 falsch anklagt, ist als Leseliste brauchbar und als Urteil unbrauchbar — und genau das ist der Grund, warum dieser Check `code_review` als Modus führt und nicht `automated`.
+
+**Gegenprobe geführt**, Mutation plus Umkehrprobe: `FID-006` auf `enforced` gehoben, während die Tabelle weiter null sagt → **6 Tests fallen**, darunter der Wächter; `enforced` **mit** einer von null verschiedenen Zahl bleibt grün. Der Wächter greift also auch auf der jetzt **vierspaltigen** Tabelle — bei jeder Erweiterung der Spalten die Stelle, an der er still aussetzen könnte.
+
 ### Geändert — `swisstopo-mcp` präzisiert: kein stiller Ausfall, aber ein Befund
 
 Der Portfolio-Durchlauf zu `FID-006` meldete: «`swisstopo-mcp` liest dasselbe Feld in zwei Schreibweisen — `identDN` und `IdentDN` — in einem Server. Das ist die BISTA-Form, heute, in Produktion.» Der Eintrag steht weiter unten in diesem Abschnitt und **war zu stark**.
