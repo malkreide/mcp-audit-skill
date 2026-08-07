@@ -7,7 +7,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Die Checkliste endete am Quellbaum — ausgeliefert wird das Artefakt.** Eine
+  Kampagne über das Portfolio fand **fünf tote Installationen und zwei
+  Versions-Drifts**, alle an Servern mit sauberem Probe-Lauf. Der Skill führte
+  bis zum Scaffold und zur «Qualitätschecklist vor Release» und danach nicht
+  weiter; zwischen geprüftem Quellbaum und installiertem Paket liegen aber ein
+  Build, eine Auflösung von Abhängigkeiten und eine Veröffentlichung, und alle
+  drei fallen aus, ohne dass im Repo etwas rot wird. Vier Ergänzungen, jede
+  gegen einen gemessenen Ausfall:
+
+  - **4.2 `_version.py`** — der Scaffold liest die Version des installierten
+    Pakets über `importlib.metadata.version()`, mit Fallback `0.0.0+source`.
+    Nie ein handgeschriebenes `VERSION = "0.4.0"`: Welche Version ausgeliefert
+    wird, entscheidet der Build, und eine Zuweisung im Quelltext ist eine
+    zweite Kopie derselben Zahl. `swiss-procurement-mcp` verschickte `0.4.0`
+    im User-Agent aus einem Paket, das `0.18.3` war — vierzehn Minor-Versionen,
+    und beide Zahlen sahen für sich plausibel aus. Der Fallback ist ein
+    PEP-440-Local-Segment und damit eine Zeichenkette, die nie auf PyPI stehen
+    kann: Wer sie in einem Log sieht, weiss ohne Nachfrage, dass dort ein
+    Quellbaum läuft. **Eigenes Modul, nicht `__init__.py`** — sonst entsteht
+    der Zirkelimport, den `bag-health-mcp` trägt.
+  - **4.3 Obergrenzen im generierten `pyproject.toml`**, und `PUBLISHING.md`
+    sagt, wie sie gemessen wurden: gegen das, was am genannten Tag
+    nachweislich installiert **und importiert** wurde. `swiss-energy-mcp`
+    0.3.3 wurde durch das Erscheinen von `mcp` 2.0.0 uninstallierbar, ohne
+    dass sich am Artefakt eine Datei änderte. Der Einwand gegen Obergrenzen
+    (Auflösungs-Sackgassen) ist der Grund für die Messung, nicht gegen die
+    Grenze: Anheben ist damit eine Messung und keine Debatte.
+  - **Schritt 5 «Startzeile und `start_event`»**, neu zwischen dem Repo-Bau
+    (Schritt 4) und dem Portfolio-Register (jetzt Schritt 6). Der Scaffold gibt
+    vor dem Transport-Aufruf genau eine stabile Zeile auf stderr aus — stderr,
+    weil bei stdio stdout dem JSON-RPC-Rahmen gehört, und mit `flush=True`,
+    weil stderr ohne TTY blockgepuffert ist, also genau unter dem Supervisor,
+    dessen Log die Zeile belegen soll. Der Marker steht als `start_event` in
+    `portfolio.json`. **Marker-Regeln:** bei strukturierten Logs wird das
+    `event`/`msg`-Feld EXAKT verglichen (ein Präfix greift nicht — `server.start`
+    träfe sonst `server.start_failed` mit), bei Klartext genügt eine
+    Teilzeichenkette, und nie ein Zeitstempel oder ein anderer Pro-Lauf-Wert.
+  - **Abschnitt «Nach dem Release»** mit drei Prüfungen: Paket in ein leeres
+    Venv installieren und das Konsolen-Skript sechs Sekunden mit geschlossenem
+    stdin beobachten (sechs, weil das die ersten zwei Sprossen der Retry-Leiter
+    aus 3.1 sind, 2 s + 4 s); die Version des installierten Artefakts gegen
+    `main` halten; und: **ein Tag veröffentlicht nichts.** `publish.yml` löst
+    auf `release: types: [published]` aus, weder ein Tag noch ein Draft feuert
+    das. Der Tag allein lässt das Repo aussehen, als sei ausgeliefert worden —
+    genau so entstanden die fünf toten Installationen.
+
+- **Die Gegenprobe, und was sie über den eigenen Text hinaus gezeigt hat.** Der
+  Scaffold wurde einmal erzeugt, in ein leeres Venv installiert und gestartet;
+  die vier Punkte stehen hier, weil dieser Durchlauf sie belegt. Drei Befunde
+  sind erst dabei entstanden und stehen deshalb im Text:
+
+  1. **Die Obergrenze auf `mcp` arbeitet heute, nicht irgendwann.** Am 7.8.2026
+     löst dieselbe Zeile ohne `<2.0.0` auf `mcp` 2.0.0 auf, und dort existiert
+     `mcp.server.fastmcp` nicht mehr: Die Installation gelingt, der Start
+     scheitert am Import. Der Ausfall aus `swiss-energy-mcp`, an einem frischen
+     Scaffold reproduziert — und der Grund, warum die Tabelle in `PUBLISHING.md`
+     eine Spalte «Import geprüft» hat und nicht bloss eine aufgelöste Version.
+  2. **Die Startzeile steht nicht allein auf der Leitung.** Der Lauf bekam eine
+     `IncompleteFieldDefinitionWarning` aus `pydantic-settings` direkt über die
+     Startzeile geschrieben, ohne dass der Scaffold etwas dazu beigetragen
+     hätte. Das ist die Begründung für die Teilzeichenketten-Regel bei
+     Klartext: Ein Vergleich auf die ganze Zeile bräche an fremdem Rauschen.
+  3. **`pip install {dist}` ohne Pin macht die erste Prüfung wertlos.** Lief
+     das Release nicht durch, installiert sie die **vorige** Version, die
+     startet, ihre Startzeile schreibt und mit 0 endet — eine grüne Prüfung
+     über ein Artefakt, das gar nicht Gegenstand der Prüfung war. Deshalb
+     `pip install "{dist}=={version}"`: Dann scheitert die Installation, laut
+     und an der richtigen Stelle.
+
+- **Vier Anti-Patterns (16–19)** und das **Fundstück «fünf tote Installationen
+  (2026-08)»**. Der Kern des Fundstücks ist die Fehlerform, nicht die Zahl: Ein
+  Tag ohne veröffentlichtes Release erzeugt keinen roten Lauf, sondern gar
+  keinen — die Actions-Seite zeigt danach die vorige Zeile. Fehlschläge, die als
+  leere Menge auftreten, sind dieselbe Klasse wie die leere API-Antwort aus
+  1.2c: Beide melden nichts und werden als «nichts los» gelesen.
+
 ### Changed
+
+- **Der Portfolio-Register-Schritt ist jetzt Schritt 6**, weil die Startzeile
+  als Schritt 5 dazwischen liegt. `start_event` ist ein Feld von
+  `portfolio.json`, aber entschieden wird es am Code: Wer es erst beim
+  Eintragen erfindet, schreibt hin, was dort stehen könnte, statt was der
+  Prozess ausgibt. Alle Querverweise (5.1/5.2 → 6.1/6.2) und die beiden READMEs
+  sind mitgezogen; die Zusage «drei Kernschritte» ändert sich nicht — der neue
+  Schritt ist [Übergabe], und Check 11 hält das fest.
 
 - **Die «elf» in `adoption.toml` stand auf der falschen Seite — gemessen, nicht
   geschätzt.** Die Notiz behauptete, die elf erhobenen Server hätten die

@@ -565,7 +565,7 @@ Nicht zulässig: «das Beispiel im Tutorial sah anders aus», «der letzte Serve
 
 1. **README**, im selben Abschnitt «Architecture decision». Der Spec-Entscheid ist Teil derselben Begründung und kein zweiter Abschnitt darunter: Wer die Architektur liest, liest auch, wogegen sie gebaut ist.
 2. **`portfolio.json`** im Index-Repo `swiss-public-data-mcp`: `mcp_spec_version`, dazu `sdk_flavour`, `sdk_constraint`, `migration_wave` und `migration_status`. Ein neuer Server wird auf dem Ziel geboren und trägt trotzdem alle fünf Felder — sonst fehlt er in jeder Auswertung, die über sie läuft, und «fehlt» liest sich dort wie «noch nicht migriert».
-3. **Die menschenlesbare Hälfte des Portfolio-Registers** (5.2) — bei diesem Portfolio die Notion-Karte, anderswo, was dort dieselbe Rolle spielt.
+3. **Die menschenlesbare Hälfte des Portfolio-Registers** (6.2) — bei diesem Portfolio die Notion-Karte, anderswo, was dort dieselbe Rolle spielt.
 
 ---
 
@@ -695,7 +695,9 @@ Wildcards serverseitig automatisch anhängen ist **kein** Ersatz: Es macht Phras
 
 ## Schritt 4: Übergabe an `github-repo`-Skill [Übergabe]
 
-Nach Abschluss der Probe (Schritt 1-3) erfolgt die Repo-Erstellung via [`github-repo`](../github-repo/SKILL.md)-Skill. Als Input dafür bereitstellen:
+Nach Abschluss der Probe (Schritt 1-3) erfolgt die Repo-Erstellung via [`github-repo`](../github-repo/SKILL.md)-Skill. 4.1 nennt, was der Skill als Input braucht; 4.2 und 4.3 nennen zwei Eigenschaften, die der erzeugte Scaffold mitbringt und die sich später nur noch teuer nachrüsten lassen.
+
+### 4.1 Input für den Repo-Bau
 
 1. **Repo-Name** (Pattern: `{quelle}-mcp`, z. B. `lobbywatch-mcp`)
 2. **Repo-Description** (max. 100 Zeichen, Stil-parallel zu `parlament-mcp`):
@@ -708,13 +710,117 @@ Nach Abschluss der Probe (Schritt 1-3) erfolgt die Repo-Erstellung via [`github-
 8. **Spec-Ziel** aus Schritt 2.4 → in denselben README-Abschnitt wie der Architektur-Entscheid, samt Begründung bei Abweichung vom Standard
 9. **`ttlMs`/`cacheScope`-Empfehlung** aus Schritt 1.7 → in die Konsequenzen des Entscheids und in den Code, der die List-Responses baut
 
+### 4.2 `_version.py` — der Prozess liest seine Version, er pflegt sie nicht
+
+Der Scaffold legt `src/{paket}/_version.py` an, und dort steht genau das:
+
+```python
+"""Die Version des installierten Pakets — gelesen, nicht gepflegt."""
+
+from importlib.metadata import PackageNotFoundError, version
+
+DIST_NAME = "{dist-name}"
+
+try:
+    __version__ = version(DIST_NAME)
+except PackageNotFoundError:
+    # Aus dem Quellbaum gestartet, nie installiert.
+    __version__ = "0.0.0+source"
+```
+
+Drei Eigenschaften, jede gegen einen gemessenen Ausfall:
+
+**Nie ein handgeschriebenes `VERSION = "0.4.0"`.** Welche Version ausgeliefert wird, entscheidet der Build — aus `pyproject.toml` oder aus dem Tag. Eine Zuweisung im Quelltext ist eine zweite Kopie derselben Zahl, und zweite Kopien driften. Nicht theoretisch: `swiss-procurement-mcp` verschickte `0.4.0` im User-Agent aus einem Paket, das `0.18.3` war. Vierzehn Minor-Versionen, und niemand ist je darüber gestolpert, weil beide Zahlen für sich plausibel aussahen. Was die Quelle in ihren Logs sah, war ein Client, den es seit Monaten nicht mehr gab — und wer den Server nach diesem User-Agent gesucht hätte, hätte im falschen Release gesucht.
+
+**Der Fallback ist ein PEP-440-Local-Segment.** `0.0.0+source` ist eine Zeichenkette, die nie auf PyPI stehen kann: Lokale Versionssegmente werden beim Upload abgewiesen. Genau deshalb taugt sie. Wer sie in einem Log oder User-Agent sieht, weiss ohne Nachfrage, dass dort ein Quellbaum läuft und kein Release. Ein Fallback auf `"0.0.0"` oder auf die zuletzt bekannte Nummer beantwortet dieselbe Frage falsch — die eine als Version, die es geben könnte, die andere als Lüge über den laufenden Code.
+
+**Eigenes Modul, nicht `__init__.py`.** `_version.py` importiert nichts aus dem eigenen Paket, deshalb darf jeder Teil des Pakets es importieren — auch der Einstiegspunkt, den `__init__.py` seinerseits importiert. Steht `__version__` stattdessen in `__init__.py` und liest der Server ihn mit `from . import __version__`, entsteht der Zirkelimport, den `bag-health-mcp` trägt: Beim Start des Konsolen-Skripts ist `__init__` erst halb ausgeführt, und ob der Name schon existiert, hängt an der Importreihenfolge statt am Code.
+
+Jede Stelle, die eine Version nennt, liest sie aus diesem Modul: User-Agent, Startzeile (5.1), `serverInfo` im Handshake. Keine davon bekommt eine eigene Zahl.
+
+### 4.3 Obergrenzen im generierten `pyproject.toml`, gemessen in `PUBLISHING.md`
+
+Jede Zeile in `dependencies` trägt eine Unter- **und** eine Obergrenze:
+
+```toml
+dependencies = [
+    "mcp>=1.9.0,<2.0.0",
+    "httpx>=0.27.0,<0.29.0",
+    "pydantic>=2.7.0,<3.0.0",
+]
+```
+
+**Warum die Obergrenze nicht verhandelbar ist:** Ein Artefakt ohne sie ändert sein Verhalten, ohne sich zu ändern. `swiss-energy-mcp` 0.3.3 wurde durch das Erscheinen von `mcp` 2.0.0 uninstallierbar — im Repo bewegte sich keine Zeile, im Release keine Datei, und trotzdem war das, was `pip install` ab diesem Tag auslieferte, ein anderes Programm. Ein Release ist ein Versprechen über ein Artefakt; ohne Obergrenze gilt es nur so lange, bis jemand anderes etwas veröffentlicht.
+
+Der Einwand, Obergrenzen führten zu Auflösungs-Sackgassen, sobald mehrere Pakete im selben Venv liegen, stimmt. Er ist der Grund für die zweite Hälfte dieser Regel und nicht gegen die erste: Die Obergrenze wird **gemessen und datiert**, nicht geerbt und nicht geschätzt.
+
+**`PUBLISHING.md` sagt, wie gemessen wurde.** Nicht «wir vermuten, 2.0 bricht», sondern: was am Tag der Messung nachweislich installiert **und importiert** wurde. Beides, denn ein Paket, das sich auflösen lässt und beim ersten Import auseinanderfällt, ist für diese Frage dasselbe wie eines, das sich nicht auflösen lässt — nur fällt es später auf. Beleg ist der `pip freeze` aus dem leeren Venv, in dem die Gegenprobe nach dem Release gelaufen ist («Nach dem Release»):
+
+| Paket | Bereich | aufgelöst am | installiert | Import geprüft |
+|---|---|---|---|---|
+| `mcp` | `>=1.9.0,<2.0.0` | 2026-08-07 | 1.29.0 | `mcp.server.fastmcp`, Server startet |
+| `httpx` | `>=0.27.0,<0.29.0` | 2026-08-07 | 0.28.1 | `httpx.AsyncClient` |
+| `pydantic` | `>=2.7.0,<3.0.0` | 2026-08-07 | 2.13.4 | Envelope aus 3.2 validiert |
+
+Die Zeile für `mcp` ist zugleich das Beispiel, warum die Spalte «Import geprüft» nicht dekorativ ist. Ohne Obergrenze löst dieselbe Zeile am 7.8.2026 auf `mcp` 2.0.0 auf — und dort existiert `mcp.server.fastmcp` nicht mehr. Die Installation gelingt, der Start scheitert am Import. Das ist der Ausfall aus `swiss-energy-mcp`, an einem frischen Scaffold reproduziert.
+
+Damit ist das Anheben einer Obergrenze eine Messung und keine Debatte: Venv neu bauen, Grenze öffnen, installieren, starten, Zeile ersetzen, Datum setzen. Eine Obergrenze ohne Datum ist eine Meinung, die mit der Zeit unwiderlegbar wird — irgendwann traut sich niemand mehr, sie anzufassen, weil keiner weiss, worauf sie beruhte.
+
 ---
 
-## Schritt 5: Portfolio-Register nachführen [Übergabe]
+## Schritt 5: Startzeile und `start_event` [Übergabe]
+
+Ein Server, der läuft, und ein Server, der es nicht tut, sind von aussen ununterscheidbar, solange er beim Start nichts sagt. Diese Kampagne hat fünf tote Installationen gefunden; keine davon hat je gemeldet, dass sie nicht hochkam, weil keine je gemeldet hatte, dass sie hochkam.
+
+### 5.1 Die Zeile
+
+Der Scaffold gibt vor dem Bedienen des Transports genau eine Zeile auf stderr aus:
+
+```python
+print(
+    f"{DIST_NAME} {__version__} ready (transport={transport})",
+    file=sys.stderr,
+    flush=True,
+)
+server.run(transport=transport)
+```
+
+Vier Eigenschaften, und keine davon ist Geschmackssache:
+
+- **stderr, nicht stdout.** Bei stdio-Transport gehört stdout dem JSON-RPC-Rahmen. Eine Log-Zeile darin ist kein Log, sondern ein Protokollfehler — der Client liest sie als Frame und bricht ab.
+- **`flush=True`.** stderr ist ohne TTY blockgepuffert, also genau dort, wo die Zeile gebraucht wird: unter einem Supervisor, dessen Log sie belegen soll. Ohne Flush erscheint sie beim Beenden, oder bei einem Absturz gar nicht — und der Absturz ist der Fall, für den sie existiert.
+- **Vor `run()`.** Eine Zeile danach erscheint nie: `run()` kehrt erst am Ende zurück.
+- **Stabil.** Version und Transport dürfen wechseln, der feste Teil nicht. Der feste Teil ist der Marker.
+
+### 5.2 Der Marker in `portfolio.json`
+
+Eine Zeile, die niemand kennt, belegt nichts. Deshalb trägt der Server in `portfolio.json` (6.1) ein Feld `start_event`, das sagt, woran ein Lauf erkannt wird:
+
+```json
+"start_event": {"kind": "text", "match": "{dist-name} ready"}
+```
+
+Bei strukturierten Logs statt Klartext:
+
+```json
+"start_event": {"kind": "structured", "field": "event", "match": "server.started"}
+```
+
+Drei Marker-Regeln, und sie sind nicht gegeneinander austauschbar:
+
+1. **Strukturiert: Das `event`- bzw. `msg`-Feld wird EXAKT verglichen.** Ein Präfix greift nicht und soll nicht greifen. In einer strukturierten Zeile ist das Ereignisfeld ein Bezeichner und kein Fliesstext; `server.start` als Präfix träfe `server.start_failed` mit und meldete den Fehlschlag als Start.
+2. **Klartext: Eine Teilzeichenkette genügt.** Die Zeile steht zwischen fremden Ausgaben, und die kommen unaufgefordert: Der Gegenprobe-Lauf zu diesem Abschnitt bekam eine `IncompleteFieldDefinitionWarning` aus `pydantic-settings` direkt über die Startzeile geschrieben, ohne dass der Scaffold etwas dazu beigetragen hätte. Ein Vergleich auf die ganze Zeile bräche an solchem Rauschen.
+3. **Nie ein Zeitstempel.** Und aus demselben Grund nichts anderes, was pro Lauf wechselt — PID, Port, Dauer, Hostname. Ein Marker, der bei jedem Lauf ein anderer ist, meldet jede Installation als tot und ist damit schlechter als keiner: Er erzeugt Befunde, die niemand mehr liest.
+
+**Warum dieser Schritt zwischen Repo-Bau und Register steht:** `start_event` ist ein Feld von `portfolio.json`, aber entschieden wird es am Code und nicht am Register. Wer es erst beim Eintragen erfindet, schreibt hin, was dort stehen könnte, statt was der Prozess tatsächlich ausgibt — und prüft damit ab sofort gegen die eigene Erinnerung.
+
+---
+
+## Schritt 6: Portfolio-Register nachführen [Übergabe]
 
 Nach Release (Tag `v0.1.0`) wird der Server im Portfolio-Register eingetragen. Das Register hat zwei Hälften, und nur eine davon ist normativ.
 
-### 5.1 `portfolio.json` — die normative Hälfte
+### 6.1 `portfolio.json` — die normative Hälfte
 
 Liegt im Index-Repo `swiss-public-data-mcp`, maschinenlesbar und versioniert:
 
@@ -726,12 +832,13 @@ Liegt im Index-Repo `swiss-public-data-mcp`, maschinenlesbar und versioniert:
 | `mcp_spec_version` | Spec-Ziel aus 2.4, Standard `2026-07-28` |
 | `sdk_flavour`, `sdk_constraint` | erhobene SDK-Lage, samt Pin, falls er das Spec-Ziel bestimmt |
 | `migration_wave`, `migration_status` | auch bei einem neuen Server gesetzt — ein leeres Feld liest sich in jeder Auswertung wie «noch nicht migriert» |
+| `start_event` | Marker der Startzeile aus 5.2 — `kind`, `field` (nur bei `structured`) und `match` |
 | `pypi_package` | Paketname, oder leer, wenn kein Release vorgesehen ist |
 | `requires_credentials` | bei Phase-1-Servern `false`; steht dort `true`, ist Anti-Pattern 6 zu prüfen |
 
 **Warum diese Hälfte normativ ist:** Sie liegt im Repo, also im Diff, im Review und in der CI. Ein Feld, das jemand still ändert, ist ein Commit. Ein Feld, das fehlt, ist ein roter Check. Und sie braucht kein Konto bei niemandem — wer dieses Vorgehen ausserhalb dieses Portfolios anwendet, übernimmt sie unverändert.
 
-### 5.2 Die menschenlesbare Hälfte — Darstellung, frei wählbar
+### 6.2 Die menschenlesbare Hälfte — Darstellung, frei wählbar
 
 Dieses Portfolio führt zusätzlich eine Karte in der Notion-Datenbank `aa6b672a-e5e3-4608-b4e4-b380dc735b9e`, mit Name, Cluster, Status, Datenquelle-URL, Lizenz (CC BY 4.0 / CC BY-SA 4.0 / OGD-CH / proprietary), Anchor Demo Query, Architektur (A / B / C), Spec-Ziel, GitHub-URL, PyPI-Status und Notizen zu Known Limitations.
 
@@ -802,6 +909,10 @@ Dieses Portfolio führt zusätzlich eine Karte in der Notion-Datenbank `aa6b672a
 13. **«Die Spec-Version ergibt sich aus dem SDK»** — sie ergibt sich aus einem Entscheid, den jemand trifft und begründet. Das SDK ist eine Randbedingung, kein Entscheider: Ein Pin, der `mcp` unterhalb 2.0 hält, ist ein Abweichungsgrund, den man aufschreibt — kein Zustand, in den man hineinrutscht und der später niemandem gehört. Siehe 2.4.
 14. **«Die Feldnamen stehen in der Doku»** — sie stehen auf der Leitung, und die Doku hinkt hinterher. Ein Wechsel von `Schulgemeinde` auf `schulgemeinde` legte vier von sechs Datensätzen lahm, während alle Unit-Tests grün blieben: Ihre handgeschriebenen Fixtures pinnten die alte Schreibweise. Ein Fixture wird aufgezeichnet, nicht getippt. Siehe 1.2d.
 15. **«`ttlMs` schätze ich»** — dieselbe Fehlerklasse wie die geratene Staffel, eine Ebene höher. Zu lang, und der Cache verschweigt einen ganzen Zyklus, ohne dass irgendwo ein Fehler auftaucht; zu kurz, und er greift nie, während der Verkehr bleibt. Weglassen ist keine dritte Möglichkeit: Das Feld ist in `CacheableResult` nicht optional, die Wahl steht also nur zwischen gemessen und geraten. Der Rhythmus der Quelle ist messbar, und zwar bevor gebaut wird. Siehe 1.7.
+16. **«Die Version steht im Code»** — dann steht sie zweimal, und die zweite Kopie driftet. `swiss-procurement-mcp` verschickte vierzehn Minor-Versionen zu wenig im User-Agent, ohne dass irgendwo etwas rot wurde: Beide Zahlen sahen für sich plausibel aus. Welche Version ausgeliefert wird, entscheidet der Build; der Prozess liest sie und schreibt sie nicht. Siehe 4.2.
+17. **«Ein offener Bereich hält das Paket aktuell»** — er hält es beweglich, und zwar auch dann, wenn niemand hinsieht. `swiss-energy-mcp` 0.3.3 wurde uninstallierbar, ohne dass sich am Artefakt eine Datei änderte. Ein Release ist ein Versprechen über ein Artefakt; ohne Obergrenze gilt es nur bis zur nächsten fremden Veröffentlichung. Siehe 4.3.
+18. **«Der Tag ist das Release»** — er ist eine Notiz im Git-Graphen. `publish.yml` hört auf `release: types: [published]`, und weder ein Tag noch ein Draft löst das aus. Fünf tote Installationen dieser Kampagne sind genau so entstanden: Das Repo sah ausgeliefert aus, auf PyPI lag nichts. Siehe «Nach dem Release».
+19. **«Ein grüner Probe-Lauf heisst lauffähig»** — er misst die Quelle, nicht das Artefakt. Zwischen beiden liegen Build, Auflösung und Veröffentlichung, und alle drei fallen still aus. Was ausgeliefert wurde, sagt nur ein leeres Venv. Siehe «Nach dem Release».
 
 ---
 
@@ -852,12 +963,81 @@ Vor `v0.1.0`-Tag alle folgenden Punkte abhaken:
 - [ ] Topics / Tags gesetzt
 - [ ] README bilingual (EN + DE, Schweizer Rechtschreibung)
 - [ ] CI grün (`pytest -m "not live"` + ruff)
+- [ ] **`_version.py`** liest `importlib.metadata.version()`, Fallback `0.0.0+source`; keine handgeschriebene Versionszahl irgendwo im Quelltext, und das Modul ist nicht `__init__.py` (4.2)
+- [ ] **Jede Zeile in `dependencies`** trägt Unter- und Obergrenze, und `PUBLISHING.md` nennt zu jeder Datum, aufgelöste Version und geprüften Import (4.3)
 
-**Schritt 5 – Portfolio**
-- [ ] `portfolio.json` im Index-Repo nachgeführt, alle Felder gesetzt (5.1)
-- [ ] Menschenlesbare Darstellung nachgeführt oder bewusst weggelassen — aus `portfolio.json` abgeleitet, nicht parallel gepflegt (5.2)
+**Schritt 5 – Startzeile**
+- [ ] Startzeile auf **stderr**, mit `flush=True`, vor dem Transport-Aufruf; stdout bleibt bei stdio leer (5.1)
+- [ ] **`start_event`** in `portfolio.json` eingetragen — strukturiert exakt verglichen, Klartext als Teilzeichenkette, in keinem Fall mit Zeitstempel oder anderem Pro-Lauf-Wert (5.2)
+
+**Schritt 6 – Portfolio**
+- [ ] `portfolio.json` im Index-Repo nachgeführt, alle Felder gesetzt (6.1)
+- [ ] Menschenlesbare Darstellung nachgeführt oder bewusst weggelassen — aus `portfolio.json` abgeleitet, nicht parallel gepflegt (6.2)
 - [ ] Known Limitations offen dokumentiert
 - [ ] PyPI-Veröffentlichung via OIDC Trusted Publisher
+
+---
+
+## Nach dem Release
+
+Die Checklist oben prüft den Quellbaum. Ausgeliefert wird das Artefakt, und die beiden sind nicht dasselbe: Dazwischen liegen ein Build, eine Auflösung von Abhängigkeiten und eine Veröffentlichung. Jeder der drei Schritte kann ausfallen, ohne dass im Repo etwas rot wird — das ist keine Vermutung, sondern der Befund dieser Kampagne: **fünf tote Installationen und zwei Versions-Drifts**, alle an Servern mit sauberem Probe-Lauf.
+
+Drei Prüfungen, unmittelbar nach dem Release. Die dritte ist der Reihe nach die letzte und sachlich die erste: Steht auf PyPI nichts, installiert die erste Prüfung stillschweigend die **vorige** Version und meldet grün.
+
+### Leeres Venv, Konsolen-Skript, sechs Sekunden
+
+```bash
+python3 -m venv /tmp/verify-{paket}
+/tmp/verify-{paket}/bin/pip install "{dist-name}=={version}"
+/tmp/verify-{paket}/bin/{konsolen-skript} < /dev/null > /tmp/out.log 2> /tmp/err.log &
+PID=$!
+( sleep 6; kill -0 "$PID" 2>/dev/null && kill "$PID" ) >/dev/null 2>&1
+wait "$PID"; echo "exit=$?"
+```
+
+**Die Version wird gepinnt**, nicht dem Auflöser überlassen. `pip install {dist-name}` nimmt die neueste vorhandene — und wenn das Release nicht durchlief, ist das die vorige. Sie startet, sie schreibt ihre Startzeile, sie endet mit 0: eine grüne Prüfung über ein Artefakt, das gar nicht Gegenstand der Prüfung war. Mit `=={version}` scheitert stattdessen die Installation, laut und an der richtigen Stelle.
+
+**Leer heisst leer:** kein `pip install -e .`, kein `PYTHONPATH`, kein Venv, in dem schon einmal etwas gebaut wurde. Der Sinn der Übung ist, dass nichts aus dem Quellbaum einen Ausfall überdeckt. Aus dem Quellbaum startet auch ein Paket, dessen `pyproject.toml` die Hälfte seiner Module nicht einpackt.
+
+**Geschlossenes stdin**, weil ein stdio-Server damit sein reguläres Ende erreicht: EOF, sauberer Exit 0. Gezählt wird nicht die Lebensdauer, sondern:
+
+- die Startzeile aus 5.1 steht in `err.log`,
+- `out.log` ist leer — bei stdio-Transport gehört dort nichts hin, was kein Frame ist,
+- Exit 0, und keine Traceback-Zeile davor.
+
+**Sechs Sekunden**, weil das die ersten zwei Sprossen der Retry-Leiter aus 3.1 sind (2 s + 4 s). Ein Startpfad, der die Quelle anfasst und dabei in den Retry läuft, hat innerhalb dieses Fensters entschieden. Ein Import-Fehler dagegen ist in unter einer Sekunde da — wer nur eine Sekunde wartet, sieht den ersten Fall und hält den zweiten für gesund.
+
+### Version des Artefakts gegen `main`
+
+```bash
+/tmp/verify-{paket}/bin/python -c \
+  "import importlib.metadata as m; print(m.version('{dist-name}'))"
+```
+
+Gegen die Version in `pyproject.toml` auf `main` halten. Weichen sie ab, ist genau eine von zwei Aussagen wahr, und beide gehören aufgeschrieben statt weggeklickt:
+
+- **`main` ist weiter.** Das Release ist älter als der Stand, gegen den zuletzt getestet wurde. Wer das Repo liest, liest etwas anderes, als wer das Paket installiert.
+- **Das Artefakt ist weiter.** Ein Release ist an `main` vorbeigegangen. Der schlimmere Fall: Die Quelle dessen, was ausgeliefert wurde, ist nicht mehr auffindbar.
+
+Steht dort `0.0.0+source`, hat das Konsolen-Skript nicht das installierte Paket erwischt, sondern einen Quellbaum im Suchpfad — dann war das Venv nicht leer, und die ganze Prüfung ist ungültig, nicht bloss dieser Punkt.
+
+### Ein Tag veröffentlicht nichts
+
+`publish.yml` löst auf `release: types: [published]` aus, nicht auf `push: tags`. Ein Tag ist eine Notiz im Git-Graphen; er ruft keinen Workflow, der auf Releases hört. Danach sieht das Repo exakt so aus wie eines, das ausgeliefert hat — Tag da, CHANGELOG-Abschnitt da, Badge grün — und auf PyPI liegt nichts. **Genau so sind die fünf toten Installationen dieser Kampagne entstanden.** Niemand hat etwas falsch gemacht; alle haben aufgehört, wo es fertig aussah.
+
+Nach dem Tag deshalb, in dieser Reihenfolge:
+
+1. **GitHub-Release veröffentlichen**, nicht als Draft speichern. Ein Draft feuert `published` ebenfalls nicht — es ist derselbe Fehler mit einem Klick mehr.
+2. **Den Workflow-Lauf ansehen.** «Kein Lauf» ist der häufigste Befund und sieht aus wie nichts: Die Actions-Seite zeigt dann die vorige Zeile, nicht eine rote.
+3. **Auf PyPI nachsehen**, dass die Version dort steht — und erst dann die beiden Prüfungen oben fahren.
+
+**Checklist nach dem Release**
+- [ ] Release veröffentlicht (nicht Draft), Lauf von `publish.yml` existiert und ist grün
+- [ ] Version auf PyPI sichtbar
+- [ ] Paket mit `=={version}` in ein frisches, leeres Venv installiert
+- [ ] Konsolen-Skript gestartet, sechs Sekunden mit geschlossenem stdin beobachtet: Startzeile auf stderr, stdout leer, Exit 0, kein Traceback
+- [ ] `importlib.metadata.version()` des installierten Artefakts gegen `pyproject.toml` auf `main` verglichen, Abweichung erklärt
+- [ ] `pip freeze` des Venvs in die Tabelle in `PUBLISHING.md` übernommen, mit Datum (4.3)
 
 ---
 
@@ -896,6 +1076,20 @@ Zwei Dinge daran sind übertragbar:
 **Metapher:** *«Eine Prozentstaffel ist ein Dietrich, der nach Gefühl gefeilt wurde — er passt in jedes Schloss ausser in das, vor dem man steht.»*
 
 Kodifiziert in 1.5.
+
+### Fundstück: fünf tote Installationen (2026-08)
+
+Eine Kampagne über das Portfolio fand **fünf Server, deren veröffentlichtes Paket sich nicht starten liess oder gar nicht existierte**, und **zwei, deren ausgelieferte Version eine andere war als die im Repo**. Alle sieben hatten einen sauberen Probe-Lauf hinter sich, und keiner hatte je gemeldet, dass etwas fehlt.
+
+Drei Dinge daran sind übertragbar:
+
+1. **Die Checkliste endete an der falschen Stelle.** Sie prüfte den Quellbaum vollständig und das Artefakt gar nicht — dabei ist das Artefakt das, was jemand installiert. Zwischen beiden liegen Build, Auflösung und Veröffentlichung, und alle drei fallen aus, ohne etwas rot zu machen. Es fehlte keine Regel für das Bauen, sondern eine Prüfung nach dem Ausliefern.
+2. **Der häufigste Ausfall sah aus wie Erfolg.** Ein Tag ohne veröffentlichtes Release hinterlässt ein Repo, das ausgeliefert aussieht. Kein Fehler, keine rote Zeile, kein Lauf — die Actions-Seite zeigt einfach die vorige. Fehlschläge, die als leere Menge auftreten, sind dieselbe Fehlerklasse wie die leere API-Antwort aus 1.2c: Beide melden nichts und werden als «nichts los» gelesen.
+3. **Die Drifts liessen sich nicht am Code sehen.** Eine Versionszahl im Quelltext ist plausibel, und die installierte Version ist plausibel; erst nebeneinander gehalten sind sie ein Befund. Deshalb steht der Vergleich als eigener Punkt in «Nach dem Release» und nicht als Nebensatz.
+
+**Metapher:** *«Ein Tag ohne Release ist eine Adresse an einem Haus, das nie gebaut wurde — der Brief kommt zurück, aber erst Wochen später und ohne Absender.»*
+
+Kodifiziert in 4.2, 4.3, Schritt 5 und «Nach dem Release».
 
 **Querverweis:** Als Audit-Checks kodifiziert in `mcp-audit` unter `FID-001` bis `FID-005`. Wer diesen Skill korrekt anwendet, besteht sie; wer sie beim Audit reisst, findet hier das Vorgehen zur Behebung.
 
