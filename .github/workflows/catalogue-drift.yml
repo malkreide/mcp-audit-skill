@@ -1,5 +1,19 @@
-# Katalog-Drift: haelt die Zuordnungstabelle in SKILL.md gegen den echten
-# Katalog von mcp-audit-skill.
+# Der Wochenplan: zwei Waechter ueber Dinge, die veralten, ohne dass hier
+# jemand etwas aendert.
+#
+#   drift        — die Zuordnungstabelle in SKILL.md gegen den echten Katalog
+#                  von mcp-audit-skill (Pruefung 14)
+#   description  — die GitHub-Repo-Description gegen die Zahl der Regeln in
+#                  SKILL.md (Pruefung 15)
+#
+# ZUM DATEINAMEN: Er ist enger als der Inhalt geworden. Er bleibt trotzdem,
+# weil zwei Befundtexte namentlich auf ihn zeigen (tools/checks/catalogue.py
+# und tools/checks/repo_metadata.py) und ein umbenannter Workflow seine
+# Lauf-Historie verliert. Wer ihn umbenennt, zieht beide Stellen mit.
+#
+# ZWEI JOBS UND NICHT ZWEI SCHRITTE: Sie sind voneinander unabhaengig, und ein
+# Netzaussetzer bei der einen Quelle soll die andere nicht mitnehmen. Ein roter
+# Lauf soll sagen, WELCHE der beiden Aussenwelten sich bewegt hat.
 #
 # WARUM NICHT IM PR-LAUF. Pruefung 6 prueft, was ohne Netz pruefbar ist: dass
 # jede Regel eine Zeile hat. Was sie strukturell NICHT kann, ist der
@@ -72,3 +86,48 @@ jobs:
           PYTHONUTF8: "1"
           CATALOGUE_MANIFEST: ${{ runner.temp }}/MANIFEST.txt
         run: python -m tools.checks --include-context-bound 14
+
+  # Die Repo-Description ist die fuenfte Stelle, die die Zahl der Regeln nennt
+  # — und die einzige, die KEIN Commit aendert. Genau deshalb kann der PR-Lauf
+  # sie nicht bewachen: Er sieht die Aenderung nie und meldete «bestanden».
+  # Die Begruendung steht ausfuehrlich in tools/checks/repo_metadata.py.
+  description:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Wie oben: NICHT ERREICHBAR ist nicht dasselbe wie ABGEWICHEN, und der
+      # Abruf steht im Workflow, damit die Pruefung selbst gegen einen
+      # Fixture-Baum laufen kann.
+      #
+      # Mit Token, nicht anonym: Anonyme API-Aufrufe teilen sich ein Kontingent
+      # pro Runner-IP. Ein Fehlschlag daraus waere ein roter Lauf ohne Befund
+      # — die Sorte Meldung, die man nach dem zweiten Mal ignoriert.
+      - name: Repo-Metadaten abrufen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          API: https://api.github.com/repos/${{ github.repository }}
+        run: |
+          curl -sS -f --retry 3 --retry-delay 5 --retry-all-errors \
+               --max-time 30 \
+               -H "Accept: application/vnd.github+json" \
+               -H "Authorization: Bearer $GH_TOKEN" \
+               -H "X-GitHub-Api-Version: 2022-11-28" \
+               -o "$RUNNER_TEMP/repo.json" "$API" || {
+            echo "::error::NICHT ERREICHBAR (kein Drift-Befund): $API nach 3 Versuchen. Die Description ist damit ungeprueft, nicht falsch."
+            exit 1
+          }
+          echo "ok — Repo-Metadaten abgerufen ($(wc -c < "$RUNNER_TEMP/repo.json") Bytes)"
+
+      # Pruefung 15. Der Befund nennt den Handgriff im Browser und keine Datei:
+      # Die Description liegt in den Metadaten, kein Commit behebt sie.
+      - name: The GitHub repo description names the same rule count as SKILL.md
+        env:
+          PYTHONUTF8: "1"
+          REPO_METADATA: ${{ runner.temp }}/repo.json
+        run: python -m tools.checks --include-context-bound 15

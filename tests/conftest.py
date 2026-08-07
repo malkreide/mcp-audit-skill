@@ -14,6 +14,7 @@ Kopie den echten Baum nicht verloren hat.
 
 from __future__ import annotations
 
+import json
 import shutil
 import string
 import subprocess
@@ -30,7 +31,8 @@ from tools.checks.catalogue import (
 )
 from tools.checks.readmes import top_release
 from tools.checks.release import TAG_ENV
-from tools.checks.skill_doc import read_skill
+from tools.checks.repo_metadata import METADATA_ENV
+from tools.checks.skill_doc import ENGLISH_NUMBERS, read_skill, rule_count
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -87,6 +89,37 @@ def synthetic_manifest(skill: str) -> list[str]:
     return ids
 
 
+def synthetic_metadata(skill: str) -> str:
+    """Eine Repo-Description, die zu dem passt, was SKILL.md behauptet.
+
+    Dieselbe Grenze wie bei `synthetic_manifest`, und sie ist hier noch
+    schärfer: Es beweist, dass Prüfung 15 eine stimmige Description
+    durchlässt — **nicht**, dass die echte stimmt. Die echte liegt in den
+    GitHub-Metadaten und lässt sich von hier aus prinzipiell nicht lesen, ohne
+    ins Netz zu greifen; genau dafür gibt es den Wochenplan.
+
+    Ein eingefrorener Schnappschuss der echten Description wäre die Alternative
+    gewesen. Dagegen spricht dasselbe wie drüben: Er veraltete beim nächsten
+    Umformulieren, und die Suite würde aus einem Grund rot, der mit dem Commit
+    nichts zu tun hat.
+    """
+    words = {value: key for key, value in ENGLISH_NUMBERS.items()}
+    count = rule_count(skill)
+    if count not in words:  # pragma: no cover — Prüfung 5 fängt das zuerst
+        raise AssertionError(
+            f"SKILL.md definiert {count} Regeln, und ENGLISH_NUMBERS kennt kein "
+            "Zahlwort dafür — tools/checks/skill_doc.py ergänzen"
+        )
+    return json.dumps(
+        {
+            "description": (
+                f"Claude Skill with {words[count]} data-fidelity rules for MCP "
+                "tools that query an external data source"
+            )
+        }
+    )
+
+
 def _working_tree_files(root: Path) -> list[str]:
     """Alles, was ein Commit von hier aus mitnähme.
 
@@ -133,6 +166,10 @@ def pristine_repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
     (root / "manifest.txt").write_text(
         "\n".join(synthetic_manifest(read_skill(root))) + "\n", encoding="utf-8"
     )
+    # Prüfung 15 die abgelegte Antwort der Repo-API.
+    (root / "repo-metadata.json").write_text(
+        synthetic_metadata(read_skill(root)) + "\n", encoding="utf-8"
+    )
     return root
 
 
@@ -146,6 +183,7 @@ def fixture_repo(
     root = tmp_path / "repo"
     shutil.copytree(pristine_repo, root)
     monkeypatch.setenv(MANIFEST_ENV, str(root / "manifest.txt"))
+    monkeypatch.setenv(METADATA_ENV, str(root / "repo-metadata.json"))
     # Prüfung 13 braucht einen Tag-Kontext. Der gute Fall ist der Tag, den ein
     # Release dieses Standes tragen müsste.
     monkeypatch.setenv(TAG_ENV, f"v{top_release(root)[2]}")

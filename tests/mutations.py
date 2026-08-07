@@ -34,6 +34,7 @@ from pathlib import Path
 
 PATTERNS = "reference/patterns.py"
 MANIFEST = "manifest.txt"
+METADATA = "repo-metadata.json"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -503,5 +504,58 @@ MUTATIONS: list[Mutation] = [
             "SKILL.md", "### Welche Regel welcher Check ist", "### Regel und Check"
         ),
         "nicht gefunden",
+    ),
+    # 15 — die Repo-Description nennt dieselbe Regelzahl wie SKILL.md
+    #
+    # Sieben Mutationen für sechs Zweige plus den Dateifall. Der Grund für die
+    # Dichte ist, dass diese Prüfung als einzige einen Gegenstand hat, den kein
+    # Commit ändert: Ein Befund, der auf die falsche Ursache zeigt, schickt
+    # jemanden in den Browser, der in eine Datei gehört hätte — oder umgekehrt.
+    Mutation(
+        15,
+        "abgelegte API-Antwort fehlt",
+        remove(METADATA),
+        "dort liegt keine Datei",
+    ),
+    Mutation(
+        15,
+        "kein JSON abgelegt",
+        write(METADATA, "<html>rate limit exceeded</html>\n"),
+        "ist kein JSON",
+    ),
+    Mutation(
+        15,
+        "Antwort ohne 'description'",
+        write(METADATA, '{"full_name": "malkreide/mcp-data-fidelity-skill"}\n'),
+        "führt kein 'description'",
+    ),
+    Mutation(
+        15,
+        "Description leer",
+        write(METADATA, '{"description": null}\n'),
+        "Repo-Description ist leer",
+    ),
+    Mutation(
+        15,
+        "Description umformuliert, Anker weg",
+        write(METADATA, '{"description": "Claude Skill for MCP tool authors"}\n'),
+        "nennt keine '<Zahlwort> data-fidelity rules'",
+    ),
+    Mutation(
+        15,
+        "Zahlwort, das die Prüfung nicht kennt",
+        write(
+            METADATA,
+            '{"description": "Skill with thirteen data-fidelity rules"}\n',
+        ),
+        "ENGLISH_NUMBERS",
+    ),
+    Mutation(
+        15,
+        # Der eigentliche Anlass: Regel 11 und 12 kamen dazu, die Description
+        # blieb auf «ten» stehen, und nichts wurde rot.
+        "Description nach einer neuen Regel nicht nachgezogen",
+        write(METADATA, '{"description": "Skill with ten data-fidelity rules"}\n'),
+        "DRIFT — die Repo-Description ist gegenüber SKILL.md veraltet",
     ),
 ]
