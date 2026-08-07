@@ -18,6 +18,7 @@ besteht darauf — und einen Eintrag im CHANGELOG.
 """
 
 from . import (
+    adoption,
     github_meta,
     hygiene,
     readmes,
@@ -40,6 +41,7 @@ __all__ = [
     "Check",
     "CheckFailed",
     "Result",
+    "adoption",
     "all_checks",
     "github_meta",
     "hygiene",
