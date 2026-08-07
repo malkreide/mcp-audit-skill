@@ -6,6 +6,26 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `DRIFT-007`: die Schreibweise eines Feldnamens ist Teil des Vertrags
+
+**Ein neuer Check** (`DRIFT-007`, `high`, **`advisory`**, `tools_make_external_requests == true`) — der Katalog wächst von 116 auf **117 in zwölf Kategorien**, 22 davon `advisory`.
+
+**Der Befund** (`zh-education-mcp` / BISTA, 2026-08-03): Eine Quelle wechselte die Schreibweise ihrer CSV-Kopfzeile von `Schulgemeinde` auf `schulgemeinde`. Der Code hatte die Grossschreibung fest verdrahtet, fand danach nichts mehr und meldete «nicht gefunden» — vier von sechs Datensätzen, acht Tools, **alle Unit-Tests grün**. Ein Ausfall, der wie eine Antwort aussieht.
+
+Und die Schreibweise ist nicht einmal einheitlich: Am selben Tag lieferten vier der sechs genutzten Endpunkte derselben Quelle klein, zwei gross, und zwei mischten **innerhalb einer einzigen Kopfzeile**. Das ist der Grund, warum «auf die neue Schreibweise umstellen» keine Behebung ist — es ist dieselbe feste Verdrahtung in die andere Richtung.
+
+**§2.5 durchlaufen, und Frage 2 war hier die schwierige.**
+
+1. *Gibt es den Check schon?* Nein. Kein Check nannte Feldnamen. `DRIFT-004` prüft Endpoint-**Konstanten** live — eine Ebene darüber: Ein Endpoint kann erreichbar und richtig sein und trotzdem andere Feldnamen liefern als gestern.
+2. *Prüft ein vorhandener Check die richtige Sache am falschen Umfang?* `FID-006` ist der ernsthafte Kandidat, und er ist näher dran, als die Suche nach «Feldname» zeigt: Sein Kriterium «die vom Code **gelesenen** Felder werden auf dem ersten Eintrag bestätigt» plus «mindestens ein Test gegen die **echte** Antwort» **fängt den Belegfall**. Trotzdem ein eigener Check, weil die **Behebung** eine andere ist. `FID-006` sorgt dafür, dass der Ausfall auffällt; auf einer Quelle, die pro Endpunkt anders schreibt, ist strenge Bestätigung aber die falsche Antwort — sie ergäbe sechs korrekte Prüfungen, die beim nächsten Wechsel genauso laut scheitern wie vorher leise. Die Normalisierung an der Parse-Grenze verhindert den Ausfall, statt ihn zu melden. Sie in `FID-006` aufzunehmen hiesse, dessen Pass-Criteria ein `oder` zu geben, das mit «Struktur bestätigen, bevor gezählt wird» nichts zu tun hat — genau das Signal, das §2.5 als Grenze zum neuen Check nennt.
+3. *Eigene Dimension?* Ja: **Unempfindlichkeit gegen eine Vertragsänderung**, nicht ihre Entdeckung. Die Abgrenzung zu `FID-006`, `DRIFT-004` und `IDENT-001` steht als eigener Absatz im Check, damit ein Server für eine Ursache nicht zwei Findings erzeugt.
+
+**Adoptionsstufe `advisory` nach §2.3, und der Durchlauf steht dahinter.** Über 43 Portfolio-Repos lesen **acht** CSV; **sieben davon** verdrahten die Schreibweise der Kopfzeile fest, genau einer normalisiert sie (`zh-education-mcp`, nach dem Vorfall). `enforced` auf `high` am Merge-Tag hiesse sieben von acht rot für eine Eigenschaft, nach der nie jemand gefragt hat — die Form, gegen die §2.3 existiert. Er verlässt `advisory` nach dem Durchlauf, der zeigt, wie oft Pass-Weg B (bestätigen statt normalisieren) die ehrliche Antwort ist und wie oft die Ausrede.
+
+**Re-Audit-Auslöser nach §5: feuert nicht.** Punkt 4, nicht Punkt 5 — «ein neuer Check ist ein neuer Vertrag». Die vier Fälle a–d setzen alle eine Änderung an einem **bestehenden** Check voraus; `FID-006` bleibt unverändert.
+
+**Gegenprobe geführt**, drei Mutationen, jede schlägt an: `adoption: enforced` statt `advisory` (5 Tests fallen), Check-Datei entfernt (24 Tests fallen), `DRIFT-007` aus dem Advisory-Satz beider READMEs gestrichen (2 Tests fallen).
+
 ### Geändert — Die Kettentabelle nannte den Transport-Skill zwei Releases zu alt
 
 `SKILL.md` führte [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) als «v2.0.0, zwölf Regeln». Dort steht inzwischen **v2.2.0 mit dreizehn**: Regel 13 («Ein Guard prüft nicht, was vor ihm abgezweigt wurde») ist dazugekommen, und drei bestehende Regeln haben gelernt.

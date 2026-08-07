@@ -163,6 +163,14 @@ class TestRealCatalogUnchanged:
         # right to block; advisory until a portfolio run says how often the
         # shape occurs and how often the double measurement disagrees with a
         # single run.
+        # DRIFT-007 (unreleased) takes the ordinary bridge. The portfolio run
+        # behind it is the reason: of the eight servers that read CSV, seven
+        # hardcode the header spelling and one normalises it. Enforced at
+        # `high` on merge day would fail seven of eight for a property none of
+        # them was ever asked to have — the exact shape §2.3 exists to prevent.
+        # Advisory until a run says whether the normalisation criterion is cut
+        # correctly, in particular how often pass-pattern B (confirm instead of
+        # normalise) is the honest answer rather than an excuse.
         assert advisory_ids(parse_catalog(CHECKS_DIR)) == [
             "ARCH-015",
             "ARCH-016",
@@ -172,6 +180,7 @@ class TestRealCatalogUnchanged:
             "ARCH-020",
             "ARCH-021",
             "ARCH-022",
+            "DRIFT-007",
             "FID-006",
             "HITL-006",
             "OBS-008",
@@ -333,6 +342,10 @@ class TestReadmesNameTheAdvisorySet:
             19: ("nineteen", "neunzehn"),
             20: ("twenty", "zwanzig"),
             21: ("twenty-one", "einundzwanzig"),
+            22: ("twenty-two", "zweiundzwanzig"),
+            23: ("twenty-three", "dreiundzwanzig"),
+            24: ("twenty-four", "vierundzwanzig"),
+            25: ("twenty-five", "fünfundzwanzig"),
         }
         assert expected in words, (
             f"{expected} advisory checks — extend the number words in this test"
