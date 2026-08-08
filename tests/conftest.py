@@ -26,6 +26,7 @@ from tools.checks.catalogue import (
     ADOPTION_CLAIM,
     CHECK_ID,
     CHECKS_DIR_ENV,
+    COMMIT_ENV,
     GERMAN_NUMBERS,
     LINKED,
     MANIFEST_ENV,
@@ -219,6 +220,9 @@ def fixture_repo(
     shutil.copytree(pristine_repo, root)
     monkeypatch.setenv(MANIFEST_ENV, str(root / "manifest.txt"))
     monkeypatch.setenv(CHECKS_DIR_ENV, str(root / "catalogue-checks"))
+    # Der Commit, an dem der Katalog hing. Im Fixture-Baum gibt es keinen
+    # echten — ein Platzhalter genügt, weil die Prüfung ihn nur mitführt.
+    monkeypatch.setenv(COMMIT_ENV, "0" * 40)
     monkeypatch.setenv(METADATA_ENV, str(root / "repo-metadata.json"))
     # Prüfung 13 braucht einen Tag-Kontext. Der gute Fall ist der Tag, den ein
     # Release dieses Standes tragen müsste.

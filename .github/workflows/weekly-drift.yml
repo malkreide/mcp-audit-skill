@@ -74,33 +74,51 @@ jobs:
       # braucht, um ueberhaupt zu starten, laesst sich nicht gegen einen
       # Fixture-Baum fahren — und dann bliebe ausgerechnet die logikreichste
       # Pruefung des Repos ungetestet.
-      # EIN ARCHIV, NICHT ZWEI ABRUFE. Die Pruefung braucht zweierlei: die
-      # Liste der IDs (MANIFEST.txt) und die Einstufung jedes verlinkten
-      # Checks, die im Frontmatter seiner Datei steht. Beides aus demselben
-      # Tarball zu nehmen ist nicht nur sparsamer als 120 Einzelabrufe — es
-      # beseitigt ein Rennen: Zwei getrennte Abrufe koennen ein Release
-      # auseinanderliegen, und der Befund beschriebe dann einen Katalog, den
-      # es nie gegeben hat.
+      #
+      # ALLES AN EINEM COMMIT. Die Pruefung braucht zweierlei: die Liste der
+      # IDs (MANIFEST.txt) und die Einstufung jedes verlinkten Checks, die im
+      # Frontmatter seiner Datei steht.
+      #
+      # Zuerst der SHA, dann alles daran gepinnt. Zwei Abrufe von `main`
+      # koennen ein Release auseinanderliegen, und der Befund beschriebe dann
+      # einen Katalog, den es nie gegeben hat. Der SHA geht ausserdem in die
+      # Pruefung und von dort ins Ergebnis: Ein Befund, der nicht sagt, woran
+      # er gemessen hat, laesst sich spaeter nicht nachstellen.
+      #
+      # Geholt werden nur die VERLINKTEN Checks, nicht alle 120. Welche das
+      # sind, sagt scripts/linked_checks.py — mit demselben Regex, den die
+      # Pruefung benutzt. Eine zweite, hier in YAML nachgebaute Liste liefe
+      # auseinander, ohne dass etwas rot wuerde.
       - name: Katalog abrufen
         env:
-          ARCHIVE: https://codeload.github.com/malkreide/mcp-audit-skill/tar.gz/refs/heads/main
+          REMOTE: https://github.com/malkreide/mcp-audit-skill
+          RAW: https://raw.githubusercontent.com/malkreide/mcp-audit-skill
         run: |
-          curl -sS -f --retry 3 --retry-delay 5 --retry-all-errors \
-               --max-time 60 -o "$RUNNER_TEMP/catalogue.tar.gz" "$ARCHIVE" || {
-            echo "::error::NICHT ERREICHBAR (kein Drift-Befund): $ARCHIVE nach 3 Versuchen. Wenn der Baum drueben umgezogen ist, gehoert die URL hier und in tools/checks/catalogue.py nachgezogen; die Tabelle ist damit ungeprueft, nicht falsch."
+          SHA=$(git ls-remote "$REMOTE" main | cut -f1)
+          test -n "$SHA" || {
+            echo "::error::NICHT ERREICHBAR (kein Drift-Befund): $REMOTE nennt keinen Commit fuer main. Wenn der Standardzweig drueben umbenannt wurde, gehoert er hier nachgezogen; die Tabelle ist damit ungeprueft, nicht falsch."
             exit 1
           }
+          echo "CATALOGUE_COMMIT=$SHA" >> "$GITHUB_ENV"
+
           mkdir -p "$RUNNER_TEMP/checks"
-          tar -xzf "$RUNNER_TEMP/catalogue.tar.gz" -C "$RUNNER_TEMP/checks" \
-              --strip-components=2 --wildcards '*/checks/*' || {
-            echo "::error::NICHT ERREICHBAR (kein Drift-Befund): Das Archiv enthaelt kein checks/-Verzeichnis. Layout drueben geaendert; die Tabelle ist damit ungeprueft, nicht falsch."
-            exit 1
+          fetch() {
+            curl -sS -f --retry 3 --retry-delay 5 --retry-all-errors \
+                 --max-time 30 -o "$2" "$RAW/$SHA/checks/$1" || {
+              echo "::error::NICHT ERREICHBAR (kein Drift-Befund): checks/$1 bei $SHA nach 3 Versuchen. Die Tabelle ist damit ungeprueft, nicht falsch."
+              exit 1
+            }
           }
-          test -f "$RUNNER_TEMP/checks/MANIFEST.txt" || {
-            echo "::error::NICHT ERREICHBAR (kein Drift-Befund): checks/MANIFEST.txt fehlt im Archiv."
-            exit 1
-          }
-          echo "ok — Katalog abgerufen ($(wc -l < "$RUNNER_TEMP/checks/MANIFEST.txt") IDs, $(ls "$RUNNER_TEMP/checks"/*.md | wc -l) Check-Dateien)"
+          fetch MANIFEST.txt "$RUNNER_TEMP/checks/MANIFEST.txt"
+
+          # Faellt dieses Skript aus, ist die Liste leer — und ein Lauf ueber
+          # null Dateien meldete danach «Einstufung stimmt fuer alle 0».
+          # Deshalb exitet es selbst nicht-null, wenn es nichts findet.
+          LINKED=$(python scripts/linked_checks.py) || exit 1
+          for ID in $LINKED; do
+            fetch "$ID.md" "$RUNNER_TEMP/checks/$ID.md"
+          done
+          echo "ok — Katalog bei $SHA abgerufen ($(wc -l < "$RUNNER_TEMP/checks/MANIFEST.txt") IDs, $(echo "$LINKED" | wc -w) verlinkte Check-Dateien)"
 
       # Pruefung 14. Die Logik steht in tools/checks/catalogue.py und wird von
       # tests/ gegen Fixture-Baeume gefahren — einschliesslich des Falls, an dem
@@ -112,6 +130,7 @@ jobs:
           PYTHONUTF8: "1"
           CATALOGUE_MANIFEST: ${{ runner.temp }}/checks/MANIFEST.txt
           CATALOGUE_CHECKS_DIR: ${{ runner.temp }}/checks
+          CATALOGUE_COMMIT: ${{ env.CATALOGUE_COMMIT }}
         run: python -m tools.checks --include-context-bound 14
 
   # Die Repo-Description ist die fuenfte Stelle, die die Zahl der Regeln nennt

@@ -39,9 +39,12 @@ existierte. Eine Einstufung ist kein Zählwert — sie sagt, ob ein Verstoss
 blockiert, und das ist die Aussage, auf die jemand seinen Build stützt.
 
 Dass die Einstufung im Frontmatter der Check-Dateien steht und nicht im
-Manifest, ist der Grund für den Tarball-Abruf im Workflow: ein Archiv statt
-120 Einzelabrufe, und Manifest wie Check-Dateien zwingend aus demselben
-Commit.
+Manifest, ist der Grund, warum der Workflow mehr holt als eine Datei. Er holt
+aber nicht 120, sondern die 13 **verlinkten** — welche das sind, sagt ihm
+`scripts/linked_checks.py` mit demselben Regex, den diese Prüfung benutzt.
+Alles hängt dabei an einem gepinnten Commit, den `$CATALOGUE_COMMIT` nennt und
+das Ergebnis mitführt: Eine Messung, die nicht sagt, woran sie gemessen hat,
+ist der Zustand, gegen den dieses Repository geschrieben ist.
 """
 
 from __future__ import annotations
@@ -60,16 +63,16 @@ MANIFEST_URL = "https://raw.githubusercontent.com/malkreide/mcp-audit-skill/main
 # Frontmatter jeder Check-Datei, und deshalb braucht diese Prüfung die Dateien
 # selbst.
 #
-# EIN ARCHIV STATT 120 ABRUFE. Der Wochenplan holt den Baum einmal als Tarball
-# und legt `checks/` ab. Das ist ein Abruf statt einer Schleife — und es
-# beseitigt ein Rennen, das die getrennten Abrufe hatten: Manifest und
-# Check-Dateien stammen jetzt zwingend aus demselben Commit. Vorher konnte
-# zwischen beiden ein Release liegen, und der Befund hätte einen Katalog
-# beschrieben, den es nie gab.
+# NUR DIE VERLINKTEN, UND ALLE AUS DEMSELBEN COMMIT. Der Wochenplan ermittelt
+# erst den Commit von `main` (`git ls-remote`) und holt dann Manifest und die
+# 13 verlinkten Check-Dateien **an diesem SHA**. Zwei Abrufe von `main` könnten
+# ein Release auseinanderliegen — der Befund beschriebe dann einen Katalog, den
+# es nie gegeben hat. Ein gepinnter SHA schliesst das aus und macht den Lauf
+# ausserdem nachvollziehbar: Die Prüfung nennt ihn im Ergebnis.
 CHECKS_DIR_ENV = "CATALOGUE_CHECKS_DIR"
-CHECKS_URL = (
-    "https://codeload.github.com/malkreide/mcp-audit-skill/tar.gz/refs/heads/main"
-)
+COMMIT_ENV = "CATALOGUE_COMMIT"
+REMOTE_URL = "https://github.com/malkreide/mcp-audit-skill"
+RAW_BASE = "https://raw.githubusercontent.com/malkreide/mcp-audit-skill"
 
 CHECK_ID = re.compile(r"[A-Z]{2,6}-\d{3}")
 LINKED = re.compile(r"/checks/([A-Z]{2,6}-\d{3})\.md")
@@ -376,7 +379,7 @@ def catalogue_drift(root: Path) -> str:
         raise CheckFailed(
             f"${CHECKS_DIR_ENV} ist nicht gesetzt — ohne die Check-Dateien "
             "bleibt die Einstufung (`enforced`/`advisory`) ungeprüft. Der "
-            f"Abruf steht in .github/workflows/weekly-drift.yml ({CHECKS_URL}). "
+            f"Abruf steht in .github/workflows/weekly-drift.yml ({RAW_BASE}). "
             "FAIL statt der halben Prüfung: Eine Prüfung, die stillschweigend "
             "weniger prüft als ihr Name sagt, meldet «bestanden» für etwas, "
             "das sie nicht angesehen hat."
@@ -387,10 +390,20 @@ def catalogue_drift(root: Path) -> str:
             f"${CHECKS_DIR_ENV} zeigt auf {raw_dir}, dort liegt kein Verzeichnis"
         )
 
+    commit = os.environ.get(COMMIT_ENV)
+    if not commit:
+        raise CheckFailed(
+            f"${COMMIT_ENV} ist nicht gesetzt — dann steht im Ergebnis nicht, "
+            "gegen welchen Stand gemessen wurde, und der Befund liesse sich "
+            "später nicht nachstellen. Der Workflow ermittelt ihn mit "
+            f"`git ls-remote {REMOTE_URL} main`."
+        )
+
     skill = read_skill(root)
     linked = set(LINKED.findall(table_section(skill)))
-    return assert_table_matches(
+    verdict = assert_table_matches(
         parse_manifest(path.read_text(encoding="utf-8")),
         skill,
         read_adoption(checks_dir, linked),
     )
+    return f"{verdict}; gemessen an {commit[:12]}"
