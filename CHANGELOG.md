@@ -242,10 +242,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dahinter sind wertlos», grüne Tests mit rotem Check heissen «der Baum ist
   kaputt».
 
-  **Nicht mitgenommen:** die beiden reinen Shell-Schritte (Ruff-Pin-Sync,
-  Ruff-Version). Ihre Begründung — ein eigenes Modul wäre unverhältnismässig —
-  wird durch ein vorhandenes Paket zwar schwächer, aber das ist eine eigene
-  Abwägung und gehört nicht in dieselbe Änderung.
+  **Zunächst nicht mitgenommen:** die beiden reinen Shell-Schritte
+  (Ruff-Pin-Sync, Ruff-Version). Inzwischen nachgeholt — siehe den Eintrag
+  «Auch die beiden Ruff-Gates sind Skripte» weiter unten.
 
   **Nebenbefund beim Bau der Mutationen:** `chain_table.py` verglich per
   Teilzeichenkette. Behoben im Eintrag «Kettentabelle vergleicht auf
@@ -307,6 +306,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Klammern, Schrägstriche und Punkte beenden den Namen sauber.
 
   Die Testsuite wächst damit von 34 auf **41** Tests.
+
+- **Auch die beiden Ruff-Gates sind Skripte** — `ci.yml` enthält damit keine
+  Prüflogik mehr, weder als Heredoc noch als Shell.
+
+  Beide Schritte trugen bis hierher eine ausdrückliche Gegenbegründung: «Reine
+  Shell statt eines Python-Skripts: in einem Repo, dessen einziger Python-Code
+  Vorlagen sind, wäre ein eigenes Modul samt Tests unverhältnismässig.» Die
+  war richtig, als sie geschrieben wurde. Mit `ci/checks/` und einer Testsuite
+  ist sie hinfällig — sie wird deshalb entfernt und nicht stehengelassen.
+
+  Neu: `ruff_pin_sync.py`, `ruff_version.py` und `_ruff_pin.py`. Das dritte
+  ist der Grund, warum die Auslagerung hier mehr ist als ein Umzug: **Beide
+  Gates lesen denselben Anker** (`ruff==<version>` in `ci.yml`). Als Shell
+  stand der `sed`-Ausdruck dafür **zweimal** wörtlich da — zwei Stellen, die
+  auseinanderlaufen können, in ausgerechnet den zwei Checks, die es gibt, weil
+  zwei Stellen auseinanderlaufen können. Jetzt gibt es einen Leser.
+
+  **Verhaltensvergleich gegen die Shell-Fassung**, vor der Umstellung
+  gefahren. `ruff_pin_sync`: Happy-Path und drei Fehlerfälle (Pin weg, `rev`
+  weg, Pins divergent) — Ausgabe und Exit-Code **byte-identisch**.
+  `ruff_version` mit untergeschobener `ruff`: fünf Fälle, Exit-Codes gleich,
+  Meldungen wortgleich (die Mismatch-Meldung eigens gegen den Originaltext aus
+  `ci.yml` diffed).
+
+  **Was jetzt erst prüfbar ist.** `ruff_version` urteilt über den PATH, nicht
+  über den Baum — als Inline-Shell liess sich das nur im CI beobachten. Die
+  Tests schieben eine gefälschte `ruff` unter und decken damit vier Fälle ab,
+  die vorher niemand fahren konnte:
+
+  | untergeschobene `ruff` | erwartet |
+  |---|---|
+  | meldet `0.15.8` statt der gepinnten | rot — der gemessene Vorfall |
+  | meldet `Ruff, version 0.16.1` | rot — Ausgabeform als Anker |
+  | stürzt ab (`exit 3`) | rot |
+  | gar keine `ruff` auf dem PATH | rot, **nicht** übersprungen |
+
+  Der Happy-Path-Test bekommt denselben Shim, mit dem gepinnten Wert. Sonst
+  hinge er daran, welche `ruff` die Maschine zufällig installiert hat — und
+  würde genau dort rot, wo der Check *recht hat*.
+
+  **Nachgemessen, dass die neuen Tests tragen** — zwei Defekte eingebaut,
+  beide am echten Baum grün:
+
+  1. «keine `ruff` auf dem PATH» zum stillen Skip gemacht →
+     `test_unbrauchbare_ruff_wird_rot[ANKER-keine-ruff]` wird rot.
+  2. Fehlende `rev` im Hook zum stillen Skip gemacht → `ruff_pin_sync.py`
+     meldet am echten Baum *Ruff-Pin OK* mit exit 0;
+     `test_mutation_wird_rot[ruff-pin/ANKER-rev-im-hook-weg]` wird rot.
+
+  | | vorher | nachher |
+  |---|---|---|
+  | Prüflogik in `ci.yml` | 2 Shell-Blöcke | **0** |
+  | Zeilen `ci.yml` | 333 | **298** |
+  | Checks | 7 | **9** |
+  | Tests | 41 | **55** |
 
 ### Changed
 

@@ -19,13 +19,21 @@ gab:
 from __future__ import annotations
 
 import pytest
-from conftest import GOOD_DESCRIPTION, SCRIPTS
+from conftest import GOOD_DESCRIPTION, SCRIPTS, UMGEBUNGSABHAENGIG, gepinnte_version
 from mutations import DESCRIPTIONS, MUTATIONS
 
 
 @pytest.mark.parametrize("name", sorted(SCRIPTS))
-def test_unveraenderter_baum_ist_gruen(name, tree, run_check):
-    p = run_check(name, tree)
+def test_unveraenderter_baum_ist_gruen(name, tree, run_check, ruff_shim):
+    # Umgebungsabhaengige Checks bekommen eine ruff untergeschoben, die den
+    # gepinnten Wert meldet. Sonst haenge dieser Test daran, welche ruff auf
+    # der Maschine liegt — und wuerde genau dort rot, wo der Check RECHT hat.
+    pfad = (
+        ruff_shim(f'echo "ruff {gepinnte_version(tree)}"')
+        if name in UMGEBUNGSABHAENGIG
+        else None
+    )
+    p = run_check(name, tree, pfad=pfad)
     assert p.returncode == 0, (
         f"{name} ist am unveraenderten Baum rot:\n{p.stdout}{p.stderr}"
     )
