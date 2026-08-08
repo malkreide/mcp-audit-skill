@@ -6,6 +6,32 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Gefunden — der «TLS-Mismatch» war unser eigener Teststub
+
+Drei Sonden, und jede hat eine Erklärung erledigt statt eine bestätigt.
+
+| | Aufbau | Ergebnis |
+|---|---|---|
+| **1** | `-k test_live_bista_api_letzi`, sonst nichts | `1 failed` — **derselbe Mismatch, ohne jeden Vorgänger** |
+| **2** | `-k "dns_hiccup or letzi"` | Vorgänger 502, `letzi` Mismatch |
+| **3** | derselbe Tool-Aufruf, **ohne pytest** | alle vier Zustände `TLS ok`, kein Mismatch |
+
+Sonde 1 tötet die Reihenfolge-Vermutung, Sonde 3 die Import-Vermutung samt Aufrufpfad. Übrig blieb die Differenz zwischen einem pytest-Lauf und einem nackten Skript — und die steht in `tests/test_server.py`: eine `autouse`-Fixture stubbt `getaddrinfo` auf **`8.8.8.8`**, damit die Unit-Tests hermetisch bleiben, und nimmt Live-Tests **nicht** aus. Der einzige Live-Test jener Datei verband sich also nach `8.8.8.8:443` mit SNI `www.bista.zh.ch`. Google antwortet mit einem Zertifikat für `dns.google`.
+
+Nachgemessen: `http_client` macht `import socket`, also **ist** `http_client.socket` das Modulobjekt — der Stub wirkt prozessweit, auch für anyio, über das httpx verbindet.
+
+**Der «TLS-Mismatch» war nie ein Befund über BISTA.** Behoben in [`zh-education-mcp#48`](https://github.com/malkreide/zh-education-mcp/pull/48), zusammen mit einem Wächter, der jeden Live-Test mit gestubbtem Auflöser abbricht — in jeder Datei. Das Portfolio ist geprüft: nur dieses Repo trägt das Muster.
+
+**Zwei Lehren für den nächsten Durchlauf:**
+
+1. **Ein Befund über eine fremde Quelle braucht einen Messpunkt, der die Quelle erreicht.** Zwischen «BISTA liefert ein falsches Zertifikat» und «unser Stub lenkt auf 8.8.8.8 um» liegen fünf Läufe, ein zurückgezogener Beleg, ein Diagnoseschritt und drei Sonden — die Frage war von Anfang an dieselbe.
+
+2. **Ein Live-Test, der gegen einen Stub läuft, ist ein Live-Test nur dem Namen nach.** Er prüft nichts und behauptet alles: dieselbe Form wie ein leeres Suchergebnis, das wie eine Antwort aussieht — die Form, gegen die `FID-003` und `FID-006` geschrieben sind —, nur eine Ebene tiefer, nämlich im Werkzeug statt im Server. Ein Katalog, der Live-Tests als Beleg verlangt (§2.6), muss auch verlangen, dass sie live sind.
+
+An der Zahl ändert das nichts: `FID-006` bleibt bei **0 von 42**, `zh-education-mcp` auf `todo`, §5 feuert weiter nicht. Der Ausfall der Quelle bleibt, was er war — 502 auf allen sechs Endpunkten bei 200 auf der Startseite, rund zwölf Stunden.
+
+**Gegenprobe: weiterhin keine möglich, erneut gemessen** — den neuen Abschnitt entfernt, Suite läuft unverändert grün durch.
+
 ### Geändert — das Zertifikat ist geprüft, und der Befund zeigt jetzt auf die eigene Suite
 
 Der Diagnoseschritt aus [`zh-education-mcp#45`](https://github.com/malkreide/zh-education-mcp/pull/45) ist gebaut und lief zum ersten Mal. Er beantwortet die Frage, die von aussen nicht zu beantworten war.
