@@ -23,6 +23,23 @@ jobs:
       # uebereinstimmen. Der Schritt am Ende dieses Jobs prueft das.
       - run: pip install ruff==0.16.1
 
+      # STEHT VOR DEN GATES, nicht dahinter. Der Pin-Sync unten vergleicht zwei
+      # TEXTE; ob die ruff, die gleich `ruff check .` faehrt, die gepinnte ist,
+      # sagt er nicht. Liegt eine andere weiter vorne im PATH, sind die Befunde
+      # der beiden Schritte darunter auf einer Version entstanden, die niemand
+      # gepinnt hat — und niemand erfaehrt es.
+      #
+      # Nicht theoretisch: bis 0.15.8 liess `ruff format --check .` Markdown
+      # unberuehrt, seit 0.16.1 ist die Formatierung von Python-Bloecken in
+      # Markdown stabil und standardmaessig an. Gemessen in
+      # mcp-data-source-probe-skill (dort Check 18) und noch einmal in einer
+      # Entwicklungsumgebung, in der eine 0.15.8 die frisch installierte 0.16.1
+      # verdeckte.
+      - name: Ruff-Version (Pin ↔ laufendes Programm)
+        env:
+          PYTHONUTF8: "1"
+        run: python tools/check_ruff_version.py
+
       - run: ruff check .
 
       - run: ruff format --check .
