@@ -4,6 +4,28 @@
 
 ---
 
+## Unreleased — `DRIFT-008`, ein Live-Test muss die Quelle erreichen
+
+### Was gefeuert hat
+
+| Auslöser | §5-Prüfung | Ergebnis |
+|---|---|---|
+| **`DRIFT-008` neu** (`high`, `advisory`) | Punkt **4** der Katalog-Versionierung, nicht Punkt 5: «Ein neuer Check ist ein neuer Vertrag. Bestehende Audits sind nicht rückwirkend ungültig.» Die vier Fälle a–d setzen sämtlich eine Änderung an einem **bestehenden** Check voraus — Severity, Reichweite, Prüfkriterium, Adoptionsstufe. Keiner trifft zu, weil es vorher nichts gab, das sich hätte ändern können. | **feuert nicht** |
+
+Dieselbe Prüfung wie bei `SEC-028` in `v2.2.0` weiter unten, mit demselben Ergebnis. Der Abschnitt steht trotzdem hier: Ein neuer Check, der in dieser Datei gar nicht auftaucht, ist von einem ungeprüften nicht zu unterscheiden.
+
+### Woher der Check kommt
+
+Aus dem Ausfall darüber, aber nicht aus dem Ausfall selbst — aus der **Fehldiagnose**. Fünf Läufe lang sah ein gestubbter Namensauflöser in der eigenen Suite wie ein Zertifikatsfehler von `bista.zh.ch` aus. `DRIFT-005` fragte «läuft die Live-Suite?» und war grün; sie lief fünfmal. `OPS-010 b)` beschreibt den Mechanismus des globalen Monkeypatch, fragt aber nach Mutationsabdeckung — auch grün. Niemand fragte, **ob dabei die Quelle angesprochen wurde**.
+
+`DRIFT-008` stellt diese Frage. Er steht ausdrücklich als eigener Check und nicht als Absatz in `OPS-010`, weil dort der Mechanismus steht und hier das Kriterium; die Abgrenzung ist im Check ausgeschrieben.
+
+**Warum `advisory`:** neuer Check, §2.3 Schritt 1. Wie viele Portfolio-Server ihn heute erfüllen, ist **nicht gemessen** — der Scan über `autouse`-Fixtures lief bisher nur gegen die eigenen Testverzeichnisse und fand ausserhalb von `zh-education-mcp` kein Vorkommen des Musters. Das ist eine Suche nach einer Signatur, kein Durchlauf gegen das Kriterium. Bei der Promotion (§5d) ist genau diese Zahl zu erheben.
+
+**Die Nummer 007 bleibt frei.** `DRIFT-007` wurde am 2026-08-07 zurückgezogen und ging in `FID-006` auf. Eine wiederverwendete Nummer machte den Audit-Trail mehrdeutig.
+
+---
+
 ## Unreleased — `FID-006` übernimmt die Feldnamen, `DRIFT-007` zurückgezogen
 
 ### Was gefeuert hat

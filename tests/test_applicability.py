@@ -337,8 +337,9 @@ class TestRealCatalog:
         # 98 mit OPS-008, 112 mit den vierzehn Spec-Checks aus v2.0.0,
         # 113 mit FID-006 aus v2.1.0, 115 mit OBS-008 und ARCH-022,
         # 116 mit SEC-028, 117 mit DRIFT-007, 118 mit FID-007, 119 mit OPS-009,
-        # 120 mit OPS-010, zurück auf 119, weil DRIFT-007 in FID-006 aufgegangen ist)
-        assert len(results) == 119
+        # 120 mit OPS-010, zurück auf 119, weil DRIFT-007 in FID-006 aufgegangen ist,
+        # 120 mit DRIFT-008 — die Nummer 007 bleibt verbrannt)
+        assert len(results) == 120
         # Note: applicability is determined entirely by the DSL grammar.
         # We assert a stable bound rather than exact equality so that the
         # test fails loudly only on grammar drift.
@@ -796,3 +797,31 @@ class TestSsrfScope:
                         f"external={external}) — die Verfeinerung ist weiter "
                         f"gefasst als der Grundfall"
                     )
+
+
+class TestDrift008OnlyBitesServersWithASource:
+    """Die Reichweite von `DRIFT-008` — gegen ein Profil **ohne** Quelle.
+
+    Beim Einbau des Checks liess die Mutation
+    `tools_make_external_requests == true` → `always` **keinen einzigen**
+    Test fallen. Der Grund: Jede Profil-Fixture in dieser Datei hat eine
+    externe Quelle, also liefern beide Ausdrücke überall dasselbe. Ein
+    Kriterium, dessen Reichweite von keinem Test gehalten wird, wandert beim
+    nächsten Refactoring nach `always` und färbt Server rot, die gar keine
+    Quelle abfragen — und ein Gate, das das tut, wird abgeschaltet.
+
+    Gelesen wird der Ausdruck aus der Katalogdatei, nicht aus einem Literal
+    hier: Sonst prüfte der Test seine eigene Kopie.
+    """
+
+    @staticmethod
+    def _applies_when() -> str:
+        meta = parse_check_frontmatter(CHECKS_DIR / "DRIFT-008.md")
+        return meta["applies_when"]
+
+    def test_it_applies_to_a_server_with_a_source(self, srgssr_profile):
+        assert evaluate(self._applies_when(), srgssr_profile) is True
+
+    def test_it_stays_away_from_a_server_without_one(self, srgssr_profile):
+        ohne_quelle = dict(srgssr_profile, tools_make_external_requests=False)
+        assert evaluate(self._applies_when(), ohne_quelle) is False

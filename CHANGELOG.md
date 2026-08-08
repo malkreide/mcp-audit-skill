@@ -6,6 +6,31 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `DRIFT-008`: ein Live-Test muss die Quelle erreichen
+
+`high`, `advisory`, `applies_when: tools_make_external_requests == true`. Der Katalog wächst auf **120 Checks**, `DRIFT` auf 7.
+
+**Woher er kommt:** nicht aus dem BISTA-Ausfall, sondern aus der Fehldiagnose darüber. Fünf Läufe lang sah ein gestubbter Namensauflöser in der eigenen Testsuite wie ein Zertifikatsfehler der Quelle aus. Zwei Checks hätten es fangen müssen und taten es nicht: `DRIFT-005` fragt, ob die Live-Suite **läuft** — sie lief, fünfmal, mit Issue und Benachrichtigung. `OPS-010 b)` beschreibt den **Mechanismus** (globaler Monkeypatch auf ein fremdes Modul), fragt aber nach Mutationsabdeckung — auch grün. Niemand fragte, **ob dabei die Quelle angesprochen wurde**.
+
+`SKILL.md` §2.6 sagt: Ein Live-Test, der nicht gelaufen ist, ergibt `todo`. `DRIFT-008` ergänzt den zweiten Fall, der genauso aussieht und schlimmer ist — er ist gelaufen, nur nicht gegen die Quelle. Läuft er grün, gilt ein ungeprüfter Vertrag als geprüft. Läuft er rot, erzeugt er einen **Befund über einen Dritten**, den niemand verschuldet hat.
+
+Der Check verlangt dreierlei: die Ausnahme in jeder `autouse`-Fixture, die eine Aussenwirkung ersetzt; einen **suiteweiten** Wächter als Hook statt als Fixture (eine conftest-Fixture sähe den Stub weder beim Aufbau noch beim Abbau); und den echten Referenzwert, festgehalten beim Import statt im Test — sonst vergleicht der Wächter einen Stub mit sich selbst.
+
+**Abgrenzung ausgeschrieben** gegen `DRIFT-005` (läuft sie?), `OPS-010 b)` (derselbe Mechanismus, anderes Kriterium) und `FID-003`/`FID-006` (dieselbe Form eine Ebene tiefer — dort im Server, hier im Werkzeug, das ihn prüft).
+
+Die Nummer **007 bleibt verbrannt**: `DRIFT-007` wurde am 2026-08-07 zurückgezogen und ging in `FID-006` auf; eine wiederverwendete Nummer machte den Audit-Trail mehrdeutig.
+
+**Gegenprobe, vier Mutationen — und eine, die zuerst nicht feuerte:**
+
+| Mutation | Erwartet | Gemessen |
+|---|---|---|
+| `adoption: advisory` → `enforced` | fällt | **5 Tests** |
+| `severity: high` → `medium` | fällt | **4 Tests** |
+| aus `MANIFEST.txt` entfernt | fällt | **3 Tests** |
+| `applies_when` → `always` | fällt | **0 Tests** ← Lücke |
+
+Die vierte Mutation blieb grün, weil **jede** Profil-Fixture in `tests/test_applicability.py` eine externe Quelle hat — beide Ausdrücke liefern dort dasselbe. Eine Reichweite, die von keinem Test gehalten wird, wandert beim nächsten Refactoring nach `always` und färbt Server rot, die gar keine Quelle abfragen. Geschlossen mit `TestDrift008OnlyBitesServersWithASource`, das den Ausdruck **aus der Katalogdatei** liest statt aus einem Literal; danach fällt auch diese Mutation. Umkehrprobe: unverändert **1257 grün**.
+
 ### Gefunden — der «TLS-Mismatch» war unser eigener Teststub
 
 Drei Sonden, und jede hat eine Erklärung erledigt statt eine bestätigt.

@@ -259,6 +259,7 @@ class TestRealCatalogUnchanged:
             "ARCH-020",
             "ARCH-021",
             "ARCH-022",
+            "DRIFT-008",
             "FID-006",
             "FID-007",
             "HITL-006",
