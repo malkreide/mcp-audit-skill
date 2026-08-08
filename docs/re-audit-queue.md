@@ -1,6 +1,6 @@
 # Re-Audit-Warteschlange
 
-**Stand:** 2026-08-07 · **Letztes geprüftes Release:** `v2.2.0` (feuert nichts) · **Jüngste offene Auslöser:** `v2.1.0` · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+**Stand:** 2026-08-08 · **Letztes geprüftes Release:** `v2.2.0` (feuert nichts) · **Jüngste offene Auslöser:** `v2.1.0` · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
 
 ---
 
@@ -87,6 +87,34 @@ Fünf weitere PRs: `swiss-energy-mcp` (GeoAdmin `identify`/`find`), `swiss-elect
 
 **Und die Trefferquote des Scans ist ausdrücklich schlecht.** 17 Fundstellen wurden nachgelesen, **7** waren echte Befunde, **10** keine: ein `error`-Zweig im eigenen Aggregat (`swiss-cultural-heritage`), ein echtes Optionalfeld einer CKAN-Zeile (`swiss-electricity`), das eigene Ergebnis-Dict (`seco-labor`), eine bereits bestätigte Struktur (`swiss-energy`). Ein Default ist nur dort ein Fehler, wo die Abwesenheit ein Irrtum des Lesers ist und keine Aussage der Quelle. Ein Scan, der 10 von 17 falsch anklagt, ist als Leseliste brauchbar und als Urteil unbrauchbar.
 
+### Der erste Server, der den Check erfüllen könnte — und warum die Zahl trotzdem 0 bleibt (2026-08-08)
+
+`zh-education-mcp` hat mit [PR #43](https://github.com/malkreide/zh-education-mcp/pull/43) alles implementiert, was `FID-006` verlangt: `_READ_FIELDS` erklärt für jeden der sechs BISTA-Endpunkte die gelesenen Spalten, `_confirm_shape` bestätigt sie auf dem ersten Eintrag und wirft `UpstreamSchemaError` mit den **tatsächlich vorhandenen** Spalten, verdrahtet an der Abrufstelle in `_fetch_csv`. Dazu 18 Unit-Tests und 12 Live-Tests, die dieselbe Erklärung gegen die echte Antwort halten.
+
+**Er steht trotzdem auf `todo` und nicht auf `pass`, und die Portfolio-Zahl bleibt bei 0 von 42.** Das letzte Kriterium — Struktur oder Feldnamen gegen eine **echte** Antwort halten — ist implementiert, aber nie grün gelaufen. Nach [`SKILL.md` §2.6](../SKILL.md) ist ein Live-Test, der nicht durchgelaufen ist, kein bestandener Test.
+
+**Der Grund ist die Quelle, nicht der Server.** `www.bista.zh.ch` liefert auf allen sechs OGD-Endpunkten **HTTP 502**, während die Startseite mit 200 antwortet. Erster gemessener 502 am 2026-08-07 um 21:24 UTC, letzter am 2026-08-08 um 07:16 UTC — **rund zehn Stunden**, und zwar aus **zwei unabhängigen Netzen**: aus der Audit-Sitzung heraus (sechs Messungen) und aus [Lauf 31245489543](https://github.com/malkreide/zh-education-mcp/actions/runs/31245489543) auf einem GitHub-Runner (2026-08-08, 07:08–07:13 UTC, `workflow_dispatch` auf `main`).
+
+Der Lauf ist die Messung, auf die es hier ankommt, weil er die naheliegende Gegenerklärung ausschliesst: Die 502er der Audit-Sitzung gehen alle über denselben Proxy-Ausgang, ein Runner geht über einen anderen. Beide sehen dasselbe.
+
+| Live-Lauf 31245489543 | |
+|---|---:|
+| eingesammelt (`-m live`) | 15 |
+| gefallen mit `502 Bad Gateway` | 10 |
+| gefallen mit `TimeoutError` | 3 |
+| gefallen beim Verbindungsaufbau | 1 |
+| **grün** | **1** |
+
+**Kein einziger Fehlschlag betrifft einen Feldnamen.** Der eine grüne Test ist `test_live_the_real_host_resolves_past_the_egress_guard` — der einzige, der den Host **auflöst**, aber nicht **abruft**. DNS steht, TLS steht, die Anwendung dahinter antwortet nicht.
+
+**Eine Beobachtung, die ausdrücklich kein Befund ist.** Der letzte Verbindungsversuch von `test_live_bista_api_letzi` endete nach vier `ConnectError`-Retries mit `[SSL: CERTIFICATE_VERIFY_FAILED] Hostname mismatch, certificate is not valid for 'www.bista.zh.ch'`. Dieselbe Suite hat davor zehnmal sauber TLS aufgebaut und 502 bekommen, und die Nachmessung um 07:16 UTC meldet `ssl_verify_result=0`. Einmal gesehen, nicht reproduziert, und mindestens drei Erklärungen sind offen — ein Knoten in einem Pool, ein DNS-Wechsel während des Vorfalls, ein Artefakt des Testaufbaus. Es steht hier als Zeile im Log und nicht als Aussage über die Quelle; kommt es im nächsten Lauf wieder, ist es ein Befund.
+
+**§5 feuert nicht.** Ein Quellenausfall ist keiner der fünf Auslöser: keine Severity, keine Reichweite, kein Prüfkriterium, keine Adoptionsstufe, keine Baseline hat sich bewegt. Kein bestandenes Audit wird dadurch ungültig. Der Eintrag steht hier aus dem Grund, aus dem weiter unten `v2.2.0` einen Abschnitt hat, in dem nichts feuert: Ein Kriterium, das erfüllt **aussieht** und dessen Beleg nie erbracht wurde, ist von einem erfüllten nur unterscheidbar, wenn der fehlende Beleg aufgeschrieben ist.
+
+**Was der Ausfall über den Check selbst sagt, und das gehört in die Promotionsentscheidung.** Das Kriterium «gegen eine echte Antwort halten» hat eine Eigenschaft, die kein anderes Kriterium in `FID-006` hat: Es ist **nicht auf Zuruf erfüllbar**. Alle übrigen kann ein Team an einem Nachmittag herstellen; dieses hängt an der Verfügbarkeit eines Dritten. Auf `enforced` gehoben hiesse das, ein Server verliert seine Produktionsreife, weil seine Quelle ein Wochenende lang aus ist — und ein Gate, das das tut, wird abgeschaltet statt befolgt. Wer promoviert, braucht dafür eine Antwort: entweder ein Alter für den letzten grünen Lauf («jünger als N Tage») oder eine ausdrückliche Ausnahme für nachweisbare Ausfälle der Quelle. Beides ist eine Entscheidung, keine Formalie — und sie steht noch aus.
+
+**Was den Eintrag schliesst:** ein grüner Lauf von `pytest tests/ -m live` gegen `zh-education-mcp`. Der wöchentliche Live-Workflow (`live-tests.yml`, Montag 05:23 UTC) läuft von selbst und meldet sich über ein Issue mit dem Label `upstream`; er lässt sich über **Actions → Live-Tests → Run workflow** auch von Hand starten. Dann — und erst dann — bewegt sich die Zeile «erfüllen den Check» in `checks/FID-006.md` von 0 auf 1.
+
 ### Herkunft der Zahlen
 
 | Zahl | Herkunft |
@@ -99,6 +127,10 @@ Fünf weitere PRs: `swiss-energy-mcp` (GeoAdmin `identify`/`find`), `swiss-elect
 | 25 / 7 / 10 / 2 nach der Nachlese | **gemessen** — dasselbe Verfahren; 7 von 17 Fundstellen als echte Befunde von Hand bestätigt, 10 verworfen und je Repo im PR benannt |
 | 4 von 6 Endpunkten schreiben klein, 2 gross, 2 mischen innerhalb der Kopfzeile | **übernommen** aus dem `DRIFT-007`-Text vom 2026-08-03, dort am Belegfall erhoben |
 | Audits mit `FID-006: pass` im Fenster seit `v2.1.0` | **nicht gemessen** — von diesem Repo aus nicht erhebbar |
+| 15 / 10 / 3 / 1 / 1 im Live-Lauf | **gemessen** — Job-Log von Lauf 31245489543, jede Zeile der `short test summary info` einzeln zugeordnet |
+| BISTA 502 seit 2026-08-07 21:24 UTC | **gemessen** — sieben `curl`-Messungen aus der Sitzung plus der Runner-Lauf; die Startseite antwortete bei jeder Messung mit 200 |
+| Ausfall aus zwei unabhängigen Netzen | **gemessen** — Sitzungs-Ausgang über den Agent-Proxy, Runner-Ausgang über GitHub; kein gemeinsamer Pfad ausser der Quelle selbst |
+| TLS-Hostname-Mismatch | **einmal beobachtet, nicht reproduziert** — eine Zeile im Job-Log; die Nachmessung meldet `ssl_verify_result=0`. Bewusst nicht als Befund geführt |
 
 **Drei Korrekturen am Messwerkzeug, jede hat die Zahlen bewegt** — sie stehen im Kopf von `fid006_ast.py` und gehören hierher, weil eine Zahl ohne ihre Fehlversuche nicht nachvollziehbar ist:
 
