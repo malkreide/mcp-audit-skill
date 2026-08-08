@@ -12,12 +12,26 @@ import os
 from pathlib import Path
 
 import pytest
-from conftest import REPO_ROOT, synthetic_manifest, synthetic_metadata
+from conftest import (
+    REPO_ROOT,
+    synthetic_checks,
+    synthetic_manifest,
+    synthetic_metadata,
+)
 from mutations import MUTATIONS
 
 from tools.checks import Check, CheckFailed, all_checks, run
 from tools.checks._core import _REGISTRY
-from tools.checks.catalogue import assert_table_matches, parse_manifest
+from tools.checks.catalogue import (
+    CHECKS_DIR_ENV,
+    CHECKS_URL,
+    LINKED,
+    MANIFEST_ENV,
+    assert_table_matches,
+    parse_manifest,
+    read_adoption,
+    table_section,
+)
 from tools.checks.readmes import top_release
 from tools.checks.release import assert_tag_matches
 from tools.checks.repo_metadata import assert_description_matches, parse_metadata
@@ -214,6 +228,47 @@ def test_catalogue_without_its_manifest_is_a_finding(
     assert expect in str(raised.value)
 
 
+def test_catalogue_without_its_checks_dir_is_a_finding(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Ohne die Check-Dateien fehlt die Einstufung — und das ist ein Befund.
+
+    Der halbe Lauf wäre die gefährlichere Alternative: Zahlen geprüft,
+    Einstufung nicht, und ein «bestanden» darüber. Genau diese Sorte Grün hat
+    den Anlass für diese Erweiterung überhaupt erst überleben lassen.
+    """
+    manifest = tmp_path / "manifest.txt"
+    manifest.write_text("FID-001\n", encoding="utf-8")
+    monkeypatch.setenv("CATALOGUE_MANIFEST", str(manifest))
+    monkeypatch.delenv("CATALOGUE_CHECKS_DIR", raising=False)
+    by_number = {check.number: check for check in all_checks()}
+    with pytest.raises(CheckFailed) as raised:
+        by_number[14].run(REPO_ROOT)
+    assert "CATALOGUE_CHECKS_DIR ist nicht gesetzt" in str(raised.value)
+
+
+def test_the_workflow_sets_the_variables_the_check_reads() -> None:
+    """Der Wochenplan füllt genau die Namen, die Prüfung 14 liest.
+
+    Diese Zusicherung schliesst die Naht zwischen YAML und Python. Läuft sie
+    auseinander — ein umbenanntes Env, ein vergessener Eintrag —, meldet sich
+    das sonst frühestens beim nächsten Wochenlauf, und dann als «nicht
+    gesetzt» statt als das, was es ist: eine Verdrahtung, die niemand
+    nachgezogen hat.
+    """
+    workflow = (REPO_ROOT / ".github/workflows/weekly-drift.yml").read_text(
+        encoding="utf-8"
+    )
+    for name in (MANIFEST_ENV, CHECKS_DIR_ENV):
+        assert f"{name}:" in workflow, (
+            f"weekly-drift.yml setzt {name} nicht — Prüfung 14 liest es aber"
+        )
+    assert CHECKS_URL in workflow, (
+        "weekly-drift.yml holt den Katalog von einer anderen Adresse als der, "
+        "die tools/checks/catalogue.py als Quelle nennt"
+    )
+
+
 def test_metadata_without_its_env_var_is_a_finding(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -266,7 +321,7 @@ def test_tag_shapes_that_must_be_findings(tag: str, expect: str) -> None:
     assert expect in str(raised.value)
 
 
-def test_the_synthetic_catalogue_is_accepted() -> None:
+def test_the_synthetic_catalogue_is_accepted(tmp_path: Path) -> None:
     """Der gute Fall von Prüfung 14, ohne Netz.
 
     Was das belegt und was nicht, steht bei `synthetic_manifest` in
@@ -275,7 +330,12 @@ def test_the_synthetic_catalogue_is_accepted() -> None:
     Wochenplan.
     """
     skill = read_skill(REPO_ROOT)
-    assert_table_matches(synthetic_manifest(skill), skill)
+    checks = tmp_path / "checks"
+    synthetic_checks(skill, checks)
+    linked = set(LINKED.findall(table_section(skill)))
+    assert_table_matches(
+        synthetic_manifest(skill), skill, read_adoption(checks, linked)
+    )
 
 
 def test_a_manifest_that_is_not_a_catalogue_is_a_finding() -> None:

@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Prüfung 14 vergleicht die Einstufung, nicht nur die Zahlen
+
+Der Wächter prüfte bisher zwei Dinge: die **Zahlen** (Katalog-Grösse,
+Kategorien, `FID`-Anzahl) und die **Identitäten** (jeder verlinkte Check
+existiert, jeder `FID`-Check ist verlinkt). Er prüft jetzt ein drittes: die
+**Einstufung** je verlinktem Check — `enforced` oder `advisory`.
+
+**Der Anlass ist der Befund direkt darunter, und er ist der Beleg dafür, dass
+die ersten beiden Punkte nicht reichen.** In SKILL.md stand «`ARCH-003` ist der
+einzige `enforced` Check dieser Tabelle». Jede Zahl stimmte dabei, jede ID
+existierte, der Lauf war grün. Eine Einstufung ist kein Zählwert: Sie sagt, ob
+ein Verstoss blockiert.
+
+**Und die Erweiterung hat sofort etwas gefunden, das die Korrektur darunter
+übersehen hatte.** Die Behauptung lautete nach jener Korrektur «Fünf Checks
+dieser Tabelle sind `enforced`». Gemessen sind es **sieben**: `FID-004` und
+`DRIFT-002` sind ebenfalls verlinkt, tragen ebenfalls kein `adoption`-Feld und
+standen in *keiner* der beiden Listen. Nichterwähnung liest sich wie «nicht
+betroffen» — deshalb verlangt die Prüfung, dass die beiden Listen die
+verlinkten Checks **genau aufteilen**, und nicht nur, dass die genannten
+stimmen.
+
+Vier Zusicherungen, jede mit eigenem Befundtext:
+
+1. Das Zahlwort im Satz gegen die eigene Aufzählung dahinter.
+2. Die beiden Listen teilen die verlinkten Checks genau auf — keiner fehlt,
+   keiner steht doppelt, keiner wird eingestuft, ohne verlinkt zu sein.
+3. Je Check: behauptete gegen gemessene Einstufung. Fehlt das `adoption`-Feld
+   drüben, gilt `enforced` — und der Befund sagt das dazu, weil genau diese
+   Vorgabe der Grund war, warum Checks übersehen wurden.
+4. Passt der Satz nicht mehr auf sein Muster, ist das ein Befund und kein Grund
+   weiterzumachen — dieselbe Entscheidung wie bei den Zahlen.
+
+**Ein Archiv statt 120 Abrufe.** Die Einstufung steht im Frontmatter jeder
+Check-Datei, nicht im Manifest. Der Wochenplan holt deshalb einen Tarball des
+Baums und legt `checks/` ab; gelesen werden daraus nur die **13 verlinkten**
+Dateien. Das ist nicht bloss sparsamer — es beseitigt ein Rennen, das zwei
+getrennte Abrufe gehabt hätten: Manifest und Check-Dateien stammen jetzt
+zwingend aus demselben Commit. Sonst könnte zwischen beiden ein Release liegen,
+und der Befund beschriebe einen Katalog, den es nie gegeben hat.
+
+`$CATALOGUE_CHECKS_DIR` fehlen zu lassen ist **kein** halber Lauf, sondern ein
+Befund. Eine Prüfung, die stillschweigend weniger prüft, als ihr Name sagt,
+meldet «bestanden» für etwas, das sie nicht angesehen hat. Aus demselben Grund
+hat `assert_table_matches` für die Einstufung **keinen Vorgabewert**: Ein
+vergessenes Argument wäre ein Grün ohne Messung.
+
+**Gegenprobe, sieben neue Mutationen** — Prüfung 14 hat damit vierzehn. Dazu
+zwei Zusicherungen, die sich nicht als Mutation am Baum ausdrücken lassen: dass
+das fehlende Env ein Befund ist, und dass `weekly-drift.yml` genau die Namen und
+die Adresse setzt, die `catalogue.py` liest. Diese Naht zwischen YAML und Python
+meldete sich sonst frühestens beim nächsten Wochenlauf.
+
+Am schärfsten ist die Gegenprobe **gegen den echten Katalog**: Mit der
+ursprünglichen Falschaussage — `FID-001` als `advisory` — wird die Prüfung rot
+mit «Einstufung FID-001: hier `advisory`, drüben `enforced` (die Datei führt
+kein `adoption`-Feld, damit gilt `enforced`)». Der Fehler, der diese Erweiterung
+ausgelöst hat, wird von ihr gefangen.
+
 ### Fixed — Zeile 13 zeigte auf einen Check, den es nicht mehr gibt
 
 **`DRIFT-007` ist zurückgezogen.** Der Check stand vier Tage im Katalog, war nie
@@ -60,11 +119,10 @@ aus einer belegten Abgrenzung eine erfundene. Ein Zugewinn meldet sich immerhin
 als «nicht abgedeckt, obwohl abgedeckt»; eine Rücknahme meldet sich als gar
 nichts, bis jemand dem Link folgt.
 
-**Benannter Rand, nicht behoben:** Prüfung 14 vergleicht IDs, Summen und
-Kategorien — die **Einstufung** (`adoption`) vergleicht sie nicht. Genau die ist
-hier falsch gewesen, und genau die hätte kein Lauf gemeldet. Dafür müsste die
-Prüfung jede Check-Datei einzeln abrufen statt nur `MANIFEST.txt`; ob das den
-Abruf wert ist, ist hier **nicht** entschieden.
+**Dieser Rand war zunächst benannt und nicht behoben** — Prüfung 14 verglich
+IDs, Summen und Kategorien, aber nicht die Einstufung. Inzwischen ist er
+geschlossen; siehe den Eintrag unten. Die Frage, ob der zusätzliche Abruf das
+wert ist, ist damit beantwortet: Er kostet **einen** Aufruf, nicht 120.
 
 `README.md` und `README.de.md` sind identisch nachgezogen.
 
