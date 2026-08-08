@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Zuordnung Regel ↔ Check gegen `mcp-audit` v2.3.0 neu gelesen** (vorher
+  v2.2.0, 116 Checks; jetzt 120). Gelesen wurden die Check-Dateien, nicht die
+  Titel — die Zahl allein hochzuzählen hätte eine Prüfung behauptet, die nicht
+  stattgefunden hat.
+- **Regel 6 hat keine Lücke mehr.** `OPS-010` («Gegenprobe als
+  Abnahmekriterium») ist neu im Katalog und nennt in seinem `pdf_ref`
+  ausdrücklich die *Katalog-Lücke gegen Regel 6* als Grund — also die Lücke,
+  die diese Tabelle erklärt hatte. Damit hat zum ersten Mal die **zweite**
+  Alterungsrichtung gefeuert, die der v2.4.0-Eintrag angekündigt hatte: bisher
+  bewegte sich nur der Regelsatz dieses Repos. Zwei Vorbehalte stehen in der
+  Zeile, sonst deckt sie mehr als sie hält — `OPS-010` ist `advisory` (ein
+  Server kann ihn verfehlen und das Audit bestehen) und fordert die Gegenprobe
+  für *jede zentrale Zusicherung*, ist also breiter als die Regel und in der
+  Härte schwächer.
+- **Regel 2 wäre beim Lesen fast gekippt und steht trotzdem unverändert.**
+  Kriterium 4 von `SEC-016` stellt wörtlich dieselbe Frage («der gesetzte Wert
+  erreicht den Listener»). Seine **Messung** liest aber den Startlog des
+  Listeners, und der zeigt im Fehlerfall dieser Regel `Uvicorn running on
+  http://0.0.0.0:…` — die uvicorn-Falle bindet den Listener korrekt, während
+  die App sich weiter für Loopback hält und 421 antwortet. Ein Kriterium,
+  dessen Nachweis im Fehlerfall grün ist, deckt die Regel nicht; die Begründung
+  steht jetzt in der Zeile statt nur im Urteil.
+- Regel 5 nennt zusätzlich `SEC-028`, das denselben Griff ein zweites Mal
+  einträgt und diese Regel dafür beim Namen nennt — gebunden an
+  `tools_make_external_requests == true`, der fehlende Transportfall bleibt.
+  Regel 7 nennt zusätzlich `OPS-010`, dessen Patch-Kriterium aus derselben
+  Familie stammt, aber eine **andere** Falle beschreibt als die (b) dieser
+  Regel: prozessweiter Patch auf ein fremdes Modul gegen Patch auf der falschen
+  Ebene.
+- `DRIFT-008`, `FID-007` und `OPS-009` sind ebenfalls neu im Katalog und
+  bewegen keine Zeile — sie gehören zur Datentreue und zur Evidenz, nicht zum
+  Transport. Das steht da, damit der nächste Durchgang sie nicht erneut prüfen
+  muss, ohne es zu wissen.
+
 ## [2.4.0] - 2026-08-08
 
 **Ein Test, der seinen eigenen Fehler nicht finden konnte.**
