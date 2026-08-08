@@ -6,10 +6,21 @@ GitHub-Topic selbst prueft der Guard in `mcp-audit-skill`, dem einzigen Repo
 mit dem Manifest. Was sich hier pruefen laesst, ist, dass die Tabelle nicht
 still ein Mitglied verloren hat.
 
-ACHTUNG, Eigenschaft dieses Checks: Verglichen wird per Teilzeichenkette. Ein
-Mitglied, das einen SUFFIX bekommt (`mcp-continuous-auditor2`), besteht damit
-weiterhin — der alte Name steckt ja noch darin. Gefangen wird das Umbenennen
-und das Weglassen, nicht das Anhaengen.
+VERGLICHEN WIRD AUF NAMENSGRENZE, NICHT AUF TEILZEICHENKETTE. Ein blosses
+`name in body` haette `mcp-continuous-auditor2` und `mcp-audit-skill-v2`
+durchgelassen — der gesuchte Name steckt darin. Genau so verschwindet ein
+Mitglied, ohne dass etwas rot wird: nicht durch Loeschen, sondern durch
+Umbenennen mit Anhang.
+
+Die Grenze ist `(?<![\\w-])name(?![\\w-])`, nicht `\\b`. `\\b` allein reicht
+nicht: Der Bindestrich ist ein Nicht-Wortzeichen, also ist `\\b` direkt hinter
+`mcp-audit-skill` in `mcp-audit-skill-v2` erfuellt und der Fall waere weiter
+durchgegangen. Der Bindestrich muss ausdruecklich mit ausgeschlossen werden,
+weil er in diesen Namen selbst vorkommt.
+
+Was weiterhin traegt: der Name darf in Prosa, in einer Tabellenzelle und in
+einer URL stehen — Klammern, Schraegstriche und Punkte sind keine
+Namensbestandteile und beenden den Namen sauber.
 """
 
 from __future__ import annotations
@@ -45,7 +56,11 @@ def main() -> None:
                 "or reworded, so this check would silently stop checking"
             )
         body = m.group(1)
-        missing = [r for r in MEMBERS if r not in body]
+        missing = [
+            r
+            for r in MEMBERS
+            if not re.search(rf"(?<![\w-]){re.escape(r)}(?![\w-])", body)
+        ]
         if missing:
             sys.exit(f"{path}: the chain table does not name {missing}")
         if TOPIC_URL not in body:

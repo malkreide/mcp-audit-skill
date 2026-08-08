@@ -157,12 +157,12 @@ jobs:
       # (`get_settings`, `mcp`, `AuthError`, die Settings-Felder). Gemessen: 31
       # Treffer, alle beabsichtigt.
       #
-      # DER PREIS DAVON GEHOERT HIERHER, nicht in eine Fussnote: Ein echter
-      # Tippfehler in einem solchen offenen Namen — `sttings.host` statt
-      # `settings.host` — faellt unter dieser Ausnahme ebenfalls nicht auf.
-      # Dieses Gate faengt alles ANDERE. Wer die Luecke schliessen will,
-      # braucht eine Positivliste der erwarteten offenen Namen; das ist eine
-      # eigene, groessere Aenderung und keine Flagge mehr.
+      # DER PREIS DAVON IST EINGELOEST, nicht bloss benannt: Ein Tippfehler in
+      # einem offenen Namen — `sttings.host` statt `settings.host` — faellt
+      # unter einer pauschalen Ausnahme ebenfalls nicht auf. Deshalb bleibt
+      # `--ignore F821` HIER, und F821 wird im Schritt darunter einzeln gegen
+      # eine Positivliste geprueft. Die Arbeitsteilung ist Absicht: dieser
+      # Schritt beurteilt Lint-Regeln, jener beurteilt Namen.
       #
       # E501 bleibt draussen: Zeilenlaenge gehoert dem Formatter, und E501
       # feuert genau auf das, was `ruff format` NICHT umbrechen kann (lange
@@ -173,6 +173,28 @@ jobs:
         run: |
           ruff check --extend-select E4,E7,E9,F --ignore F821 reference/
           echo "ok — reference/ lint-sauber (E4,E7,E9,F ohne F821)"
+
+      # Loest die Ausnahme des Schritts darueber ein: F821 wird nicht mehr
+      # pauschal verschwiegen, sondern gegen eine Liste gehalten, auf der jeder
+      # offene Name mit BEGRUENDUNG steht.
+      #
+      # Nachgemessen, dass die Luecke real war — `settings = get_settings()` zu
+      # `get_settngs()` verdreht: Lint-Gate gruen, `compileall` gruen,
+      # `ruff format --check` gruen. Kein bestehendes Gate sah den Tippfehler.
+      # Dieser Schritt macht ihn zu einem Befund.
+      #
+      # Geprueft wird in BEIDE Richtungen. Ein Name ohne Eintrag ist der
+      # Tippfehler-Fall; ein Eintrag ohne Name im Baum ist der Faeulnis-Fall.
+      # Nur die erste Richtung zu pruefen hiesse, eine Liste zu fuehren, die
+      # ausschliesslich waechst — und die laesst irgendwann jeden Tippfehler
+      # durch, der einem laengst geloeschten Namen gleicht.
+      #
+      # Der Schritt steht NACH «Ruff-Version», wie das Lint-Gate: er ruft ruff
+      # selbst auf, und erst dort ist belegt, dass es die gepinnte ist.
+      - name: Offene Namen in reference/ stehen auf der Positivliste
+        env:
+          PYTHONUTF8: "1"
+        run: python ci/checks/reference_open_names.py
 
       # ZWEITES LINT-PROFIL, UND DAS IST DER PREIS DER AUSLAGERUNG.
       #
