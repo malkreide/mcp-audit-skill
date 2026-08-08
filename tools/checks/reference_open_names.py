@@ -126,7 +126,7 @@ def main() -> None:
             "  Ist es ein Tippfehler, gehoert der Name berichtigt — genau "
             "dafuer gibt es diese Liste.\n"
             "  Ist es Absicht (ein neuer Name aus der Zielumgebung), gehoert "
-            "er mit Begruendung in ERWARTET in ci/checks/reference_open_names.py."
+            "er mit Begruendung in ERWARTET in tools/checks/reference_open_names.py."
         )
 
     veraltet = sorted(ERWARTET.keys() - gefunden)

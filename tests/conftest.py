@@ -1,4 +1,4 @@
-"""Fixtures fuer die Checks unter ci/checks/.
+"""Fixtures fuer die Checks unter tools/checks/.
 
 WARUM DER ECHTE BAUM UND KEINE SYNTHETISCHEN FIXTURES: Die Checks handeln von
 DIESEN Dateien — von den Ankern in SKILL.md, den Ueberschriften in beiden
@@ -27,18 +27,18 @@ import sys
 
 import pytest
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 SCRIPTS = {
-    "skill_frontmatter": "ci/checks/skill_frontmatter.py",
-    "rule_sections": "ci/checks/rule_sections.py",
-    "rule_count": "ci/checks/rule_count.py",
-    "chain_table": "ci/checks/chain_table.py",
-    "reference_open_names": "ci/checks/reference_open_names.py",
-    "version_badge": "ci/checks/version_badge.py",
-    "repo_description": "ci/checks/repo_description.py",
-    "ruff_pin_sync": "ci/checks/ruff_pin_sync.py",
-    "ruff_version": "ci/checks/ruff_version.py",
+    "skill_frontmatter": "tools/checks/skill_frontmatter.py",
+    "rule_sections": "tools/checks/rule_sections.py",
+    "rule_count": "tools/checks/rule_count.py",
+    "chain_table": "tools/checks/chain_table.py",
+    "reference_open_names": "tools/checks/reference_open_names.py",
+    "version_badge": "tools/checks/version_badge.py",
+    "repo_description": "tools/checks/repo_description.py",
+    "ruff_pin_sync": "tools/checks/ruff_pin_sync.py",
+    "ruff_version": "tools/checks/ruff_version.py",
 }
 
 # Checks, deren Ergebnis nicht allein am Baum haengt, sondern an dem, was auf

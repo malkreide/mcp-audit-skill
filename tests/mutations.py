@@ -285,7 +285,7 @@ MUTATIONS = [
         "offene-namen/ANKER-meldungsform",
         "reference_open_names",
         _sub(
-            "ci/checks/reference_open_names.py",
+            "tools/checks/reference_open_names.py",
             r'r"Undefined name `\(\?P<name>\[\^`\]\+\)`"',
             'r"Undefinierter Name `(?P<name>[^`]+)`"',
         ),

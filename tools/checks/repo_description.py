@@ -11,7 +11,7 @@ Docstring von `reference/patterns.py`, und `rule_count.py` hat bereits belegt,
 dass dieses Wort der Regelzahl entspricht. Zwei Stellen mit derselben Tabelle
 waeren genau das, was hier auseinanderlaeuft.
 
-AUFRUF: `python ci/checks/repo_description.py <pfad-zur-repo.json>`
+AUFRUF: `python tools/checks/repo_description.py <pfad-zur-repo.json>`
 
 Der API-Aufruf steht bewusst NICHT hier, sondern im Workflow. Dieses Skript
 bekommt die fertige Antwort als Datei. Das ist der Unterschied zwischen einer

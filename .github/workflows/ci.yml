@@ -47,7 +47,7 @@ jobs:
       - name: Ruff-Pin-Sync (ci.yml ↔ .pre-commit-config.yaml)
         env:
           PYTHONUTF8: "1"
-        run: python ci/checks/ruff_pin_sync.py
+        run: python tools/checks/ruff_pin_sync.py
 
       # Der Schritt darueber vergleicht zwei TEXTE. Dieser haelt den Text gegen
       # das laufende Programm — die Begruendung samt gemessenem Vorfall steht
@@ -58,7 +58,7 @@ jobs:
       - name: Ruff-Version (Pin ↔ laufendes Programm)
         env:
           PYTHONUTF8: "1"
-        run: python ci/checks/ruff_version.py
+        run: python tools/checks/ruff_version.py
 
       # Bis hierher war `reference/patterns.py` die groesste ungeprueft
       # gebliebene Python-Datei der Kette: `compileall` sagt «Syntax ok»,
@@ -137,11 +137,11 @@ jobs:
       - name: Offene Namen in reference/ stehen auf der Positivliste
         env:
           PYTHONUTF8: "1"
-        run: python ci/checks/reference_open_names.py
+        run: python tools/checks/reference_open_names.py
 
       # ZWEITES LINT-PROFIL, UND DAS IST DER PREIS DER AUSLAGERUNG.
       #
-      # `ci/` ist kein Vorlagen-Code, sondern Werkzeug: es laeuft, es hat Tests,
+      # `tools/` und `tests/` sind kein Vorlagen-Code, sondern Werkzeug: es laeuft, es hat Tests,
       # und es hat keine offenen Namen aus einer Zielumgebung. Damit faellt der
       # Grund fuer `--ignore F821` weg — hier ist ein undefinierter Name schlicht
       # ein Fehler. Dasselbe Profil fuer beide Baeume zu fahren hiesse, die
@@ -155,10 +155,10 @@ jobs:
       # in version_badge.py — und der stammt wortgleich aus dem Heredoc, das
       # dieses Skript ersetzt. Die Auslagerung sollte das Verhalten nicht
       # anfassen; eine Stilregel ist kein Anlass, davon abzuweichen.
-      - name: Lint der CI-Skripte
+      - name: Lint der Pruefskripte
         run: |
-          ruff check --extend-select E4,E7,E9,F,I,UP,B,SIM,C4,RET ci/
-          echo "ok — ci/ lint-sauber (strenger als reference/, ohne F821-Ausnahme)"
+          ruff check --extend-select E4,E7,E9,F,I,UP,B,SIM,C4,RET tools/ tests/
+          echo "ok — tools/ und tests/ lint-sauber (strenger als reference/, ohne F821-Ausnahme)"
 
       # Der Import-Smoke-Test braucht die Pakete, die `reference/patterns.py`
       # oben importiert. `starlette` und `uvicorn` kommen als Abhaengigkeiten
@@ -223,25 +223,25 @@ jobs:
       #
       # pytest kommt aus dem Schritt «Vorlagen-Abhaengigkeiten installieren»
       # darueber — kein zweiter Pin.
-      - name: Tests der CI-Skripte
+      - name: Tests der Pruefskripte
         env:
           PYTHONUTF8: "1"
-        run: python -m pytest ci/tests/ -q
+        run: python -m pytest tests/ -q
 
       - name: SKILL.md carries a well-formed frontmatter
         env:
           PYTHONUTF8: "1"
-        run: python ci/checks/skill_frontmatter.py
+        run: python tools/checks/skill_frontmatter.py
 
       - name: Every rule carries a counter-example pair and a Nachweis
         env:
           PYTHONUTF8: "1"
-        run: python ci/checks/rule_sections.py
+        run: python tools/checks/rule_sections.py
 
       - name: Rule count is consistent across SKILL.md, both READMEs and patterns.py
         env:
           PYTHONUTF8: "1"
-        run: python ci/checks/rule_count.py
+        run: python tools/checks/rule_count.py
 
       - name: Referenced files exist
         run: |
@@ -254,7 +254,7 @@ jobs:
       - name: The quality-chain table names all five members
         env:
           PYTHONUTF8: "1"
-        run: python ci/checks/chain_table.py
+        run: python tools/checks/chain_table.py
 
       - name: No compiled Python is tracked
         run: |
@@ -267,7 +267,7 @@ jobs:
       - name: Version badge matches the latest CHANGELOG release
         env:
           PYTHONUTF8: "1"
-        run: python ci/checks/version_badge.py
+        run: python tools/checks/version_badge.py
 
       # DIESER SCHRITT STEHT ABSICHTLICH ALS LETZTER.
       #
@@ -295,4 +295,4 @@ jobs:
                -H "Accept: application/vnd.github+json" \
                "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY" \
                > "$RUNNER_TEMP/repo.json"
-          python ci/checks/repo_description.py "$RUNNER_TEMP/repo.json"
+          python tools/checks/repo_description.py "$RUNNER_TEMP/repo.json"
