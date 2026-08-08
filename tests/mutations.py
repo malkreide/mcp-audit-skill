@@ -25,6 +25,7 @@ waere derselbe Fehler, den die Checks selbst verhindern sollen.
 from __future__ import annotations
 
 import re
+import subprocess
 
 
 def _sub(path: str, pattern: str, repl: str, count: int = 1, flags: int = 0):
@@ -47,9 +48,25 @@ def _rename(path: str, neu: str):
 
     def apply(tree):
         ziel = tree / path
-        if not ziel.is_file():
+        if not ziel.exists():
             raise AssertionError(f"Mutation griff nicht: {path} gibt es nicht")
         ziel.rename(tree / neu)
+
+    return apply
+
+
+def _force_add(pfad: str, inhalt: bytes = b"\x00fake bytecode"):
+    """Zwingt eine Datei in den git-Index, an .gitignore vorbei.
+
+    Genau so kommt Bytecode real ins Repository: durch ein `git add -f`, oder
+    weil die Datei getrackt war, bevor die Ignore-Zeile dazukam.
+    """
+
+    def apply(tree):
+        ziel = tree / pfad
+        ziel.parent.mkdir(parents=True, exist_ok=True)
+        ziel.write_bytes(inhalt)
+        subprocess.run(["git", "-C", str(tree), "add", "-f", pfad], check=True)
 
     return apply
 
@@ -298,6 +315,32 @@ MUTATIONS = [
         "reference_open_names",
         _rename("reference/patterns.py", "reference/patterns.py.bak"),
         "Kein einziger offener Name",
+    ),
+    # --- Hygiene ---------------------------------------------------------
+    # ANKER: bei dieser Pruefung IST die referenzierte Datei der Anker. Ist sie
+    # weg, hat der Verweis darauf nichts mehr — und das muss ein Befund sein,
+    # nicht ein stilles Bestehen.
+    (
+        "hygiene/ANKER-referenzierte-datei-weg",
+        "referenced_files_exist",
+        _rename("LICENSE", "LIZENZ"),
+        "referenzierte Datei(en) fehlen: ['LICENSE']",
+    ),
+    # Diese Mutation war vor dem git-Fixture nicht herstellbar: ohne Index
+    # gibt es nichts, in das sich etwas hineinzwingen liesse.
+    (
+        "hygiene/bytecode-in-den-index-gezwungen",
+        "no_compiled_python_tracked",
+        _force_add("tools/checks/__pycache__/readmes.cpython-311.pyc"),
+        "kompiliertes Python ist getrackt",
+    ),
+    # ANKER: der Index selbst. Ohne git-Repo kann die Pruefung nichts sagen —
+    # und muss das sagen, statt Erfolg zu melden.
+    (
+        "hygiene/ANKER-kein-git-repo",
+        "no_compiled_python_tracked",
+        _rename(".git", ".git-weg"),
+        "kann den Index nicht lesen",
     ),
     # --- Ruff-Pins ----------------------------------------------------------
     # Beide Gates lesen denselben Anker in ci.yml. Faellt er weg, muessen beide

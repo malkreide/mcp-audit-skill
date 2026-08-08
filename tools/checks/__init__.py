@@ -19,7 +19,7 @@ mindestens eine Mutation in `tests/mutations.py` — `test_every_check_has_...`
 besteht darauf — und einen Eintrag im CHANGELOG.
 """
 
-from . import github_meta, readmes, references, skill_doc, toolchain
+from . import github_meta, hygiene, readmes, references, skill_doc, toolchain
 from ._core import (
     Check,
     CheckFailed,
@@ -37,6 +37,7 @@ __all__ = [
     "Result",
     "all_checks",
     "github_meta",
+    "hygiene",
     "pycache_to_temp",
     "readmes",
     "references",

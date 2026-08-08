@@ -474,6 +474,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   verschwinden die Prüfungen eines Moduls aus jedem Lauf, und der Runner
   meldet «all passed» über weniger, als er glaubt.
 
+- **`tools/checks/hygiene.py`: die letzten beiden Shell-Schritte sind
+  Prüfungen** — Check 10 (referenzierte Dateien) und Check 11 (kein
+  getrackter Bytecode). Damit enthält `ci.yml` **keine Prüflogik mehr**, in
+  keiner Sprache: kein Heredoc, keine Shell, kein `test -f`, kein
+  `git ls-files`. Zwölf Schritte, 232 Zeilen.
+
+  **Der genannte Blocker ist aufgelöst, nicht umgangen.** Check 11 fragt
+  `git ls-files`; gegen einen Fixture-Baum ohne `.git` liess sich das nicht
+  prüfen. Die Lösung ist, den Fixture-Baum zu einem **echten
+  git-Repository** zu machen: `git init` plus `git add -A`, gemessene ~30 ms.
+  Damit hat er einen Index — und erst dadurch wird die Mutation herstellbar,
+  auf die es ankommt: eine `.pyc` mit `git add -f` an `.gitignore` vorbei in
+  den Index zwingen. Genau so kommt Bytecode real ins Repository.
+
+  **Gefragt wird git, nicht das Dateisystem**, und der Unterschied ist beim
+  Gegenprüfen sichtbar geworden: Die Variante mit `root.rglob("*.pyc")` macht
+  `validate.sh` am echten Baum rot — sie findet den Bytecode, den der letzte
+  Testlauf erzeugt hat. Das wäre ein Befund über den Arbeitsplatz, nicht über
+  das Repository.
+
+  **Anker beider Prüfungen, je mit eigener Mutation:** Bei Check 10 *ist* die
+  referenzierte Datei der Anker — ist sie weg, hat der Verweis nichts mehr.
+  Bei Check 11 ist es der Index selbst: kein git-Repository heisst FEHLER,
+  nicht «übersprungen», denn dann kann die Prüfung nichts sagen.
+
+  **Nachgemessen an zwei Defekten, beide am echten Baum unauffällig:**
+
+  | Defekt | `validate.sh` | Suite |
+  |---|---|---|
+  | Check 11 fragt das Dateisystem statt git | rot — aber **aus dem falschen Grund** | rot bei `ANKER-kein-git-repo` |
+  | Fehlende Datei wird zur Warnung statt Befund | 10 checks, all passed | rot bei `ANKER-referenzierte-datei-weg` |
+
+  Prüfungen 9 → **11**, Schritte in `ci.yml` 14 → **12**, Tests 98 → **108**.
+
 ### Changed
 
 - **Der Geltungsbereich hängt nicht am gefahrenen Transport, sondern an der
