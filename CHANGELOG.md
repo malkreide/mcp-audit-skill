@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Zeile 13 zeigte auf einen Check, den es nicht mehr gibt
+
+**`DRIFT-007` ist zurückgezogen.** Der Check stand vier Tage im Katalog, war nie
+in einem Release und ging am 2026-08-07 in `FID-006` auf; die Nummer wird
+bewusst nicht neu vergeben. Zeile 13 dieser Tabelle nannte ihn weiterhin — mit
+einem toten Link auf `checks/DRIFT-007.md` und einer Abgrenzung, die eine Lücke
+beschrieb, die drüben geschlossen worden war.
+
+**Die Abgrenzung war zur Hälfte hinfällig, und zwar zu Recht.** Sie
+argumentierte, `FID-006`s Pass-Criteria seien ein `oder` — normalisieren *oder*
+je Endpunkt ein Test gegen die echte Antwort —, und Regel 13 kenne diesen
+zweiten Arm nicht. Nachgelesen im Check: Normalisieren an der Parse-Grenze ist
+dort inzwischen ein **eigenes** Kriterium, der Test gegen die echte Antwort
+steht **zusätzlich** daneben, und ein festverdrahtetes Literal je Endpunkt ist
+ausdrücklich ein Fail. Was bleibt, ist die zweite Stelle: Kein Kriterium
+verlangt, dass ein **tatsächlich eingetretener** Zusammenfall zweier Schlüssel
+unter der Normalisierung in den Fehlerkanal geht. `FID-006` verbietet nur, zwei
+verschiedene Namen zusammenzuziehen. Die Zeile sagt jetzt beides — was weg ist
+und was bleibt.
+
+**Vier Zahlen und eine Einstufung nachgezogen**, alle gegen den Katalog gemessen
+statt aus der Erinnerung geschrieben:
+
+- «Geschnitten ist v2.2.0 (116 Checks); die vier Änderungen darüber hinaus
+  stehen drüben unter `[Unreleased]`» → geschnitten ist **v2.3.0** vom
+  2026-08-08, und jene Änderungen sind darin released.
+- «verlangt drüben keiner der 113 Checks» → **120**.
+- «Zwischen v1.7.0 (97 Checks) und v2.0.0 (112) lagen vier Tage» → es lag
+  **ein** Tag (2026-08-03 → 2026-08-04).
+- `DRIFT` hat weiterhin sieben Checks, nummeriert `001`–`006` und `008` — das
+  steht jetzt da, weil sonst die Lücke wie ein Fehler aussieht.
+- **«Regel 10 bringt mit `ARCH-003` den einzigen `enforced` Check dieser Tabelle
+  mit — alle anderen sind `advisory`» war falsch.** `FID-001`, `FID-002`,
+  `FID-003` und `FID-005` führen kein `adoption`-Feld, und ohne das Feld gilt
+  `enforced`. Es sind **fünf**, nicht einer. Das ist die folgenreichste der
+  Korrekturen: Der Satz las sich als «die Checks zu den Regeln 1–5 blockieren
+  nicht», und sie blockieren. Was `ARCH-003` allein auszeichnet, ist die
+  Anwendbarkeit — `always` statt `tools_make_external_requests == true`.
+
+**Gefunden hat es Prüfung 14, und zwar an dem Kriterium, das nachschlägt statt
+zu zählen.** Die Zahlen stimmten zu diesem Zeitpunkt: 120 Checks, zwölf
+Kategorien, sieben `FID`. `DRIFT` hatte seine sieben behalten — die 007 ging,
+die 008 kam. **Eine Prüfung, die nur Summen vergleicht, wäre hier grün
+geblieben.** Rot wurde sie an der einzelnen ID.
+
+Der Abschnitt «Zur Haltbarkeit dieser Tabelle» hat deshalb einen vierten Beleg
+bekommen, und er verallgemeinert die Lehre: Bisher hiess sie *eine Zeile
+veraltet, weil drüben ein Check dazukommt*. Sie heisst jetzt **eine Zuordnung
+veraltet in beide Richtungen** — ein Check kann auch verschwinden, und dann wird
+aus einer belegten Abgrenzung eine erfundene. Ein Zugewinn meldet sich immerhin
+als «nicht abgedeckt, obwohl abgedeckt»; eine Rücknahme meldet sich als gar
+nichts, bis jemand dem Link folgt.
+
+**Benannter Rand, nicht behoben:** Prüfung 14 vergleicht IDs, Summen und
+Kategorien — die **Einstufung** (`adoption`) vergleicht sie nicht. Genau die ist
+hier falsch gewesen, und genau die hätte kein Lauf gemeldet. Dafür müsste die
+Prüfung jede Check-Datei einzeln abrufen statt nur `MANIFEST.txt`; ob das den
+Abruf wert ist, ist hier **nicht** entschieden.
+
+`README.md` und `README.de.md` sind identisch nachgezogen.
+
 ### Added
 
 - **Prüfung 18 — der `ruff` auf dem PATH ist der gepinnte.** Der Pin steht ab
