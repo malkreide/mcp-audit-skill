@@ -172,16 +172,34 @@ MUTATIONS = [
         "nothing for rule(s) [13]",
     ),
     # --- Kettentabelle ------------------------------------------------------
-    # Umbenannt, nicht angehaengt: der Check vergleicht per Teilzeichenkette,
-    # `mcp-continuous-auditor2` haette also weiter bestanden — der Name steckt
-    # darin. Diese Mutation muss den Namen ERSETZEN, um etwas zu zeigen.
     (
-        "kette/mitglied-fehlt",
+        "kette/mitglied-umbenannt",
         "chain_table",
         _sub(
             "README.md", r"mcp-continuous-auditor", "mcp-continuous-inspector", count=0
         ),
         "does not name ['mcp-continuous-auditor']",
+    ),
+    # Die beiden folgenden gingen unter dem alten Teilzeichenketten-Vergleich
+    # DURCH: der gesuchte Name steckt im umbenannten. So verschwindet ein
+    # Mitglied, ohne dass etwas rot wird — nicht durch Loeschen, sondern durch
+    # Umbenennen mit Anhang.
+    (
+        "kette/mitglied-mit-ziffer-angehaengt",
+        "chain_table",
+        _sub(
+            "README.md", r"mcp-continuous-auditor", "mcp-continuous-auditor2", count=0
+        ),
+        "does not name ['mcp-continuous-auditor']",
+    ),
+    # Der Fall, an dem ein blosses `\b` nicht reichen wuerde: der Bindestrich
+    # ist ein Nicht-Wortzeichen, also waere die Wortgrenze hinter
+    # `mcp-audit-skill` erfuellt und die Mutation unbemerkt geblieben.
+    (
+        "kette/mitglied-mit-bindestrich-suffix",
+        "chain_table",
+        _sub("README.md", r"mcp-audit-skill(?![\w-])", "mcp-audit-skill-v2", count=0),
+        "does not name ['mcp-audit-skill']",
     ),
     (
         "kette/topic-link-weg",
@@ -229,6 +247,49 @@ MUTATIONS = [
             flags=re.M,
         ),
         "no '## [X.Y.Z]' release heading found",
+    ),
+    # --- Offene Namen in reference/patterns.py ------------------------------
+    # DER FALL, UM DEN ES GEHT: ein Tippfehler in einem offenen Namen. Unter
+    # dem pauschalen `--ignore F821` war er unsichtbar; die Positivliste macht
+    # ihn zu einem Befund.
+    (
+        "offene-namen/tippfehler",
+        "reference_open_names",
+        # Die CODE-Stelle, nicht die Nennung im Modul-Docstring: nur erstere
+        # erzeugt ein F821, und nur um sie geht es hier.
+        _sub(
+            "reference/patterns.py",
+            r"settings = get_settings\(\)",
+            "settings = get_settngs()",
+        ),
+        "offene Namen ohne Eintrag auf der Positivliste: ['get_settngs']",
+    ),
+    # Die andere Richtung: ein Eintrag, den es im Baum nicht mehr gibt. Ohne
+    # diesen Zweig waechst die Liste nur und beschreibt irgendwann die
+    # Geschichte statt die Datei.
+    (
+        "offene-namen/verwaister-eintrag",
+        "reference_open_names",
+        _sub(
+            "reference/patterns.py",
+            r"raise HeaderMismatchError",
+            "raise ValueError",
+            count=0,
+        ),
+        "Namen, die es in reference/ nicht mehr gibt: ['HeaderMismatchError']",
+    ),
+    # ANKER: die Meldungsform von ruff. Wird sie unlesbar, darf der Check nicht
+    # null Namen finden und «sauber» melden — er muss sagen, dass er nichts
+    # lesen konnte. Simuliert ueber den Regex im Check selbst.
+    (
+        "offene-namen/ANKER-meldungsform",
+        "reference_open_names",
+        _sub(
+            "ci/checks/reference_open_names.py",
+            r'r"Undefined name `\(\?P<name>\[\^`\]\+\)`"',
+            'r"Undefinierter Name `(?P<name>[^`]+)`"',
+        ),
+        "traegt nicht die Form",
     ),
     # --- GitHub-Description -------------------------------------------------
     # Die ersten beiden mutieren die API-Antwort, nicht den Baum: die

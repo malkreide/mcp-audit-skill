@@ -139,10 +139,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   `F821` ist die eine Ausnahme und der Grund für `select = []`: Die Vorlagen
   referenzieren absichtlich Namen aus der Zielumgebung (`get_settings`, `mcp`,
-  `AuthError`). Gemessen: 31 Treffer, alle beabsichtigt. **Der Preis steht im
-  Kommentar, nicht in einer Fussnote:** Ein echter Tippfehler in einem solchen
-  offenen Namen fällt unter dieser Ausnahme ebenfalls nicht auf. Das Gate fängt
-  alles andere. `E501` bleibt draussen — Zeilenlänge gehört dem Formatter, und
+  `AuthError`). Gemessen: 31 Treffer, alle beabsichtigt. Der Preis davon — ein
+  echter Tippfehler in einem solchen offenen Namen fällt unter der Ausnahme
+  ebenfalls nicht auf — ist inzwischen eingelöst: siehe den Eintrag
+  «Positivliste für die offenen Namen» weiter unten. `--ignore F821` bleibt in
+  diesem Schritt, F821 wird eigens geprüft.
+  `E501` bleibt draussen — Zeilenlänge gehört dem Formatter, und
   E501 feuert genau auf das, was `ruff format` nicht umbrechen kann.
 
   Das Format-Gate bleibt daneben stehen, weil es etwas anderes misst.
@@ -245,11 +247,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wird durch ein vorhandenes Paket zwar schwächer, aber das ist eine eigene
   Abwägung und gehört nicht in dieselbe Änderung.
 
-  **Nebenbefund, nicht behoben:** `chain_table.py` vergleicht per
-  Teilzeichenkette. Ein Mitglied, das einen *Suffix* bekommt
-  (`mcp-continuous-auditor2`), besteht damit weiterhin — der alte Name steckt
-  darin. Gefangen wird Umbenennen und Weglassen, nicht Anhängen. Das steht
-  jetzt im Docstring des Checks, statt unbemerkt zu bleiben.
+  **Nebenbefund beim Bau der Mutationen:** `chain_table.py` verglich per
+  Teilzeichenkette. Behoben im Eintrag «Kettentabelle vergleicht auf
+  Namensgrenze» weiter unten.
+
+- **Positivliste für die offenen Namen in `reference/patterns.py`.** Löst den
+  Preis ein, der bislang nur im Kommentar des Lint-Gates stand.
+
+  `--ignore F821` war pauschal: Die Vorlagen referenzieren absichtlich Namen
+  aus der Zielumgebung, und ein Tippfehler in einem solchen Namen fiel deshalb
+  ebenfalls nicht auf. **Nachgemessen, dass die Lücke real war** —
+  `settings = get_settings()` zu `get_settngs()` verdreht:
+
+  | Gate | Ergebnis |
+  |---|---|
+  | `ruff check --ignore F821 reference/` | grün — *All checks passed* |
+  | `compileall` | grün |
+  | `ruff format --check` | grün |
+  | **neu: Positivliste** | **rot** — `['get_settngs']` ohne Eintrag |
+
+  Kein bestehendes Gate sah den Tippfehler.
+
+  Neu ist `ci/checks/reference_open_names.py`: es liest die F821-Befunde aus
+  `ruff --output-format json` und hält sie gegen **19 Namen, jeder mit
+  Begründung** (Zielumgebung, Fehlertyp des Zielprojekts, Krypto-Primitive,
+  Testhelfer aus der `conftest.py` des Ziels). Eine stumme Namensliste wäre nur
+  eine zweite Stelle, an der «schon immer so» steht.
+
+  **Geprüft wird in beide Richtungen.** Ein Name ohne Eintrag ist der
+  Tippfehler-Fall; ein Eintrag ohne Namen im Baum ist der Fäulnis-Fall. Nur die
+  erste Richtung zu prüfen hiesse, eine Liste zu führen, die ausschliesslich
+  wächst — und die lässt irgendwann jeden Tippfehler durch, der einem längst
+  gelöschten Namen gleicht. Der Preis gehört dazugesagt: Wer einen
+  Vorlagen-Block hinzufügt oder löscht, zieht die Liste im selben Commit nach.
+
+  **Ein eigener Anker, weil er hier besonders billig zu verlieren wäre:**
+  `ruff check` liefert auf einen falschen Pfad eine leere Trefferliste **und
+  exit 0** (nachgemessen). Ohne den ausdrücklichen Zweig dafür meldete der
+  Check «keine unerwarteten Namen» — also «bestanden», wo «nicht gelaufen»
+  richtig wäre. Ebenso ist die Meldungsform ``Undefined name `x` `` ein Anker:
+  ändert ruff sie, sagt der Check, dass er nichts lesen konnte.
+
+- **Die Kettentabelle vergleicht auf Namensgrenze statt auf
+  Teilzeichenkette.** `chain_table.py` prüfte mit `name in body`. Damit bestand
+  ein Mitglied, das einen *Anhang* bekam — der gesuchte Name steckt im
+  umbenannten. So verschwindet ein Kettenmitglied, ohne dass etwas rot wird:
+  nicht durch Löschen, sondern durch Umbenennen mit Suffix.
+
+  Neu: `(?<![\w-])name(?![\w-])`. **Nicht `\b`** — der Bindestrich ist ein
+  Nicht-Wortzeichen, also wäre die Wortgrenze hinter `mcp-audit-skill` in
+  `mcp-audit-skill-v2` erfüllt und der Fall weiter durchgegangen. Der
+  Bindestrich muss ausdrücklich ausgeschlossen werden, weil er in diesen Namen
+  selbst vorkommt.
+
+  **Nachgemessen** — mit dem alten Vergleich wieder eingebaut fallen genau die
+  zwei neuen Mutationen (`mcp-continuous-auditor2`, `mcp-audit-skill-v2`) und
+  sonst nichts; alle fünf Mitglieder werden in beiden READMEs weiterhin
+  gefunden. Namen in Prosa, Tabellenzellen und URLs tragen unverändert:
+  Klammern, Schrägstriche und Punkte beenden den Namen sauber.
+
+  Die Testsuite wächst damit von 34 auf **41** Tests.
 
 ### Changed
 

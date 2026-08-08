@@ -33,6 +33,7 @@ SCRIPTS = {
     "rule_sections": "ci/checks/rule_sections.py",
     "rule_count": "ci/checks/rule_count.py",
     "chain_table": "ci/checks/chain_table.py",
+    "reference_open_names": "ci/checks/reference_open_names.py",
     "version_badge": "ci/checks/version_badge.py",
     "repo_description": "ci/checks/repo_description.py",
 }
