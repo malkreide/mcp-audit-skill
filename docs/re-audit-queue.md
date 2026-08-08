@@ -93,7 +93,7 @@ Fünf weitere PRs: `swiss-energy-mcp` (GeoAdmin `identify`/`find`), `swiss-elect
 
 **Er steht trotzdem auf `todo` und nicht auf `pass`, und die Portfolio-Zahl bleibt bei 0 von 42.** Das letzte Kriterium — Struktur oder Feldnamen gegen eine **echte** Antwort halten — ist implementiert, aber nie grün gelaufen. Nach [`SKILL.md` §2.6](../SKILL.md) ist ein Live-Test, der nicht durchgelaufen ist, kein bestandener Test.
 
-**Der Grund ist die Quelle, nicht der Server.** `www.bista.zh.ch` liefert auf allen sechs OGD-Endpunkten **HTTP 502**, während die Startseite mit 200 antwortet. Erster gemessener 502 am 2026-08-07 um 21:24 UTC, letzter am 2026-08-08 um 07:16 UTC — **rund zehn Stunden**, und zwar aus **zwei unabhängigen Netzen**: aus der Audit-Sitzung heraus (sechs Messungen) und aus [Lauf 31245489543](https://github.com/malkreide/zh-education-mcp/actions/runs/31245489543) auf einem GitHub-Runner (2026-08-08, 07:08–07:13 UTC, `workflow_dispatch` auf `main`).
+**Der Grund ist die Quelle, nicht der Server.** `www.bista.zh.ch` liefert auf allen sechs OGD-Endpunkten **HTTP 502**, während die Startseite mit 200 antwortet. Erster gemessener 502 am 2026-08-07 um 21:24 UTC, letzter am 2026-08-08 um 07:34 UTC — **gut zehn Stunden**, und zwar aus **zwei unabhängigen Netzen**: aus der Audit-Sitzung heraus (acht Messungen) und aus [Lauf 31245489543](https://github.com/malkreide/zh-education-mcp/actions/runs/31245489543) auf einem GitHub-Runner (2026-08-08, 07:08–07:13 UTC, `workflow_dispatch` auf `main`).
 
 Der Lauf ist die Messung, auf die es hier ankommt, weil er die naheliegende Gegenerklärung ausschliesst: Die 502er der Audit-Sitzung gehen alle über denselben Proxy-Ausgang, ein Runner geht über einen anderen. Beide sehen dasselbe.
 
@@ -105,9 +105,29 @@ Der Lauf ist die Messung, auf die es hier ankommt, weil er die naheliegende Gege
 | gefallen beim Verbindungsaufbau | 1 |
 | **grün** | **1** |
 
-**Kein einziger Fehlschlag betrifft einen Feldnamen.** Der eine grüne Test ist `test_live_the_real_host_resolves_past_the_egress_guard` — der einzige, der den Host **auflöst**, aber nicht **abruft**. DNS steht, TLS steht, die Anwendung dahinter antwortet nicht.
+**Kein einziger Fehlschlag betrifft einen Feldnamen.** Der eine grüne Test ist `test_live_the_real_host_resolves_past_the_egress_guard` — der einzige, der den Host **auflöst**, aber nicht **abruft**. DNS steht also; die Anwendung dahinter antwortet nicht. *(Der erste Eintrag schrieb hier «DNS steht, TLS steht» — der zweite Satzteil ist gestrichen, siehe den TLS-Absatz weiter unten.)*
 
-**Eine Beobachtung, die ausdrücklich kein Befund ist.** Der letzte Verbindungsversuch von `test_live_bista_api_letzi` endete nach vier `ConnectError`-Retries mit `[SSL: CERTIFICATE_VERIFY_FAILED] Hostname mismatch, certificate is not valid for 'www.bista.zh.ch'`. Dieselbe Suite hat davor zehnmal sauber TLS aufgebaut und 502 bekommen, und die Nachmessung um 07:16 UTC meldet `ssl_verify_result=0`. Einmal gesehen, nicht reproduziert, und mindestens drei Erklärungen sind offen — ein Knoten in einem Pool, ein DNS-Wechsel während des Vorfalls, ein Artefakt des Testaufbaus. Es steht hier als Zeile im Log und nicht als Aussage über die Quelle; kommt es im nächsten Lauf wieder, ist es ein Befund.
+**Der zweite Lauf, und was er umwirft (2026-08-08, 07:25–07:31 UTC).** [Lauf 31246130572](https://github.com/malkreide/zh-education-mcp/actions/runs/31246130572) hat dieselbe Bilanz — 14 gefallen, 1 grün — und eine **andere Ursache**:
+
+| | Lauf 1 (07:08) | Lauf 2 (07:25) |
+|---|---:|---:|
+| `502 Bad Gateway` | 10 | **0** |
+| `TimeoutError` | 3 | **13** |
+| TLS-Hostname-Mismatch | 1 | 1 |
+
+**Der Hostname-Mismatch ist reproduziert.** Zweimal, im selben Test (`test_live_bista_api_letzi`), mit demselben Wortlaut — `certificate is not valid for 'www.bista.zh.ch'`, jeweils nach vier `ConnectError`-Retries. Der erste Eintrag führte ihn als «einmal beobachtet, nicht reproduziert»; das gilt nicht mehr.
+
+**Und die Gegenevidenz war keine.** Der erste Eintrag hielt dagegen, die Nachmessung aus der Audit-Sitzung melde `ssl_verify_result=0`, die Quelle sei also in Ordnung. Nachgesehen:
+
+```
+tls=0  ip=127.0.0.1  http=502
+```
+
+`remote_ip=127.0.0.1` — der TLS-Handschlag der Sitzung endet **am Agent-Proxy**, der mit eigener CA neu signiert. Das Zertifikat von BISTA bekommt diese Umgebung überhaupt nie zu sehen. Die Zahl sagt aus, dass der Proxy sich korrekt ausgewiesen hat, und sonst nichts. Sie hat der Runner-Beobachtung nie widersprochen — hier wurde eine Messung als Beleg für etwas gelesen, das sie nicht messen kann. Dieselbe Fehlerklasse wie der Helfer-Blindfleck und die selbstzitierenden Docstrings weiter oben, nur eine Ebene tiefer: nicht das Werkzeug hat falsch gezählt, sondern der Messpunkt lag nicht dort, wo die Frage war.
+
+**Was der Proxy-Vorbehalt nicht trifft.** Der Ausfall selbst bleibt doppelt belegt. Über den Proxy kommt eine Antwort mit `server: Microsoft-IIS/10.0` und einem 1477 Byte grossen HTML-Körper zurück — das ist der Ursprung, der 502 sagt, keine Fehlerseite des Proxys; und Lauf 1 hat dieselben 502 ohne jeden Proxy gesehen. Nur die **TLS**-Aussage der Sitzung ist wertlos, nicht die HTTP-Aussage.
+
+**Was jetzt tatsächlich gilt, und was offen bleibt.** Die beiden Netze sehen unterschiedliche Ausfälle: über den Proxy ein sauberer 502 von einem stehenden IIS, vom Runner aus Timeouts und ein Zertifikat für einen anderen Namen. `www.bista.zh.ch` löst aus der Sitzung auf genau eine Adresse auf (`193.246.68.83`), was «ein kaputter Knoten im Pool» nicht stützt und nicht ausschliesst — was der Runner auflöst, ist von hier aus nicht feststellbar. Klären würde es ein Diagnoseschritt im Live-Workflow, der bei einem Verbindungsfehler die aufgelöste Adresse und `subject`/`SAN` des gelieferten Zertifikats protokolliert. Der ist **nicht gebaut**; solange er fehlt, bleibt die Beobachtung belegt, aber unerklärt.
 
 **§5 feuert nicht.** Ein Quellenausfall ist keiner der fünf Auslöser: keine Severity, keine Reichweite, kein Prüfkriterium, keine Adoptionsstufe, keine Baseline hat sich bewegt. Kein bestandenes Audit wird dadurch ungültig. Der Eintrag steht hier aus dem Grund, aus dem weiter unten `v2.2.0` einen Abschnitt hat, in dem nichts feuert: Ein Kriterium, das erfüllt **aussieht** und dessen Beleg nie erbracht wurde, ist von einem erfüllten nur unterscheidbar, wenn der fehlende Beleg aufgeschrieben ist.
 
@@ -127,10 +147,12 @@ Der Lauf ist die Messung, auf die es hier ankommt, weil er die naheliegende Gege
 | 25 / 7 / 10 / 2 nach der Nachlese | **gemessen** — dasselbe Verfahren; 7 von 17 Fundstellen als echte Befunde von Hand bestätigt, 10 verworfen und je Repo im PR benannt |
 | 4 von 6 Endpunkten schreiben klein, 2 gross, 2 mischen innerhalb der Kopfzeile | **übernommen** aus dem `DRIFT-007`-Text vom 2026-08-03, dort am Belegfall erhoben |
 | Audits mit `FID-006: pass` im Fenster seit `v2.1.0` | **nicht gemessen** — von diesem Repo aus nicht erhebbar |
-| 15 / 10 / 3 / 1 / 1 im Live-Lauf | **gemessen** — Job-Log von Lauf 31245489543, jede Zeile der `short test summary info` einzeln zugeordnet |
-| BISTA 502 seit 2026-08-07 21:24 UTC | **gemessen** — sieben `curl`-Messungen aus der Sitzung plus der Runner-Lauf; die Startseite antwortete bei jeder Messung mit 200 |
-| Ausfall aus zwei unabhängigen Netzen | **gemessen** — Sitzungs-Ausgang über den Agent-Proxy, Runner-Ausgang über GitHub; kein gemeinsamer Pfad ausser der Quelle selbst |
-| TLS-Hostname-Mismatch | **einmal beobachtet, nicht reproduziert** — eine Zeile im Job-Log; die Nachmessung meldet `ssl_verify_result=0`. Bewusst nicht als Befund geführt |
+| 15 / 10 / 3 / 1 / 1 in Lauf 1 | **gemessen** — Job-Log von Lauf 31245489543, jede Zeile der `short test summary info` einzeln zugeordnet |
+| 15 / 0 / 13 / 1 / 1 in Lauf 2 | **gemessen** — dasselbe Verfahren am Job-Log von Lauf 31246130572. Die Ausfallform hat gewechselt, die Bilanz nicht |
+| BISTA 502 seit 2026-08-07 21:24 UTC | **gemessen** — acht `curl`-Messungen aus der Sitzung plus Lauf 1; die Startseite antwortete bei jeder Messung mit 200 |
+| Ausfall aus zwei unabhängigen Netzen | **gemessen** — Sitzungs-Ausgang über den Agent-Proxy, Runner-Ausgang über GitHub; kein gemeinsamer Pfad ausser der Quelle selbst. Gilt für die **HTTP**-Aussage; die Antwort trägt `server: Microsoft-IIS/10.0`, ist also die des Ursprungs und keine Fehlerseite des Proxys |
+| TLS-Hostname-Mismatch | **zweimal beobachtet** — Läufe 31245489543 und 31246130572, selber Test, selber Wortlaut. **Nicht erklärt**, und die frühere Gegenevidenz ist zurückgezogen: siehe die Zeile darunter |
+| `ssl_verify_result=0` aus der Sitzung | **untauglich, zurückgezogen** — `remote_ip=127.0.0.1`; der Handschlag endet am Agent-Proxy, der neu signiert. Diese Umgebung sieht das Zertifikat der Quelle nie. Der erste Eintrag hat die Zahl als Widerspruch zur Runner-Beobachtung gelesen; sie war nie einer |
 
 **Drei Korrekturen am Messwerkzeug, jede hat die Zahlen bewegt** — sie stehen im Kopf von `fid006_ast.py` und gehören hierher, weil eine Zahl ohne ihre Fehlversuche nicht nachvollziehbar ist:
 
