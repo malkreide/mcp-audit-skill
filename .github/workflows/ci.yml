@@ -203,22 +203,6 @@ jobs:
           PYTHONUTF8: "1"
         run: python -m pytest tests/ -q
 
-      - name: Referenced files exist
-        run: |
-          for f in SKILL.md reference/patterns.py README.md README.de.md \
-                   LICENSE CHANGELOG.md; do
-            test -f "$f" || { echo "missing: $f"; exit 1; }
-          done
-          echo "ok — all referenced files present"
-
-      - name: No compiled Python is tracked
-        run: |
-          if git ls-files | grep -E '(__pycache__/|\.py[cod]$)'; then
-            echo "compiled Python is tracked — see .gitignore"
-            exit 1
-          fi
-          echo "ok — no compiled Python tracked"
-
       # DIESER SCHRITT STEHT ABSICHTLICH ALS LETZTER.
       #
       # Er ist der einzige, den kein Commit gruen machen kann: Die Description

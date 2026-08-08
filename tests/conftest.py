@@ -23,6 +23,7 @@ import json
 import pathlib
 import re
 import shutil
+import subprocess
 
 import pytest
 
@@ -52,13 +53,25 @@ CHECKS_BY_NAME = {c.run.__name__: c for c in all_checks()}
 
 @pytest.fixture
 def tree(tmp_path: pathlib.Path) -> pathlib.Path:
-    """Eine Wegwerf-Kopie des echten Repos."""
+    """Eine Wegwerf-Kopie des echten Repos — als echtes git-Repository.
+
+    `git init` plus `git add -A` kostet gemessene ~30 ms und macht den
+    Fixture-Baum in genau der Hinsicht wahrhaftig, auf die es Check 11
+    ankommt: Er hat einen INDEX. Ohne den liesse sich «kein Bytecode ist
+    getrackt» nur behaupten, nicht pruefen — und die Mutation dazu (`git add
+    -f` auf eine .pyc) gaebe es nicht.
+
+    Das `.git` des Originals wird bewusst nicht mitkopiert: Der Baum soll
+    seine eigene Geschichte haben, nicht die des Repos, in dem der Test laeuft.
+    """
     dst = tmp_path / "repo"
     shutil.copytree(
         REPO_ROOT,
         dst,
         ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc", ".pytest_cache"),
     )
+    subprocess.run(["git", "init", "-q", str(dst)], check=True)
+    subprocess.run(["git", "-C", str(dst), "add", "-A"], check=True)
     return dst
 
 
