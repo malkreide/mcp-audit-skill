@@ -174,6 +174,27 @@ jobs:
           ruff check --extend-select E4,E7,E9,F --ignore F821 reference/
           echo "ok — reference/ lint-sauber (E4,E7,E9,F ohne F821)"
 
+      # ZWEITES LINT-PROFIL, UND DAS IST DER PREIS DER AUSLAGERUNG.
+      #
+      # `ci/` ist kein Vorlagen-Code, sondern Werkzeug: es laeuft, es hat Tests,
+      # und es hat keine offenen Namen aus einer Zielumgebung. Damit faellt der
+      # Grund fuer `--ignore F821` weg — hier ist ein undefinierter Name schlicht
+      # ein Fehler. Dasselbe Profil fuer beide Baeume zu fahren hiesse, die
+      # Nachsicht, die `reference/` braucht, auf Code auszudehnen, der sie nicht
+      # braucht.
+      #
+      # Was ueber `reference/` hinausgeht: I (Importreihenfolge), UP (veraltete
+      # Idiome), B (bugbear), SIM, C4, RET. Gemessen an ci/ mit 0.16.1: sauber.
+      #
+      # PTH bleibt bewusst draussen. Es haette genau einen Treffer — `Path(".")`
+      # in version_badge.py — und der stammt wortgleich aus dem Heredoc, das
+      # dieses Skript ersetzt. Die Auslagerung sollte das Verhalten nicht
+      # anfassen; eine Stilregel ist kein Anlass, davon abzuweichen.
+      - name: Lint der CI-Skripte
+        run: |
+          ruff check --extend-select E4,E7,E9,F,I,UP,B,SIM,C4,RET ci/
+          echo "ok — ci/ lint-sauber (strenger als reference/, ohne F821-Ausnahme)"
+
       # Der Import-Smoke-Test braucht die Pakete, die `reference/patterns.py`
       # oben importiert. `starlette` und `uvicorn` kommen als Abhaengigkeiten
       # von `mcp` mit und stehen deshalb nicht einzeln hier — sie einzeln zu
@@ -220,137 +241,42 @@ jobs:
         run: |
           python -c "import patterns; print('ok — reference/patterns.py importiert, SDK-Oberflaeche aufgeloest')"
 
+      # DIESER SCHRITT STEHT VOR DEN SECHS CHECKS, DIE ER PRUEFT.
+      #
+      # Fallen beide, ist die Reihenfolge die Diagnose: Sind die Tests rot, ist
+      # die PRUEFLOGIK kaputt und die Befunde der Checks dahinter wertlos —
+      # gruen wie rot. Sind die Tests gruen und ein Check rot, ist der BAUM
+      # kaputt. Stuenden die Tests dahinter, waeren beide Faelle im Log nicht
+      # auseinanderzuhalten.
+      #
+      # Was die Tests belegen, stand vorher nur in der Prosa: dass ein
+      # entfernter Anker FEHLER heisst und nicht «uebersprungen». Nachgemessen
+      # an dieser Suite — den Anker-Abbruch in version_badge.py durch ein
+      # `continue` zu ersetzen laesst den Check am echten Baum gruen (exit 0)
+      # und macht `test_mutation_wird_rot[badge/ANKER-badge-weg]` rot. Ohne
+      # diese Suite waere das eine gruene CI gewesen.
+      #
+      # pytest kommt aus dem Schritt «Vorlagen-Abhaengigkeiten installieren»
+      # darueber — kein zweiter Pin.
+      - name: Tests der CI-Skripte
+        env:
+          PYTHONUTF8: "1"
+        run: python -m pytest ci/tests/ -q
+
       - name: SKILL.md carries a well-formed frontmatter
         env:
           PYTHONUTF8: "1"
-        run: |
-          python - <<'PY'
-          import pathlib, re, sys
-          p = pathlib.Path("SKILL.md")
-          m = re.match(r"^---\nname: (.+?)\ndescription: (.+?)\n---\n",
-                       p.read_text(encoding="utf-8"), re.S)
-          if not m:
-              sys.exit("SKILL.md: frontmatter missing or malformed")
-          name, desc = m.group(1).strip(), m.group(2).strip()
-          if name != "mcp-transport-hardening":
-              sys.exit(f"SKILL.md: expected name 'mcp-transport-hardening', got {name!r}")
-          if len(desc) > 1024:
-              sys.exit(f"SKILL.md: description too long ({len(desc)} > 1024)")
-          print(f"ok — name={name}, description={len(desc)} chars")
-          PY
+        run: python ci/checks/skill_frontmatter.py
 
       - name: Every rule carries a counter-example pair and a Nachweis
         env:
           PYTHONUTF8: "1"
-        run: |
-          python - <<'PY'
-          import pathlib, re, sys
-
-          skill = pathlib.Path("SKILL.md").read_text(encoding="utf-8")
-          sections = re.split(r"^## (?=Regel )", skill, flags=re.M)[1:]
-          if not sections:
-              sys.exit("SKILL.md: no '## Regel N' sections found")
-
-          numbers = [int(re.match(r"Regel (\d+)", s).group(1)) for s in sections]
-          if numbers != list(range(1, len(numbers) + 1)):
-              sys.exit(f"SKILL.md: rule numbers not sequential: {numbers}")
-
-          for section in sections:
-              title = section.splitlines()[0]
-              body = section.split("\n## ")[0]
-              if "# ✗" not in body or "# ✓" not in body:
-                  sys.exit(f"{title}: missing the counter-example / example code pair")
-              if "**Nachweis:**" not in body:
-                  sys.exit(f"{title}: missing the Nachweis sentence")
-              print(f"ok — {title[:60]}")
-          print(f"ok — {len(sections)} rules, each with a code pair and a Nachweis")
-          PY
+        run: python ci/checks/rule_sections.py
 
       - name: Rule count is consistent across SKILL.md, both READMEs and patterns.py
         env:
           PYTHONUTF8: "1"
-        run: |
-          python - <<'PY'
-          import pathlib, re, sys
-
-          skill = pathlib.Path("SKILL.md").read_text(encoding="utf-8")
-          expected = len(re.findall(r"^## Regel \d+", skill, re.M))
-
-          def listed(path, heading):
-              text = pathlib.Path(path).read_text(encoding="utf-8")
-              m = re.search(rf"^## {heading}\n(.*?)(?=^## )", text, re.M | re.S)
-              if not m:
-                  sys.exit(f"{path}: section '## {heading}' not found")
-              return len(re.findall(r"^\d+\. ", m.group(1), re.M))
-
-          for path, heading in [("README.md", "The fourteen rules"),
-                                ("README.de.md", "Die vierzehn Regeln")]:
-              got = listed(path, heading)
-              if got != expected:
-                  sys.exit(f"{path}: lists {got} rules, SKILL.md defines {expected}")
-              print(f"ok — {path}: {got} rules")
-
-          # reference/patterns.py makes two claims nothing else checks: the number
-          # word in its module docstring, and that every rule actually appears in
-          # it. Both were correct when written — which is exactly how a sibling
-          # repository went on describing "five rules" for two weeks after the
-          # sixth was added.
-          # Bis "fifteen", damit die naechsten Regeln den Wortschatz nicht
-          # sprengen: ein Zahlwort, das hier fehlt, ergibt `None` und meldet
-          # dieselbe Meldung wie ein echter Zahlendreher — der Befund zeigte
-          # dann auf die falsche Datei.
-          WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-                   "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-                   "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
-                   "fifteen": 15}
-          patterns = pathlib.Path("reference/patterns.py").read_text(encoding="utf-8")
-
-          m = re.search(r"patterns for the (?P<word>\w+) [\w-]+ rules", patterns)
-          if not m:
-              sys.exit("reference/patterns.py: the phrase 'patterns for the <word> "
-                       "... rules' is gone — anchor removed or reworded, so this "
-                       "check would silently stop checking")
-          if m.group("word") not in WORDS:
-              sys.exit(f"reference/patterns.py: docstring says "
-                       f"{m.group('word')!r}, which is not a number word this "
-                       "check knows — extend WORDS in ci.yml, otherwise the "
-                       "comparison below reports a mismatch that is really a "
-                       "gap in this script")
-          claimed = WORDS[m.group("word")]
-          if claimed != expected:
-              sys.exit(f"reference/patterns.py: docstring says {m.group('word')!r} "
-                       f"rules, SKILL.md defines {expected}")
-
-          # «Rule 4», «Rules 2 + 3», «Rules 5-7», «rule 1(c)».
-          #
-          # Nur EINZELNE Nennungen zaehlen als Abdeckung. Eine Sammelueberschrift
-          # wie «Rules 8-12» benennt einen Abschnitt; sie belegt nicht, dass es
-          # fuer Regel 12 ein Muster gibt, das jemand kopieren koennte. Dieser
-          # Check expandierte frueher Bereiche, und ein Mutationstest hat gezeigt,
-          # was das kostet: Den ganzen Regel-13-Block zu loeschen liess die Datei
-          # gruen, weil die Abschnittsueberschrift darueber die 13 mitzaehlte.
-          # Bereiche werden weiterhin expandiert — aber nur fuer die Zeile, die
-          # ausgegeben wird, nicht fuer das Urteil.
-          mentioned, singular = set(), set()
-          for mm in re.finditer(r"[Rr]ules?\s+(\d+(?:\s*(?:[-–+,]|and)\s*\d+)*)", patterns):
-              nums = [int(n) for n in re.findall(r"\d+", mm.group(1))]
-              if len(nums) == 1:
-                  singular.update(nums)
-              if re.search(r"[-–]", mm.group(1)) and len(nums) == 2:
-                  mentioned.update(range(nums[0], nums[1] + 1))
-              else:
-                  mentioned.update(nums)
-          missing = sorted(set(range(1, expected + 1)) - singular)
-          if missing:
-              sys.exit(f"reference/patterns.py: nothing for rule(s) {missing} — "
-                       "a rule without a pattern is a rule nobody can copy. A "
-                       "collective «Rules N-M» heading does not count; the rule "
-                       "needs a block that names it on its own")
-          print(f"ok — reference/patterns.py: says {m.group('word')}, covers "
-                f"{sorted(mentioned)}, each named singly")
-
-          print(f"ok — {expected} rules, consistent everywhere")
-          PY
+        run: python ci/checks/rule_count.py
 
       - name: Referenced files exist
         run: |
@@ -360,44 +286,10 @@ jobs:
           done
           echo "ok — all referenced files present"
 
-      # The five repositories of the chain are named together in exactly one
-      # place per language. Nothing outside this repo can be tested from here —
-      # the GitHub topic itself is checked by the guard in mcp-audit-skill,
-      # which is the only repo carrying the manifest. What CAN be tested is
-      # that the table has not quietly lost a member.
       - name: The quality-chain table names all five members
         env:
           PYTHONUTF8: "1"
-        run: |
-          python - <<'PY'
-          import pathlib, re, sys
-
-          MEMBERS = [
-              "mcp-data-source-probe-skill",
-              "mcp-data-fidelity-skill",
-              "mcp-transport-hardening-skill",
-              "mcp-audit-skill",
-              "mcp-continuous-auditor",
-          ]
-          TOPIC_URL = "https://github.com/topics/mcp-quality-chain"
-
-          for path, heading in [("README.md", "The MCP quality chain"),
-                                ("README.de.md", "Die MCP-Qualitätskette")]:
-              text = pathlib.Path(path).read_text(encoding="utf-8")
-              m = re.search(rf"^### {re.escape(heading)}\n(.*?)(?=^#{{2,3}} |\Z)",
-                            text, re.M | re.S)
-              if not m:
-                  sys.exit(f"{path}: section '### {heading}' not found — anchor gone "
-                           "or reworded, so this check would silently stop checking")
-              body = m.group(1)
-              missing = [r for r in MEMBERS if r not in body]
-              if missing:
-                  sys.exit(f"{path}: the chain table does not name {missing}")
-              if TOPIC_URL not in body:
-                  sys.exit(f"{path}: the shared topic page {TOPIC_URL} is not linked — "
-                           "without it the table is a list nobody outside can find")
-              print(f"ok — {path}: all {len(MEMBERS)} members named, topic page linked")
-          PY
+        run: python ci/checks/chain_table.py
 
       - name: No compiled Python is tracked
         run: |
@@ -410,46 +302,7 @@ jobs:
       - name: Version badge matches the latest CHANGELOG release
         env:
           PYTHONUTF8: "1"
-        run: |
-          python - <<'PY'
-          import pathlib, re, sys
-
-          # Quelle ist die oberste Release-Überschrift. `[Unreleased]` trägt keine
-          # Versionsnummer und wird vom Muster von selbst übersprungen.
-          lines = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
-          HEADING = re.compile(r"^## \[v?(?P<version>\d+\.\d+\.\d+)\]")
-          source = next(((n, ln, m.group("version"))
-                         for n, ln in enumerate(lines, 1)
-                         if (m := HEADING.match(ln))), None)
-          if source is None:
-              sys.exit("CHANGELOG.md: no '## [X.Y.Z]' release heading found — anchor "
-                       "gone, so this check would have nothing to compare against")
-          lineno, heading, expected = source
-
-          # Über das Dateisystem, nicht als gepflegte Liste: eine dritte
-          # Sprachfassung ist damit automatisch abgedeckt.
-          readmes = sorted(pathlib.Path(".").glob("README*.md"))
-          if not readmes:
-              sys.exit("no README*.md found — nothing to check, which would pass silently")
-
-          BADGE = re.compile(r"badge/version-(\d+\.\d+\.\d+)-")
-          for path in readmes:
-              found = BADGE.findall(path.read_text(encoding="utf-8"))
-              if not found:
-                  sys.exit(f"{path}: no version badge found — anchor gone or reworded, "
-                           "so this check would stop checking this file")
-              stale = sorted({v for v in found if v != expected})
-              if stale:
-                  sys.exit(
-                      f"{path}: version badge shows {stale}, but the topmost release in "
-                      f"CHANGELOG.md is {expected} (line {lineno}: {heading.strip()!r}).\n"
-                      "  Either the badge was not bumped with the release, or a release "
-                      "heading was lost — check which side moved before editing."
-                  )
-              print(f"ok — {path}: {expected}")
-          print(f"ok — version badge matches CHANGELOG ({expected}, line {lineno}) "
-                f"in {len(readmes)} file(s)")
-          PY
+        run: python ci/checks/version_badge.py
 
       # DIESER SCHRITT STEHT ABSICHTLICH ALS LETZTER.
       #
@@ -464,17 +317,6 @@ jobs:
       # geblieben. Ein Guard, der nur von aussen zu befriedigen ist, darf die
       # Guards nicht verdecken, die ein Commit befriedigt.
       #
-      # Die GitHub-Description steht ausserhalb des Repos und faellt damit durch
-      # jede Pruefung, die Dateien liest. Genau dort ist die Regelzahl zuletzt
-      # haengengeblieben: «twelve», als SKILL.md schon dreizehn fuehrte. Das ist
-      # Regel 13 raeumlich statt zeitlich — die Abdeckung hatte eine Grenze, die
-      # niemand absichtlich gezogen hat, und ausserhalb davon wurde nichts rot.
-      #
-      # Kein zweiter WORDS-Wortschatz: Verglichen wird gegen das Zahlwort aus
-      # dem Docstring von reference/patterns.py, und der Schritt darueber hat
-      # bereits belegt, dass dieses Wort der Regelzahl entspricht. Zwei Stellen
-      # mit derselben Tabelle waeren genau das, was hier auseinanderlaeuft.
-      #
       # Ein fehlgeschlagener API-Aufruf ist ein FEHLER, kein Skip (`curl -f`,
       # kein `|| true`): Ein Check, der bei einem Netzproblem gruen durchlaeuft,
       # meldet «bestanden», wo «nicht gelaufen» richtig waere — OPS-005.
@@ -488,39 +330,4 @@ jobs:
                -H "Accept: application/vnd.github+json" \
                "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY" \
                > "$RUNNER_TEMP/repo.json"
-          python - <<'PY'
-          import json, os, pathlib, re, sys
-
-          patterns = pathlib.Path("reference/patterns.py").read_text(encoding="utf-8")
-          m = re.search(r"patterns for the (?P<word>\w+) [\w-]+ rules", patterns)
-          if not m:
-              sys.exit("reference/patterns.py: number word gone — the step above "
-                       "should have caught this first; without it there is nothing "
-                       "to compare the description against")
-          word = m.group("word")
-
-          repo = json.loads(
-              pathlib.Path(os.environ["RUNNER_TEMP"], "repo.json").read_text(encoding="utf-8")
-          )
-          description = repo.get("description") or ""
-
-          found = re.search(r"(?P<word>\w+) transport-hardening rules", description)
-          if not found:
-              sys.exit(
-                  "GitHub description does not carry the phrase '<word> "
-                  f"transport-hardening rules' — got {description!r}.\n"
-                  "  Either it was reworded (then adjust this anchor in the same "
-                  "commit) or the count was dropped from it. An anchor that is "
-                  "gone makes this check stop checking without saying so."
-              )
-          if found.group("word") != word:
-              sys.exit(
-                  f"GitHub description says {found.group('word')!r} rules, the repo "
-                  f"has {word!r}.\n"
-                  "  The description lives outside the repository, so no commit "
-                  "fixes it — set it on the repo itself:\n"
-                  f"    gh repo edit {os.environ['GITHUB_REPOSITORY']} "
-                  f'--description "..."'
-              )
-          print(f"ok — GitHub description says {found.group('word')}, matching the repo")
-          PY
+          python ci/checks/repo_description.py "$RUNNER_TEMP/repo.json"

@@ -178,6 +178,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Vorlage veraltet still. Den Pin zu heben ist die Handlung, die das misst, und
   sie gehört bewusst gemacht statt einem Resolver überlassen.
 
+- **Die sechs Inline-Heredocs sind Skripte unter `ci/checks/` — mit Tests.**
+  Zuordnung: [`OPS-008`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-008.md)
+  (Prüflogik in Inline-Heredocs ist nicht unit-testbar).
+
+  209 Zeilen Python steckten in `ci.yml`. Sie liefen ausschliesslich im CI,
+  waren nur über einen Push zu beobachten und hatten keinen einzigen Test.
+
+  | | vorher | nachher |
+  |---|---|---|
+  | Heredocs in `ci.yml` | 6 | **0** |
+  | Zeilen `ci.yml` | 526 | **333** |
+  | Tests der Prüflogik | 0 | **34** |
+
+  Sechs Skripte, geschnitten nach *welche Behauptung wird geprüft*:
+  `skill_frontmatter.py`, `rule_sections.py`, `rule_count.py`,
+  `chain_table.py`, `version_badge.py`, `repo_description.py`.
+
+  **Der `curl` bleibt im Workflow.** `repo_description.py` bekommt die
+  API-Antwort als Dateipfad statt sie selbst zu holen. Das ist die Grenze, an
+  der sich entscheidet, ob die Auslagerung etwas bringt: mit dem Netzaufruf im
+  Skript wären genau die zwei Fälle, um die es geht — falsches Zahlwort,
+  umformulierte Phrase — weiterhin nur im CI beobachtbar.
+
+  **Was die Tests belegen, stand vorher nur in der Prosa.** An sechs Stellen
+  versprach `ci.yml`, ein fehlender Anker sei ein FEHLER und kein Skip.
+  Nachgeprüft war das nirgends. Die Suite fährt 22 Mutationen — Sachdefekte
+  (Regelzahl läuft auseinander, Badge veraltet, Kettenmitglied fehlt) und
+  Anker-Entfernungen (Überschrift umbenannt, Phrase umformuliert, Badge weg) —
+  und verlangt zu jeder die *erwartete Meldung*, nicht bloss einen roten
+  Exit. Ein Check, der aus dem falschen Grund rot wird, ist beim nächsten Mal
+  aus dem falschen Grund grün. Ein Meta-Test verlangt für jeden Check
+  mindestens eine Anker-Mutation, damit ein siebter Check nicht ohne diesen
+  Beleg dazukommt.
+
+  **Absicherung der Umstellung:** Dieselben 22 Mutationen liefen *vor* der
+  Auslagerung gegen die Heredocs und danach gegen die Skripte. Von 28
+  Ergebnissen (Happy-Path + Mutationen) sind **26 byte-identisch** in
+  Exit-Code, stdout und stderr. Die zwei Abweichungen sind gewollt: zwei
+  Meldungen zeigten auf `ci.yml` und zeigen jetzt auf die Datei, in der der
+  Code steht.
+
+  **Nachgemessen, dass die Tests tragen** — zwei Defekte eingebaut, beide am
+  echten Baum grün:
+
+  1. Den Anker-Abbruch in `version_badge.py` durch `continue` ersetzt (der
+     klassische stille Skip): Check meldet `ok` und exit 0, die CI wäre grün
+     gewesen — `test_mutation_wird_rot[badge/ANKER-badge-weg]` wird rot.
+  2. Das Urteil in `rule_count.py` zurück auf `mentioned` statt `singular`
+     gestellt, also den historischen Regel-13-Bug wieder eingebaut: Check exit
+     0 — `test_mutation_wird_rot[regelzahl/nur-sammelueberschrift]` wird rot.
+
+  **Zweites Lint-Profil, und das ist der Preis der Umstellung.** `ci/` ist
+  Werkzeug, kein Vorlagen-Code: keine offenen Namen aus einer Zielumgebung,
+  also entfällt die `--ignore F821`-Nachsicht, und `I,UP,B,SIM,C4,RET` kommen
+  dazu. `PTH` bleibt draussen — es hätte genau einen Treffer (`Path(".")` in
+  `version_badge.py`), und der stammt wortgleich aus dem ersetzten Heredoc.
+
+  Die Tests laufen **vor** den sechs Checks. Fallen beide, ist die Reihenfolge
+  die Diagnose: rote Tests heissen «die Prüflogik ist kaputt, die Befunde
+  dahinter sind wertlos», grüne Tests mit rotem Check heissen «der Baum ist
+  kaputt».
+
+  **Nicht mitgenommen:** die beiden reinen Shell-Schritte (Ruff-Pin-Sync,
+  Ruff-Version). Ihre Begründung — ein eigenes Modul wäre unverhältnismässig —
+  wird durch ein vorhandenes Paket zwar schwächer, aber das ist eine eigene
+  Abwägung und gehört nicht in dieselbe Änderung.
+
+  **Nebenbefund, nicht behoben:** `chain_table.py` vergleicht per
+  Teilzeichenkette. Ein Mitglied, das einen *Suffix* bekommt
+  (`mcp-continuous-auditor2`), besteht damit weiterhin — der alte Name steckt
+  darin. Gefangen wird Umbenennen und Weglassen, nicht Anhängen. Das steht
+  jetzt im Docstring des Checks, statt unbemerkt zu bleiben.
+
 ### Changed
 
 - **Der Geltungsbereich hängt nicht am gefahrenen Transport, sondern an der
