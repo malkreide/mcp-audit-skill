@@ -151,11 +151,42 @@ Startseite                       http=200  tls=0  ip=193.246.68.83
 
 Eine naheliegende Erklärung ist geprüft und **verworfen**: Der Egress-Guard des Servers könnte auf eine IP pinnen und dann ohne saubere SNI verbinden. Tut er nicht — `_resolve_and_validate` löst nur zur Prüfung gegen die Blocklist auf, verbunden wird danach über den Hostnamen.
 
-Was auffällt, ist die Reihenfolge: Unmittelbar davor läuft `test_live_a_dns_hiccup_costs_an_attempt_not_the_call`, der einzige Live-Test, der `getaddrinfo` monkeypatcht — und in allen drei Läufen selbst rot geworden ist.
+Was auffiel, war die Reihenfolge: Unmittelbar davor läuft `test_live_a_dns_hiccup_costs_an_attempt_not_the_call`, der einzige Live-Test, der `getaddrinfo` monkeypatcht. **Diese Vermutung ist inzwischen widerlegt** — siehe den nächsten Abschnitt.
 
-**Das entscheidende Experiment ist benannt und vorbereitet:** denselben Test einmal allein laufen lassen, einmal mit dem Vorgänger davor. Fällt er allein durch, liegt es an der Quelle; fällt er nur mit Vorgänger durch, war der «Mismatch» drei Läufe lang ein Artefakt der eigenen Suite, das wie ein Quellenbefund aussah. Der Sondenmodus dafür ist [zh-education-mcp#46](https://github.com/malkreide/zh-education-mcp/pull/46) — mit der Regel, dass ein gefilterter Lauf das Issue nie anfasst, auch nicht wenn er grün ist: Ein Teil der Suite, der durchläuft, ist keine Suite, die durchgelaufen ist.
+### Die Ursache, gefunden (2026-08-08, 08:37–08:56 UTC)
 
-**Was das für den Katalog heisst.** Nichts an der Zahl — `FID-006` bleibt 0 von 42. Aber die Lehre ist eine über das Auditieren selbst und gehört in den nächsten Durchlauf: **Ein Befund über eine fremde Quelle braucht einen Messpunkt, der die Quelle erreicht.** Zwischen «BISTA liefert ein falsches Zertifikat» und «unsere Suite erzeugt einen Verbindungsfehler» liegen drei Läufe, ein zurückgezogener Beleg und ein gebauter Diagnoseschritt — und die Frage war von Anfang an dieselbe.
+Drei Sonden, und jede hat eine Erklärung erledigt statt eine bestätigt.
+
+| | Aufbau | Ergebnis |
+|---|---|---|
+| **1** ([31248804156](https://github.com/malkreide/zh-education-mcp/actions/runs/31248804156)) | `-k test_live_bista_api_letzi`, sonst nichts | `1 failed` — **derselbe Mismatch, ohne jeden Vorgänger** |
+| **2** ([31248874966](https://github.com/malkreide/zh-education-mcp/actions/runs/31248874966)) | `-k "dns_hiccup or letzi"` | `2 failed` — Vorgänger 502, `letzi` Mismatch |
+| **3** ([31249419687](https://github.com/malkreide/zh-education-mcp/actions/runs/31249419687)) | derselbe Tool-Aufruf, **ohne pytest** | alle vier Zustände `TLS ok`, kein Mismatch |
+
+Sonde 1 tötet die Reihenfolge-Vermutung: kein Vorgänger, kein DNS-Patch, trotzdem der Fehler. Sonde 3 tötet die Import-Vermutung *und* den Aufrufpfad: derselbe Aufruf, dieselbe Maschine, dieselben Importe — sauberes TLS, `truststore` in keinem Zustand geladen, gescheitert allein am 502.
+
+Übrig blieb die Differenz zwischen einem pytest-Lauf und einem nackten Skript. Sie steht in `tests/test_server.py`:
+
+```python
+@pytest.fixture(autouse=True)
+def _stub_dns(monkeypatch):
+    """… damit Unit-Tests hermetisch bleiben (kein echtes DNS) …"""
+    monkeypatch.setattr("zh_education_mcp.http_client.socket.getaddrinfo", fake_getaddrinfo)
+```
+
+`fake_getaddrinfo` liefert **`8.8.8.8`**. Die Fixture ist `autouse` für die ganze Datei und nimmt Live-Tests **nicht** aus — die Fixtures in `conftest.py` tun das, diese eine nicht. Der einzige Live-Test jener Datei verband sich also nach `8.8.8.8:443` und sandte SNI `www.bista.zh.ch`. Google antwortet mit einem Zertifikat für `dns.google`, mithin mit `certificate is not valid for 'www.bista.zh.ch'`.
+
+Verschärfend, und nachgemessen: `http_client` macht `import socket`, also **ist** `http_client.socket` das Modulobjekt. Wer dessen `getaddrinfo` ersetzt, ersetzt es prozessweit — auch für anyio, über das httpx verbindet. Der Stub sieht lokal aus und ist global.
+
+Behoben in [zh-education-mcp#48](https://github.com/malkreide/zh-education-mcp/pull/48): die fehlende Ausnahme, dieselbe vorsorglich in einer zweiten Datei, und ein Wächter in `conftest.py`, der jeden Live-Test mit gestubbtem Auflöser abbricht — in jeder Datei, nicht nur den zwei bekannten. **Das Portfolio ist geprüft:** Nur dieses Repo trägt das Muster; `swisstopo-mcp` und `swiss-environment-mcp` schalten in `autouse`-Fixtures DNS-*Pinning* ab, ein Feature-Flag, und lenken den Auflöser nicht um.
+
+**Was das für den Katalog heisst.** An der Zahl nichts — `FID-006` bleibt 0 von 42, und der Ausfall der Quelle bleibt, was er war: 502 auf allen sechs Endpunkten bei 200 auf der Startseite, inzwischen rund zwölf Stunden. Was sich ändert, ist der Status der Nebenbeobachtung: **Der «TLS-Mismatch» war nie ein Befund über BISTA.** Er war der eigene Teststub.
+
+Zwei Lehren, und beide gehören in den nächsten Durchlauf:
+
+1. **Ein Befund über eine fremde Quelle braucht einen Messpunkt, der die Quelle erreicht.** Zwischen «BISTA liefert ein falsches Zertifikat» und «unser Stub lenkt auf 8.8.8.8 um» liegen fünf Läufe, ein zurückgezogener Beleg, ein Diagnoseschritt und drei Sonden — und die Frage war von Anfang an dieselbe.
+
+2. **Ein Live-Test, der gegen einen Stub läuft, ist ein Live-Test nur dem Namen nach.** Er prüft nichts und behauptet alles. Das ist dieselbe Form wie ein leeres Suchergebnis, das wie eine Antwort aussieht — die Form, gegen die `FID-003` und `FID-006` geschrieben sind —, nur eine Ebene tiefer: nicht im Server, sondern im Werkzeug, das ihn prüft. Ein Katalog, der Live-Tests als Beleg verlangt (§2.6), muss auch verlangen, dass sie live sind.
 
 **§5 feuert nicht.** Ein Quellenausfall ist keiner der fünf Auslöser: keine Severity, keine Reichweite, kein Prüfkriterium, keine Adoptionsstufe, keine Baseline hat sich bewegt. Kein bestandenes Audit wird dadurch ungültig. Der Eintrag steht hier aus dem Grund, aus dem weiter unten `v2.2.0` einen Abschnitt hat, in dem nichts feuert: Ein Kriterium, das erfüllt **aussieht** und dessen Beleg nie erbracht wurde, ist von einem erfüllten nur unterscheidbar, wenn der fehlende Beleg aufgeschrieben ist.
 
@@ -182,7 +213,9 @@ Was auffällt, ist die Reihenfolge: Unmittelbar davor läuft `test_live_a_dns_hi
 | TLS-Hostname-Mismatch | **dreimal beobachtet** — Läufe 31245489543, 31246130572 und der Lauf vom 08:17 UTC; jedes Mal derselbe Test, jedes Mal der letzte im Lauf |
 | Zertifikat der Quelle gültig | **gemessen** — Diagnoseschritt auf dem Runner, 08:22:48 UTC, `ip=193.246.68.83` (kein Zwischenstopp): DigiCert Global G2, `O = Kanton Zürich`, SAN enthält `www.bista.zh.ch`, Hostnamen-Prüfung bestanden — **eine Sekunde nach** dem Mismatch derselben Maschine |
 | IP-Pinning als Ursache | **geprüft und verworfen** — `_resolve_and_validate` löst nur zur Blocklist-Prüfung auf; verbunden wird über den Hostnamen, die SNI stimmt |
-| Ursache des Mismatch | **offen, aber eingegrenzt** — die Determiniertheit (3/3, immer der letzte Test, direkt nach dem einzigen Test, der `getaddrinfo` patcht) zeigt auf die Suite, nicht auf die Quelle. Das trennende Experiment ist benannt, nicht gelaufen |
+| Ursache des Mismatch | **gefunden** — eine `autouse`-Fixture in `tests/test_server.py` stubbt `getaddrinfo` auf `8.8.8.8` und nimmt Live-Tests nicht aus. Nachgemessen: `http_client.socket is socket` → `True`, der Patch wirkt prozessweit, anyio sieht ihn. Behoben in `zh-education-mcp#48` |
+| Reihenfolge als Ursache | **geprüft und verworfen** — Sonde 1 liess den Test allein laufen (`1 selected, 1 failed`), ohne Vorgänger und ohne DNS-Patch des Nachbartests |
+| Import-Nebeneffekt als Ursache | **geprüft und verworfen** — Sonde 3 misst vier Zustände in einem Prozess: alle `TLS ok`, `truststore` in keinem geladen, derselbe Tool-Aufruf scheitert allein am 502 |
 | `ssl_verify_result=0` aus der Sitzung | **untauglich, zurückgezogen** — `remote_ip=127.0.0.1`; der Handschlag endet am Agent-Proxy, der neu signiert. Diese Umgebung sieht das Zertifikat der Quelle nie. Der erste Eintrag hat die Zahl als Widerspruch zur Runner-Beobachtung gelesen; sie war nie einer |
 
 **Drei Korrekturen am Messwerkzeug, jede hat die Zahlen bewegt** — sie stehen im Kopf von `fid006_ast.py` und gehören hierher, weil eine Zahl ohne ihre Fehlversuche nicht nachvollziehbar ist:
