@@ -23,6 +23,9 @@ from pathlib import Path
 import pytest
 
 from tools.checks.catalogue import (
+    ADOPTION_CLAIM,
+    CHECK_ID,
+    CHECKS_DIR_ENV,
     GERMAN_NUMBERS,
     LINKED,
     MANIFEST_ENV,
@@ -87,6 +90,36 @@ def synthetic_manifest(skill: str) -> list[str]:
     assert len(got_cats) == want_cats, f"{sorted(got_cats)} statt {want_cats}"
     assert len(got_fid) == want_fid, f"{sorted(got_fid)} statt {want_fid}"
     return ids
+
+
+def synthetic_checks(skill: str, into: Path) -> int:
+    """Check-Dateien, deren Einstufung zu dem passt, was SKILL.md behauptet.
+
+    Dieselbe Grenze wie bei `synthetic_manifest`: Das beweist, dass Prüfung 14
+    eine stimmige Einstufung durchlässt — **nicht**, dass die echte stimmt.
+    Genau dafür läuft der Wochenplan gegen den live abgerufenen Baum.
+
+    Die beiden Zweige bilden die Vorgabe drüben ab, und der zweite ist der
+    interessante: Ein `enforced` Check trägt **kein** `adoption`-Feld. Wäre er
+    hier mit `adoption: enforced` geschrieben, bliebe genau der Fall
+    ungetestet, an dem die Behauptung in SKILL.md zerbrochen ist — vier Checks
+    ohne Feld, die deshalb übersehen wurden.
+    """
+    section = table_section(skill)
+    claim = ADOPTION_CLAIM.search(section)
+    if claim is None:  # pragma: no cover — Prüfung 14 fängt das zuerst
+        raise AssertionError("SKILL.md nennt keine Einstufung mehr")
+    advisory = set(CHECK_ID.findall(claim.group("advisory")))
+
+    into.mkdir(parents=True, exist_ok=True)
+    linked = sorted(set(LINKED.findall(section)))
+    for check_id in linked:
+        field = "adoption: advisory\n" if check_id in advisory else ""
+        (into / f"{check_id}.md").write_text(
+            f"---\nid: {check_id}\nseverity: high\n{field}---\n\n# {check_id}\n",
+            encoding="utf-8",
+        )
+    return len(linked)
 
 
 def synthetic_metadata(skill: str) -> str:
@@ -166,6 +199,8 @@ def pristine_repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
     (root / "manifest.txt").write_text(
         "\n".join(synthetic_manifest(read_skill(root))) + "\n", encoding="utf-8"
     )
+    # ... und die Check-Dateien, aus denen sie die Einstufung liest.
+    synthetic_checks(read_skill(root), root / "catalogue-checks")
     # Prüfung 15 die abgelegte Antwort der Repo-API.
     (root / "repo-metadata.json").write_text(
         synthetic_metadata(read_skill(root)) + "\n", encoding="utf-8"
@@ -183,6 +218,7 @@ def fixture_repo(
     root = tmp_path / "repo"
     shutil.copytree(pristine_repo, root)
     monkeypatch.setenv(MANIFEST_ENV, str(root / "manifest.txt"))
+    monkeypatch.setenv(CHECKS_DIR_ENV, str(root / "catalogue-checks"))
     monkeypatch.setenv(METADATA_ENV, str(root / "repo-metadata.json"))
     # Prüfung 13 braucht einen Tag-Kontext. Der gute Fall ist der Tag, den ein
     # Release dieses Standes tragen müsste.

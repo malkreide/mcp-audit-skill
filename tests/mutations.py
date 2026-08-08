@@ -34,6 +34,7 @@ from pathlib import Path
 
 PATTERNS = "reference/patterns.py"
 MANIFEST = "manifest.txt"
+CHECKS_DIR = "catalogue-checks"
 METADATA = "repo-metadata.json"
 WORKFLOWS = ".github/workflows"
 
@@ -511,6 +512,65 @@ MUTATIONS: list[Mutation] = [
             "SKILL.md", "### Welche Regel welcher Check ist", "### Regel und Check"
         ),
         "nicht gefunden",
+    ),
+    # 14, Einstufung — der Teil, der Zahlen NICHT prüft.
+    #
+    # Der Anlass steht im CHANGELOG: «`ARCH-003` ist der einzige `enforced`
+    # Check dieser Tabelle» war falsch, während jede Summe dieser Prüfung
+    # stimmte. Die erste Mutation unten ist genau dieser Fall — sie kippt eine
+    # Einstufung drüben und lässt alle Zahlen in Ruhe.
+    Mutation(
+        14,
+        "ein Check ist drüben advisory geworden",
+        write(
+            f"{CHECKS_DIR}/FID-001.md",
+            "---\nid: FID-001\nseverity: high\nadoption: advisory\n---\n\n# FID-001\n",
+        ),
+        "Einstufung FID-001: hier `enforced`, drüben `advisory`",
+    ),
+    Mutation(
+        14,
+        "ein verlinkter Check fehlt in beiden Listen",
+        replace("SKILL.md", "`FID-002`, `FID-003`,", "`FID-003`,"),
+        "weder als `enforced` noch als `advisory` genannt",
+    ),
+    Mutation(
+        14,
+        "Zahlwort und Aufzählung laufen auseinander",
+        replace(
+            "SKILL.md",
+            "**Sieben Checks dieser Tabelle sind `enforced`",
+            "**Acht Checks dieser Tabelle sind `enforced`",
+        ),
+        "zählt aber",
+    ),
+    Mutation(
+        14,
+        "Satz zur Einstufung umformuliert",
+        replace(
+            "SKILL.md",
+            "Checks dieser Tabelle sind `enforced`",
+            "Checks dieser Tabelle blockieren",
+        ),
+        "der Satz zur Einstufung passt nicht mehr",
+    ),
+    Mutation(
+        14,
+        "abgelegte Check-Datei fehlt",
+        remove(f"{CHECKS_DIR}/ARCH-003.md"),
+        "fehlen die Check-Dateien",
+    ),
+    Mutation(
+        14,
+        "Frontmatter drüben weg",
+        write(f"{CHECKS_DIR}/OPS-009.md", "# OPS-009\n\nkein Frontmatter mehr\n"),
+        "keinen Frontmatter-Block",
+    ),
+    Mutation(
+        14,
+        "abgelegter Katalog fehlt ganz",
+        remove(CHECKS_DIR),
+        "dort liegt kein Verzeichnis",
     ),
     # 15 — die Repo-Description nennt dieselbe Regelzahl wie SKILL.md
     #

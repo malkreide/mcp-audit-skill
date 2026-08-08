@@ -16,13 +16,32 @@ abgeschaltet und fängt dann gar nichts mehr».
 Deshalb `offline=False`: `scripts/validate.sh` fährt diese Prüfung nicht,
 `weekly-drift.yml` tut es wöchentlich.
 
-DER ABRUF STEHT NICHT HIER. Der Workflow legt das Manifest als Datei ab und
-nennt sie in `$CATALOGUE_MANIFEST`; diese Prüfung liest sie. Eine Prüfung, die
-Netz braucht, um überhaupt zu starten, lässt sich nicht gegen einen
-Fixture-Baum fahren — und dann bliebe ausgerechnet die logikreichste Prüfung
-des Repos ungetestet. «Nicht erreichbar» ist im Workflow von «abgewichen»
-getrennt, mit eigenem Text: Sonst sucht man beim nächsten Netzaussetzer im
-Katalog nach einem Fehler, den es nicht gibt.
+DER ABRUF STEHT NICHT HIER. Der Workflow legt den Katalog als Dateien ab und
+nennt sie in `$CATALOGUE_MANIFEST` und `$CATALOGUE_CHECKS_DIR`; diese Prüfung
+liest sie. Eine Prüfung, die Netz braucht, um überhaupt zu starten, lässt sich
+nicht gegen einen Fixture-Baum fahren — und dann bliebe ausgerechnet die
+logikreichste Prüfung des Repos ungetestet. «Nicht erreichbar» ist im Workflow
+von «abgewichen» getrennt, mit eigenem Text: Sonst sucht man beim nächsten
+Netzaussetzer im Katalog nach einem Fehler, den es nicht gibt.
+
+DREI GEGENSTÄNDE, NICHT EINER. Die Prüfung hält drei Dinge gegeneinander, und
+das dritte ist später dazugekommen, weil die ersten beiden es nicht fangen:
+
+  1. die ZAHLEN — Katalog-Grösse, Kategorien, `FID`-Anzahl,
+  2. die IDENTITÄTEN — jeder verlinkte Check existiert, jeder `FID`-Check ist
+     verlinkt,
+  3. die EINSTUFUNG — `enforced` oder `advisory`, je verlinktem Check.
+
+Punkt 3 stammt aus einem Befund, den 1 und 2 durchgelassen haben: In SKILL.md
+stand «`ARCH-003` ist der einzige `enforced` Check dieser Tabelle», während
+sechs weitere es ebenfalls waren. Jede Zahl stimmte dabei, und jede ID
+existierte. Eine Einstufung ist kein Zählwert — sie sagt, ob ein Verstoss
+blockiert, und das ist die Aussage, auf die jemand seinen Build stützt.
+
+Dass die Einstufung im Frontmatter der Check-Dateien steht und nicht im
+Manifest, ist der Grund für den Tarball-Abruf im Workflow: ein Archiv statt
+120 Einzelabrufe, und Manifest wie Check-Dateien zwingend aus demselben
+Commit.
 """
 
 from __future__ import annotations
@@ -37,8 +56,46 @@ from .skill_doc import TABLE_HEADING, read_skill
 MANIFEST_ENV = "CATALOGUE_MANIFEST"
 MANIFEST_URL = "https://raw.githubusercontent.com/malkreide/mcp-audit-skill/main/checks/MANIFEST.txt"
 
+# Die Einstufung steht NICHT im Manifest — das führt nur IDs. Sie steht im
+# Frontmatter jeder Check-Datei, und deshalb braucht diese Prüfung die Dateien
+# selbst.
+#
+# EIN ARCHIV STATT 120 ABRUFE. Der Wochenplan holt den Baum einmal als Tarball
+# und legt `checks/` ab. Das ist ein Abruf statt einer Schleife — und es
+# beseitigt ein Rennen, das die getrennten Abrufe hatten: Manifest und
+# Check-Dateien stammen jetzt zwingend aus demselben Commit. Vorher konnte
+# zwischen beiden ein Release liegen, und der Befund hätte einen Katalog
+# beschrieben, den es nie gab.
+CHECKS_DIR_ENV = "CATALOGUE_CHECKS_DIR"
+CHECKS_URL = (
+    "https://codeload.github.com/malkreide/mcp-audit-skill/tar.gz/refs/heads/main"
+)
+
 CHECK_ID = re.compile(r"[A-Z]{2,6}-\d{3}")
 LINKED = re.compile(r"/checks/([A-Z]{2,6}-\d{3})\.md")
+
+# Nur der Frontmatter, nicht der Fliesstext: `adoption:` kommt drüben auch in
+# Begründungen vor, und ein Treffer im Prosateil würde die Einstufung aus einem
+# Satz lesen statt aus dem Feld.
+FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.S)
+ADOPTION_FIELD = re.compile(r"^adoption:[ \t]*(?P<value>\S+)", re.M)
+
+# Fehlt das Feld, gilt drüben `enforced`. Genau diese Vorgabe ist der Grund,
+# warum die Behauptung hier falsch werden konnte: Vier Checks tragen kein
+# `adoption`, und wer nur nach dem Wort sucht, findet sie nicht und hält sie
+# für unverbindlich.
+DEFAULT_ADOPTION = "enforced"
+
+# Der Satz, der die Einstufung behauptet. Passt er nicht mehr, ist das ein
+# Befund und kein Grund weiterzumachen — dieselbe Entscheidung wie bei STATE:
+# Eine umformulierte Behauptung stillschweigend nicht mehr zu prüfen, wäre der
+# Ausfall, der wie ein Bestehen aussieht.
+ADOPTION_CLAIM = re.compile(
+    r"\*\*(?P<count>\w+) Checks dieser Tabelle sind `enforced`[^:]*:\*\*"
+    r"(?P<enforced>.*?)"
+    r"`advisory` sind (?P<advisory>[^:]*):",
+    re.S,
+)
 
 GERMAN_NUMBERS = {
     "fünf": 5,
@@ -83,8 +140,124 @@ def table_section(skill: str) -> str:
     return match.group(1)
 
 
-def assert_table_matches(ids: list[str], skill: str) -> str:
-    """Die reine Logik: Tabelle gegen Katalog, ohne Netz und ohne Dateien."""
+def read_adoption(checks_dir: Path, wanted: set[str]) -> dict[str, str]:
+    """Die Einstufung je Check, aus dem Frontmatter der Datei drüben.
+
+    Gelesen wird nur, was die Tabelle **verlinkt** — 13 Dateien statt 120. Die
+    Behauptung hier ist eine über *diese* Tabelle; ein Check, den sie nicht
+    nennt, kann sie auch nicht falsch einstufen.
+    """
+    adoption: dict[str, str] = {}
+    missing: list[str] = []
+    for check_id in sorted(wanted):
+        path = checks_dir / f"{check_id}.md"
+        if not path.is_file():
+            missing.append(check_id)
+            continue
+        front = FRONTMATTER.match(path.read_text(encoding="utf-8"))
+        if front is None:
+            raise CheckFailed(
+                f"{check_id}.md drüben hat keinen Frontmatter-Block — Format "
+                "geändert, die Einstufung bliebe sonst ungeprüft"
+            )
+        field = ADOPTION_FIELD.search(front.group(1))
+        adoption[check_id] = field.group("value") if field else DEFAULT_ADOPTION
+    if missing:
+        raise CheckFailed(
+            f"Im abgelegten Katalog fehlen die Check-Dateien {missing} — der "
+            "Abruf ist unvollständig oder die Dateien sind umgezogen. Die "
+            "Einstufung ist damit ungeprüft, nicht falsch."
+        )
+    return adoption
+
+
+def assert_adoption_matches(section: str, adoption: dict[str, str]) -> list[str]:
+    """Die behauptete Einstufung gegen die gemessene.
+
+    **Warum das eine eigene Zusicherung ist und nicht in den Zahlen aufgeht:**
+    Der Satz «`ARCH-003` ist der einzige `enforced` Check dieser Tabelle» stand
+    hier, während vier `FID`-Checks ebenfalls `enforced` waren. Jede Summe
+    dieser Prüfung war dabei richtig. Eine Einstufung ist kein Zählwert — sie
+    sagt, ob ein Verstoss blockiert, und das ist die Aussage, auf die jemand
+    seinen Build stützt.
+    """
+    claim = ADOPTION_CLAIM.search(section)
+    if not claim:
+        raise CheckFailed(
+            "SKILL.md: der Satz zur Einstufung passt nicht mehr auf "
+            "'**<Wort> Checks dieser Tabelle sind `enforced` …:**  … "
+            "`advisory` sind …:' — umformuliert, damit bliebe die Einstufung "
+            "ungeprüft"
+        )
+
+    claimed_enforced = set(CHECK_ID.findall(claim.group("enforced")))
+    claimed_advisory = set(CHECK_ID.findall(claim.group("advisory")))
+    claimed_count = GERMAN_NUMBERS.get(claim.group("count").lower())
+
+    problems: list[str] = []
+
+    # 1) Das Zahlwort gegen die eigene Aufzählung. Fängt den Fall, in dem
+    #    jemand einen Check ergänzt und die Zahl davor stehen lässt.
+    if claimed_count != len(claimed_enforced):
+        problems.append(
+            f"Einstufung: der Satz sagt {claim.group('count')!r} "
+            f"({claimed_count}) `enforced`, zählt aber {len(claimed_enforced)} "
+            f"auf ({sorted(claimed_enforced)})"
+        )
+
+    # 2) Die beiden Listen müssen die verlinkten Checks GENAU aufteilen. Ohne
+    #    das könnte ein neu verlinkter Check unerwähnt bleiben — und
+    #    Nichterwähnung liest sich wie «nicht betroffen».
+    both = claimed_enforced & claimed_advisory
+    if both:
+        problems.append(f"Einstufung: {sorted(both)} steht in beiden Listen")
+    unclassified = sorted(set(adoption) - claimed_enforced - claimed_advisory)
+    if unclassified:
+        problems.append(
+            f"Einstufung: {unclassified} ist verlinkt, aber weder als "
+            "`enforced` noch als `advisory` genannt"
+        )
+    phantom = sorted((claimed_enforced | claimed_advisory) - set(adoption))
+    if phantom:
+        problems.append(
+            f"Einstufung: {phantom} wird eingestuft, ist aber in der Tabelle "
+            "gar nicht verlinkt"
+        )
+
+    # 3) Der eigentliche Abgleich, je Check.
+    for check_id, measured in sorted(adoption.items()):
+        claimed = (
+            "enforced"
+            if check_id in claimed_enforced
+            else "advisory"
+            if check_id in claimed_advisory
+            else None
+        )
+        if claimed is not None and claimed != measured:
+            note = (
+                " (die Datei führt kein `adoption`-Feld, damit gilt `enforced`)"
+                if measured == DEFAULT_ADOPTION
+                else ""
+            )
+            problems.append(
+                f"Einstufung {check_id}: hier `{claimed}`, drüben `{measured}`{note}"
+            )
+    return problems
+
+
+def assert_table_matches(ids: list[str], skill: str, adoption: dict[str, str]) -> str:
+    """Die reine Logik: Tabelle gegen Katalog, ohne Netz und ohne Dateien.
+
+    `adoption` ist die gemessene Einstufung je verlinktem Check. Sie kommt aus
+    Dateien und deshalb von aussen — diese Funktion bleibt damit rein und
+    gegen einen Fixture-Baum fahrbar.
+
+    Der Parameter ist **verpflichtend und hat keinen Vorgabewert**. Ein
+    `adoption=None`, das die Einstufung stillschweigend überspringt, wäre
+    genau die Bequemlichkeit, gegen die diese Prüfung geschrieben ist: Ein
+    Aufrufer, der ihn vergisst, bekäme ein Grün für etwas, das nie angesehen
+    wurde.
+    """
     catalogue = set(ids)
     categories = {i.split("-")[0] for i in ids}
     fid = {i for i in ids if i.startswith("FID-")}
@@ -159,6 +332,9 @@ def assert_table_matches(ids: list[str], skill: str) -> str:
             "welche Regel deckt er ab?"
         )
 
+    # 4) Die Einstufung — der Teil, den keine Summe fängt.
+    problems.extend(assert_adoption_matches(section, adoption))
+
     if problems:
         raise CheckFailed(
             "DRIFT — die Zuordnungstabelle in SKILL.md ist gegenüber dem "
@@ -167,10 +343,12 @@ def assert_table_matches(ids: list[str], skill: str) -> str:
             + "\n\nQuelle ist die Check-Datei drüben, nicht deren CHANGELOG."
         )
 
+    enforced = [k for k, v in adoption.items() if v == DEFAULT_ADOPTION]
     return (
         f"{claimed_total} Checks, {claimed_cats} Kategorien, {claimed_fid} in "
         f"FID; alle {len(linked)} verlinkten Checks existieren, alle FID-Checks "
-        "sind verlinkt"
+        f"sind verlinkt; Einstufung stimmt für alle {len(adoption)}, davon "
+        f"{len(enforced)} `enforced`"
     )
 
 
@@ -192,6 +370,27 @@ def catalogue_drift(root: Path) -> str:
     path = Path(raw)
     if not path.is_file():
         raise CheckFailed(f"${MANIFEST_ENV} zeigt auf {raw}, dort liegt keine Datei")
+
+    raw_dir = os.environ.get(CHECKS_DIR_ENV)
+    if not raw_dir:
+        raise CheckFailed(
+            f"${CHECKS_DIR_ENV} ist nicht gesetzt — ohne die Check-Dateien "
+            "bleibt die Einstufung (`enforced`/`advisory`) ungeprüft. Der "
+            f"Abruf steht in .github/workflows/weekly-drift.yml ({CHECKS_URL}). "
+            "FAIL statt der halben Prüfung: Eine Prüfung, die stillschweigend "
+            "weniger prüft als ihr Name sagt, meldet «bestanden» für etwas, "
+            "das sie nicht angesehen hat."
+        )
+    checks_dir = Path(raw_dir)
+    if not checks_dir.is_dir():
+        raise CheckFailed(
+            f"${CHECKS_DIR_ENV} zeigt auf {raw_dir}, dort liegt kein Verzeichnis"
+        )
+
+    skill = read_skill(root)
+    linked = set(LINKED.findall(table_section(skill)))
     return assert_table_matches(
-        parse_manifest(path.read_text(encoding="utf-8")), read_skill(root)
+        parse_manifest(path.read_text(encoding="utf-8")),
+        skill,
+        read_adoption(checks_dir, linked),
     )
