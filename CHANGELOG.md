@@ -109,6 +109,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   v2.1.0 und deckt dieselbe Erhebung, dieselben drei Marker-Regeln und
   denselben `openlex-mcp`-Fall ab.
 
+- **Lint-Gate für `reference/patterns.py`.** Die Datei war bis hierher die
+  grösste ungeprüft gebliebene Python-Datei der Kette: `compileall` sagt
+  «Syntax ok», `ruff format --check` sagt «Layout ok». Ob ein Import ungenutzt
+  ist, ein Name doppelt gebunden wird oder ein Vergleich `is` gegen ein Literal
+  stellt, sagte keiner von beiden — an der Datei, die Leute kopieren, also der,
+  bei der jeder Defekt in fremde Codebasen weiterwandert.
+
+  Neu: `ruff check --extend-select E4,E7,E9,F --ignore F821 reference/`.
+
+  `--extend-select` statt `ruff check .` ist die tragende Stelle. `ruff.toml`
+  führt `select = []` — bewusst, damit ein `ruff check` im Clone auf
+  Vorlagen-Code keine Fehlalarme wirft. Ohne die Flags läse der Schritt genau
+  dieses `select = []` und meldete «All checks passed», ohne eine einzige Regel
+  geprüft zu haben. **Nachgemessen an einer absichtlich kaputten Datei**
+  (ungenutztes `import hashlib`): `ruff check reference/` meldet *All checks
+  passed*, derselbe Baum mit den Flags meldet `F401`. Das ist OPS-005 an der
+  eigenen Pipeline — ein Gate, das nichts prüft und grün meldet.
+
+  Der Schritt steht **nach** «Ruff-Version (Pin ↔ laufendes Programm)», nicht
+  davor: erst dort ist belegt, dass die ruff auf dem PATH die gepinnte ist.
+
+  `line-length` und `target-version` kommen weiterhin aus `ruff.toml`; die
+  Flags erweitern nur die Regelauswahl. Eine zweite Zahl in `ci.yml` wäre eine
+  zweite Stelle, die auseinanderlaufen kann. Dass `ruff.toml` dabei wirklich
+  gelesen wird, ist gemessen und nicht angenommen: mit zusätzlichem
+  `--extend-select E501` ist der Baum bei `line-length = 88` rot (3 Treffer),
+  bei 200 grün.
+
+  `F821` ist die eine Ausnahme und der Grund für `select = []`: Die Vorlagen
+  referenzieren absichtlich Namen aus der Zielumgebung (`get_settings`, `mcp`,
+  `AuthError`). Gemessen: 31 Treffer, alle beabsichtigt. **Der Preis steht im
+  Kommentar, nicht in einer Fussnote:** Ein echter Tippfehler in einem solchen
+  offenen Namen fällt unter dieser Ausnahme ebenfalls nicht auf. Das Gate fängt
+  alles andere. `E501` bleibt draussen — Zeilenlänge gehört dem Formatter, und
+  E501 feuert genau auf das, was `ruff format` nicht umbrechen kann.
+
+  Das Format-Gate bleibt daneben stehen, weil es etwas anderes misst.
+  **Nachgemessen:** eine reine Formatierungsänderung (`_LOOPBACK_BINDS  =
+  frozenset( {`) macht `ruff format --check` rot (exit 1) und lässt
+  `ruff check` grün durch (exit 0). Die beiden Gates überdecken sich nicht.
+
+- **Import-Smoke-Test für `reference/patterns.py`**, gegen die echte
+  SDK-Oberfläche statt gegen den eigenen Text.
+
+  `compileall` beweist, dass die Datei **parst**. Das ist weniger, als es
+  klingt: ein Import auf ein Modul, das es nicht mehr gibt, ein Dekorator, der
+  beim Auswerten wirft, ein Tippfehler auf Modulebene — alles das parst
+  einwandfrei und fällt erst beim Importieren auf. Neu installiert die CI
+  `mcp==2.0.0` und `pytest==9.1.1` und fährt `PYTHONPATH=reference python -c
+  "import patterns"`.
+
+  Damit ist der Schritt der einzige im Job, der Regel 1 tatsächlich gegen das
+  SDK hält: Die Vorlage importiert `mcp.server.mcpserver.MCPServer` und
+  `mcp.server.transport_security`; die 1.x-Fassung `mcp.server.fastmcp`
+  existiert in 2.0.0 **nachweislich nicht mehr**.
+
+  **Nachgemessen an der Regression, gegen die der Schritt existiert** (Import
+  zurück auf `from mcp.server.fastmcp import FastMCP`): `compileall` grün,
+  `ruff format --check` grün, Import-Smoke rot mit
+  `ModuleNotFoundError: No module named 'mcp.server.fastmcp'`. Das Lint-Gate
+  wird in diesem Fall ebenfalls rot, aber aus einem anderen Grund (`F401`,
+  ungenutzter Import) — es fällt auf, dass der Name unbenutzt ist, nicht, dass
+  das Modul fehlt.
+
+  Was der Schritt **nicht** prüft, gehört dazugesagt: Er merkt nicht, wenn
+  upstream die Oberfläche in 2.1 verschiebt — dann bleibt er grün und die
+  Vorlage veraltet still. Den Pin zu heben ist die Handlung, die das misst, und
+  sie gehört bewusst gemacht statt einem Resolver überlassen.
+
 ### Changed
 
 - **Der Geltungsbereich hängt nicht am gefahrenen Transport, sondern an der
