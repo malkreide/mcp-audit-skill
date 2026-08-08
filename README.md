@@ -358,7 +358,7 @@ control is there.
 
 ## Status
 
-**Version:** v2.2.0 — plausible, and about the wrong thing. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
+**Version:** v2.3.0 — what the fixture claims, nobody measured. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
 
 **Completeness:**
 - ✅ Methodology (`SKILL.md`) and templates (finding, audit report)

@@ -6,6 +6,8 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v2.3.0] — 2026-08-08 — Was die Fixture behauptet, hat niemand gemessen
+
 ### Hinzugefügt — `DRIFT-008`: ein Live-Test muss die Quelle erreichen
 
 `high`, `advisory`, `applies_when: tools_make_external_requests == true`. Der Katalog wächst auf **120 Checks**, `DRIFT` auf 7.
