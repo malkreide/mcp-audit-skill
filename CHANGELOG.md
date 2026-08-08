@@ -6,6 +6,26 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Korrigiert — der TLS-Befund im BISTA-Eintrag, und eine Messung, die nichts gemessen hat
+
+Der Eintrag von heute früh führte einen TLS-Hostname-Mismatch als «einmal beobachtet, nicht reproduziert» und hielt ihm entgegen, die Nachmessung aus der Audit-Sitzung melde `ssl_verify_result=0`. Beides ist falsch, und der zweite Punkt ist der schwerwiegendere.
+
+**Reproduziert.** Ein zweiter Live-Lauf (31246130572, 07:25–07:31 UTC) zeigt denselben Fehler im selben Test mit demselben Wortlaut. Nebenbei hat die Ausfallform gewechselt, ohne dass sich die Bilanz bewegt: Lauf 1 zählte 10 × `502` und 3 × `TimeoutError`, Lauf 2 **0 × 502 und 13 × TimeoutError** — beide Male 14 gefallen, 1 grün, und beide Male kein einziger Fehlschlag an einem Feldnamen.
+
+**Die Gegenevidenz war keine.** `curl` aus dieser Umgebung meldet `tls=0` — aber auch `remote_ip=127.0.0.1`. Der Handschlag endet am Agent-Proxy, der mit eigener CA neu signiert; das Zertifikat der Quelle bekommt diese Umgebung nie zu sehen. Die Zahl belegt, dass der Proxy sich korrekt ausgewiesen hat, und sonst nichts. Sie hat der Runner-Beobachtung nie widersprochen.
+
+Das ist dieselbe Fehlerklasse wie der Helfer-Blindfleck des Sweep-Werkzeugs und die selbstzitierenden Docstrings, nur eine Ebene tiefer: Nicht das Werkzeug hat falsch gezählt — der **Messpunkt lag nicht dort, wo die Frage war**. Die Zeile steht deshalb als eigener, ausdrücklich zurückgezogener Eintrag in der Herkunftstabelle statt gelöscht zu werden.
+
+**Was der Vorbehalt nicht trifft:** die HTTP-Aussage. Die 502-Antwort trägt `server: Microsoft-IIS/10.0` und einen 1477-Byte-HTML-Körper — das ist der Ursprung, keine Fehlerseite des Proxys —, und Lauf 1 hat dieselben 502 ohne jeden Proxy gesehen. Der Ausfall bleibt doppelt belegt; nur die TLS-Aussage der Sitzung ist wertlos.
+
+Ebenfalls gestrichen: «DNS steht, **TLS steht**, die Anwendung dahinter antwortet nicht» — der mittlere Satzteil war von derselben untauglichen Messung getragen.
+
+Offen und ausdrücklich als offen benannt: Was der Runner auflöst und welches Zertifikat er bekommt, ist von hier aus nicht feststellbar. Klären würde es ein Diagnoseschritt im Live-Workflow, der bei einem Verbindungsfehler Adresse und `subject`/`SAN` protokolliert. Der ist **nicht gebaut**.
+
+Am Katalog ändert das nichts: `FID-006` steht weiter auf **0 von 42**, `zh-education-mcp` auf `todo`, §5 feuert weiter nicht.
+
+**Gegenprobe: weiterhin keine möglich, erneut gemessen statt angenommen** — den korrigierten Abschnitt entfernt, Suite läuft unverändert mit 1225 grün durch. `docs/re-audit-queue.md` ist von keinem Test bewacht.
+
 ### Dokumentiert — der Ausfall von `bista.zh.ch`, und warum `FID-006` deshalb auf 0 steht
 
 `zh-education-mcp` hat mit PR #43 alles implementiert, was `FID-006` verlangt — die gelesenen Felder erklärt, auf dem ersten Eintrag bestätigt, an der Abrufstelle verdrahtet, 18 Unit- und 12 Live-Tests. Es fehlt genau ein Kriterium, und das lässt sich nicht durch Programmieren herstellen: die Erklärung gegen eine **echte** Antwort halten.
