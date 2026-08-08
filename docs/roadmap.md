@@ -1,6 +1,6 @@
 # Roadmap — mcp-audit-skill
 
-Stand: **119 Checks in 12 Kategorien**, auf zwei Spec-Baselines (`2025-11-25` und `2026-07-28`). v0.5.0 ist vollständig gegen beide PDFs; die Kategorien `FID`, `IDENT`, `DRIFT` und `DEP` kamen danach aus Portfolio-Fundstücken hinzu, die vierzehn Migrations-Checks mit v2.0.0 aus dem Spec-Changelog 2026-07-28 (siehe CHANGELOG).
+Stand: **120 Checks in 12 Kategorien**, auf zwei Spec-Baselines (`2025-11-25` und `2026-07-28`). v0.5.0 ist vollständig gegen beide PDFs; die Kategorien `FID`, `IDENT`, `DRIFT` und `DEP` kamen danach aus Portfolio-Fundstücken hinzu, die vierzehn Migrations-Checks mit v2.0.0 aus dem Spec-Changelog 2026-07-28 (siehe CHANGELOG).
 
 Der v0.5.0-Katalog mit 68 Checks in 8 Kategorien deckt alle Sektionen der ursprünglichen Best-Practice-PDF sowie der Anhang-PDF (`mcp-server-architecture-best-practice.pdf`) ab. Die Tabelle unten hält diesen Stand als Momentaufnahme fest.
 
