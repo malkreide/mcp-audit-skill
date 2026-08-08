@@ -25,40 +25,37 @@ jobs:
             echo "skipped — no reference/ directory yet"
           fi
 
-      # Nur Formatierung, kein `ruff check` — Begruendung in ruff.toml.
-      # Ruff gepinnt, damit ein Upstream-Release den Formatter nicht aendert
-      # und die CI an unberuehrtem Vorlagen-Code rot wird. Bewusst anheben.
+      # Nur Formatierung, kein `ruff check` ueber den ganzen Baum —
+      # Begruendung in ruff.toml. Ruff gepinnt, damit ein Upstream-Release den
+      # Formatter nicht aendert und die CI an unberuehrtem Vorlagen-Code rot
+      # wird. Bewusst anheben.
       #
       # ACHTUNG: diese Version und die `rev` in .pre-commit-config.yaml
-      # muessen uebereinstimmen — der Schritt darunter prueft es.
-      #
-      # Der Schritt darunter vergleicht dabei ZWEI TEXTE. Ob die ruff, die
-      # gleich `ruff format --check` faehrt, diese Version traegt, sagt er
-      # nicht — dafuer gibt es den Schritt «Ruff-Version» weiter unten.
+      # muessen uebereinstimmen — Check 7 prueft es, Check 8 haelt sie
+      # zusaetzlich gegen die ruff, die gleich wirklich laeuft.
       - name: Ruff installieren
         run: pip install ruff==0.16.1
 
+      # DIE PRUEFUNGEN STEHEN VOR DEN GATES, und die Registry macht das
+      # billig: `validate.sh` faehrt alle Offline-Pruefungen in einem
+      # Kommando, darunter Check 7 (Pin-Sync) und Check 8 (Pin gegen laufende
+      # ruff). Erst danach duerfen `ruff format --check` und die Lint-Gates
+      # ein Urteil faellen — sonst ist es auf einer Version entstanden, die
+      # niemand gepinnt hat, und niemand erfaehrt es.
+      #
+      # Ein Lauf nennt ALLE Befunde auf einmal (`run_all` bricht nicht beim
+      # ersten ab). Vorher kostete jeder Fehlschlag eine eigene Runde, weil
+      # der abgebrochene Job die Schritte dahinter gar nicht mehr fuhr.
+      #
+      # Die Netz-Pruefung bleibt hier draussen und laeuft als letzter Schritt:
+      # sie ist die einzige, die kein Commit gruen machen kann.
+      - name: Alle Offline-Pruefungen (tools/checks)
+        env:
+          PYTHONUTF8: "1"
+        run: bash scripts/validate.sh
+
       - name: Formatierung der Referenz-Vorlagen
         run: ruff format --check .
-
-      # Der Ruff-Pin steht zweimal: oben und als `rev` im Pre-Commit-Hook.
-      # Was das Auseinanderlaufen kostet und warum ein fehlender Pin ein Fehler
-      # ist, steht im Skript.
-      - name: Ruff-Pin-Sync (ci.yml ↔ .pre-commit-config.yaml)
-        env:
-          PYTHONUTF8: "1"
-        run: python tools/checks/ruff_pin_sync.py
-
-      # Der Schritt darueber vergleicht zwei TEXTE. Dieser haelt den Text gegen
-      # das laufende Programm — die Begruendung samt gemessenem Vorfall steht
-      # im Skript.
-      #
-      # Er steht VOR allem, was ruff benutzt, ausser dem Format-Gate selbst:
-      # jeder Befund einer ungepinnten ruff waere sonst nicht reproduzierbar.
-      - name: Ruff-Version (Pin ↔ laufendes Programm)
-        env:
-          PYTHONUTF8: "1"
-        run: python tools/checks/ruff_version.py
 
       # Bis hierher war `reference/patterns.py` die groesste ungeprueft
       # gebliebene Python-Datei der Kette: `compileall` sagt «Syntax ok»,
@@ -116,28 +113,6 @@ jobs:
         run: |
           ruff check --extend-select E4,E7,E9,F --ignore F821 reference/
           echo "ok — reference/ lint-sauber (E4,E7,E9,F ohne F821)"
-
-      # Loest die Ausnahme des Schritts darueber ein: F821 wird nicht mehr
-      # pauschal verschwiegen, sondern gegen eine Liste gehalten, auf der jeder
-      # offene Name mit BEGRUENDUNG steht.
-      #
-      # Nachgemessen, dass die Luecke real war — `settings = get_settings()` zu
-      # `get_settngs()` verdreht: Lint-Gate gruen, `compileall` gruen,
-      # `ruff format --check` gruen. Kein bestehendes Gate sah den Tippfehler.
-      # Dieser Schritt macht ihn zu einem Befund.
-      #
-      # Geprueft wird in BEIDE Richtungen. Ein Name ohne Eintrag ist der
-      # Tippfehler-Fall; ein Eintrag ohne Name im Baum ist der Faeulnis-Fall.
-      # Nur die erste Richtung zu pruefen hiesse, eine Liste zu fuehren, die
-      # ausschliesslich waechst — und die laesst irgendwann jeden Tippfehler
-      # durch, der einem laengst geloeschten Namen gleicht.
-      #
-      # Der Schritt steht NACH «Ruff-Version», wie das Lint-Gate: er ruft ruff
-      # selbst auf, und erst dort ist belegt, dass es die gepinnte ist.
-      - name: Offene Namen in reference/ stehen auf der Positivliste
-        env:
-          PYTHONUTF8: "1"
-        run: python tools/checks/reference_open_names.py
 
       # ZWEITES LINT-PROFIL, UND DAS IST DER PREIS DER AUSLAGERUNG.
       #
@@ -228,21 +203,6 @@ jobs:
           PYTHONUTF8: "1"
         run: python -m pytest tests/ -q
 
-      - name: SKILL.md carries a well-formed frontmatter
-        env:
-          PYTHONUTF8: "1"
-        run: python tools/checks/skill_frontmatter.py
-
-      - name: Every rule carries a counter-example pair and a Nachweis
-        env:
-          PYTHONUTF8: "1"
-        run: python tools/checks/rule_sections.py
-
-      - name: Rule count is consistent across SKILL.md, both READMEs and patterns.py
-        env:
-          PYTHONUTF8: "1"
-        run: python tools/checks/rule_count.py
-
       - name: Referenced files exist
         run: |
           for f in SKILL.md reference/patterns.py README.md README.de.md \
@@ -251,11 +211,6 @@ jobs:
           done
           echo "ok — all referenced files present"
 
-      - name: The quality-chain table names all five members
-        env:
-          PYTHONUTF8: "1"
-        run: python tools/checks/chain_table.py
-
       - name: No compiled Python is tracked
         run: |
           if git ls-files | grep -E '(__pycache__/|\.py[cod]$)'; then
@@ -263,11 +218,6 @@ jobs:
             exit 1
           fi
           echo "ok — no compiled Python tracked"
-
-      - name: Version badge matches the latest CHANGELOG release
-        env:
-          PYTHONUTF8: "1"
-        run: python tools/checks/version_badge.py
 
       # DIESER SCHRITT STEHT ABSICHTLICH ALS LETZTER.
       #
@@ -285,14 +235,14 @@ jobs:
       # Ein fehlgeschlagener API-Aufruf ist ein FEHLER, kein Skip (`curl -f`,
       # kein `|| true`): Ein Check, der bei einem Netzproblem gruen durchlaeuft,
       # meldet «bestanden», wo «nicht gelaufen» richtig waere — OPS-005.
-      - name: GitHub description names the current rule count
+      - name: Netz-Pruefung — GitHub description (Check 9)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYTHONUTF8: "1"
         run: |
-          curl -sS -f \
+          GITHUB_REPO_JSON=$(curl -sS -f \
                -H "Authorization: Bearer $GH_TOKEN" \
                -H "Accept: application/vnd.github+json" \
-               "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY" \
-               > "$RUNNER_TEMP/repo.json"
-          python tools/checks/repo_description.py "$RUNNER_TEMP/repo.json"
+               "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY")
+          export GITHUB_REPO_JSON
+          bash scripts/validate.sh --include-network 9

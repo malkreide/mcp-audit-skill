@@ -405,6 +405,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   macht weiterhin genau `test_mutation_wird_rot[badge/ANKER-badge-weg]` rot,
   jetzt unter `tests/test_mutations.py`. Tests 55 → **57**.
 
+- **Die Prüfungen liegen in einer nummerierten Registry** — dasselbe Gerüst,
+  das `mcp-data-source-probe-skill` und `mcp-data-fidelity-skill` führen.
+  Damit teilt die Kette nicht mehr nur den Ort, sondern die Bauweise.
+
+  Der vorige Zustand waren neun eigenständige Skripte mit `sys.exit`. Testbar
+  wurden sie nur über einen **Unterprozess**, und zusicherbar war die Meldung
+  nur als Teilzeichenkette der vereinigten Ausgabe. Jede Prüfung ist jetzt
+  eine gewöhnliche Funktion:
+
+  ```
+  (root: Path) -> str        # Erfolgsmeldung
+  raises CheckFailed         # Befund, mit Diagnose im Text
+  ```
+
+  | | vorher | nachher |
+  |---|---|---|
+  | Aufruf | 9 Schritte in `ci.yml` | `bash scripts/validate.sh` |
+  | Prüfungen | 9 Skripte | 9 registrierte Funktionen, `tools/checks/` |
+  | Tests | Unterprozess, Ausgabe-Teilstring | direkter Aufruf, `CheckFailed` |
+  | Schritte in `ci.yml` | 21 | **14** |
+  | Tests | 57 | **98** |
+
+  **Was die Bauweise einbringt, jenseits der Zahlen:**
+
+  - `run_all` bricht nicht beim ersten Befund ab — **ein Lauf nennt alle
+    Probleme auf einmal**. Vorher kostete jeder Fehlschlag eine eigene Runde,
+    weil der abgebrochene Job die Schritte dahinter gar nicht mehr fuhr.
+  - Ein **Absturz der Prüfung** (Tippfehler im Regex, `TypeError`) wird
+    ausdrücklich als Defekt in `tools/checks` ausgewiesen, nicht als Befund
+    über das Repository. Zwei Tests sichern beide Richtungen zu.
+  - `offline`-Flag: `validate.sh` fährt nur die acht Prüfungen, die ohne Netz
+    und Token laufen — der Runner muss in einem frischen Clone durchlaufen.
+    Check 9 ruft die CI zusätzlich mit `--include-network`.
+  - `python -m tools.checks 7 8` fährt einzelne Prüfungen; eine unbekannte
+    Nummer sagt, welche es gibt.
+  - Die **Reihenfolgefrage löst sich auf**: Weil alle Offline-Prüfungen ein
+    Kommando sind, laufen Check 7 (Pin-Sync) und Check 8 (Pin ↔ laufende ruff)
+    vor `ruff format --check` und den Lint-Gates — deren Urteil entstünde
+    sonst auf einer Version, die niemand gepinnt hat.
+
+  Der `curl` bleibt im Workflow; Check 9 liest die API-Antwort aus
+  `GITHUB_REPO_JSON`. Dieselbe Grenze wie zuvor, in der Form der Kette.
+
+  **Ein Test hat beim Umbau eine stille Lücke gefangen.** Die Mutation
+  `offene-namen/ANKER-meldungsform` veränderte den Regex im **Baum** — aber
+  die Prüfung wird jetzt importiert, nicht aus dem Baum ausgeführt, also biss
+  sie nicht mehr. Ersetzt durch einen Anker, der wirklich im Baum liegt
+  (`reference/patterns.py` weg → «kein einziger offener Name gefunden»); die
+  Fälle, die an ruffs Antwort hängen, stehen jetzt in `tests/test_open_names.py`
+  mit untergeschobener `ruff`.
+
+  **Und ein Test war selbst falsch gebaut:** `test_registry_deckt_jedes_pruefmodul_ab`
+  importierte die Module, um sie zu befragen — ein Import lässt `@register`
+  laufen und trägt das fehlende Modul dabei nachträglich ein. Er hätte den
+  Fehler, den er sucht, nie finden können. Jetzt liest er den Quelltext.
+
+  **Nachgemessen an vier Defekten, alle am echten Baum grün:**
+
+  | Defekt | `validate.sh` | Suite |
+  |---|---|---|
+  | Modul aus `__init__.py` entfernt | **«6 checks, all passed»** statt 8 | rot, nennt `['toolchain']` |
+  | Anker-Abbruch → `continue` | 8 checks, all passed | rot |
+  | Regel-13-Bug wieder eingebaut | 8 checks, all passed | rot |
+  | Netz-Prüfung als `offline=True` | — | rot |
+
+  Der erste ist der teuerste und war vorher unsichtbar: Ohne Importzeile
+  verschwinden die Prüfungen eines Moduls aus jedem Lauf, und der Runner
+  meldet «all passed» über weniger, als er glaubt.
+
 ### Changed
 
 - **Der Geltungsbereich hängt nicht am gefahrenen Transport, sondern an der

@@ -42,6 +42,18 @@ def _sub(path: str, pattern: str, repl: str, count: int = 1, flags: int = 0):
     return apply
 
 
+def _rename(path: str, neu: str):
+    """Benennt eine Datei um — fuer Anker, die eine ganze Datei SIND."""
+
+    def apply(tree):
+        ziel = tree / path
+        if not ziel.is_file():
+            raise AssertionError(f"Mutation griff nicht: {path} gibt es nicht")
+        ziel.rename(tree / neu)
+
+    return apply
+
+
 def _last_rule_section(path: str, pattern: str, repl: str):
     """Mutiert nur den LETZTEN '## Regel N'-Abschnitt.
 
@@ -278,18 +290,14 @@ MUTATIONS = [
         ),
         "Namen, die es in reference/ nicht mehr gibt: ['HeaderMismatchError']",
     ),
-    # ANKER: die Meldungsform von ruff. Wird sie unlesbar, darf der Check nicht
-    # null Namen finden und «sauber» melden — er muss sagen, dass er nichts
-    # lesen konnte. Simuliert ueber den Regex im Check selbst.
+    # ANKER: die Vorlage selbst. Ist sie weg, findet ruff keine offenen
+    # Namen — und «keine Treffer» darf hier nicht «alles sauber» heissen,
+    # sondern muss «ich habe nichts geprueft» heissen.
     (
-        "offene-namen/ANKER-meldungsform",
+        "offene-namen/ANKER-vorlage-weg",
         "reference_open_names",
-        _sub(
-            "tools/checks/reference_open_names.py",
-            r'r"Undefined name `\(\?P<name>\[\^`\]\+\)`"',
-            'r"Undefinierter Name `(?P<name>[^`]+)`"',
-        ),
-        "traegt nicht die Form",
+        _rename("reference/patterns.py", "reference/patterns.py.bak"),
+        "Kein einziger offener Name",
     ),
     # --- Ruff-Pins ----------------------------------------------------------
     # Beide Gates lesen denselben Anker in ci.yml. Faellt er weg, muessen beide
@@ -302,7 +310,7 @@ MUTATIONS = [
             r"pip install ruff==[0-9][^\s]*",
             "pip install ruff",
         ),
-        "nennt kein ruff==<version>",
+        "nennt kein 'ruff==<version>'",
     ),
     (
         "ruff-pin/ANKER-rev-im-hook-weg",
@@ -326,13 +334,13 @@ MUTATIONS = [
     # test_ruff_gates.py.
     (
         "ruff-version/ANKER-pin-in-ci-yml-weg",
-        "ruff_version",
+        "ruff_version_matches_pin",
         _sub(
             ".github/workflows/ci.yml",
             r"pip install ruff==[0-9][^\s]*",
             "pip install ruff",
         ),
-        "nennt kein ruff==<version>",
+        "nennt kein 'ruff==<version>'",
     ),
     # --- GitHub-Description -------------------------------------------------
     # Die ersten beiden mutieren die API-Antwort, nicht den Baum: die
@@ -340,19 +348,19 @@ MUTATIONS = [
     # sie als Datei — sonst waeren diese beiden Faelle nicht pruefbar.
     (
         "description/zahlwort-falsch",
-        "repo_description",
+        "github_description",
         None,
         "GitHub description says 'thirteen' rules, the repo has 'fourteen'",
     ),
     (
         "description/ANKER-phrase-umformuliert",
-        "repo_description",
+        "github_description",
         None,
         "does not carry the phrase",
     ),
     (
         "description/ANKER-patterns-zahlwort-weg",
-        "repo_description",
+        "github_description",
         _sub(
             "reference/patterns.py",
             r"patterns for the fourteen transport-hardening rules",
