@@ -42,80 +42,23 @@ jobs:
         run: ruff format --check .
 
       # Der Ruff-Pin steht zweimal: oben und als `rev` im Pre-Commit-Hook.
-      # Laufen sie auseinander, formatiert der Hook nach der einen und dieser
-      # Job prueft nach der anderen Version — der Hook meldet gruen und die CI
-      # wird rot. Ein fehlender Pin ist ebenfalls ein Fehler: dann hat der
-      # Vergleich nicht stattgefunden.
-      #
-      # Reine Shell statt eines Python-Skripts: in einem Repo, dessen einziger
-      # Python-Code Vorlagen sind, waere ein eigenes Modul samt Tests
-      # unverhaeltnismaessig.
+      # Was das Auseinanderlaufen kostet und warum ein fehlender Pin ein Fehler
+      # ist, steht im Skript.
       - name: Ruff-Pin-Sync (ci.yml ↔ .pre-commit-config.yaml)
-        run: |
-          ci=$(sed -n 's/.*ruff==\([0-9][^ "'"'"']*\).*/\1/p' .github/workflows/ci.yml | head -1)
-          hook=$(sed -n '/ruff-pre-commit/,/hooks:/{s/^[[:space:]]*rev:[[:space:]]*v\{0,1\}\([0-9][^[:space:]]*\)[[:space:]]*$/\1/p;}' .pre-commit-config.yaml | head -1)
-          if [ -z "$ci" ]; then
-            echo "::error::.github/workflows/ci.yml nennt kein ruff==<version>."; exit 1
-          fi
-          if [ -z "$hook" ]; then
-            echo "::error::.pre-commit-config.yaml nennt keine rev fuer ruff-pre-commit."; exit 1
-          fi
-          if [ "$ci" != "$hook" ]; then
-            echo "::error::Ruff-Pins laufen auseinander — ci.yml $ci, Hook $hook. Beide im selben Commit bumpen."; exit 1
-          fi
-          echo "Ruff-Pin OK ($ci; beide DATEIEN stimmen ueberein)."
+        env:
+          PYTHONUTF8: "1"
+        run: python ci/checks/ruff_pin_sync.py
 
-      # Der Schritt darueber vergleicht zwei TEXTE. Er belegt, dass ci.yml und
-      # der Hook dieselbe Zahl nennen — nicht, dass die ruff, die den Schritt
-      # «Formatierung der Referenz-Vorlagen» gefahren hat, diese Zahl traegt.
-      # Liegt eine andere ruff weiter vorne im PATH als die gerade
-      # installierte, meldet er weiter «beide Stellen stimmen ueberein», und
-      # das einzige Gate dieses Repos laeuft daneben auf einer Version, die
-      # niemand gepinnt hat.
+      # Der Schritt darueber vergleicht zwei TEXTE. Dieser haelt den Text gegen
+      # das laufende Programm — die Begruendung samt gemessenem Vorfall steht
+      # im Skript.
       #
-      # Fuer dieses Repo ist das nicht theoretisch, und ruff.toml sagt warum:
-      # Bis 0.15.8 liess `ruff format --check .` Markdown unberuehrt, seit
-      # 0.16.1 ist die Formatierung von Python-Bloecken in Markdown stabil und
-      # standardmaessig an. Genau der Unterschied, gegen den der Pin existiert
-      # — und ohne diesen Schritt haette der Pin ihn nur behauptet.
-      #
-      # Gemessen im Schwester-Repo mcp-data-source-probe-skill (Check 18):
-      # ruff 0.15.8 vor 0.16.1 im PATH, der Pin-Sync gruen, das Gate auf der
-      # falschen Version. 0.15.8 ist kein ausgedachter Wert — es ist die
-      # Version, die das Portfolio sonst fuehrt.
-      #
-      # Reine Shell, aus demselben Grund wie der Schritt darueber: in einem
-      # Repo, dessen einziger Python-Code Vorlagen sind, waere ein eigenes
-      # Modul samt Tests unverhaeltnismaessig.
-      #
-      # Ein fehlender Pin und eine unlesbare Antwort sind FEHLER, kein Grund
-      # zum Ueberspringen: Dann hat der Vergleich nicht stattgefunden, und
-      # «nicht gelaufen» als «bestanden» zu melden ist die eine Auskunft, die
-      # schlimmer ist als keine.
+      # Er steht VOR allem, was ruff benutzt, ausser dem Format-Gate selbst:
+      # jeder Befund einer ungepinnten ruff waere sonst nicht reproduzierbar.
       - name: Ruff-Version (Pin ↔ laufendes Programm)
-        run: |
-          ci=$(sed -n 's/.*ruff==\([0-9][^ "'"'"']*\).*/\1/p' .github/workflows/ci.yml | head -1)
-          if [ -z "$ci" ]; then
-            echo "::error::.github/workflows/ci.yml nennt kein ruff==<version> — Anker weg. Ohne ihn hat dieser Schritt nichts, wogegen er die laufende ruff haelt, und haette genau deshalb Erfolg gemeldet."; exit 1
-          fi
-          if ! command -v ruff >/dev/null 2>&1; then
-            echo "::error::ruff liegt nicht auf dem PATH — die laufende Version laesst sich nicht ermitteln. FAIL statt skip: ein uebersprungener Schritt meldete «bestanden», wo «nicht gelaufen» richtig waere."; exit 1
-          fi
-          # Die Ausgabeform «ruff 0.16.1» ist selbst ein Anker. Aendert
-          # upstream sie, darf dieser Schritt nicht stillschweigend nichts
-          # mehr vergleichen — er sagt dann, dass er die Antwort nicht lesen
-          # konnte.
-          raw=$(ruff --version 2>&1) || {
-            echo "::error::\`ruff --version\` endete mit einem Fehler: $raw"; exit 1
-          }
-          running=$(printf '%s\n' "$raw" | sed -n 's/^ruff[[:space:]]\{1,\}\([0-9][^[:space:]]*\).*/\1/p' | head -1)
-          if [ -z "$running" ]; then
-            echo "::error::\`ruff --version\` antwortet nicht in der Form 'ruff <version>' — gelesen wurde: $raw. Hat upstream die Ausgabe geaendert, gehoert das sed oben nachgezogen; ohne das vergliche dieser Schritt nichts mehr und meldete es nicht."; exit 1
-          fi
-          if [ "$running" != "$ci" ]; then
-            echo "::error::Die ruff auf dem PATH ist $running, gepinnt ist $ci ($(command -v ruff)). Das Format-Gate laeuft dann auf einer anderen Version als der gepinnten. Beide Richtungen kosten: eine aeltere laesst durch, was spaeter rot wird; eine neuere beanstandet, was der Pin durchlaesst. Der Pin-Sync merkt es nicht — er vergleicht zwei Texte miteinander, nicht den Text mit dem laufenden Programm."; exit 1
-          fi
-          echo "Ruff-Version OK ($running auf dem PATH, wie in ci.yml gepinnt)."
+        env:
+          PYTHONUTF8: "1"
+        run: python ci/checks/ruff_version.py
 
       # Bis hierher war `reference/patterns.py` die groesste ungeprueft
       # gebliebene Python-Datei der Kette: `compileall` sagt «Syntax ok»,

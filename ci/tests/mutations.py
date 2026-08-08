@@ -291,6 +291,49 @@ MUTATIONS = [
         ),
         "traegt nicht die Form",
     ),
+    # --- Ruff-Pins ----------------------------------------------------------
+    # Beide Gates lesen denselben Anker in ci.yml. Faellt er weg, muessen beide
+    # FEHLER melden — nicht «nichts zu vergleichen, also bestanden».
+    (
+        "ruff-pin/ANKER-pin-in-ci-yml-weg",
+        "ruff_pin_sync",
+        _sub(
+            ".github/workflows/ci.yml",
+            r"pip install ruff==[0-9][^\s]*",
+            "pip install ruff",
+        ),
+        "nennt kein ruff==<version>",
+    ),
+    (
+        "ruff-pin/ANKER-rev-im-hook-weg",
+        "ruff_pin_sync",
+        _sub(".pre-commit-config.yaml", r"^\s*rev: v?[0-9]\S*\s*$", "", flags=re.M),
+        "nennt keine rev fuer ruff-pre-commit",
+    ),
+    (
+        "ruff-pin/pins-laufen-auseinander",
+        "ruff_pin_sync",
+        _sub(
+            ".pre-commit-config.yaml",
+            r"^(\s*rev: v?)[0-9]\S*$",
+            r"\g<1>0.15.8",
+            flags=re.M,
+        ),
+        "Ruff-Pins laufen auseinander",
+    ),
+    # Diese Mutation greift VOR dem PATH-Zugriff, ist also unabhaengig davon,
+    # welche ruff auf der Maschine liegt. Die PATH-abhaengigen Faelle stehen in
+    # test_ruff_gates.py.
+    (
+        "ruff-version/ANKER-pin-in-ci-yml-weg",
+        "ruff_version",
+        _sub(
+            ".github/workflows/ci.yml",
+            r"pip install ruff==[0-9][^\s]*",
+            "pip install ruff",
+        ),
+        "nennt kein ruff==<version>",
+    ),
     # --- GitHub-Description -------------------------------------------------
     # Die ersten beiden mutieren die API-Antwort, nicht den Baum: die
     # Description liegt ausserhalb des Repos. Genau deshalb bekommt das Skript
