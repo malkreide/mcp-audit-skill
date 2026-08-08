@@ -20,36 +20,26 @@ jobs:
       # anheben.
       #
       # ACHTUNG: Diese Version und die `rev` in .pre-commit-config.yaml muessen
-      # uebereinstimmen. Der Schritt am Ende dieses Jobs prueft das.
+      # uebereinstimmen. Check 1 im Schritt darunter prueft das, Check 2 haelt
+      # den Pin zusaetzlich gegen die ruff, die gleich wirklich laeuft.
       - run: pip install ruff==0.16.1
 
-      # STEHT VOR DEN GATES, nicht dahinter. Der Pin-Sync unten vergleicht zwei
-      # TEXTE; ob die ruff, die gleich `ruff check .` faehrt, die gepinnte ist,
-      # sagt er nicht. Liegt eine andere weiter vorne im PATH, sind die Befunde
-      # der beiden Schritte darunter auf einer Version entstanden, die niemand
-      # gepinnt hat — und niemand erfaehrt es.
+      # EIN KOMMANDO STATT VIER SCHRITTE.
       #
-      # Nicht theoretisch: bis 0.15.8 liess `ruff format --check .` Markdown
-      # unberuehrt, seit 0.16.1 ist die Formatierung von Python-Bloecken in
-      # Markdown stabil und standardmaessig an. Gemessen in
-      # mcp-data-source-probe-skill (dort Check 18) und noch einmal in einer
-      # Entwicklungsumgebung, in der eine 0.15.8 die frisch installierte 0.16.1
-      # verdeckte.
-      - name: Ruff-Version (Pin ↔ laufendes Programm)
+      # Die vier Gates dieses Jobs stehen jetzt als nummerierte Pruefungen
+      # unter `tools/checks/`: 1 Pin-Sync, 2 laufende ruff, 3 `ruff check`,
+      # 4 `ruff format --check`. Die Reihenfolge steckt in der Nummer, nicht
+      # mehr in der Reihenfolge der `run:`-Zeilen — ein Lint-Befund auf einer
+      # ungepinnten ruff ist wertlos.
+      #
+      # Und ein Lauf nennt ALLE Befunde. Vorher brach der erste rote Schritt
+      # den Job ab, und die drei dahinter liefen nicht: Jeder Fehlschlag
+      # kostete eine eigene Runde.
+      #
+      # Der Pre-Commit-Hook ruft weiterhin `tools/check_ruff_pin.py` direkt —
+      # die reine Vergleichsloglik ist dort geblieben, `tools/checks/` haengt
+      # sie nur ein. Eine Implementierung, zwei Einstiege.
+      - name: Alle Gates (tools/checks)
         env:
           PYTHONUTF8: "1"
-        run: python tools/check_ruff_version.py
-
-      - run: ruff check .
-
-      - run: ruff format --check .
-
-      # Der Ruff-Pin steht zweimal: oben und als `rev` in
-      # .pre-commit-config.yaml. Laufen sie auseinander, formatiert der Hook
-      # nach der einen und dieser Job prueft nach der anderen Version — der
-      # Hook meldet gruen und die CI wird rot. Reine Standardbibliothek,
-      # deshalb ohne Installationsschritt.
-      - name: Ruff-Pin-Sync (lint.yml ↔ .pre-commit-config.yaml)
-        env:
-          PYTHONUTF8: "1"
-        run: python tools/check_ruff_pin.py
+        run: bash scripts/validate.sh
