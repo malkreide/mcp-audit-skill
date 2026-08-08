@@ -180,7 +180,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Vorlage veraltet still. Den Pin zu heben ist die Handlung, die das misst, und
   sie gehört bewusst gemacht statt einem Resolver überlassen.
 
-- **Die sechs Inline-Heredocs sind Skripte unter `ci/checks/` — mit Tests.**
+- **Die sechs Inline-Heredocs sind Skripte unter `tools/checks/` — mit Tests.**
   Zuordnung: [`OPS-008`](https://github.com/malkreide/mcp-audit-skill/blob/main/checks/OPS-008.md)
   (Prüflogik in Inline-Heredocs ist nicht unit-testbar).
 
@@ -267,7 +267,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Kein bestehendes Gate sah den Tippfehler.
 
-  Neu ist `ci/checks/reference_open_names.py`: es liest die F821-Befunde aus
+  Neu ist `tools/checks/reference_open_names.py`: es liest die F821-Befunde aus
   `ruff --output-format json` und hält sie gegen **19 Namen, jeder mit
   Begründung** (Zielumgebung, Fehlertyp des Zielprojekts, Krypto-Primitive,
   Testhelfer aus der `conftest.py` des Ziels). Eine stumme Namensliste wäre nur
@@ -313,7 +313,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Beide Schritte trugen bis hierher eine ausdrückliche Gegenbegründung: «Reine
   Shell statt eines Python-Skripts: in einem Repo, dessen einziger Python-Code
   Vorlagen sind, wäre ein eigenes Modul samt Tests unverhältnismässig.» Die
-  war richtig, als sie geschrieben wurde. Mit `ci/checks/` und einer Testsuite
+  war richtig, als sie geschrieben wurde. Mit `tools/checks/` und einer Testsuite
   ist sie hinfällig — sie wird deshalb entfernt und nicht stehengelassen.
 
   Neu: `ruff_pin_sync.py`, `ruff_version.py` und `_ruff_pin.py`. Das dritte
@@ -361,6 +361,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   | Zeilen `ci.yml` | 333 | **298** |
   | Checks | 7 | **9** |
   | Tests | 41 | **55** |
+
+- **Prüfcode liegt unter `tools/checks/`, die Suite unter `tests/`** — die
+  Konvention der Qualitätskette statt einer eigenen.
+
+  Die vier Schwesterrepos führen ihren Prüfcode seit Längerem unter
+  `tools/checks/` und die zugehörige Suite unter `tests/`, mit derselben
+  Aufteilung in `conftest.py`, `mutations.py`, `test_mutations.py` und
+  `test_suite_integrity.py`. Dieses Repo lag als einziges auf `ci/checks/`
+  und `ci/tests/`.
+
+  **Die Abweichung war hausgemacht.** Als der Ort hier entschieden wurde, war
+  nur `mcp-audit-skill` im Blick, wo `checks/` den *Katalog* (`OPS-008.md`)
+  bezeichnet — daraus wurde geschlossen, der Name sei kettenweit belegt. Dass
+  `mcp-data-source-probe-skill` und `mcp-data-fidelity-skill` längst
+  `tools/checks/` führen, kam erst beim Vergleich der fünf Repos zutage.
+  «Denselben Stand» hiess damit nicht, dass die anderen nachziehen, sondern
+  dass dieses Repo umzieht.
+
+  | | vorher | nachher |
+  |---|---|---|
+  | Prüfcode | `ci/checks/` | `tools/checks/` |
+  | Suite | `ci/tests/` | `tests/` |
+  | Mutationssuite | `test_checks.py` | `test_mutations.py` |
+  | Suite-Integrität | in `test_checks.py` | `test_suite_integrity.py` |
+
+  Reine Verschiebung, kein Verhalten geändert: `git mv` durchgängig, alle
+  Umbenennungen von git als solche erkannt. Mitgezogen sind die
+  Selbstverweise, die sonst ins Leere zeigten — der `SCRIPTS`-Pfad in
+  `conftest.py`, `REPO_ROOT` (eine Ebene höher), die Mutation auf
+  `reference_open_names.py`, die Meldung «extend WORDS in …» und die neun
+  Aufrufe plus das Lint-Profil in `ci.yml`.
+
+  Die Aufteilung nach Ketten-Vorbild ist mehr als Kosmetik: Neben dem
+  ANKER-Meta-Test stehen in `test_suite_integrity.py` jetzt zwei weitere
+  Zusagen, die vorher niemand einforderte — dass jede Mutation einen
+  **bekannten** Check nennt (ein Tippfehler im Namen ergab sonst einen
+  KeyError zur Laufzeit statt eines Befunds), und dass keine Mutations-ID
+  doppelt vorkommt (zwei gleichnamige verdecken einander im Bericht).
+
+  **Nachgemessen, dass die Suite den Umzug überlebt:** dieselbe Gegenprobe wie
+  zuvor — den Anker-Abbruch in `version_badge.py` durch `continue` ersetzt —
+  macht weiterhin genau `test_mutation_wird_rot[badge/ANKER-badge-weg]` rot,
+  jetzt unter `tests/test_mutations.py`. Tests 55 → **57**.
 
 ### Changed
 

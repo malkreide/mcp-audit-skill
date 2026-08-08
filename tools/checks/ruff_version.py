@@ -66,7 +66,7 @@ def laufende_version() -> tuple[str, str]:
         sys.exit(
             "::error::`ruff --version` antwortet nicht in der Form "
             f"'ruff <version>' — gelesen wurde: {roh}. Hat upstream die Ausgabe "
-            "geaendert, gehoert das Muster in ci/checks/ruff_version.py "
+            "geaendert, gehoert das Muster in tools/checks/ruff_version.py "
             "nachgezogen; ohne das vergliche dieser Schritt nichts mehr und "
             "meldete es nicht."
         )

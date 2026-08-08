@@ -74,7 +74,7 @@ def main() -> None:
         sys.exit(
             f"reference/patterns.py: docstring says "
             f"{m.group('word')!r}, which is not a number word this "
-            "check knows — extend WORDS in ci/checks/rule_count.py, "
+            "check knows — extend WORDS in tools/checks/rule_count.py, "
             "otherwise the comparison below reports a mismatch that is "
             "really a gap in this script"
         )
