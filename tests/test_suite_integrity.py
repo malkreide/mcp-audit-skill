@@ -24,9 +24,11 @@ from tools.checks import Check, CheckFailed, all_checks, run
 from tools.checks._core import _REGISTRY
 from tools.checks.catalogue import (
     CHECKS_DIR_ENV,
-    CHECKS_URL,
+    COMMIT_ENV,
     LINKED,
     MANIFEST_ENV,
+    RAW_BASE,
+    REMOTE_URL,
     assert_table_matches,
     parse_manifest,
     read_adoption,
@@ -240,11 +242,33 @@ def test_catalogue_without_its_checks_dir_is_a_finding(
     manifest = tmp_path / "manifest.txt"
     manifest.write_text("FID-001\n", encoding="utf-8")
     monkeypatch.setenv("CATALOGUE_MANIFEST", str(manifest))
+    monkeypatch.setenv("CATALOGUE_COMMIT", "0" * 40)
     monkeypatch.delenv("CATALOGUE_CHECKS_DIR", raising=False)
     by_number = {check.number: check for check in all_checks()}
     with pytest.raises(CheckFailed) as raised:
         by_number[14].run(REPO_ROOT)
     assert "CATALOGUE_CHECKS_DIR ist nicht gesetzt" in str(raised.value)
+
+
+def test_catalogue_without_its_commit_is_a_finding(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Ohne den gepinnten Commit weiss das Ergebnis nicht, woran es gemessen hat.
+
+    Das ist keine Formalie: Der Befund dieser Prüfung wandert in einen
+    CHANGELOG-Eintrag und eine PR-Beschreibung. Steht dort keine Fassung des
+    Katalogs, ist er in einer Woche von einer Behauptung nicht zu
+    unterscheiden — genau die Diagnose, die dieser Skill an Fixtures stellt.
+    """
+    manifest = tmp_path / "manifest.txt"
+    manifest.write_text("FID-001\n", encoding="utf-8")
+    monkeypatch.setenv("CATALOGUE_MANIFEST", str(manifest))
+    monkeypatch.setenv("CATALOGUE_CHECKS_DIR", str(tmp_path))
+    monkeypatch.delenv("CATALOGUE_COMMIT", raising=False)
+    by_number = {check.number: check for check in all_checks()}
+    with pytest.raises(CheckFailed) as raised:
+        by_number[14].run(REPO_ROOT)
+    assert "CATALOGUE_COMMIT ist nicht gesetzt" in str(raised.value)
 
 
 def test_the_workflow_sets_the_variables_the_check_reads() -> None:
@@ -259,13 +283,18 @@ def test_the_workflow_sets_the_variables_the_check_reads() -> None:
     workflow = (REPO_ROOT / ".github/workflows/weekly-drift.yml").read_text(
         encoding="utf-8"
     )
-    for name in (MANIFEST_ENV, CHECKS_DIR_ENV):
+    for name in (MANIFEST_ENV, CHECKS_DIR_ENV, COMMIT_ENV):
         assert f"{name}:" in workflow, (
             f"weekly-drift.yml setzt {name} nicht — Prüfung 14 liest es aber"
         )
-    assert CHECKS_URL in workflow, (
-        "weekly-drift.yml holt den Katalog von einer anderen Adresse als der, "
-        "die tools/checks/catalogue.py als Quelle nennt"
+    for url in (REMOTE_URL, RAW_BASE):
+        assert url in workflow, (
+            f"weekly-drift.yml holt den Katalog nicht von {url} — "
+            "tools/checks/catalogue.py nennt diese Adresse als Quelle"
+        )
+    assert "scripts/linked_checks.py" in workflow, (
+        "weekly-drift.yml ermittelt die verlinkten Checks nicht über "
+        "scripts/linked_checks.py — eine zweite Liste in YAML liefe auseinander"
     )
 
 

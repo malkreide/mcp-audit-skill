@@ -40,13 +40,31 @@ Vier Zusicherungen, jede mit eigenem Befundtext:
 4. Passt der Satz nicht mehr auf sein Muster, ist das ein Befund und kein Grund
    weiterzumachen — dieselbe Entscheidung wie bei den Zahlen.
 
-**Ein Archiv statt 120 Abrufe.** Die Einstufung steht im Frontmatter jeder
-Check-Datei, nicht im Manifest. Der Wochenplan holt deshalb einen Tarball des
-Baums und legt `checks/` ab; gelesen werden daraus nur die **13 verlinkten**
-Dateien. Das ist nicht bloss sparsamer — es beseitigt ein Rennen, das zwei
-getrennte Abrufe gehabt hätten: Manifest und Check-Dateien stammen jetzt
-zwingend aus demselben Commit. Sonst könnte zwischen beiden ein Release liegen,
-und der Befund beschriebe einen Katalog, den es nie gegeben hat.
+**14 Abrufe statt 120, alle an einem Commit.** Die Einstufung steht im
+Frontmatter jeder Check-Datei, nicht im Manifest. Der Wochenplan ermittelt
+deshalb erst den Commit von `main` (`git ls-remote`) und holt dann Manifest und
+die **13 verlinkten** Check-Dateien an genau diesem SHA. Welche verlinkt sind,
+sagt ihm `scripts/linked_checks.py` — mit demselben Regex, den die Prüfung
+benutzt; eine zweite, in YAML nachgebaute Liste liefe auseinander, ohne dass
+etwas rot würde.
+
+Das Pinnen ist nicht Zierde. Zwei Abrufe eines beweglichen `main` können ein
+Release auseinanderliegen, und der Befund beschriebe dann einen Katalog, den es
+nie gegeben hat. Der SHA geht ausserdem in `$CATALOGUE_COMMIT` und von dort ins
+Ergebnis — *«gemessen an d7276bfda6ca»*. Ein Befund, der nicht sagt, woran er
+gemessen hat, ist in einer Woche von einer Behauptung nicht zu unterscheiden;
+das ist die Diagnose, die dieser Skill an Fixtures stellt, angewandt auf sein
+eigenes Werkzeug. Fehlt der Commit, ist das ein Befund und kein Lauf ohne
+Angabe.
+
+**Zwischenschritt, der verworfen wurde:** Zuerst stand hier ein Tarball des
+ganzen Baums — ein Abruf statt vierzehn. Er liess sich aus der Arbeitsumgebung
+nicht verifizieren (die Egress-Policy beantwortet Archiv-Endpunkte mit 403,
+gegengeprüft an einem unbeteiligten öffentlichen Repo, während `raw` 200 gibt).
+Damit wäre eine Fetch-Strecke ausgeliefert worden, die niemand hier je hat
+laufen sehen. Die SHA-gepinnte Variante ist dieselbe Zusicherung über einen
+Weg, der **nachweislich** durchläuft — end-to-end gefahren, mit dem grünen
+Ergebnis oben als Beleg.
 
 `$CATALOGUE_CHECKS_DIR` fehlen zu lassen ist **kein** halber Lauf, sondern ein
 Befund. Eine Prüfung, die stillschweigend weniger prüft, als ihr Name sagt,
