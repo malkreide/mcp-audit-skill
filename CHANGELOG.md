@@ -6,6 +6,24 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — das Zertifikat ist geprüft, und der Befund zeigt jetzt auf die eigene Suite
+
+Der Diagnoseschritt aus [`zh-education-mcp#45`](https://github.com/malkreide/zh-education-mcp/pull/45) ist gebaut und lief zum ersten Mal. Er beantwortet die Frage, die von aussen nicht zu beantworten war.
+
+**Das Zertifikat der Quelle ist gültig.** DigiCert Global G2, `O = Kanton Zürich`, `CN = www.bista.zh.ch`, SAN passt, gültig bis Dezember 2026, Hostnamen-Prüfung bestanden. Gemessen um 08:22:48 UTC vom Runner aus, mit `ip=193.246.68.83` statt `127.0.0.1` — also ohne Zwischenstopp, im Unterschied zu der Messung, die diese ersetzt. «Die Quelle liefert ein falsches Zertifikat» ist damit erledigt.
+
+**Der Ausfall ist sauber am Ursprung belegt**, ohne Proxy: Startseite 200, alle sechs Endpunkte 502. Rund elf Stunden.
+
+**Und der Mismatch zeigt jetzt auf uns.** Der Test scheiterte um 08:22:35–08:22:47, das `openssl` derselben Maschine bekam **eine Sekunde später** das gültige Zertifikat. Dazu drei Läufe, drei Mismatches, immer derselbe Test, immer der letzte — zu deterministisch für eine flatternde Quelle. Eine naheliegende Erklärung ist geprüft und **verworfen** (der Egress-Guard pinnt keine IP; die SNI stimmt). Auffällig bleibt die Reihenfolge: unmittelbar davor läuft der einzige Live-Test, der `getaddrinfo` patcht.
+
+Das trennende Experiment ist benannt und der Sondenmodus dafür gebaut ([`zh-education-mcp#46`](https://github.com/malkreide/zh-education-mcp/pull/46)) — mit der Regel, dass ein gefilterter Lauf das Issue nie anfasst, auch nicht wenn er grün ist: Ein Teil der Suite, der durchläuft, ist keine Suite, die durchgelaufen ist.
+
+**Die Lehre, die in den nächsten Durchlauf gehört:** Ein Befund über eine fremde Quelle braucht einen Messpunkt, der die Quelle erreicht. Zwischen «BISTA liefert ein falsches Zertifikat» und «unsere Suite erzeugt einen Verbindungsfehler» liegen drei Läufe, ein zurückgezogener Beleg und ein gebauter Diagnoseschritt — und die Frage war von Anfang an dieselbe.
+
+An der Zahl ändert das nichts: `FID-006` bleibt bei **0 von 42**, `zh-education-mcp` auf `todo`, §5 feuert weiter nicht.
+
+**Gegenprobe: weiterhin keine möglich, erneut gemessen** — den neuen Abschnitt entfernt, Suite läuft unverändert grün durch. `docs/re-audit-queue.md` ist von keinem Test bewacht.
+
 ### Korrigiert — der TLS-Befund im BISTA-Eintrag, und eine Messung, die nichts gemessen hat
 
 Der Eintrag von heute früh führte einen TLS-Hostname-Mismatch als «einmal beobachtet, nicht reproduziert» und hielt ihm entgegen, die Nachmessung aus der Audit-Sitzung melde `ssl_verify_result=0`. Beides ist falsch, und der zweite Punkt ist der schwerwiegendere.

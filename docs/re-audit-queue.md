@@ -127,7 +127,35 @@ tls=0  ip=127.0.0.1  http=502
 
 **Was der Proxy-Vorbehalt nicht trifft.** Der Ausfall selbst bleibt doppelt belegt. Über den Proxy kommt eine Antwort mit `server: Microsoft-IIS/10.0` und einem 1477 Byte grossen HTML-Körper zurück — das ist der Ursprung, der 502 sagt, keine Fehlerseite des Proxys; und Lauf 1 hat dieselben 502 ohne jeden Proxy gesehen. Nur die **TLS**-Aussage der Sitzung ist wertlos, nicht die HTTP-Aussage.
 
-**Was jetzt tatsächlich gilt, und was offen bleibt.** Die beiden Netze sehen unterschiedliche Ausfälle: über den Proxy ein sauberer 502 von einem stehenden IIS, vom Runner aus Timeouts und ein Zertifikat für einen anderen Namen. `www.bista.zh.ch` löst aus der Sitzung auf genau eine Adresse auf (`193.246.68.83`), was «ein kaputter Knoten im Pool» nicht stützt und nicht ausschliesst — was der Runner auflöst, ist von hier aus nicht feststellbar. Klären würde es ein Diagnoseschritt im Live-Workflow, der bei einem Verbindungsfehler die aufgelöste Adresse und `subject`/`SAN` des gelieferten Zertifikats protokolliert. Der ist **nicht gebaut**; solange er fehlt, bleibt die Beobachtung belegt, aber unerklärt.
+### Der dritte Lauf, mit Diagnose — das Zertifikat ist geprüft (2026-08-08, 08:17–08:23 UTC)
+
+Der Diagnoseschritt ist gebaut ([zh-education-mcp#45](https://github.com/malkreide/zh-education-mcp/pull/45)) und lief zum ersten Mal. Er erhebt Auflösung, Zertifikat **je Adresse** mit SNI und Hostnamen-Prüfung, und den HTTP-Status je Endpunkt. Ergebnis um 08:22:48 UTC:
+
+```
+### 193.246.68.83
+Hostnamen-Prüfung: BESTANDEN
+subject=C = CH, ST = Zürich, L = Zürich, O = Kanton Zürich, CN = www.bista.zh.ch
+issuer=C = US, O = DigiCert Inc, CN = DigiCert Global G2 TLS RSA SHA256 2020 CA1
+notBefore=Jun  4 2026   notAfter=Dec 19 2026
+SAN: www.bista.zh.ch, biss.bista.zh.ch, api.bista.zh.ch, bista.zh.ch, pub.bista.zh.ch
+
+Startseite                       http=200  tls=0  ip=193.246.68.83
+<alle sechs Endpunkte>           http=502  tls=0  ip=193.246.68.83
+```
+
+**Damit ist «die Quelle liefert ein falsches Zertifikat» erledigt.** Öffentliche CA, richtiger Inhaber, passender SAN, gültig. Und `ip=193.246.68.83` statt `127.0.0.1`: Der Runner spricht direkt mit dem Ursprung, der Lesehinweis über aufgebrochene Verbindungen greift hier nicht. Diese Messung sagt wirklich etwas über die Quelle — im Unterschied zu der, die sie ersetzt.
+
+**Der Ausfall ist damit sauber am Ursprung belegt**, ohne Proxy und ohne Umweg: Startseite 200, alle sechs Endpunkte 502. Rund elf Stunden.
+
+**Und der Mismatch zeigt jetzt auf uns.** `test_live_bista_api_letzi` scheiterte um 08:22:35–08:22:47 mit `Hostname mismatch`; das `openssl` derselben Maschine, gegen dieselbe Adresse, mit derselben SNI, lief **eine Sekunde später** und bekam das gültige Zertifikat. Dazu: drei Läufe, drei Mismatches, **immer derselbe Test, immer der letzte im Lauf**. Zu deterministisch für eine flatternde Quelle.
+
+Eine naheliegende Erklärung ist geprüft und **verworfen**: Der Egress-Guard des Servers könnte auf eine IP pinnen und dann ohne saubere SNI verbinden. Tut er nicht — `_resolve_and_validate` löst nur zur Prüfung gegen die Blocklist auf, verbunden wird danach über den Hostnamen.
+
+Was auffällt, ist die Reihenfolge: Unmittelbar davor läuft `test_live_a_dns_hiccup_costs_an_attempt_not_the_call`, der einzige Live-Test, der `getaddrinfo` monkeypatcht — und in allen drei Läufen selbst rot geworden ist.
+
+**Das entscheidende Experiment ist benannt und vorbereitet:** denselben Test einmal allein laufen lassen, einmal mit dem Vorgänger davor. Fällt er allein durch, liegt es an der Quelle; fällt er nur mit Vorgänger durch, war der «Mismatch» drei Läufe lang ein Artefakt der eigenen Suite, das wie ein Quellenbefund aussah. Der Sondenmodus dafür ist [zh-education-mcp#46](https://github.com/malkreide/zh-education-mcp/pull/46) — mit der Regel, dass ein gefilterter Lauf das Issue nie anfasst, auch nicht wenn er grün ist: Ein Teil der Suite, der durchläuft, ist keine Suite, die durchgelaufen ist.
+
+**Was das für den Katalog heisst.** Nichts an der Zahl — `FID-006` bleibt 0 von 42. Aber die Lehre ist eine über das Auditieren selbst und gehört in den nächsten Durchlauf: **Ein Befund über eine fremde Quelle braucht einen Messpunkt, der die Quelle erreicht.** Zwischen «BISTA liefert ein falsches Zertifikat» und «unsere Suite erzeugt einen Verbindungsfehler» liegen drei Läufe, ein zurückgezogener Beleg und ein gebauter Diagnoseschritt — und die Frage war von Anfang an dieselbe.
 
 **§5 feuert nicht.** Ein Quellenausfall ist keiner der fünf Auslöser: keine Severity, keine Reichweite, kein Prüfkriterium, keine Adoptionsstufe, keine Baseline hat sich bewegt. Kein bestandenes Audit wird dadurch ungültig. Der Eintrag steht hier aus dem Grund, aus dem weiter unten `v2.2.0` einen Abschnitt hat, in dem nichts feuert: Ein Kriterium, das erfüllt **aussieht** und dessen Beleg nie erbracht wurde, ist von einem erfüllten nur unterscheidbar, wenn der fehlende Beleg aufgeschrieben ist.
 
@@ -151,7 +179,10 @@ tls=0  ip=127.0.0.1  http=502
 | 15 / 0 / 13 / 1 / 1 in Lauf 2 | **gemessen** — dasselbe Verfahren am Job-Log von Lauf 31246130572. Die Ausfallform hat gewechselt, die Bilanz nicht |
 | BISTA 502 seit 2026-08-07 21:24 UTC | **gemessen** — acht `curl`-Messungen aus der Sitzung plus Lauf 1; die Startseite antwortete bei jeder Messung mit 200 |
 | Ausfall aus zwei unabhängigen Netzen | **gemessen** — Sitzungs-Ausgang über den Agent-Proxy, Runner-Ausgang über GitHub; kein gemeinsamer Pfad ausser der Quelle selbst. Gilt für die **HTTP**-Aussage; die Antwort trägt `server: Microsoft-IIS/10.0`, ist also die des Ursprungs und keine Fehlerseite des Proxys |
-| TLS-Hostname-Mismatch | **zweimal beobachtet** — Läufe 31245489543 und 31246130572, selber Test, selber Wortlaut. **Nicht erklärt**, und die frühere Gegenevidenz ist zurückgezogen: siehe die Zeile darunter |
+| TLS-Hostname-Mismatch | **dreimal beobachtet** — Läufe 31245489543, 31246130572 und der Lauf vom 08:17 UTC; jedes Mal derselbe Test, jedes Mal der letzte im Lauf |
+| Zertifikat der Quelle gültig | **gemessen** — Diagnoseschritt auf dem Runner, 08:22:48 UTC, `ip=193.246.68.83` (kein Zwischenstopp): DigiCert Global G2, `O = Kanton Zürich`, SAN enthält `www.bista.zh.ch`, Hostnamen-Prüfung bestanden — **eine Sekunde nach** dem Mismatch derselben Maschine |
+| IP-Pinning als Ursache | **geprüft und verworfen** — `_resolve_and_validate` löst nur zur Blocklist-Prüfung auf; verbunden wird über den Hostnamen, die SNI stimmt |
+| Ursache des Mismatch | **offen, aber eingegrenzt** — die Determiniertheit (3/3, immer der letzte Test, direkt nach dem einzigen Test, der `getaddrinfo` patcht) zeigt auf die Suite, nicht auf die Quelle. Das trennende Experiment ist benannt, nicht gelaufen |
 | `ssl_verify_result=0` aus der Sitzung | **untauglich, zurückgezogen** — `remote_ip=127.0.0.1`; der Handschlag endet am Agent-Proxy, der neu signiert. Diese Umgebung sieht das Zertifikat der Quelle nie. Der erste Eintrag hat die Zahl als Widerspruch zur Runner-Beobachtung gelesen; sie war nie einer |
 
 **Drei Korrekturen am Messwerkzeug, jede hat die Zahlen bewegt** — sie stehen im Kopf von `fid006_ast.py` und gehören hierher, weil eine Zahl ohne ihre Fehlversuche nicht nachvollziehbar ist:
