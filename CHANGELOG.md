@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-08-08
+
+**Ein Test, der seinen eigenen Fehler nicht finden konnte.**
+
+Ein kleines Release, und der Inhalt ist eine Korrektur an der Prüfung der
+Prüfungen. `test_registry_deckt_jedes_pruefmodul_ab` befragte `all_checks()`
+zur **Laufzeit** — aber `@register` läuft beim **Import**, und mehrere
+Testdateien importieren Prüfmodule direkt (`test_ruff_gates.py` holt
+`toolchain`, `test_open_names.py` die `references`). Damit war ein Modul
+registriert, ganz gleich ob `__init__.py` es importiert.
+
+**Gemessen**, mit der Importzeile für `toolchain` entfernt:
+
+| | Ergebnis |
+|---|---|
+| `validate.sh` | **«8 checks, all passed»** statt zehn |
+| voller `pytest`-Lauf | dieser Test fiel **nicht** |
+
+Rot wurde die Suite nur über Mutationen, die zufällig auf die verlorenen
+Prüfungen zeigten. Ein neues Modul ohne Mutationen wäre unbemerkt geblieben —
+und genau dafür gibt es diesen Test.
+
+Jetzt vollständig statisch: verglichen werden zwei **Texte** — welche Module
+`@register(` enthalten, und welche `__init__.py` importiert. Weder importiert
+noch die Registry befragt.
+
+Aufgefallen ist das beim Bau derselben Registry in `mcp-audit-skill`, wo
+derselbe Fehler entstand. Das Portieren in ein zweites Repo hat als
+Gegenprobe gewirkt; ohne es wäre der Defekt hier liegengeblieben.
+
 ## [2.3.0] - 2026-08-08
 
 **Eine Regel dazu, eine Abgrenzung widerlegt — und eine Pipeline, die ihre
