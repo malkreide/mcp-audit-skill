@@ -1,10 +1,10 @@
 # Re-Audit-Warteschlange
 
-**Stand:** 2026-08-08 · **Letztes geprüftes Release:** `v2.2.0` (feuert nichts) · **Jüngste offene Auslöser:** `v2.1.0` · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+**Stand:** 2026-08-08 · **Letztes geprüftes Release:** `v2.3.0` (feuert zweimal — kippt kein Verdikt) · **Jüngste offene Auslöser:** `v2.1.0` · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
 
 ---
 
-## Unreleased — `DRIFT-008`, ein Live-Test muss die Quelle erreichen
+## `v2.3.0` — 2026-08-08 — `DRIFT-008`, ein Live-Test muss die Quelle erreichen
 
 ### Was gefeuert hat
 
@@ -26,7 +26,7 @@ Aus dem Ausfall darüber, aber nicht aus dem Ausfall selbst — aus der **Fehldi
 
 ---
 
-## Unreleased — `FID-006` übernimmt die Feldnamen, `DRIFT-007` zurückgezogen
+## `v2.3.0` — 2026-08-08 — `FID-006` übernimmt die Feldnamen, `DRIFT-007` zurückgezogen
 
 ### Was gefeuert hat
 
@@ -248,7 +248,7 @@ Zwei Lehren, und beide gehören in den nächsten Durchlauf:
 
 ---
 
-## Unreleased — `ARCH-014`, Klarstellung zur Abwesenheit
+## `v2.3.0` — 2026-08-08 — `ARCH-014`, Klarstellung zur Abwesenheit
 
 ### Was gefeuert hat
 
