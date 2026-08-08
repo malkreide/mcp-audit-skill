@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Wöchentlicher `sdk-drift`-Lauf gegen die jeweils neueste `mcp`.** Löst den
+  Preis ein, der beim Import-Smoke-Test bisher nur im Kommentar stand.
+
+  Die CI installiert `mcp==2.0.0`, und der Pin ist Absicht — ohne ihn färbte
+  ein fremdes Release die CI an unberührtem Vorlagen-Code rot, dieselbe
+  Begründung wie beim ruff-Pin. Der Preis davon: Verschiebt upstream die
+  Oberfläche in 2.1, bleibt der Import-Smoke-Test grün und
+  `reference/patterns.py` veraltet **still**, bis jemand den Pin von Hand hebt.
+
+  **Ein PR-Gate wäre hier das falsche Werkzeug.** Es würde genau den Effekt
+  erzeugen, gegen den der Pin existiert. Der neue Lauf ist deshalb
+  *geplant*, nicht blockierend: wöchentlich montags, plus
+  `workflow_dispatch`. Er installiert `mcp` **ungepinnt**, meldet gepinnte
+  gegen aufgelöste Version in die Job-Summary und fährt denselben Import wie
+  das Gate. Das PR-Gate bleibt gepinnt und reproduzierbar; die Drift wird
+  trotzdem sichtbar. Ein rotes Ergebnis dort blockiert keinen PR — es ist die
+  Aufforderung, den Pin bewusst zu heben.
+
+  **Gemessen, bevor gebaut:** `mcp==2.0.0` ist derzeit die neueste Version auf
+  PyPI. Es gibt heute keine Drift; der Lauf ist für den Tag da, an dem es sie
+  gibt.
+
+  **Nachgestellt, alle drei Ausgänge:**
+
+  | Fall | Ergebnis |
+  |---|---|
+  | keine Drift (heute) | gepinnt 2.0.0 = aufgelöst 2.0.0, Import ok |
+  | Vorlage passt nicht mehr zur SDK | rot, `ModuleNotFoundError`, Meldung nennt Regel 1 |
+  | `mcp==`-Pin aus `ci.yml` verschwunden | rot mit «Anker weg» — nicht grün |
+
+  Ein fehlgeschlagener Install ist ein FEHLER, kein Skip: Dieser Lauf ist die
+  einzige Stelle, die überhaupt nach der Drift schaut.
+
 - **`line-length` steht jetzt in `ruff.toml`** — ausdrücklich, obwohl 88 der
   ruff-Default ist.
 
