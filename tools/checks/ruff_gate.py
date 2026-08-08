@@ -14,6 +14,13 @@ werden:
 Beide Gates fahren ueber den ganzen Baum, wie zuvor. Die Konfiguration kommt
 aus `ruff.toml`; hier stehen bewusst keine Regeln, sonst waere das eine
 zweite Stelle, an der der Regelsatz steht.
+
+DIE URTEILSLOGIK IST VOM UNTERPROZESS GETRENNT (`bewerte`). Das ist keine
+Stilfrage: Die Testsuite dieses Repos laeuft auf Linux UND Windows, und der
+pytest-Job installiert kein ruff — das liegt im lint-Job. Ein Test, der eine
+echte oder untergeschobene ruff braucht, pruefte damit die Testumgebung statt
+den Code, und ein `#!/bin/sh`-Shim faellt unter Windows ohnehin um. Was hier
+schiefgehen kann, haengt an einem Exit-Code und einem Text — beides Werte.
 """
 
 from __future__ import annotations
@@ -30,6 +37,25 @@ FEHLT = (
     "die schlimmer ist als keine."
 )
 
+HINWEIS_FORMAT = (
+    "\n  `ruff format .` raeumt das auf; der Pre-Commit-Hook tut es vor jedem Commit."
+)
+
+
+def bewerte(kind: str, returncode: int, ausgabe: str) -> tuple[bool, str]:
+    """Rein: `(gruen, Meldung)` aus Exit-Code und Ausgabe.
+
+    Kein PATH, kein Unterprozess — dieselbe Bauart wie `compare()` in
+    `tools/check_ruff_pin.py`, und aus demselben Grund: Der Teil, der
+    schiefgehen kann, soll als Wert pruefbar sein.
+    """
+    text = ausgabe.strip()
+    if returncode == 0:
+        return True, text or ("All checks passed!" if kind == "check" else "formatted")
+    if kind == "format":
+        return False, text + HINWEIS_FORMAT
+    return False, text
+
 
 def _ruff(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     executable = shutil.which("ruff")
@@ -44,21 +70,19 @@ def _ruff(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _gate(root: Path, kind: str, *args: str) -> str:
+    done = _ruff(root, *args)
+    ok, message = bewerte(kind, done.returncode, done.stdout + done.stderr)
+    if not ok:
+        raise CheckFailed(message)
+    return message
+
+
 @register(3, "ruff check passes on the whole tree")
 def ruff_check(root: Path) -> str:
-    done = _ruff(root, "check", ".")
-    if done.returncode != 0:
-        raise CheckFailed((done.stdout + done.stderr).strip())
-    return (done.stdout or "All checks passed!").strip()
+    return _gate(root, "check", "check", ".")
 
 
 @register(4, "ruff format leaves the tree unchanged")
 def ruff_format(root: Path) -> str:
-    done = _ruff(root, "format", "--check", ".")
-    if done.returncode != 0:
-        raise CheckFailed(
-            (done.stdout + done.stderr).strip()
-            + "\n  `ruff format .` raeumt das auf; der Pre-Commit-Hook tut es "
-            "vor jedem Commit."
-        )
-    return (done.stdout or "already formatted").strip()
+    return _gate(root, "format", "format", "--check", ".")

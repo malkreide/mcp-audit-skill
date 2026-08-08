@@ -20,8 +20,8 @@ dann «all passed» ueber weniger, als er glaubt.
 from __future__ import annotations
 
 import pathlib
+import re
 import shutil
-import subprocess
 import sys
 
 import pytest
@@ -31,7 +31,12 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import tools.checks  # noqa: E402
-from tools.checks import CheckFailed, all_checks  # noqa: E402
+from tools.checks import (  # noqa: E402  # noqa: E402
+    CheckFailed,
+    all_checks,
+    ruff_gate,
+    toolchain,
+)
 from tools.checks._core import Check, run  # noqa: E402
 
 CHECKS_BY_NAME = {c.run.__name__: c for c in all_checks()}
@@ -54,32 +59,9 @@ def tree(tmp_path: pathlib.Path) -> pathlib.Path:
     return dst
 
 
-@pytest.fixture
-def ruff_shim(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch):
-    """Legt eine gefaelschte `ruff` an und setzt den PATH auf sie."""
-
-    def _shim(rumpf: str | None) -> pathlib.Path:
-        d = tmp_path / "shim"
-        d.mkdir(exist_ok=True)
-        if rumpf is not None:
-            f = d / "ruff"
-            f.write_text(f"#!/bin/sh\n{rumpf}\n", encoding="utf-8")
-            f.chmod(0o755)
-        monkeypatch.setenv("PATH", str(d))
-        return d
-
-    return _shim
-
-
 # --------------------------------------------------------------------------
 # Die Pruefungen am gesunden und am kaputten Baum
 # --------------------------------------------------------------------------
-
-
-def test_alle_pruefungen_sind_am_echten_repo_gruen():
-    """Wird eine hier rot, ist der Baum kaputt — nicht die Suite."""
-    for check in all_checks():
-        assert check.run(REPO_ROOT), f"Check {check.number} meldet Erfolg ohne Wort"
 
 
 def test_pin_sync_wird_rot_wenn_die_pins_auseinanderlaufen(tree):
@@ -104,50 +86,63 @@ def test_ANKER_pin_sync_ohne_pin_ist_ein_befund(tree):
     assert str(befund.value)
 
 
-def test_ruff_version_wird_rot_bei_falscher_version(tree, ruff_shim):
-    ruff_shim('echo "ruff 0.15.8"')
+# Die REINEN Urteilsfunktionen sind anderswo geprueft: `compare()` in
+# tests/test_ruff_pin.py und tests/test_ruff_version.py, `bewerte()` unten.
+# Hier geht es um die VERDRAHTUNG — dass die Registry den Befund als
+# CheckFailed weiterreicht statt ihn zu verschlucken.
+
+
+def test_ANKER_ruff_version_ohne_ruff_ist_ein_befund(tree, monkeypatch):
+    """Kein ruff heisst FEHLER, nicht «uebersprungen».
+
+    `shutil.which` ist die eine Naht, an der diese Pruefung die Umgebung
+    befragt — sie hier zu ersetzen ist genauer und portabler, als eine
+    gefaelschte ruff in den PATH zu legen. Ein `#!/bin/sh`-Shim faellt unter
+    Windows um, und die Matrix dieses Repos enthaelt windows-latest.
+    """
+    monkeypatch.setattr(toolchain.shutil, "which", lambda _: None)
     with pytest.raises(CheckFailed) as befund:
         CHECKS_BY_NAME["ruff_version_matches_pin"].run(tree)
-    assert "0.15.8" in str(befund.value)
+    assert "liegt nicht auf dem PATH" in str(befund.value)
 
 
-@pytest.mark.parametrize(
-    ("rumpf", "erwartet"),
-    [
-        ('echo "Ruff, version 0.16.1"', "antwortet nicht in der Form"),
-        ('echo "boom" >&2; exit 3', "endete mit 3"),
-        (None, "liegt nicht auf dem PATH"),
-    ],
-    ids=["ANKER-ausgabeform", "ruff-stuerzt-ab", "ANKER-keine-ruff"],
-)
-def test_ANKER_unbrauchbare_ruff_ist_ein_befund(tree, ruff_shim, rumpf, erwartet):
-    ruff_shim(rumpf)
+@pytest.mark.parametrize("name", ["ruff_check", "ruff_format"])
+def test_ANKER_die_gates_ohne_ruff_sind_ein_befund(tree, monkeypatch, name):
+    monkeypatch.setattr(ruff_gate.shutil, "which", lambda _: None)
     with pytest.raises(CheckFailed) as befund:
-        CHECKS_BY_NAME["ruff_version_matches_pin"].run(tree)
-    assert erwartet in str(befund.value)
+        CHECKS_BY_NAME[name].run(tree)
+    assert "FAIL statt skip" in str(befund.value)
 
 
-def test_ruff_check_wird_rot_an_kaputtem_code(tree):
-    (tree / "beispiel.py").write_text("import os\n", encoding="utf-8")  # F401
-    with pytest.raises(CheckFailed) as befund:
-        CHECKS_BY_NAME["ruff_check"].run(tree)
-    assert "F401" in str(befund.value)
+# --- die reine Urteilsfunktion der Gates -----------------------------------
 
 
-def test_ruff_format_wird_rot_an_unformatiertem_code(tree):
-    (tree / "beispiel.py").write_text("x  =  1\n", encoding="utf-8")
-    with pytest.raises(CheckFailed) as befund:
-        CHECKS_BY_NAME["ruff_format"].run(tree)
-    assert "reformatted" in str(befund.value)
+def test_bewerte_gruen_bei_exit_null():
+    ok, message = ruff_gate.bewerte("check", 0, "All checks passed!")
+    assert ok
+    assert "All checks passed!" in message
 
 
-def test_ANKER_die_gates_ohne_ruff_sind_ein_befund(tree, ruff_shim):
-    """Kein ruff heisst FEHLER, nicht «uebersprungen»."""
-    ruff_shim(None)
-    for name in ("ruff_check", "ruff_format"):
-        with pytest.raises(CheckFailed) as befund:
-            CHECKS_BY_NAME[name].run(tree)
-        assert "FAIL statt skip" in str(befund.value)
+def test_bewerte_reicht_die_ausgabe_durch():
+    ok, message = ruff_gate.bewerte("check", 1, "beispiel.py:1:8: F401 unused import")
+    assert not ok
+    assert "F401" in message
+
+
+def test_bewerte_haengt_beim_format_den_hinweis_an():
+    """Ein Befund soll sagen, wie er zu beheben ist."""
+    ok, message = ruff_gate.bewerte("format", 1, "1 file would be reformatted")
+    assert not ok
+    assert "reformatted" in message
+    assert "ruff format ." in message
+
+
+def test_bewerte_meldet_auch_ohne_ausgabe_etwas():
+    """Eine leere Erfolgsmeldung liesse den Lauf schweigen, wo er reden soll."""
+    for kind in ("check", "format"):
+        ok, message = ruff_gate.bewerte(kind, 0, "")
+        assert ok
+        assert message
 
 
 # --------------------------------------------------------------------------
@@ -165,12 +160,17 @@ def test_nummern_sind_lueckenlos_und_eindeutig():
 
 
 def test_registry_deckt_jedes_pruefmodul_ab():
-    """Ein Modul ohne Importzeile registriert nichts — und schweigt dazu.
+    """Ein Modul ohne Importzeile in __init__.py registriert nichts.
 
-    GELESEN WIRD DER QUELLTEXT, NICHT IMPORTIERT. `@register` laeuft beim
-    Import: Wuerde dieser Test die Module importieren, um sie zu befragen,
-    traegt er das fehlende Modul dabei nachtraeglich ein — und koennte den
-    Fehler, den er sucht, niemals finden.
+    VOLLSTAENDIG STATISCH — weder importiert noch `all_checks()` befragt, und
+    das ist der ganze Punkt. `@register` laeuft beim Import: Sobald IRGENDEIN
+    Test das Modul importiert (dieser hier importiert `ruff_gate` fuer die
+    `bewerte`-Tests), ist es registriert, ganz gleich was in `__init__.py`
+    steht. Eine Laufzeit-Abfrage koennte den Fehler deshalb nie finden — sie
+    hat ihn beim Bau dieser Datei tatsaechlich uebersehen.
+
+    Verglichen werden zwei TEXTE: welche Module `@register(` enthalten, und
+    welche `__init__.py` importiert.
     """
     paket = pathlib.Path(tools.checks.__file__).parent
     mit_register = {
@@ -179,12 +179,15 @@ def test_registry_deckt_jedes_pruefmodul_ab():
         if not datei.name.startswith("_")
         and "@register(" in datei.read_text(encoding="utf-8")
     }
-    registriert = {c.run.__module__.rsplit(".", 1)[-1] for c in all_checks()}
-    fehlend = sorted(mit_register - registriert)
+    init = (paket / "__init__.py").read_text(encoding="utf-8")
+    importiert = set(re.findall(r"^from \. import (.+)$", init, re.M))
+    importiert = {name.strip() for zeile in importiert for name in zeile.split(",")}
+
+    fehlend = sorted(mit_register - importiert)
     assert not fehlend, (
-        f"Diese Module rufen @register, stehen aber nicht in der Registry: "
-        f"{fehlend}. Fehlt ihre Importzeile in __init__.py, verschwinden ihre "
-        "Pruefungen aus jedem Lauf, ohne dass etwas rot wird."
+        f"Diese Module rufen @register, stehen aber nicht in der Importzeile "
+        f"von __init__.py: {fehlend}. Ohne sie verschwinden ihre Pruefungen "
+        "aus jedem Lauf von validate.sh, ohne dass etwas rot wird."
     )
 
 
@@ -226,14 +229,19 @@ def test_ein_lauf_nennt_alle_befunde_nicht_nur_den_ersten():
     assert all(not e.ok for e in ergebnisse)
 
 
-def test_validate_sh_ruft_dieselben_pruefungen():
-    """Der dokumentierte Weg und die Registry duerfen nicht auseinanderlaufen."""
-    done = subprocess.run(
-        ["bash", str(REPO_ROOT / "scripts/validate.sh")],
-        capture_output=True,
-        text=True,
-        check=False,
+def test_der_runner_waehlt_alle_offline_pruefungen():
+    """Der dokumentierte Weg und die Registry duerfen nicht auseinanderlaufen.
+
+    Ohne Unterprozess: `validate.sh` ist eine duenne Huelle um
+    `python -m tools.checks`, und dessen Auswahl laesst sich direkt befragen.
+    Ein Lauf des Skripts braeuchte ruff und wuerde damit die Testumgebung
+    pruefen statt die Auswahl.
+    """
+    from tools.checks.__main__ import select
+
+    gewaehlt = {c.number for c in select([], include_network=False)}
+    erwartet = {c.number for c in all_checks(offline_only=True)}
+    assert gewaehlt == erwartet, (
+        f"Der Runner faehrt {sorted(gewaehlt)}, die Registry kennt "
+        f"{sorted(erwartet)} — eine Pruefung liefe nie."
     )
-    assert done.returncode == 0, done.stdout + done.stderr
-    for check in all_checks(offline_only=True):
-        assert check.label in done.stdout, f"Check {check.number} fehlt im Lauf"
