@@ -6,6 +6,31 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — die Kettenzeile zu `mcp-transport-hardening-skill`
+
+Sie stand auf **v2.2.0, dreizehn Regeln**; das Repo ist bei **v2.4.0, vierzehn**.
+Nachgezogen wurde nicht die Zahl, sondern die Zuordnung — sie behauptet, durch
+Lesen belegt zu sein, und hochzählen hätte diese Behauptung leer gemacht.
+
+Zwei Zeilen sind gewandert, aus **verschiedenen** Richtungen:
+
+- **Regel 14 → `OBS-008`.** Der Check ist unverändert und deckt jetzt trotzdem
+  eine Regel, die es beim letzten Lesen nicht gab. Bewegt hat sich der
+  Regelsatz des anderen Repos.
+- **Regel 6 → `OPS-010`.** Der Check ist neu und ausdrücklich gegen die Lücke
+  geschrieben, die jene Tabelle erklärt hatte — sein `pdf_ref` nennt sie. Hier
+  hat sich dieser Katalog bewegt. Vorbehalt, der in die Zeile gehört:
+  `OPS-010` ist `advisory`, ein Server kann ihn verfehlen und das Audit
+  bestehen.
+
+Ungedeckt bleiben damit dessen Regeln **2 und 7** (vorher 2, 6 und 7), teilweise
+gedeckt **5 und 13**. Dass eine Kettenzeile aus beiden Richtungen altert und
+keine davon sich von selbst meldet, steht jetzt neben der Tabelle — bisher war
+nur die eine Richtung benannt.
+
+Betroffen: `SKILL.md`, `README.md`, `README.de.md`. Kein Check geändert, kein
+Verdikt gekippt.
+
 ## [v2.3.0] — 2026-08-08 — Was die Fixture behauptet, hat niemand gemessen
 
 ### Hinzugefügt — `DRIFT-008`: ein Live-Test muss die Quelle erreichen
