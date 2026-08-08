@@ -13,6 +13,7 @@ dann «all passed» ueber weniger, als er glaubt.
 from __future__ import annotations
 
 import pathlib
+import re
 
 import pytest
 from conftest import CHECKS_BY_NAME
@@ -71,13 +72,23 @@ def test_nummern_sind_lueckenlos_und_eindeutig():
 
 
 def test_registry_deckt_jedes_pruefmodul_ab():
-    """Ein Modul ohne Importzeile registriert nichts — und schweigt dazu.
+    """Ein Modul ohne Importzeile in __init__.py registriert nichts.
 
-    GELESEN WIRD DER QUELLTEXT, NICHT IMPORTIERT. Das ist der ganze Punkt:
-    `@register` laeuft beim Import. Wuerde dieser Test die Module selbst
-    importieren, um sie zu befragen, traegt er das fehlende Modul dabei
-    nachtraeglich in die Registry ein — und koennte den Fehler, den er sucht,
-    niemals finden.
+    VOLLSTAENDIG STATISCH — weder importiert noch `all_checks()` befragt, und
+    das ist der ganze Punkt. `@register` laeuft beim Import: Sobald IRGENDEIN
+    Test das Modul importiert — `test_ruff_gates.py` holt sich
+    `toolchain.ruff_version_matches_pin`, `test_open_names.py` die
+    `references` — ist es registriert, ganz gleich was in `__init__.py` steht.
+
+    GEMESSEN, dass eine Laufzeit-Abfrage das nicht faengt: Mit der
+    Importzeile fuer `toolchain` entfernt meldete `validate.sh` «8 checks,
+    all passed» statt zehn, und im vollen pytest-Lauf fiel dieser Test NICHT
+    — er wurde vom Import in `test_ruff_gates.py` verdeckt. Rot wurde die
+    Suite nur ueber die Mutationen, die zufaellig auf die verlorenen
+    Pruefungen zeigten. Ein Modul ohne Mutationen waere unbemerkt geblieben.
+
+    Verglichen werden deshalb zwei TEXTE: welche Module `@register(`
+    enthalten, und welche `__init__.py` importiert.
     """
     paket = pathlib.Path(tools.checks.__file__).parent
     mit_register = {
@@ -86,13 +97,19 @@ def test_registry_deckt_jedes_pruefmodul_ab():
         if not datei.name.startswith("_")
         and "@register(" in datei.read_text(encoding="utf-8")
     }
-    registriert = {c.run.__module__.rsplit(".", 1)[-1] for c in all_checks()}
+    init = (paket / "__init__.py").read_text(encoding="utf-8")
+    importiert = {
+        name.strip()
+        for zeile in re.findall(r"^from \. import (.+)$", init, re.M)
+        for name in zeile.split(",")
+    }
 
-    fehlend = sorted(mit_register - registriert)
+    fehlend = sorted(mit_register - importiert)
     assert not fehlend, (
         f"Diese Module unter tools/checks/ rufen @register, stehen aber nicht "
-        f"in der Registry: {fehlend}. Fehlt ihre Importzeile in __init__.py, "
-        "verschwinden ihre Pruefungen aus jedem Lauf, ohne dass etwas rot wird."
+        f"in der Importzeile von __init__.py: {fehlend}. Ohne sie verschwinden "
+        "ihre Pruefungen aus jedem Lauf von validate.sh, ohne dass etwas rot "
+        "wird."
     )
 
 
