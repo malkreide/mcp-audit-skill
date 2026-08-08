@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-08-08
+
+**Eine Regel dazu, eine Abgrenzung widerlegt — und eine Pipeline, die ihre
+eigenen Zusagen erst jetzt einlöst.**
+
+Neu ist **Regel 14** («Der Server sagt an, dass er hört»). Jeder Server hat
+einen Moment, in dem er aufhört, ein Prozess zu sein, und anfängt, ein Server
+zu sein; von aussen sehen beide Zustände gleich aus, und «läuft» ist damit
+eine Annahme statt einer Beobachtung. Erhebung vom 2026-08-03 über 42
+veröffentlichte Server: 15 sagen beim Start nichts Eigenes.
+
+Der **Geltungsbereich** hängt nicht mehr am gefahrenen Transport, sondern an
+der Stelle im Code. Die alte Abgrenzung — «nicht nötig für Server, die
+ausschliesslich über stdio laufen» — war nicht ungenau, sondern *widerlegt*:
+`zh-education-mcp` `0.2.4` trug die Zuweisung aus Regel 1(b) **vor** der
+Transport-Weiche und war unter stdio genauso tot wie unter HTTP. Wer dem Satz
+gefolgt wäre, hätte den Fehler behalten.
+
+Der grösste Teil dieses Releases ist aber nach innen gerichtet, und der Anlass
+ist derselbe wie bei Regel 13: **Dieses Repository behauptete Dinge über sich,
+die niemand nachgeprüft hatte.** `ci.yml` versprach an sechs Stellen, ein
+fehlender Anker sei ein Fehler und kein Skip — belegt war das nirgends, weil
+die Prüflogik in Heredocs stand und ein Heredoc sich nur ausführen lässt,
+indem man das ganze Repository in den Zustand bringt, den es beanstanden soll.
+
+| | `v2.2.0` | `2.3.0` |
+|---|---|---|
+| Regeln | 13 | **14** |
+| Zeilen `ci.yml` | 354 | **232** |
+| Prüflogik in `ci.yml` | 6 Heredocs + Shell | **keine** |
+| Prüfungen | 0 als Modul | **11**, nummeriert unter `tools/checks/` |
+| Tests der Prüflogik | 0 | **108** |
+
+Was die Umstellung wert war, steht nicht in den Zahlen, sondern in den
+Gegenproben: Ein stiller Skip in `version_badge`, der historische
+Regel-13-Bug, eine Prüfung, die das Dateisystem statt git fragt, und ein
+Modul ohne Importzeile in `__init__.py` — **jeder dieser vier Defekte lässt
+den Runner grün melden**, und beim letzten meldet er «6 checks, all passed»
+statt acht. Alle vier machen die Suite rot.
+
+Zwei Prüfungen kamen dabei aus einer Lücke, die vorher nur benannt war: die
+**Positivliste** für die offenen Namen in `reference/patterns.py` (ein
+Tippfehler in `get_settings` war unter `--ignore F821` für Lint, `compileall`
+und Format gleichermassen unsichtbar) und der **Import-Smoke-Test** gegen die
+echte SDK-Oberfläche, flankiert von einem wöchentlichen `sdk-drift`-Lauf, der
+die Drift misst, ohne den Pin aufzugeben.
+
 ### Added
 
 - **Wöchentlicher `sdk-drift`-Lauf gegen die jeweils neueste `mcp`.** Löst den
