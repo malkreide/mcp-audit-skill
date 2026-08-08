@@ -6,6 +6,22 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Dokumentiert — der Ausfall von `bista.zh.ch`, und warum `FID-006` deshalb auf 0 steht
+
+`zh-education-mcp` hat mit PR #43 alles implementiert, was `FID-006` verlangt — die gelesenen Felder erklärt, auf dem ersten Eintrag bestätigt, an der Abrufstelle verdrahtet, 18 Unit- und 12 Live-Tests. Es fehlt genau ein Kriterium, und das lässt sich nicht durch Programmieren herstellen: die Erklärung gegen eine **echte** Antwort halten.
+
+`www.bista.zh.ch` liefert seit dem 2026-08-07, 21:24 UTC auf allen sechs OGD-Endpunkten **502**, während die Startseite mit 200 antwortet. Ein manuell gestarteter Live-Lauf auf einem GitHub-Runner am 2026-08-08 sieht dasselbe: 15 Tests eingesammelt, 14 gefallen — 10 mit 502, 3 mit `TimeoutError`, 1 beim Verbindungsaufbau. **Kein einziger Fehlschlag betrifft einen Feldnamen.** Grün blieb allein der Test, der den Host auflöst, ohne ihn abzurufen.
+
+Der Runner-Lauf ist die Messung, die zählt: Die Sitzungs-Messungen gehen alle über denselben Proxy-Ausgang, der Runner über einen anderen. Der Ausfall liegt bei der Quelle, nicht am Messaufbau.
+
+Nach `SKILL.md` §2.6 ist ein Live-Test, der nicht gelaufen ist, kein bestandener Test. `zh-education-mcp` steht deshalb auf `todo`, und die Zeile «erfüllen den Check» in `checks/FID-006.md` bleibt bei **0 von 42**. Die Zahl wäre sonst genau die Sorte Zahl, gegen die dieser Check geschrieben ist: eine, die erfüllt aussieht, weil niemand nachgesehen hat.
+
+**Was das für die Promotion bedeutet, und das ist der eigentliche Ertrag.** Das Kriterium «gegen eine echte Antwort halten» ist als einziges in `FID-006` **nicht auf Zuruf erfüllbar** — es hängt an der Verfügbarkeit eines Dritten. Auf `enforced` gehoben verlöre ein Server seine Produktionsreife, weil seine Quelle ein Wochenende lang aus ist, und ein Gate, das das tut, wird abgeschaltet statt befolgt. Wer promoviert, muss vorher entscheiden: ein Höchstalter für den letzten grünen Lauf, oder eine ausdrückliche Ausnahme für belegte Ausfälle der Quelle.
+
+§5 feuert nicht — kein Auslöser kennt den Ausfall einer Quelle, und kein bestandenes Audit wird dadurch ungültig. Der Eintrag steht in `docs/re-audit-queue.md` aus demselben Grund, aus dem dort `v2.2.0` einen Abschnitt hat, in dem nichts feuert.
+
+**Gegenprobe: keine — und das ist der Befund, nicht die Auslassung.** Geprüft statt angenommen: Kein Test in `tests/` liest `docs/re-audit-queue.md`; die Datei ist unbewacht, im Unterschied zur `Stand:`-Zeile in `docs/roadmap.md`, die `test_roadmap_counts.py` festhält. Eine Mutation hätte hier nichts zu fällen. Geprüft wurde stattdessen die Behauptung selbst: der Job-Log des Laufs Zeile für Zeile zugeordnet, die 502er nachgemessen, und die eine TLS-Auffälligkeit ausdrücklich **nicht** zum Befund erklärt, weil sie einmal auftrat und die Nachmessung ihr widerspricht.
+
 ### Geändert — `FID-006` zum zweiten Mal nachgemessen: drei Runden, drei Server
 
 Die Fremdquellen-Nachlese ist durch — fünf weitere PRs über GeoAdmin, LINDAS SPARQL, Dodis Solr und die zwei Ebenen unter einem bereits bestätigten CKAN-`result`, dazu die Schreibweisen-Normalisierung in `swisstopo-mcp`. Die Zahlen im Check und in der Warteschlange sind nachgezogen.
