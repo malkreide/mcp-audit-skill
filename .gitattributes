@@ -7,3 +7,18 @@
 *.yaml text eol=lf
 *.md   text eol=lf
 *.txt  text eol=lf
+
+# Dieselbe Regel fuer die zwei Dateien ohne passende Endung. Sie stehen hier,
+# seit `mcp-audit.skill` sie mitpackt: Der Build liest die Bytes des
+# Arbeitsbaums, also entscheidet die Checkout-Form ueber den Archivinhalt.
+# Ohne diese Zeilen baute ein Windows-Host mit autocrlf=true ein anderes
+# Archiv als die CI, und Check 5 wuerde dort rot, ohne dass jemand etwas
+# geaendert hat.
+*.json text eol=lf
+LICENSE text eol=lf
+
+# Das gebaute Skill-Paket ist ein ZIP. `binary` schaltet sowohl die
+# Zeilenenden-Umschreibung als auch den Textdiff ab — ein Diff ueber
+# komprimierte Bytes ist Rauschen, und Check 5 sagt ohnehin genauer, was sich
+# geaendert hat.
+*.skill binary

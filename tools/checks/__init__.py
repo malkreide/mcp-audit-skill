@@ -28,7 +28,7 @@ Lauf, ohne dass etwas rot wird — deshalb haelt
 `test_registry_deckt_jedes_pruefmodul_ab` die Registry gegen den Paketinhalt.
 """
 
-from . import ruff_gate, toolchain
+from . import ruff_gate, skill_archive, toolchain
 from ._core import (
     Check,
     CheckFailed,
@@ -50,5 +50,6 @@ __all__ = [
     "ruff_gate",
     "run",
     "run_all",
+    "skill_archive",
     "toolchain",
 ]

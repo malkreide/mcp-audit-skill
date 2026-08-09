@@ -1,0 +1,100 @@
+name: release
+
+# Haengt `mcp-audit.skill` als Asset an ein Release. Damit funktioniert der
+# Download-Link aus beiden READMEs:
+#   releases/latest/download/mcp-audit.skill
+#
+# Zwei Wege fuehren hierher:
+#
+#   1. Tag pushen — der Workflow legt das Release an:
+#        git tag v2.4.0 && git push origin v2.4.0
+#   2. Release ueber die GitHub-Oberflaeche anlegen ("Create new tag on
+#      publish"). Dann existiert es schon, wenn der Workflow startet, und er
+#      haengt nur noch das Asset an.
+#
+# Fuer ein Tag, dessen Lauf fehlgeschlagen ist oder das aelter als dieser
+# Workflow ist, laesst sich der Job nachziehen:
+#   Actions -> release -> Run workflow -> Tag eintragen
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Bestehendes Tag, das veroeffentlicht werden soll (z.B. v2.4.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish mcp-audit.skill
+    runs-on: ubuntu-latest
+
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Das eingecheckte Archiv PRUEFEN, bevor gebaut wird. Ein Release darf
+      # nie aus einem Stand entstehen, dessen Archiv nicht zu den Quellen
+      # passt — sonst laedt der Nutzer eine Datei herunter, die etwas anderes
+      # enthaelt, als das Tag behauptet.
+      - name: Check 5 — Archiv gegen die Quellen
+        env:
+          PYTHONUTF8: "1"
+        run: python -m tools.checks 5
+
+      # Danach neu bauen und vergleichen. Check 5 vergleicht Inhalte; dieser
+      # Schritt vergleicht die BYTES und belegt damit die Zusage, dass der
+      # Build reproduzierbar ist. Faellt sie, ist nicht das Archiv falsch,
+      # sondern die Zusage — und die steht in beiden READMEs.
+      - name: Neu bauen und auf Bit-Gleichheit pruefen
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          python tools/build_skill.py
+          if ! git diff --quiet -- mcp-audit.skill; then
+            echo "::error::${RELEASE_TAG}: der Neubau weicht vom eingecheckten Archiv ab."
+            echo 'bash scripts/build-skill.sh ausfuehren, committen und neu taggen.'
+            exit 1
+          fi
+          echo "Archiv ist reproduzierbar."
+
+      # Das Tag muss auf einem Commit liegen, der in main enthalten ist —
+      # sonst erschiene ein ungeprueftes Feature-Branch als "latest".
+      # Bezugspunkt ist der ausgecheckte HEAD, nicht GITHUB_SHA: Bei einem
+      # manuellen Lauf zeigt GITHUB_SHA auf den Branch, nicht auf das Tag.
+      - name: Tag liegt in main
+        run: |
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          head_sha=$(git rev-parse HEAD)
+          if ! git merge-base --is-ancestor "$head_sha" refs/remotes/origin/main; then
+            echo "::error::${RELEASE_TAG} zeigt auf ${head_sha}, das nicht in main enthalten ist."
+            exit 1
+          fi
+
+      - name: Release anlegen oder Asset anhaengen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" mcp-audit.skill --clobber
+          else
+            gh release create "$RELEASE_TAG" mcp-audit.skill \
+              --title "$RELEASE_TAG" \
+              --notes "Siehe CHANGELOG.md. Installation: mcp-audit.skill herunterladen und in Claude unter Settings -> Capabilities -> Skills hochladen."
+          fi

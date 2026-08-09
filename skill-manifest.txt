@@ -1,0 +1,97 @@
+# Paketmanifest für mcp-audit.skill
+#
+# Einzige Quelle der Wahrheit dafür, was im .skill-Archiv landet. Gelesen von
+# `tools/build_skill.py` (baut das Archiv) und von `tools/checks/skill_archive.py`
+# (Check 5: prüft, ob das eingecheckte Archiv noch zu den Quellen passt). Zwei
+# Programme, eine Liste — sonst baut das eine etwas anderes, als das andere
+# prüft, und beide melden grün.
+#
+# Format: eine Zeile = ein Glob-Muster, relativ zum Repository-Root.
+# `#` leitet einen Kommentar ein, Leerzeilen werden übersprungen.
+# Ein führendes `!` nimmt wieder heraus, was ein Muster darüber eingesammelt
+# hat. Beides muss wirken: Ein Muster ohne Treffer und ein Ausschluss ohne
+# Wirkung brechen den Build ab, statt still nichts zu tun.
+#
+# DAS PAKET SPIEGELT DEN REPOSITORY-BAUM. `checks/SEC-001.md` liegt im Archiv
+# unter `mcp-audit/checks/SEC-001.md` — an genau demselben relativen Pfad.
+#
+# Warum gespiegelt statt umsortiert (das Schwesterrepo `raspberry-pi-ai-skill`
+# legt alle Referenzen flach unter `references/`): Dort ist SKILL.md die einzige
+# ausführbare Instanz und verweist auf Prosa. Hier nicht. Zwei Dinge hängen am
+# Baum-Layout:
+#
+#   1. SKILL.md und `.claude/commands/audit-mcp.md` nennen ihre Dateien
+#      repo-relativ — `python "$SKILL_BASE/tools/audit_init.py"`,
+#      `checks/MANIFEST.txt`, `templates/finding.md`.
+#   2. Die Werkzeuge unter `tools/` hängen ihre eigene Baumwurzel
+#      (`Path(__file__).resolve().parents[1]`) in `sys.path`, um Geschwister zu
+#      importieren (`from tools.path_utils import force_utf8_stdio`).
+#
+# Jede Umsortierung bräche beides. Ein installiertes Skill ist deshalb ein
+# TEILBAUM des Repositories, kein umgebautes Repository — und damit läuft im
+# Paket wörtlich derselbe Aufruf wie im Klon.
+#
+# Ein Muster, das auf NICHTS passt, ist ein Fehler und kein leeres Ergebnis.
+# Sonst fiele ein umbenanntes Verzeichnis still aus dem Paket, und der Skill
+# käme beim Nutzer ohne Katalog an, ohne dass irgendwo etwas rot wird.
+
+# --- Einstiegspunkt -------------------------------------------------------
+SKILL.md
+
+# --- Der Katalog: das Produkt --------------------------------------------
+checks/MANIFEST.txt
+checks/*.md
+
+# --- Vorlagen, die das Audit nach draußen schreibt ------------------------
+templates/*.md
+
+# --- Referenz-Dokumente, die SKILL.md namentlich nennt --------------------
+docs/*.md
+docs/quality-chain.json
+reference/*.md
+
+# --- Werkzeuge ------------------------------------------------------------
+#
+# `tools/*.py` vollständig statt kuratiert: Die Skripte importieren einander
+# (`path_utils`, `eval_applicability`), und eine Auswahlliste altert genau
+# dann still, wenn ein neues Werkzeug ein bestehendes importiert.
+#
+# NICHT im Paket: `tools/checks/` und `scripts/`. Das sind die Gates DIESES
+# Repositories (ruff-Pin, Formatierung, dieses Archiv) — sie prüfen den
+# Katalog, sie führen kein Audit durch. Im Paket wären sie Werkzeuge ohne
+# Gegenstand: Ein installiertes Skill hat weder `ruff.toml` noch
+# `.pre-commit-config.yaml`, gegen die sie messen könnten.
+tools/*.py
+tools/paths.sh
+tools/sweeps/*.py
+
+# Vier Werkzeuge aus `tools/*.py`, die ebenfalls nur dieses Repository
+# betreffen und deshalb wieder herausfallen.
+#
+#   build_skill.py, skill_package.py — bauen dieses Paket. Sie darin
+#   mitzuliefern hiesse, dem Nutzer den Bauplan des Kartons in den Karton zu
+#   legen; ohne `skill-manifest.txt` laufen sie dort ohnehin nicht.
+#
+#   check_ruff_pin.py, check_ruff_version.py — messen `lint.yml` gegen
+#   `.pre-commit-config.yaml`. Beide Dateien liegen nicht im Paket, also
+#   hätten die Prüfungen dort keinen Gegenstand.
+#
+# Absichtlich NICHT ausgeschlossen sind `check_repo_description.py` und
+# `render_description_issue.py`: SKILL.md nennt die zweite namentlich, und
+# die erste ist ihre Vergleichsfunktion.
+!tools/build_skill.py
+!tools/skill_package.py
+!tools/check_ruff_pin.py
+!tools/check_ruff_version.py
+
+# --- Portfolio-Betrieb ----------------------------------------------------
+#
+# Der Mehr-Server-Weg aus dem README. `portfolio.yaml` selbst ist
+# `.gitignore`d — eine Serverliste ist ein Inventar; hier liegt nur das
+# Beispiel, aus dem der Nutzer seine eigene baut.
+audit-portfolio.sh
+audit-notion-sync.py
+portfolio.example.yaml
+
+# --- Rechtliches ----------------------------------------------------------
+LICENSE
