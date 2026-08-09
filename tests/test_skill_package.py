@@ -48,6 +48,22 @@ FRONTMATTER = (
 )
 
 
+def schreibe(pfad: pathlib.Path, text: str) -> None:
+    """Schreibt mit LF, auf jedem Betriebssystem.
+
+    `Path.write_text` oeffnet im Textmodus und uebersetzt `\\n` unter Windows
+    zu `\\r\\n`. Fuer diese Datei ist das kein Detail: Der Build liest BYTES,
+    also verglichen die Byte-Zusicherungen unten sonst gegen etwas anderes,
+    als der Fixture-Baum enthaelt — und der Test waere unter Windows rot,
+    ohne dass am Bau etwas falsch ist. Genau so ist er es beim ersten Lauf
+    auch gewesen.
+
+    Der Fixture-Baum bildet damit ab, was `.gitattributes` fuer das echte
+    Repository zusichert: LF im Arbeitsbaum, auf jedem Host.
+    """
+    pfad.write_text(text, encoding="utf-8", newline="\n")
+
+
 @pytest.fixture
 def tree(tmp_path: pathlib.Path) -> pathlib.Path:
     """Ein minimaler, aber vollstaendiger Skill-Baum.
@@ -59,14 +75,14 @@ def tree(tmp_path: pathlib.Path) -> pathlib.Path:
     root = tmp_path / "repo"
     (root / "checks").mkdir(parents=True)
     (root / "tools").mkdir()
-    (root / "SKILL.md").write_text(FRONTMATTER, encoding="utf-8")
-    (root / "checks" / "ARCH-001.md").write_text("erster\n", encoding="utf-8")
-    (root / "checks" / "SEC-001.md").write_text("zweiter\n", encoding="utf-8")
-    (root / "tools" / "nuetzlich.py").write_text("x = 1\n", encoding="utf-8")
-    (root / "tools" / "intern.py").write_text("y = 2\n", encoding="utf-8")
-    (root / MANIFEST_NAME).write_text(
+    schreibe(root / "SKILL.md", FRONTMATTER)
+    schreibe(root / "checks" / "ARCH-001.md", "erster\n")
+    schreibe(root / "checks" / "SEC-001.md", "zweiter\n")
+    schreibe(root / "tools" / "nuetzlich.py", "x = 1\n")
+    schreibe(root / "tools" / "intern.py", "y = 2\n")
+    schreibe(
+        root / MANIFEST_NAME,
         "# Kommentar\n\nSKILL.md\nchecks/*.md\ntools/*.py\n!tools/intern.py\n",
-        encoding="utf-8",
     )
     return root
 
@@ -154,7 +170,7 @@ def test_ANKER_ein_ausschluss_ohne_wirkung_bricht_ab(tree):
 
 
 def test_ANKER_paket_ohne_skill_md_ist_kein_skill(tree):
-    (tree / MANIFEST_NAME).write_text("checks/*.md\n", encoding="utf-8")
+    schreibe(tree / MANIFEST_NAME, "checks/*.md\n")
     with pytest.raises(ManifestError) as befund:
         package_files(tree)
     assert "SKILL.md" in str(befund.value)
@@ -240,7 +256,7 @@ def test_der_build_ist_bit_identisch_reproduzierbar(tree):
 
 
 def test_ANKER_build_mit_kaputtem_frontmatter_bricht_ab(tree):
-    (tree / "SKILL.md").write_text("# ohne Kopf\n", encoding="utf-8")
+    schreibe(tree / "SKILL.md", "# ohne Kopf\n")
     with pytest.raises(ManifestError):
         build_skill.build(tree, tree / ARCHIVE_NAME)
 
@@ -248,7 +264,7 @@ def test_ANKER_build_mit_kaputtem_frontmatter_bricht_ab(tree):
 def test_ein_abgebrochener_build_hinterlaesst_kein_halbes_archiv(tree):
     """Sonst ginge die Ruine anschliessend als «gebaut» durch."""
     ziel = tree / ARCHIVE_NAME
-    (tree / "SKILL.md").write_text("# ohne Kopf\n", encoding="utf-8")
+    schreibe(tree / "SKILL.md", "# ohne Kopf\n")
     with pytest.raises(ManifestError):
         build_skill.build(tree, ziel)
     assert not ziel.exists()
@@ -295,7 +311,7 @@ def test_ANKER_check5_wird_rot_wenn_eine_quelle_sich_aendert(tree):
     nicht. Ohne die Pruefung ginge das Release mit dem alten Paket raus.
     """
     build_skill.build(tree, tree / ARCHIVE_NAME)
-    (tree / "checks" / "SEC-001.md").write_text("geaendert\n", encoding="utf-8")
+    schreibe(tree / "checks" / "SEC-001.md", "geaendert\n")
     with pytest.raises(CheckFailed) as befund:
         skill_archive_is_current(tree)
     assert "weichen vom Archiv ab" in str(befund.value)
@@ -304,7 +320,7 @@ def test_ANKER_check5_wird_rot_wenn_eine_quelle_sich_aendert(tree):
 
 def test_ANKER_check5_wird_rot_wenn_eine_neue_datei_fehlt(tree):
     build_skill.build(tree, tree / ARCHIVE_NAME)
-    (tree / "checks" / "SEC-002.md").write_text("neu\n", encoding="utf-8")
+    schreibe(tree / "checks" / "SEC-002.md", "neu\n")
     with pytest.raises(CheckFailed) as befund:
         skill_archive_is_current(tree)
     assert "fehlen im Archiv" in str(befund.value)
@@ -317,7 +333,7 @@ def test_ANKER_check5_wird_rot_ohne_archiv(tree):
 
 
 def test_ANKER_check5_wird_rot_bei_kaputtem_archiv(tree):
-    (tree / ARCHIVE_NAME).write_text("kein ZIP", encoding="utf-8")
+    schreibe(tree / ARCHIVE_NAME, "kein ZIP")
     with pytest.raises(CheckFailed) as befund:
         skill_archive_is_current(tree)
     assert "ZIP" in str(befund.value)
