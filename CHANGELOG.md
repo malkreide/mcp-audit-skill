@@ -6,6 +6,71 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `mcp-audit.skill`: der Skill als eine Datei, die man hochladen kann
+
+Bis hierher gab es genau zwei Wege, diesen Skill zu benutzen: klonen und den
+Slash-Command installieren, oder in `~/skills/` klonen. Beide setzen ein
+Dateisystem voraus, auf das man Zugriff hat. **Claude Desktop und claude.ai
+haben das nicht** — dort lädt man ein Paket hoch, und ein solches Paket gab es
+nicht. Der dokumentierte Weg «Als Claude.ai-Skill (manuell)» beschrieb einen
+`git clone`, der in einem Browser nichts bewirkt. Das Schwesterrepo
+`raspberry-pi-ai-skill` liefert seine `.skill`-Datei seit Anfang an; hier fehlte
+sie, ohne dass etwas darauf hinwies.
+
+**Was dazukommt:**
+
+- **`mcp-audit.skill`** im Repo-Root — ein ZIP mit 156 Einträgen: `SKILL.md`,
+  alle 120 Checks samt `MANIFEST.txt`, Templates, Referenz-Dokumente und die
+  Werkzeuge unter `tools/`. Zusätzlich als Release-Asset, damit der Link
+  `releases/latest/download/mcp-audit.skill` in beiden READMEs trägt.
+- **`skill-manifest.txt`** — die einzige Stelle, an der steht, was ins Paket
+  gehört. Glob-Muster plus Ausschlüsse mit `!`, jeder Ausschluss mit Begründung.
+- **`tools/build_skill.py`** und **`scripts/build-skill.sh`** — der Bau, in
+  Python statt in `zip`: Die Testmatrix fährt `windows-latest`, und dort gibt es
+  `zip` nicht. Die Shell-Datei ist eine dünne Hülle, wie `scripts/validate.sh`.
+- **Check 5** in `tools/checks/skill_archive.py` — hält das eingecheckte Archiv
+  gegen die Quellen, bei jedem Push.
+- **`.github/workflows/release.yml`** — hängt das Archiv an ein Tag, nachdem
+  Check 5 grün war und ein Neubau bit-identisch herausgekommen ist.
+
+**Das Paket spiegelt den Repository-Baum, es sortiert ihn nicht um.** Der
+Unterschied zum Schwesterrepo ist keine Geschmacksfrage: Dort ist `SKILL.md`
+Prosa, die auf Prosa verweist, und `references/` darf flach sein. Hier nennt
+`SKILL.md` ausführbare Pfade (`python "$SKILL_BASE/tools/audit_init.py"`), und
+die Werkzeuge hängen ihre eigene Baumwurzel in `sys.path`, um Geschwister zu
+importieren. Jede Umsortierung bräche beides still — die Aufrufe stünden weiter
+in der Prosa und liefen nicht mehr. Ein installiertes Skill ist deshalb ein
+Teilbaum dieses Repositories.
+
+**Warum Check 5 der eigentliche Beitrag ist.** Ein gebautes Artefakt
+einzuchecken schafft eine zweite Stelle, an der derselbe Inhalt steht — genau
+die Konstellation, aus der in diesem Katalog `DRIFT-003` entstanden ist. Ohne
+Prüfung wäre der wahrscheinliche Verlauf: `checks/SEC-029.md` kommt dazu, alles
+bleibt grün, das Release geht raus, und der Nutzer lädt ein Paket mit 120 Checks
+herunter, während Badge und README 121 nennen. Sein Audit prüft einen Check
+weniger **und sieht dabei vollständig aus** — die Fehlerklasse, gegen die
+`OPS-004` steht. Dieselbe Regel gilt in `expand()`: Ein Muster ohne Treffer
+bricht den Build ab, statt ein Paket ohne Katalog auszuliefern.
+
+Verglichen werden Inhalte, nicht Bytes: Der Build ist zwar bit-identisch
+reproduzierbar (fester Zeitstempel, feste Rechte, sortierte Reihenfolge), aber
+die Kompressionsstufe hängt an der zlib des Systems. Ein Byte-Vergleich würde
+zwischen zwei Python-Versionen rot, ohne dass sich am Paket etwas geändert hat.
+Die Bit-Gleichheit prüft deshalb der Release-Workflow, wo genau eine Umgebung
+läuft — dort ist sie eine Zusage, hier wäre sie eine Fehlerquelle.
+
+Nicht im Paket: `tools/checks/`, `scripts/`, die Workflows, beide READMEs und
+der CHANGELOG. Sie prüfen und beschreiben den Katalog, sie führen kein Audit
+durch — in einem installierten Skill hätten sie keinen Gegenstand.
+
+Betroffen: `skill-manifest.txt`, `mcp-audit.skill`, `tools/build_skill.py`,
+`tools/skill_package.py`, `tools/checks/skill_archive.py`,
+`tools/checks/__init__.py`, `scripts/build-skill.sh`,
+`tests/test_skill_package.py`, `tests/test_checks_registry.py`,
+`.github/workflows/release.yml`, `.github/workflows/lint.yml`, `.gitattributes`,
+`SKILL.md`, `README.md`, `README.de.md`. Kein Check geändert, kein Verdikt
+gekippt — der Katalog steht unverändert bei 120.
+
 ### Geändert — die Kettenzeile zu `mcp-transport-hardening-skill`
 
 Sie stand auf **v2.2.0, dreizehn Regeln**; das Repo ist bei **v2.4.0, vierzehn**.

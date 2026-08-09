@@ -26,11 +26,16 @@ jobs:
 
       # EIN KOMMANDO STATT VIER SCHRITTE.
       #
-      # Die vier Gates dieses Jobs stehen jetzt als nummerierte Pruefungen
-      # unter `tools/checks/`: 1 Pin-Sync, 2 laufende ruff, 3 `ruff check`,
-      # 4 `ruff format --check`. Die Reihenfolge steckt in der Nummer, nicht
-      # mehr in der Reihenfolge der `run:`-Zeilen — ein Lint-Befund auf einer
-      # ungepinnten ruff ist wertlos.
+      # Die Gates dieses Jobs stehen als nummerierte Pruefungen unter
+      # `tools/checks/`: 1 Pin-Sync, 2 laufende ruff, 3 `ruff check`,
+      # 4 `ruff format --check`, 5 das eingecheckte `mcp-audit.skill` gegen
+      # die Quellen. Die Reihenfolge steckt in der Nummer, nicht mehr in der
+      # Reihenfolge der `run:`-Zeilen — ein Lint-Befund auf einer ungepinnten
+      # ruff ist wertlos.
+      #
+      # Check 5 gehoert trotz seines Namens hierher und nicht in test.yml: Er
+      # braucht kein pytest, sondern nur den Baum, und der Job heisst «lint»,
+      # weil er die Gates faehrt — nicht, weil er nur ruff faehrt.
       #
       # Und ein Lauf nennt ALLE Befunde. Vorher brach der erste rote Schritt
       # den Job ab, und die drei dahinter liefen nicht: Jeder Fehlschlag

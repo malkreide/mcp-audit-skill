@@ -212,13 +212,32 @@ By default the pull filters to servers with `Audit-Status` ∈ {`Triagiert`, `In
 
 The DB ID defaults to `a2736a65-677d-4cf3-9f94-e874f74a1975` (City of Zurich Schulamt MCP Audit Tracker); the `NOTION_AUDIT_DB_ID` environment variable overrides it.
 
-### As a Claude.ai skill (manual)
+### As an uploadable skill (`mcp-audit.skill`)
+
+For Claude Desktop and claude.ai, where there is no repository to clone into. One file, uploaded once, available in every conversation.
+
+1. **Download** [`mcp-audit.skill`](https://github.com/malkreide/mcp-audit-skill/releases/latest/download/mcp-audit.skill) from the latest release — or take [the copy in this repository](./mcp-audit.skill), which CI keeps identical to the sources.
+2. **Upload** in Claude: Settings → Capabilities → Skills → **Upload skill** → select `mcp-audit.skill`.
+3. **Use it:** `Audit <server-name> against the mcp-audit catalogue`. The skill triggers on its own description; naming it is not required.
+
+The package is a *subtree* of this repository, not a rearranged one: `SKILL.md`, all 120 checks, the templates, the reference documents and the tools under `tools/`, each at the same relative path it has here. That is deliberate — `SKILL.md` names its files repo-relative (`python "$SKILL_BASE/tools/audit_init.py"`), so the same call works in the installed skill and in a clone. What the package leaves out is this repository's own CI machinery (`tools/checks/`, `scripts/`, the workflows), which has no subject inside a skill.
+
+Build it yourself instead of downloading:
+
+```bash
+bash scripts/build-skill.sh     # → ./mcp-audit.skill
+python tools/build_skill.py     # same, without bash (Windows)
+```
+
+The build is bit-identical reproducible, and [`skill-manifest.txt`](./skill-manifest.txt) is the single source of truth for its contents. Check 5 in `scripts/validate.sh` holds the committed archive against the sources on every push — a catalogue that grows while the archive does not is exactly the kind of silent incompleteness `OPS-004` is about.
+
+### As a Claude Code skill (clone)
 
 ```bash
 git clone https://github.com/malkreide/mcp-audit-skill.git ~/skills/mcp-audit
 ```
 
-Then, in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`. The workflow then runs interactively, without slash-command automation.
+Then, in Claude: `Verwende mcp-audit-Skill für <server-name>`. The workflow runs interactively, without slash-command automation.
 
 ## Check catalogue at a glance
 
@@ -401,11 +420,20 @@ Run everything over the whole tree without committing:
 ```bash
 pre-commit run --all-files
 pytest tests/ -q
+bash scripts/validate.sh          # the five numbered gates, one run
 ```
+
+**If you touch anything the package contains** — a check, a template, `SKILL.md`, a tool — rebuild the archive in the same commit:
+
+```bash
+bash scripts/build-skill.sh
+```
+
+Gate 5 fails otherwise, and that is the point: the archive is a second place where the same content lives, and a second place that nothing enforces drifts. The failure message names the files that diverged.
 
 ## Security
 
-This repository ships a methodology, check definitions and helper scripts — no running server, no installable package. Three things matter in operation:
+This repository ships a methodology, check definitions and helper scripts — no running server. The one installable artefact is `mcp-audit.skill`, a ZIP of the Markdown and Python files listed in `skill-manifest.txt`; it executes nothing on its own, and Check 5 holds it against the sources so that what you download is what you can read here. Three things matter in operation:
 
 **The audit output contains other people's code.** `audit-portfolio.sh` clones the repos in your server list and invokes `claude -p` on them non-interactively; `audits/` and `portfolio-logs/` collect the raw output of the commands that ran. That is the audit trail and exactly the point — but it can contain internal paths, hostnames or configuration excerpts of the audited servers. Review a report before publishing it.
 

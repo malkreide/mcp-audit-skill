@@ -46,9 +46,13 @@ CHECKS_BY_NAME = {c.run.__name__: c for c in all_checks()}
 def tree(tmp_path: pathlib.Path) -> pathlib.Path:
     """Eine Wegwerf-Kopie des echten Repos.
 
-    Nur die Dateien, an denen die vier Pruefungen haengen — ein vollstaendiges
-    Kopieren waere fuer jeden Test unnoetig teuer, und was nicht gelesen wird,
-    macht den Fixture-Baum nur unuebersichtlich.
+    Nur die Dateien, an denen die Pruefungen 1 bis 4 haengen — ein
+    vollstaendiges Kopieren waere fuer jeden Test unnoetig teuer, und was
+    nicht gelesen wird, macht den Fixture-Baum nur unuebersichtlich.
+
+    Check 5 (das Skill-Archiv) faehrt gegen einen eigenen Baum in
+    `tests/test_skill_package.py`: Er braucht Manifest, Katalog und Archiv,
+    also gerade das, was dieser Fixture-Baum bewusst weglaesst.
     """
     dst = tmp_path / "repo"
     (dst / ".github" / "workflows").mkdir(parents=True)

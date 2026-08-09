@@ -212,13 +212,32 @@ Der Pull filtert standardmässig auf Server mit `Audit-Status` ∈ {`Triagiert`,
 
 Die DB-ID ist als Default auf `a2736a65-677d-4cf3-9f94-e874f74a1975` (Stadt Zürich Schulamt MCP Audit Tracker) gesetzt; `NOTION_AUDIT_DB_ID` env var überschreibt.
 
-### Als Claude.ai-Skill (manuell)
+### Als hochladbarer Skill (`mcp-audit.skill`)
+
+Für Claude Desktop und claude.ai, wo es kein Repository gibt, in das man klonen könnte. Eine Datei, einmal hochgeladen, in jeder Konversation verfügbar.
+
+1. **Herunterladen:** [`mcp-audit.skill`](https://github.com/malkreide/mcp-audit-skill/releases/latest/download/mcp-audit.skill) aus dem letzten Release — oder [die Kopie in diesem Repository](./mcp-audit.skill), die die CI mit den Quellen deckungsgleich hält.
+2. **Hochladen** in Claude: Einstellungen → Capabilities → Skills → **Upload skill** → `mcp-audit.skill` auswählen.
+3. **Benutzen:** `Auditiere <server-name> gegen den mcp-audit-Katalog`. Der Skill löst über seine eigene Beschreibung aus; ihn zu nennen ist nicht nötig.
+
+Das Paket ist ein *Teilbaum* dieses Repositories, kein umgebautes: `SKILL.md`, alle 120 Checks, die Templates, die Referenz-Dokumente und die Werkzeuge unter `tools/` — jedes an demselben relativen Pfad wie hier. Das ist Absicht: `SKILL.md` nennt seine Dateien repo-relativ (`python "$SKILL_BASE/tools/audit_init.py"`), damit im installierten Skill wörtlich derselbe Aufruf läuft wie im Klon. Nicht im Paket ist die CI-Maschinerie dieses Repositories (`tools/checks/`, `scripts/`, die Workflows) — sie hätte in einem Skill keinen Gegenstand.
+
+Selbst bauen statt herunterladen:
+
+```bash
+bash scripts/build-skill.sh     # → ./mcp-audit.skill
+python tools/build_skill.py     # dasselbe, ohne bash (Windows)
+```
+
+Der Build ist bit-identisch reproduzierbar, und [`skill-manifest.txt`](./skill-manifest.txt) ist die einzige Quelle der Wahrheit für den Inhalt. Check 5 in `scripts/validate.sh` hält das eingecheckte Archiv bei jedem Push gegen die Quellen — ein Katalog, der wächst, während das Archiv stehen bleibt, ist genau die stille Unvollständigkeit, um die es in `OPS-004` geht.
+
+### Als Claude-Code-Skill (Klon)
 
 ```bash
 git clone https://github.com/malkreide/mcp-audit-skill.git ~/skills/mcp-audit
 ```
 
-Dann in Claude.ai: `Verwende mcp-audit-Skill für <server-name>`. Der Workflow läuft dann interaktiv ohne Slash-Command-Automatisierung.
+Dann in Claude: `Verwende mcp-audit-Skill für <server-name>`. Der Workflow läuft interaktiv ohne Slash-Command-Automatisierung.
 
 ## Check-Katalog im Überblick
 
@@ -402,11 +421,20 @@ Alles über den ganzen Baum laufen lassen, ohne zu committen:
 ```bash
 pre-commit run --all-files
 pytest tests/ -q
+bash scripts/validate.sh          # die fünf nummerierten Gates in einem Lauf
 ```
+
+**Wer etwas anfasst, das im Paket liegt** — einen Check, ein Template, `SKILL.md`, ein Werkzeug —, baut das Archiv im selben Commit neu:
+
+```bash
+bash scripts/build-skill.sh
+```
+
+Sonst wird Gate 5 rot, und genau dafür ist es da: Das Archiv ist eine zweite Stelle, an der derselbe Inhalt steht, und eine zweite Stelle, die nichts erzwingt, driftet. Die Meldung nennt die Dateien, die auseinandergelaufen sind.
 
 ## Sicherheit
 
-Dieses Repo liefert eine Methodik, Check-Definitionen und Helfer-Scripts — keinen laufenden Server und kein installierbares Paket. Drei Dinge sind beim Betrieb relevant:
+Dieses Repo liefert eine Methodik, Check-Definitionen und Helfer-Scripts — keinen laufenden Server. Das einzige installierbare Artefakt ist `mcp-audit.skill`, ein ZIP der in `skill-manifest.txt` aufgeführten Markdown- und Python-Dateien; es führt von sich aus nichts aus, und Check 5 hält es gegen die Quellen, damit das Heruntergeladene dem entspricht, was hier lesbar ist. Drei Dinge sind beim Betrieb relevant:
 
 **Der Audit-Output enthält fremden Code.** `audit-portfolio.sh` klont die Repos deiner Server-Liste und ruft `claude -p` darauf non-interactive auf; unter `audits/` und `portfolio-logs/` landet Roh-Output der ausgeführten Befehle. Das ist der Audit-Trail und genau so gewollt — aber es kann interne Pfade, Hostnames oder Konfigurationsauszüge der auditierten Server enthalten. Vor dem Veröffentlichen eines Reports durchsehen.
 
