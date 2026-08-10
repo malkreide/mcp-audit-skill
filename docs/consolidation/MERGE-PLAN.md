@@ -240,11 +240,52 @@ Hash hat.
 * **`tests/mutations.py` wird nicht billiger.** Die Mutationen sind je Skill
   verschieden, weil die Pruefungen es sind. Der Umzug haengt sie um, er legt
   sie nicht zusammen.
-* **Die Quality-Chain-Pruefung (G12) aendert ihren Gegenstand.** Sie prueft
-  heute, dass eine Tabelle «alle fuenf Mitglieder» nennt. Nach der
-  Zusammenfuehrung sind es zwei Repos mit vier Skills. **Offen:** ob die
-  Kette kuenftig Repos oder Skills zaehlt. Zu entscheiden, bevor G12 nach
-  `tools/gates/` zieht — sonst zementiert der Merge eine falsche Zahl.
+* **Die Quality-Chain-Pruefung (G12) aendert ihren Gegenstand** — entschieden,
+  siehe 6.1. Der Umbau ist keine Ersparnis, sondern Folgearbeit.
+
+### 6.1 Die Kette zaehlt kuenftig SKILLS, nicht Repos (entschieden)
+
+**Entscheid:** Mitglied der Qualitaetskette ist ein SKILL. Damit hat die Kette
+**vier** Mitglieder statt fuenf.
+
+Was daraus folgt, und was daran unbequem ist:
+
+`mcp-continuous-auditor` faellt als Mitglied heraus — es ist kein Skill. Damit
+verliert die Stufe «im Betrieb / Haelt er morgen noch?» ihren Traeger. Das ist
+kein Verlust der Sache, sondern ihre richtige Einordnung, und sie deckt sich
+mit dem Schnitt aus Abschnitt 1: Der Auditor ist die **Laufzeit, die die Kette
+faehrt**, kein Glied in ihr. Er steht kuenftig in der Prosa beider READMEs als
+Motor daneben, nicht als fuenfte Zeile in der Tabelle.
+
+**Zielzustand von `docs/quality-chain.json`:** `members` traegt vier Eintraege,
+je Skill statt je Repo — Schluessel `skill` (`mcp-audit`,
+`mcp-data-source-probe`, `mcp-data-fidelity`, `mcp-transport-hardening`) statt
+`repo`. Die Stufen bleiben: vor dem Bau, im Bau (zweimal), nach dem Bau.
+
+**Umgestellt wird in Phase 3, nicht frueher.** Der Grund ist messbar:
+
+1. `tools/check_quality_chain.py` prueft die GitHub-Metadaten (Topic,
+   Homepage) JE MITGLIED. Solange die Mitglieder Skills sind, die noch in
+   eigenen Repos liegen, braucht der Waechter weiterhin deren Repo-Namen —
+   erst nach dem Umzug faellt die Unterscheidung Skill/Repo zusammen.
+2. Die drei Companion-Repos fuehren die fuenf Namen HART in ihren eigenen
+   Pruefungen (`readmes.py`, `CHAIN_SECTIONS`) und halten ihre READMEs
+   dagegen. Ein Wechsel allein hier ergaebe ein Repo, das vier zaehlt, und
+   drei, die fuenf verlangen.
+
+Bis dahin bleibt das Manifest bei fuenf Repo-Eintraegen. Die Zahl ist damit
+nicht falsch, sondern noch nicht umgestellt — und G12 zieht erst nach
+`tools/gates/`, wenn sie es ist.
+
+**Was in Phase 3 konkret mitzieht** (erhoben, nicht geschaetzt):
+
+| Stelle | heute | dann |
+|---|---|---|
+| `docs/quality-chain.json` | 5 `members` mit `repo` | 4 mit `skill` |
+| `tests/test_quality_chain.py:176` | `assert len(manifest["members"]) == 5` | `== 4` |
+| `tools/check_quality_chain.py` | liest `m["repo"]`, prueft Topic/Homepage je Repo | prueft die Metadaten der zwei verbleibenden Repos |
+| `README.md` / `README.de.md`, Abschnitt Kette | 5 Zeilen | 4 Zeilen + Auditor in der Prosa |
+| `readmes.py` der drei Companions (`CHAIN_SECTIONS`) | 5 harte Namen | entfaellt mit dem Umzug der Repos |
 
 ## 7. Phasen
 
@@ -253,7 +294,7 @@ Hash hat.
 | **0** | Geruest `tools/harness/` + Suite-Skopierung + `skills/`-Scaffold | **erledigt** — 15 neue Tests gruen, 1290 bestehende unveraendert gruen |
 | **1** | Die 5 eigenen Gates dieses Repos auf `tools/harness/` heben; `tools/checks/` faellt weg | **erledigt** — `validate.sh` meldet 5 Pruefungen als `audit/1…5`, alle gruen |
 | **2** | Die 16 generischen Gates nach `tools/gates/` (aus je der besten Fassung), die 10 skill-eigenen nach `tools/suites/` | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
-| **3** | Inhalte per `git subtree` nach `skills/<name>/`, Historie erhalten | vier `SKILL.md` am Platz, Frontmatter-`name` unveraendert |
+| **3** | Inhalte per `git subtree` nach `skills/<name>/`, Historie erhalten; Kette auf Skills umstellen (6.1) | vier `SKILL.md` am Platz, Frontmatter-`name` unveraendert; `quality-chain.json` fuehrt vier Skills, beide READMEs ziehen nach |
 | **4** | Katalog-Drift auf lokal umstellen; `weekly-drift.yml` + `linked_checks.py` loeschen | Pruefung laeuft im PR, `offline=True` |
 | **5** | Herkunftsrepos archivieren mit Zeiger-README; `mcp-continuous-auditor` auf den neuen Tag pinnen | keine offenen Verweise mehr |
 

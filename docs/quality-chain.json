@@ -3,7 +3,14 @@
     "Die einzige Quelle für die Zusammengehörigkeit der fünf Repos.",
     "Gelesen von tools/check_quality_chain.py und tests/test_quality_chain.py.",
     "Wer hier ein Mitglied hinzufügt, muss die Tabelle in README.md und",
-    "README.de.md mitziehen — der Test verlangt es."
+    "README.de.md mitziehen — der Test verlangt es.",
+    "",
+    "ENTSCHIEDEN, ABER NOCH NICHT UMGESTELLT: Mitglied ist künftig ein SKILL,",
+    "nicht ein Repo — dann vier statt fünf, und mcp-continuous-auditor steht",
+    "als Laufzeit daneben statt als fünftes Glied. Umgestellt wird in Phase 3",
+    "der Zusammenführung, weil der Wächter bis dahin Repo-Namen braucht und",
+    "die drei Companion-Repos die fünf Namen hart führen. Begründung und",
+    "Zielzustand: docs/consolidation/MERGE-PLAN.md, Abschnitt 6.1."
   ],
   "topic": "mcp-quality-chain",
   "homepage": "https://github.com/topics/mcp-quality-chain",
