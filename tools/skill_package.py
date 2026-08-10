@@ -9,7 +9,7 @@ beantwortet genau zwei Fragen, beide als Wert:
     annimmt? (`frontmatter_problems`)
 
 Zwei Programme fragen: `tools/build_skill.py` baut daraus das Archiv,
-`tools/checks/skill_archive.py` (Check 5) hält das eingecheckte Archiv
+`tools/suites/mcp_audit/skill_archive.py` (Check `audit/5`) hält das eingecheckte Archiv
 dagegen. **Getrennte Listen wären hier der teuerste Fehler**, den dieses Repo
 kennt: Der Build packte, was er für richtig hält, die Prüfung vergliche gegen
 das, was sie für richtig hält, und beide meldeten grün — während der Nutzer

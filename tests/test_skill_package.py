@@ -26,11 +26,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from tools import build_skill, skill_package  # noqa: E402
-from tools.checks import CheckFailed  # noqa: E402
-from tools.checks.skill_archive import (  # noqa: E402
-    skill_archive_is_current,
-    vergleiche,
-)
+from tools.harness import CheckFailed  # noqa: E402
 from tools.skill_package import (  # noqa: E402
     ARCHIVE_NAME,
     MANIFEST_NAME,
@@ -41,6 +37,10 @@ from tools.skill_package import (  # noqa: E402
     member_name,
     package_files,
     parse_manifest,
+)
+from tools.suites.mcp_audit.skill_archive import (  # noqa: E402
+    skill_archive_is_current,
+    vergleiche,
 )
 
 FRONTMATTER = (

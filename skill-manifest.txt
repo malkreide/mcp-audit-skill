@@ -1,7 +1,8 @@
 # Paketmanifest für mcp-audit.skill
 #
 # Einzige Quelle der Wahrheit dafür, was im .skill-Archiv landet. Gelesen von
-# `tools/build_skill.py` (baut das Archiv) und von `tools/checks/skill_archive.py`
+# `tools/build_skill.py` (baut das Archiv) und von
+# `tools/suites/mcp_audit/skill_archive.py`
 # (Check 5: prüft, ob das eingecheckte Archiv noch zu den Quellen passt). Zwei
 # Programme, eine Liste — sonst baut das eine etwas anderes, als das andere
 # prüft, und beide melden grün.
@@ -56,7 +57,8 @@ reference/*.md
 # (`path_utils`, `eval_applicability`), und eine Auswahlliste altert genau
 # dann still, wenn ein neues Werkzeug ein bestehendes importiert.
 #
-# NICHT im Paket: `tools/checks/` und `scripts/`. Das sind die Gates DIESES
+# NICHT im Paket: `tools/harness/`, `tools/suites/` und `scripts/`. Das sind die
+# Gates DIESES
 # Repositories (ruff-Pin, Formatierung, dieses Archiv) — sie prüfen den
 # Katalog, sie führen kein Audit durch. Im Paket wären sie Werkzeuge ohne
 # Gegenstand: Ein installiertes Skill hat weder `ruff.toml` noch

@@ -34,9 +34,10 @@ mcp-audit/
 ├── tools/
 │   ├── harness/                # das EINE Geruest  ← Phase 0, steht
 │   │   ├── _core.py            #   Registry, Ausfuehrung, CheckFailed
-│   │   └── __main__.py         #   Runner ueber alle Suiten
+│   │   └── __main__.py         #   Runner + die eine Stelle, die die Suiten kennt
 │   ├── gates/                  # die 16 GENERISCHEN Pruefungen  ← Phase 2
-│   ├── suites/<skill>/         # die 10 SKILL-EIGENEN Pruefungen ← Phase 2
+│   ├── suites/mcp_audit/       # Suite «audit», 5 Pruefungen  ← Phase 1, steht
+│   ├── suites/<skill>/         # je Skill die eigenen Pruefungen ← Phase 2/3
 │   └── …                       # Audit-Werkzeuge, unveraendert
 └── tests/
 ```
@@ -48,7 +49,8 @@ ein Umzug braeche diese Verweise ohne Gegenwert. Das Pruefgeruest liegt unter
 
 ## 3. Die Nummernfrage — entschieden
 
-Die vier Registries numerieren jede ab 1, und `tests/test_checks_registry.py`
+Die vier Registries numerieren jede ab 1, und die Registry-Pruefung dieses
+Repos (damals `tests/test_checks_registry.py`, heute `tests/test_audit_suite.py`)
 verlangt woertlich:
 
 ```python
@@ -152,6 +154,27 @@ Drei Entscheide dazu:
 
 53 Registrierungen → 26 Implementierungen. Der Rest ist Kopie.
 
+### 4.2a Wo die Suiten verdrahtet werden (Entscheid aus Phase 1)
+
+`@register` laeuft beim Import — die Suiten muessen also geladen sein, bevor
+der Runner die Registry befragt. Die Frage ist, WER sie laedt.
+
+Nicht `_core.py`: Es soll keine Pruefung kennen, sonst ist es nicht mehr
+kopierbar. Nicht `tools/suites/__init__.py` allein: Damit importierte jeder
+Zugriff auf irgendeine Suite alle anderen mit.
+
+**Entscheid: `tools/harness/__main__.py` importiert `tools.suites`.** Der
+Einstiegspunkt ist die eine Stelle, die weiss, welche Suiten es in DIESEM Baum
+gibt; das Geruest darunter bleibt generisch. `tools/suites/__init__.py` fuehrt
+die Liste der Suiten, `tools/suites/<name>/__init__.py` die Liste ihrer
+Module — und `tests/test_audit_suite.py` haelt beide Listen statisch gegen den
+Verzeichnisinhalt. Eine fehlende Zeile ist auf beiden Ebenen ein lautloser
+Totalausfall, deshalb sind es zwei Pruefungen und nicht eine.
+
+Der Suite-Name steht in `tools/suites/<name>/_suite.py` und nicht in dessen
+`__init__.py`: Dort stehen die Modul-Importe, und die Pruefmodule brauchen den
+Namen genau waehrend dieses Imports — beides in einer Datei waere ein Zyklus.
+
 ### 4.3 Konfiguration
 
 | Datei | Entscheid |
@@ -228,7 +251,7 @@ Hash hat.
 | Phase | Inhalt | Abnahme |
 |---|---|---|
 | **0** | Geruest `tools/harness/` + Suite-Skopierung + `skills/`-Scaffold | **erledigt** — 15 neue Tests gruen, 1290 bestehende unveraendert gruen |
-| **1** | Die 5 eigenen Gates dieses Repos auf `tools/harness/` heben; `tools/checks/` faellt weg | `validate.sh` meldet weiterhin 5 Pruefungen, jetzt als `audit/1…5` |
+| **1** | Die 5 eigenen Gates dieses Repos auf `tools/harness/` heben; `tools/checks/` faellt weg | **erledigt** — `validate.sh` meldet 5 Pruefungen als `audit/1…5`, alle gruen |
 | **2** | Die 16 generischen Gates nach `tools/gates/` (aus je der besten Fassung), die 10 skill-eigenen nach `tools/suites/` | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
 | **3** | Inhalte per `git subtree` nach `skills/<name>/`, Historie erhalten | vier `SKILL.md` am Platz, Frontmatter-`name` unveraendert |
 | **4** | Katalog-Drift auf lokal umstellen; `weekly-drift.yml` + `linked_checks.py` loeschen | Pruefung laeuft im PR, `offline=True` |

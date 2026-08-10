@@ -28,6 +28,7 @@ from __future__ import annotations
 import zipfile
 from pathlib import Path
 
+from tools.harness import CheckFailed, register
 from tools.skill_package import (
     ARCHIVE_NAME,
     ManifestError,
@@ -36,7 +37,7 @@ from tools.skill_package import (
     package_files,
 )
 
-from ._core import CheckFailed, register
+from ._suite import SUITE
 
 NACHZIEHEN = (
     "  Nachziehen: `bash scripts/build-skill.sh` (oder "
@@ -89,7 +90,7 @@ def vergleiche(
     return False, "\n".join(zeilen)
 
 
-@register(5, "the committed mcp-audit.skill matches the sources")
+@register(5, "the committed mcp-audit.skill matches the sources", suite=SUITE)
 def skill_archive_is_current(root: Path) -> str:
     """Baut die Sollmenge aus dem Manifest und haelt das Archiv dagegen."""
     skill_md = root / "SKILL.md"

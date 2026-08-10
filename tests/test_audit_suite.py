@@ -1,4 +1,4 @@
-"""Die Registry unter `tools/checks/` und die Pruefungen, die sie fuehrt.
+"""Die Suite `audit` unter `tools/suites/mcp_audit/` und ihre Pruefungen.
 
 `tests/test_ruff_pin.py` und `tests/test_ruff_version.py` pruefen weiterhin die
 REINEN Vergleichsfunktionen — sie sind unveraendert geblieben, weil die
@@ -11,10 +11,12 @@ dadurch neu ist:
   naechsten Mal aus dem falschen Grund gruen;
 * dass die Registry selbst vollstaendig bleibt.
 
-Der teuerste Fall steht unten: `@register` laeuft beim IMPORT. Fehlt die
-Importzeile eines Moduls in `tools/checks/__init__.py`, verschwinden dessen
-Pruefungen aus jedem Lauf, ohne dass irgendetwas rot wird — der Runner meldet
-dann «all passed» ueber weniger, als er glaubt.
+Der teuerste Fall steht unten, jetzt auf ZWEI Ebenen: `@register` laeuft beim
+IMPORT. Fehlt die Importzeile eines Moduls in
+`tools/suites/mcp_audit/__init__.py`, verschwinden dessen Pruefungen; fehlt die
+Importzeile der ganzen Suite in `tools/suites/__init__.py`, verschwinden ALLE.
+Beide Male wird nichts rot — der Runner meldet «all passed» ueber weniger, als
+er glaubt.
 """
 
 from __future__ import annotations
@@ -30,16 +32,13 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import tools.checks  # noqa: E402
-from tools.checks import (  # noqa: E402  # noqa: E402
-    CheckFailed,
-    all_checks,
-    ruff_gate,
-    toolchain,
-)
-from tools.checks._core import Check, run  # noqa: E402
+import tools.suites  # noqa: E402
+import tools.suites.mcp_audit  # noqa: E402
+from tools.harness import CheckFailed, all_checks  # noqa: E402
+from tools.harness._core import Check, run  # noqa: E402
+from tools.suites.mcp_audit import SUITE, ruff_gate, toolchain  # noqa: E402
 
-CHECKS_BY_NAME = {c.run.__name__: c for c in all_checks()}
+CHECKS_BY_NAME = {c.run.__name__: c for c in all_checks(suite=SUITE)}
 
 
 @pytest.fixture
@@ -155,7 +154,13 @@ def test_bewerte_meldet_auch_ohne_ausgabe_etwas():
 
 
 def test_nummern_sind_lueckenlos_und_eindeutig():
-    numbers = [c.number for c in all_checks()]
+    """Lueckenlos JE SUITE, nicht ueber alle.
+
+    Der vereinigte Nummernraum ist absichtlich nicht lueckenlos — `audit/1`
+    und `probe/1` existieren beide. Innerhalb der Suite gilt die Invariante
+    unveraendert weiter.
+    """
+    numbers = [c.number for c in all_checks(suite=SUITE)]
     assert numbers == sorted(set(numbers)), f"nicht eindeutig: {numbers}"
     assert numbers == list(range(1, len(numbers) + 1)), (
         f"nicht lueckenlos: {numbers}. Eine Luecke ist fast immer eine "
@@ -176,7 +181,7 @@ def test_registry_deckt_jedes_pruefmodul_ab():
     Verglichen werden zwei TEXTE: welche Module `@register(` enthalten, und
     welche `__init__.py` importiert.
     """
-    paket = pathlib.Path(tools.checks.__file__).parent
+    paket = pathlib.Path(tools.suites.mcp_audit.__file__).parent
     mit_register = {
         datei.stem
         for datei in sorted(paket.glob("*.py"))
@@ -195,11 +200,43 @@ def test_registry_deckt_jedes_pruefmodul_ab():
     )
 
 
+def test_jede_suite_steht_in_der_importzeile():
+    """Die Ebene ueber dem Pruefmodul — und die teurere von beiden.
+
+    Fehlt ein Modul in der Importzeile seiner Suite, verschwinden dessen
+    Pruefungen. Fehlt die SUITE in `tools/suites/__init__.py`, verschwinden
+    alle ihre auf einmal, und der Runner meldet «all passed» ueber ein
+    Repository, das er nicht geprueft hat.
+
+    Ebenfalls vollstaendig statisch, und aus demselben Grund: Diese Datei
+    importiert `tools.suites.mcp_audit` selbst, die Suite waere zur Laufzeit
+    also immer registriert.
+    """
+    paket = pathlib.Path(tools.suites.__file__).parent
+    vorhanden = {
+        d.name
+        for d in sorted(paket.iterdir())
+        if d.is_dir() and not d.name.startswith(("_", "."))
+    }
+    init = (paket / "__init__.py").read_text(encoding="utf-8")
+    importiert = set(re.findall(r"^from \. import (.+)$", init, re.M))
+    importiert = {name.strip() for zeile in importiert for name in zeile.split(",")}
+
+    fehlend = sorted(vorhanden - importiert)
+    assert not fehlend, (
+        f"Diese Suiten liegen unter tools/suites/, stehen aber nicht in der "
+        f"Importzeile von __init__.py: {fehlend}. Ohne sie verschwinden ALLE "
+        "ihre Pruefungen aus jedem Lauf, ohne dass etwas rot wird."
+    )
+
+
 def test_eine_abgestuerzte_pruefung_ist_ein_defekt_kein_befund(tmp_path):
     def stuerzt_ab(root):
         raise TypeError("kaputt")
 
-    ergebnis = run(Check(number=99, label="kaputt", run=stuerzt_ab), tmp_path)
+    ergebnis = run(
+        Check(number=99, label="kaputt", run=stuerzt_ab, suite="test"), tmp_path
+    )
     assert not ergebnis.ok
     assert "abgestuerzt" in ergebnis.output
     assert "TypeError" in ergebnis.output
@@ -209,7 +246,9 @@ def test_ein_befund_wird_nicht_fuer_einen_absturz_gehalten(tmp_path):
     def meldet_befund(root):
         raise CheckFailed("das Repository hat ein Problem")
 
-    ergebnis = run(Check(number=98, label="Befund", run=meldet_befund), tmp_path)
+    ergebnis = run(
+        Check(number=98, label="Befund", run=meldet_befund, suite="test"), tmp_path
+    )
     assert not ergebnis.ok
     assert ergebnis.output == "das Repository hat ein Problem"
     assert "abgestuerzt" not in ergebnis.output
@@ -225,8 +264,10 @@ def test_ein_lauf_nennt_alle_befunde_nicht_nur_den_ersten():
     def rot(root):
         raise CheckFailed("Befund")
 
-    checks = [Check(number=n, label=f"c{n}", run=rot) for n in (91, 92, 93)]
-    from tools.checks import run_all
+    checks = [
+        Check(number=n, label=f"c{n}", run=rot, suite="test") for n in (91, 92, 93)
+    ]
+    from tools.harness import run_all
 
     ergebnisse = run_all(pathlib.Path("."), checks)
     assert len(ergebnisse) == 3
@@ -237,11 +278,11 @@ def test_der_runner_waehlt_alle_offline_pruefungen():
     """Der dokumentierte Weg und die Registry duerfen nicht auseinanderlaufen.
 
     Ohne Unterprozess: `validate.sh` ist eine duenne Huelle um
-    `python -m tools.checks`, und dessen Auswahl laesst sich direkt befragen.
+    `python -m tools.harness`, und dessen Auswahl laesst sich direkt befragen.
     Ein Lauf des Skripts braeuchte ruff und wuerde damit die Testumgebung
     pruefen statt die Auswahl.
     """
-    from tools.checks.__main__ import select
+    from tools.harness.__main__ import select
 
     gewaehlt = {c.number for c in select([], include_network=False)}
     erwartet = {c.number for c in all_checks(offline_only=True)}
