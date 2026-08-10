@@ -27,11 +27,14 @@ from pathlib import Path
 
 from tools import check_ruff_pin as crp
 from tools import check_ruff_version as crv
+from tools.harness import CheckFailed, register
 
-from ._core import CheckFailed, register
+from ._suite import SUITE
 
 
-@register(1, "the ruff pin agrees between lint.yml and the pre-commit hook")
+@register(
+    1, "the ruff pin agrees between lint.yml and the pre-commit hook", suite=SUITE
+)
 def ruff_pin_sync(root: Path) -> str:
     """Vergleicht ZWEI TEXTE — lint.yml und .pre-commit-config.yaml.
 
@@ -64,7 +67,7 @@ def ruff_pin_sync(root: Path) -> str:
     return message
 
 
-@register(2, "the ruff on PATH is the pinned one")
+@register(2, "the ruff on PATH is the pinned one", suite=SUITE)
 def ruff_version_matches_pin(root: Path) -> str:
     """Haelt den Text gegen das laufende Programm.
 

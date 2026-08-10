@@ -220,7 +220,7 @@ For Claude Desktop and claude.ai, where there is no repository to clone into. On
 2. **Upload** in Claude: Settings → Capabilities → Skills → **Upload skill** → select `mcp-audit.skill`.
 3. **Use it:** `Audit <server-name> against the mcp-audit catalogue`. The skill triggers on its own description; naming it is not required.
 
-The package is a *subtree* of this repository, not a rearranged one: `SKILL.md`, all 120 checks, the templates, the reference documents and the tools under `tools/`, each at the same relative path it has here. That is deliberate — `SKILL.md` names its files repo-relative (`python "$SKILL_BASE/tools/audit_init.py"`), so the same call works in the installed skill and in a clone. What the package leaves out is this repository's own CI machinery (`tools/checks/`, `scripts/`, the workflows), which has no subject inside a skill.
+The package is a *subtree* of this repository, not a rearranged one: `SKILL.md`, all 120 checks, the templates, the reference documents and the tools under `tools/`, each at the same relative path it has here. That is deliberate — `SKILL.md` names its files repo-relative (`python "$SKILL_BASE/tools/audit_init.py"`), so the same call works in the installed skill and in a clone. What the package leaves out is this repository's own CI machinery (`tools/harness/`, `tools/suites/`, `scripts/`, the workflows), which has no subject inside a skill.
 
 Build it yourself instead of downloading:
 

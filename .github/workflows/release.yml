@@ -55,7 +55,7 @@ jobs:
       - name: Check 5 — Archiv gegen die Quellen
         env:
           PYTHONUTF8: "1"
-        run: python -m tools.checks 5
+        run: python -m tools.harness audit/5
 
       # Danach neu bauen und vergleichen. Check 5 vergleicht Inhalte; dieser
       # Schritt vergleicht die BYTES und belegt damit die Zusage, dass der

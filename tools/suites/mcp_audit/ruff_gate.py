@@ -29,7 +29,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from ._core import CheckFailed, register
+from tools.harness import CheckFailed, register
+
+from ._suite import SUITE
 
 FEHLT = (
     "ruff liegt nicht auf dem PATH — dieses Gate kann nicht laufen. FAIL statt "
@@ -78,11 +80,11 @@ def _gate(root: Path, kind: str, *args: str) -> str:
     return message
 
 
-@register(3, "ruff check passes on the whole tree")
+@register(3, "ruff check passes on the whole tree", suite=SUITE)
 def ruff_check(root: Path) -> str:
     return _gate(root, "check", "check", ".")
 
 
-@register(4, "ruff format leaves the tree unchanged")
+@register(4, "ruff format leaves the tree unchanged", suite=SUITE)
 def ruff_format(root: Path) -> str:
     return _gate(root, "format", "format", "--check", ".")

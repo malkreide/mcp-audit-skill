@@ -27,7 +27,7 @@ jobs:
       # EIN KOMMANDO STATT VIER SCHRITTE.
       #
       # Die Gates dieses Jobs stehen als nummerierte Pruefungen unter
-      # `tools/checks/`: 1 Pin-Sync, 2 laufende ruff, 3 `ruff check`,
+      # `tools/suites/mcp_audit/`: 1 Pin-Sync, 2 laufende ruff, 3 `ruff check`,
       # 4 `ruff format --check`, 5 das eingecheckte `mcp-audit.skill` gegen
       # die Quellen. Die Reihenfolge steckt in der Nummer, nicht mehr in der
       # Reihenfolge der `run:`-Zeilen — ein Lint-Befund auf einer ungepinnten
@@ -42,9 +42,9 @@ jobs:
       # kostete eine eigene Runde.
       #
       # Der Pre-Commit-Hook ruft weiterhin `tools/check_ruff_pin.py` direkt —
-      # die reine Vergleichsloglik ist dort geblieben, `tools/checks/` haengt
+      # die reine Vergleichsloglik ist dort geblieben, die Suite haengt
       # sie nur ein. Eine Implementierung, zwei Einstiege.
-      - name: Alle Gates (tools/checks)
+      - name: Alle Gates (tools/harness)
         env:
           PYTHONUTF8: "1"
         run: bash scripts/validate.sh

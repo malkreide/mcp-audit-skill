@@ -6,6 +6,32 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — ein Prüfgerüst statt vier (Zusammenführung, Phase 1)
+
+Die fünf Gates dieses Repositories laufen nicht mehr über ein eigenes
+`tools/checks/`, sondern über das gemeinsame `tools/harness/`, das in Phase 0
+entstanden ist. Ihre Prüflogik ist unverändert; was sich ändert, ist wo sie
+registriert werden und wie sie heissen.
+
+- **Die Nummern bleiben.** Aus Check 1 bis 5 wird `audit/1` bis `audit/5` — die
+  Zahl dahinter ist dieselbe. Die Registry trägt eine Suite-Spalte, damit vier
+  Skills mit je eigener Nummerierung nebeneinander bestehen können, ohne dass
+  eine davon umnummeriert werden muss.
+- **`tools/suites/mcp_audit/`** hält die drei Prüfmodule; `tools/checks/`
+  entfällt. `scripts/validate.sh` ruft `python -m tools.harness`,
+  `release.yml` ruft `python -m tools.harness audit/5`.
+- **Zwei Ebenen statt einer** beim Registrierungs-Gate: Fehlt ein Modul in der
+  Importzeile seiner Suite, verschwinden dessen Prüfungen; fehlt die ganze
+  Suite in `tools/suites/__init__.py`, verschwinden alle ihre auf einmal.
+  `tests/test_audit_suite.py` hält jetzt beide Zeilen gegen das Verzeichnis.
+
+Betroffen: `tools/harness/`, `tools/suites/`, `scripts/validate.sh`,
+`.github/workflows/lint.yml`, `.github/workflows/release.yml`,
+`tests/test_audit_suite.py` (aus `tests/test_checks_registry.py`),
+`tests/test_skill_package.py`, `skill-manifest.txt`, beide READMEs. Kein Check
+geändert, kein Verdikt gekippt — der Katalog steht unverändert bei 120.
+
+
 ### Hinzugefügt — `mcp-audit.skill`: der Skill als eine Datei, die man hochladen kann
 
 Bis hierher gab es genau zwei Wege, diesen Skill zu benutzen: klonen und den
@@ -28,7 +54,7 @@ sie, ohne dass etwas darauf hinwies.
 - **`tools/build_skill.py`** und **`scripts/build-skill.sh`** — der Bau, in
   Python statt in `zip`: Die Testmatrix fährt `windows-latest`, und dort gibt es
   `zip` nicht. Die Shell-Datei ist eine dünne Hülle, wie `scripts/validate.sh`.
-- **Check 5** in `tools/checks/skill_archive.py` — hält das eingecheckte Archiv
+- **Check 5** in `tools/suites/mcp_audit/skill_archive.py` — hält das eingecheckte Archiv
   gegen die Quellen, bei jedem Push.
 - **`.github/workflows/release.yml`** — hängt das Archiv an ein Tag, nachdem
   Check 5 grün war und ein Neubau bit-identisch herausgekommen ist.
@@ -59,14 +85,15 @@ zwischen zwei Python-Versionen rot, ohne dass sich am Paket etwas geändert hat.
 Die Bit-Gleichheit prüft deshalb der Release-Workflow, wo genau eine Umgebung
 läuft — dort ist sie eine Zusage, hier wäre sie eine Fehlerquelle.
 
-Nicht im Paket: `tools/checks/`, `scripts/`, die Workflows, beide READMEs und
+Nicht im Paket: `tools/harness/`, `tools/suites/`, `scripts/`, die Workflows,
+beide READMEs und
 der CHANGELOG. Sie prüfen und beschreiben den Katalog, sie führen kein Audit
 durch — in einem installierten Skill hätten sie keinen Gegenstand.
 
 Betroffen: `skill-manifest.txt`, `mcp-audit.skill`, `tools/build_skill.py`,
-`tools/skill_package.py`, `tools/checks/skill_archive.py`,
-`tools/checks/__init__.py`, `scripts/build-skill.sh`,
-`tests/test_skill_package.py`, `tests/test_checks_registry.py`,
+`tools/skill_package.py`, `tools/suites/mcp_audit/skill_archive.py`,
+`tools/suites/mcp_audit/__init__.py`, `scripts/build-skill.sh`,
+`tests/test_skill_package.py`, `tests/test_audit_suite.py`,
 `.github/workflows/release.yml`, `.github/workflows/lint.yml`, `.gitattributes`,
 `SKILL.md`, `README.md`, `README.de.md`. Kein Check geändert, kein Verdikt
 gekippt — der Katalog steht unverändert bei 120.

@@ -16,6 +16,17 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+# DIE EINE STELLE, DIE DIE SUITEN DIESES REPOSITORIES KENNT.
+#
+# `_core.py` kennt keine einzige Pruefung — es nimmt sie entgegen. Dieser
+# Import ist die Verdrahtung: `@register` laeuft beim Import, also muessen die
+# Suiten geladen sein, bevor der Runner die Registry befragt. Er steht hier
+# und nicht in `_core.py`, damit das Geruest kopierbar bleibt und nur der
+# Einstiegspunkt weiss, welche Suiten es in diesem Baum gibt.
+#
+# `noqa: F401` — der Name wird nicht benutzt, der Import IST der Zweck.
+import tools.suites  # noqa: F401
+
 from ._core import Check, all_checks, python_version, run_all, suites
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
