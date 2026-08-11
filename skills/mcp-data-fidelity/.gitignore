@@ -1,0 +1,20 @@
+.DS_Store
+*.log
+/tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets and local configuration — see the secrets check before any push
+.env
+.env.*
+*.key
+*.pem
+credentials.json
+secrets.yaml
+config.local.*
+.claude/settings.local.json

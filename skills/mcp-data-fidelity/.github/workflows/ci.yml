@@ -1,0 +1,71 @@
+name: validate
+
+on:
+  push:
+    branches: [main, master]
+    # Tag-Laeufe: Pruefung 13 («Tag und CHANGELOG nennen dieselbe Version»)
+    # laeuft nur hier. Achtung, das gilt fuer jeden Workflow: bei einem
+    # Tag-Lauf fuehrt GitHub die ci.yml des GETAGGTEN Commits aus, nicht die
+    # von main. Ein Tag auf einen Commit ohne diesen Schritt wird also nicht
+    # geprueft. Alle bisherigen Tags (v1.0.0–v1.4.0) und die drei
+    # nachgetragenen (v1.5.0–v1.7.0) sind genau dieser Fall; sie sind von Hand
+    # verifiziert. Die Pruefung greift fruehestens ab 1.8.0.
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Die Gates selbst stehen unter `tools/checks/`, dieser Job ruft sie auf.
+      # Bis 1.7.0 standen sie als Python-Heredocs hier: billig zu schreiben und
+      # nicht zu testen — ein Heredoc laesst sich nur ausfuehren, indem man das
+      # ganze Repository in den Zustand bringt, den es beanstanden soll. Von
+      # keiner Pruefung war belegt, dass sie ueberhaupt beisst.
+      #
+      # Ruff gepinnt, damit ein Upstream-Release weder Formatter noch Regeln
+      # unter uns aendert und die CI an unberuehrtem Code rot wird — zu einem
+      # Zeitpunkt, den niemand gewaehlt hat. Bewusst anheben.
+      #
+      # ACHTUNG: diese Version und die `rev` in .pre-commit-config.yaml muessen
+      # uebereinstimmen — Pruefung 12 prueft es, samt der Frage, ob beide Hooks
+      # noch da sind.
+      - name: Ruff installieren
+        run: pip install ruff==0.16.1
+
+      - name: Abhaengigkeiten der Testsuite installieren
+        run: pip install -r requirements-dev.txt
+
+      # Ein Kommando, dasselbe wie lokal. Keine zweite Kopie der Gates: Zwei
+      # Kopien driften, und ein gedrifteter Pre-Flight-Check meldet gruen auf
+      # einem Baum, den dieser Job ablehnt.
+      - name: Run the validation suite
+        run: bash scripts/validate.sh
+
+      # Die Pruefungen pruefen das Repository. Diese Suite prueft die
+      # Pruefungen: Zu jeder gibt es mindestens einen Baum, auf dem sie rot
+      # werden MUSS, und der Text ihres Befundes ist zugesichert.
+      # tests/mutations.py sagt, warum das noetig ist.
+      #
+      # Nach validate.sh, nicht davor: Ein echter Befund ueber das Repository
+      # soll zuerst im lesbaren Format des Runners erscheinen, nicht als
+      # Testfehlschlag.
+      - name: Die Pruefungen selbst testen
+        run: pytest
+
+      # Pruefung 13 braucht einen Tag-Kontext und ist deshalb `offline=False` —
+      # der lokale Runner laesst sie aus, dieser Schritt fuehrt sie. Bei einem
+      # Branch- oder PR-Lauf gibt es keinen Tag, dann wird er uebersprungen.
+      - name: Tag und CHANGELOG nennen dieselbe Version
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          PYTHONUTF8: "1"
+          TAG_NAME: ${{ github.ref_name }}
+        run: python -m tools.checks --include-context-bound 13
