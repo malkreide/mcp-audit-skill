@@ -47,13 +47,35 @@ Der Vergleich ist eine reine Funktion: `compare()` nimmt das Metadaten-Dict
 entgegen und ist ohne Netz testbar. Netz braucht nur `fetch()`, und das ist
 absichtlich die dünnste Funktion der Datei.
 
+DIE ANDERE RICHTUNG — ÜBERZÄHLIGE TRÄGER
+----------------------------------------
+Bis zur Archivierung der drei Herkunftsrepos war nur EINE Frage gestellt:
+«Trägt jedes Repo aus dem Manifest das Topic?» Das ist die Hälfte, die auffällt,
+wenn jemand ein Repo hinzufügt und die Metadaten vergisst.
+
+Die andere Hälfte fällt nie auf: Ein Repo, das das Topic trägt und **nicht** im
+Manifest steht. Genau das ist mit der Zusammenführung eingetreten — die drei
+archivierten Skill-Repos tragen `mcp-quality-chain` weiterhin. Der Wächter war
+grün, das Manifest war richtig, und die Topic-Seite zeigte fünf Einträge, wo
+zwei gelten. Wer die Kette über GitHub sucht — also über den einen Weg, für den
+dieser Guard überhaupt existiert — findet drei Gräber.
+
+Deshalb fragt `compare_carriers()` den Bestand über die Suche ab und meldet
+jeden Träger, den das Manifest nicht kennt. Zwei Eigenarten der Such-API sind
+dabei berücksichtigt und stehen dort im Docstring: Ihr Index hinkt Änderungen
+nach, und ein leeres Ergebnis ist hier ein BEFUND und kein Bestehen.
+
 Geprüft wird pro Repo:
   * das gemeinsame Topic aus dem Manifest ist gesetzt,
   * die Homepage zeigt auf den gemeinsamen Einstiegspunkt,
   * die Description ist nicht leer (die erste Zeile, die jemand liest).
 
+Und einmal über den ganzen Bestand:
+  * kein Repo trägt das Topic, das nicht im Manifest steht.
+
 Exit-Codes:
-  0  alle Repos tragen Topic, Homepage und Description
+  0  alle Repos tragen Topic, Homepage und Description, und kein weiteres Repo
+     trägt das Topic
   1  Abweichung, oder die Metadaten konnten nicht geholt werden
   2  Aufruffehler (Manifest nicht lesbar)
 
@@ -70,6 +92,7 @@ import json
 import os
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -81,6 +104,7 @@ if str(_REPO_ROOT) not in sys.path:
 from tools.path_utils import force_utf8_stdio  # noqa: E402
 
 API = "https://api.github.com/repos/{repo}"
+SEARCH = "https://api.github.com/search/repositories?q=topic:{topic}&per_page=100"
 
 # Sentinel für «die API hat das Feld nicht mitgeschickt». `None` allein reicht
 # nicht: die API liefert für eine leere Homepage sowohl `null` als auch `""`,
@@ -189,6 +213,142 @@ def fix_commands(
     return commands
 
 
+def compare_carriers(
+    carriers: list[dict[str, Any]],
+    declared: list[str],
+    topic: str,
+    total_count: int | None = None,
+) -> list[str]:
+    """Wer trägt das Topic, ohne im Manifest zu stehen. Leer heisst: niemand.
+
+    Reine Funktion, ohne Netz und ohne Dateizugriff — dieselbe Bauart wie
+    `compare()` und aus demselben Grund.
+
+    `carriers` sind die Suchtreffer, je ein Dict mit `full_name` und
+    `archived`. Repo-Namen vergleicht GitHub ohne Rücksicht auf Gross- und
+    Kleinschreibung, also tut es diese Funktion auch.
+
+    DREI EIGENARTEN, DIE HIER ENTSCHIEDEN SIND
+    ------------------------------------------
+    1. **Ein leeres Ergebnis ist ein Befund.** Die deklarierten Repos tragen
+       das Topic — das prüft `compare()` direkt an der Repo-API und damit an
+       der verlässlichen Quelle. Findet die Suche daraufhin *gar nichts*, ist
+       nicht «keine Überzähligen» belegt, sondern der Index hat nicht
+       geantwortet. Das als «sauber» zu drucken wäre genau der Fall, für den
+       dieses Portfolio `UNVERIFIED` führt.
+
+    2. **Eine gekappte Trefferliste sagt es.** Liefert die Suche mehr Treffer,
+       als sie Einträge mitschickt, ist die Abdeckung unvollständig. Ein
+       stummer Deckel liest sich hinterher wie Vollständigkeit.
+
+    3. **Der Index hinkt nach.** Ein eben entferntes Topic kann noch Minuten
+       bis Stunden in der Suche stehen. Ein Träger, der unmittelbar nach einer
+       Aufräumaktion gemeldet wird, ist deshalb möglicherweise Nachhall — der
+       zweite Lauf entscheidet. Umgekehrt gilt das Gleiche und ist der Grund,
+       warum diese Funktion NICHT nach fehlenden Topics sucht: Dafür ist die
+       Repo-API zuständig, die keinen Index dazwischen hat.
+    """
+    problems: list[str] = []
+
+    if not carriers:
+        return [
+            f"UNVERIFIED: Die Suche liefert kein einziges Repo mit dem Topic "
+            f"'{topic}' — auch die deklarierten nicht. Damit hat der Vergleich "
+            "nicht stattgefunden; überzählige Träger wurden NICHT geprüft. "
+            "Das ist kein Bestehen."
+        ]
+
+    if total_count is not None and total_count > len(carriers):
+        problems.append(
+            f"UNVERIFIED: Die Suche meldet {total_count} Treffer, mitgeschickt "
+            f"wurden {len(carriers)}. Die übrigen sind ungeprüft — der Befund "
+            "unten ist damit unvollständig und nicht 'alles gefunden'."
+        )
+
+    bekannt = {name.lower() for name in declared}
+    for eintrag in carriers:
+        name = eintrag.get("full_name") or ""
+        if not name:
+            problems.append(
+                "UNVERIFIED: Ein Suchtreffer ohne 'full_name' — nicht "
+                "zuzuordnen und deshalb nicht als sauber verbucht."
+            )
+            continue
+        if name.lower() in bekannt:
+            continue
+        zusatz = " (archiviert)" if eintrag.get("archived") else ""
+        problems.append(
+            f"Überzählig: {name}{zusatz} trägt '{topic}', steht aber nicht im "
+            "Manifest. Die Topic-Seite zeigt es damit als Mitglied der Kette."
+        )
+
+    return problems
+
+
+def carrier_fix_commands(
+    carriers: list[dict[str, Any]], declared: list[str], topic: str
+) -> list[str]:
+    """Die `gh`-Kommandos, die die überzähligen Träger entfernen.
+
+    Ein archiviertes Repository ist schreibgeschützt; das Zahnrad neben
+    «About» ist dort ausgegraut. Weist `gh` die Änderung ab, muss es für den
+    Handgriff kurz aus dem Archiv — deshalb steht das Paar dabei, statt dass
+    jemand erst an der Fehlermeldung merkt, dass ein Schritt fehlt.
+    """
+    bekannt = {name.lower() for name in declared}
+    commands: list[str] = []
+    for eintrag in carriers:
+        name = eintrag.get("full_name") or ""
+        if not name or name.lower() in bekannt:
+            continue
+        if eintrag.get("archived"):
+            commands.append(
+                f"gh repo unarchive {name} --yes && "
+                f"gh repo edit {name} --remove-topic {topic} && "
+                f"gh repo archive {name} --yes"
+                "   # archiviert = schreibgeschuetzt, deshalb das Paar drumherum"
+            )
+        else:
+            commands.append(f"gh repo edit {name} --remove-topic {topic}")
+    return commands
+
+
+def fetch_carriers(
+    topic: str, timeout: float = 15.0
+) -> tuple[list[dict[str, Any]] | None, int | None, str]:
+    """(treffer, total_count, status). Wirft nie — der Aufrufer meldet den Status.
+
+    Wie `fetch()` absichtlich dünn gehalten: Was hier passiert, ist für Tests
+    unerreichbar, also soll hier so wenig wie möglich passieren. Reduziert wird
+    auf die zwei Felder, die `compare_carriers()` braucht.
+    """
+    req = urllib.request.Request(SEARCH.format(topic=urllib.parse.quote(topic)))
+    req.add_header("Accept", "application/vnd.github+json")
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        return None, None, f"GitHub antwortete HTTP {exc.code}"
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        return None, None, f"GitHub nicht erreichbar: {exc}"
+    except (ValueError, KeyError) as exc:
+        return None, None, f"Antwort nicht lesbar: {exc}"
+
+    if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+        return None, None, "Antwort enthält keine Trefferliste 'items'"
+
+    treffer = [
+        {"full_name": item.get("full_name"), "archived": bool(item.get("archived"))}
+        for item in payload["items"]
+        if isinstance(item, dict)
+    ]
+    gesamt = payload.get("total_count")
+    return treffer, gesamt if isinstance(gesamt, int) else None, "ok"
+
+
 def fetch(repo: str, timeout: float = 15.0) -> tuple[dict[str, Any] | None, str]:
     """(metadata, status). Wirft nie — der Aufrufer meldet den Status.
 
@@ -274,11 +434,34 @@ def main(argv: list[str] | None = None) -> int:
             entry["ok"] = not entry["problems"]
         results.append(entry)
 
-    ok = all(r["ok"] for r in results)
+    # Die andere Richtung: Wer traegt das Topic, ohne im Manifest zu stehen?
+    # Eine einzige Anfrage ueber den ganzen Bestand statt eine pro Repo.
+    treffer, gesamt, carrier_status = fetch_carriers(topic, args.timeout)
+    carriers: dict[str, Any] = {
+        "status": carrier_status,
+        "found": treffer,
+        "total_count": gesamt,
+        "problems": [],
+        "fix": [],
+        "ok": False,
+    }
+    if treffer is None:
+        carriers["problems"] = [
+            f"UNKNOWN: {carrier_status} — überzählige Träger NICHT geprüft."
+        ]
+    else:
+        carriers["problems"] = compare_carriers(
+            treffer, manifest["repos"], topic, gesamt
+        )
+        carriers["fix"] = carrier_fix_commands(treffer, manifest["repos"], topic)
+        carriers["ok"] = not carriers["problems"]
+
+    ok = all(r["ok"] for r in results) and carriers["ok"]
     report = {
         "topic": topic,
         "homepage": homepage,
         "repos": results,
+        "carriers": carriers,
         "ok": ok,
     }
 
@@ -294,15 +477,22 @@ def main(argv: list[str] | None = None) -> int:
         for problem in entry["problems"]:
             print(f"         {problem}")
 
+    if carriers["ok"]:
+        print(f"OK       Topic '{topic}' — kein überzähliger Träger")
+    else:
+        print(f"DRIFT    Topic '{topic}' — Bestand")
+        for problem in carriers["problems"]:
+            print(f"         {problem}")
+
     if ok:
         print()
         print(
             f"Alle {len(results)} Repos tragen Topic '{topic}', die "
-            f"Homepage und eine Description."
+            f"Homepage und eine Description — und kein weiteres Repo trägt es."
         )
         return 0
 
-    commands = [c for entry in results for c in entry["fix"]]
+    commands = [c for entry in results for c in entry["fix"]] + carriers["fix"]
     if commands:
         print()
         print("Zu setzen (der Guard schreibt bewusst nicht):")

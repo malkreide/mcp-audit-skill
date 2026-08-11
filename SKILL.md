@@ -1179,7 +1179,7 @@ Fährt die Kette, ist aber kein Glied darin: [`mcp-continuous-auditor`](https://
 
 Daneben, nicht Teil der Kette: `mcp-builder` — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
-Die Mitgliedschaft steht an einer Stelle: [`docs/quality-chain.json`](./docs/quality-chain.json), wöchentlich geprüft von [`tools/check_quality_chain.py`](./tools/check_quality_chain.py).
+Die Mitgliedschaft steht an einer Stelle: [`docs/quality-chain.json`](./docs/quality-chain.json), wöchentlich geprüft von [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) — in beide Richtungen: ob jedes deklarierte Repo das Topic trägt, und ob ein Repo es trägt, das nicht im Manifest steht.
 
 ### Nach dem Audit
 

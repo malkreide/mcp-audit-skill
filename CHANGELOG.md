@@ -6,6 +6,65 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — der Ketten-Wächter fragt jetzt in beide Richtungen
+
+`tools/check_quality_chain.py` stellte bisher eine Frage: **Trägt jedes Repo aus
+dem Manifest das Topic?** Das ist die Hälfte, die auffällt, wenn jemand ein Repo
+hinzufügt und die Metadaten vergisst.
+
+Die andere Hälfte fällt von selbst nie auf — ein Repo, das das Topic trägt und
+**nicht** im Manifest steht. Genau das hat die Zusammenführung erzeugt: Ein
+archiviertes Repository behält seine Topics. Die drei Herkunftsrepos standen
+also weiter auf `github.com/topics/mcp-quality-chain`, während der Wächter grün
+war und das Manifest stimmte. Wer die Kette über GitHub sucht — den einen Weg,
+für den dieser Wächter überhaupt existiert —, fand fünf Einträge, von denen drei
+Gräber waren.
+
+`compare_carriers()` und `carrier_fix_commands()` sind dieselbe Bauart wie ihre
+Gegenstücke: reine Funktionen, ohne Netz und ohne Dateizugriff, Netz nur in
+`fetch_carriers()`. Drei Eigenarten der Such-API sind darin entschieden:
+
+- **Ein leeres Ergebnis ist ein Befund.** Die deklarierten Repos tragen das
+  Topic — das steht über die Repo-API fest. Findet die Suche daraufhin gar
+  nichts, hat nicht der Bestand gestimmt, sondern der Index hat nicht
+  geantwortet. `UNVERIFIED`, nicht «sauber».
+- **Eine gekappte Trefferliste sagt es.** Mehr `total_count` als `items` heisst
+  unvollständige Abdeckung; ein stummer Deckel liest sich hinterher wie
+  Vollständigkeit.
+- **Der Index hinkt nach.** Ein eben entferntes Topic kann noch eine Weile in
+  der Suche stehen. Deshalb sucht diese Hälfte ausdrücklich **nicht** nach
+  *fehlenden* Topics — dafür ist die Repo-API zuständig, die keinen Index
+  dazwischen hat.
+
+Für einen archivierten Träger druckt der Wächter das Paar
+`unarchive … --remove-topic … archive`: Ein archiviertes Repository ist
+schreibgeschützt, `--remove-topic` allein läuft dort ins Leere. Geschrieben wird
+weiterhin nichts — Repo-Metadaten zu ändern gehört einem Menschen.
+
+### Behoben — `quality-chain.yml` starb seit einer Woche vor seinem Bericht
+
+Mit der Aufteilung in `members` (Skills) und `repos` (Metadaten-Träger) zog der
+Wächter nach, der Workflow nicht: Seine Summary-Stufe las weiter `r["members"]`
+und `m["stage"]`. Der Wächter lief korrekt und schrieb sein JSON; der Schritt
+danach starb an `KeyError: 'members'`, bevor eine Zeile Bericht entstand. Der
+Job war rot aus einem Grund, der mit der Kette nichts zu tun hatte, und der
+eigentliche Befund erschien nirgends — Lauf `31452485540` vom 11.8.2026.
+
+Das Reparieren allein hätte den Fehler nur verschoben. Das Python des Workflows
+steckt in einem Heredoc, das ausser dem Runner niemand ausführt — also nichts,
+wo `pytest` hinkommt, und genau die Sorte Code, die zwischen zwei Änderungen
+auseinanderläuft, weil beide Seiten für sich stimmig aussehen.
+
+`tests/test_quality_chain_workflow.py` holt das Skript aus dem YAML und führt es
+gegen einen Bericht aus, den `main()` **wirklich** erzeugt hat — nicht gegen
+einen von Hand nachgebauten, der bloss die eigene Annahme über das Schema
+trüge. Der Heredoc-Marker ist dabei ein Anker: Verschwindet er, ist das ein
+Fehler und kein stilles Durchwinken.
+
+Geprüft gegen drei Mutationen: `members` statt `repos` (stirbt wie im echten
+Lauf), die Bestands-Zeile aus der Tabelle entfernt, und der Anker umbenannt.
+Alle drei werden rot.
+
 ## [v3.0.0] — 2026-08-11 — Fünf Repositories auf zwei
 
 Der Katalog ist **unverändert**: 120 Checks in zwölf Kategorien auf zwei
