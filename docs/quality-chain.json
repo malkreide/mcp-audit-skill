@@ -1,54 +1,70 @@
 {
   "_comment": [
-    "Die einzige Quelle für die Zusammengehörigkeit der fünf Repos.",
+    "Die einzige Quelle für die Zusammengehörigkeit der Qualitätskette.",
     "Gelesen von tools/check_quality_chain.py und tests/test_quality_chain.py.",
-    "Wer hier ein Mitglied hinzufügt, muss die Tabelle in README.md und",
-    "README.de.md mitziehen — der Test verlangt es.",
     "",
-    "ENTSCHIEDEN, ABER NOCH NICHT UMGESTELLT: Mitglied ist künftig ein SKILL,",
-    "nicht ein Repo — dann vier statt fünf, und mcp-continuous-auditor steht",
-    "als Laufzeit daneben statt als fünftes Glied. Umgestellt wird in Phase 3",
-    "der Zusammenführung, weil der Wächter bis dahin Repo-Namen braucht und",
-    "die drei Companion-Repos die fünf Namen hart führen. Begründung und",
-    "Zielzustand: docs/consolidation/MERGE-PLAN.md, Abschnitt 6.1."
+    "ZWEI LISTEN, WEIL ES ZWEI FRAGEN SIND. Seit Phase 3 der Zusammenführung",
+    "ist Mitglied der Kette ein SKILL, nicht ein Repo — vier statt fünf. Die",
+    "Skills liegen inzwischen fast alle im selben Repository, also lässt sich",
+    "die Mitgliedschaft nicht mehr an Repo-Namen ablesen.",
+    "",
+    "  members — die vier Skills: welche Frage sie an welcher Stelle des",
+    "            Lebenszyklus beantworten. Das ist die Kette selbst. `path`",
+    "            zeigt auf ihr Verzeichnis, damit ein Test das Manifest gegen",
+    "            den Baum halten kann statt gegen eine Annahme.",
+    "",
+    "  repos   — die Repositories, die diese Skills tragen. NUR dafür da, dass",
+    "            der Wächter weiss, wessen GitHub-Metadaten er prüfen soll:",
+    "            Topic, Homepage, Description liegen ausserhalb jeder",
+    "            Arbeitskopie, also fängt sie kein Test, also driften sie.",
+    "",
+    "mcp-continuous-auditor ist KEIN Mitglied und steht trotzdem unter repos.",
+    "Es ist kein Skill, sondern die Laufzeit, die die Kette fährt — es",
+    "beantwortet keine Frage im Lebenszyklus eines Servers, es stellt sie",
+    "immer wieder neu. In den READMEs steht es deshalb in der Prosa neben der",
+    "Tabelle, nicht als fünfte Zeile darin.",
+    "",
+    "Wer hier ein Mitglied hinzufügt, muss die Tabelle in README.md und",
+    "README.de.md mitziehen — der Test verlangt es."
   ],
   "topic": "mcp-quality-chain",
   "homepage": "https://github.com/topics/mcp-quality-chain",
   "members": [
     {
-      "repo": "malkreide/mcp-data-source-probe-skill",
+      "skill": "mcp-data-source-probe",
+      "path": "skills/mcp-data-source-probe",
       "stage": "before the build",
       "stage_de": "vor dem Bau",
       "question": "Is the source usable, and what does it hold?",
       "question_de": "Taugt die Quelle, und was hat sie?"
     },
     {
-      "repo": "malkreide/mcp-data-fidelity-skill",
+      "skill": "mcp-data-fidelity",
+      "path": "skills/mcp-data-fidelity",
       "stage": "in the build",
       "stage_de": "im Bau",
       "question": "Does it return what the source actually holds?",
       "question_de": "Liefert er, was die Quelle hat?"
     },
     {
-      "repo": "malkreide/mcp-transport-hardening-skill",
+      "skill": "mcp-transport-hardening",
+      "path": "skills/mcp-transport-hardening",
       "stage": "in the build",
       "stage_de": "im Bau",
       "question": "Does it come up, turn away the right callers, and stay stateless?",
       "question_de": "Kommt er hoch, weist er richtig ab, bleibt er zustandslos?"
     },
     {
-      "repo": "malkreide/mcp-audit-skill",
+      "skill": "mcp-audit",
+      "path": ".",
       "stage": "after the build",
       "stage_de": "nach dem Bau",
       "question": "Does it hold up against the catalogue?",
       "question_de": "Hält er gegen den Katalog?"
-    },
-    {
-      "repo": "malkreide/mcp-continuous-auditor",
-      "stage": "in operation",
-      "stage_de": "im Betrieb",
-      "question": "Does it still hold up tomorrow?",
-      "question_de": "Hält er morgen noch?"
     }
+  ],
+  "repos": [
+    "malkreide/mcp-audit-skill",
+    "malkreide/mcp-continuous-auditor"
   ]
 }

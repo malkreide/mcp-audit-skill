@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
-"""Hält die fünf Repos der Qualitätskette auf GitHub als Gruppe erkennbar.
+"""Hält die Repos der Qualitätskette auf GitHub als Gruppe erkennbar.
 
-Die fünf Repos gehören zusammen — Probe vor dem Bau, Datentreue und
-Transport-Härtung im Bau, Audit nach dem Bau, Continuous Auditor im Betrieb —
-und in den READMEs steht das auch. Auf GitHub stand es nicht: gemessen am Tag,
-an dem dieser Guard entstand, war die Schnittmenge der Topics über alle fünf
-**leer**. `mcp-continuous-auditor` trug überhaupt keine Topics, die anderen
-vier benutzten zwei verschiedene Vokabulare (`claude-skill` gegen
-`claude-skills`), und eine Homepage hatte nur eines von fünf.
+Die Kette hat vier Mitglieder, und Mitglied ist ein SKILL: Probe vor dem Bau,
+Datentreue und Transport-Härtung im Bau, Audit nach dem Bau. Getragen werden
+sie seit Phase 3 der Zusammenführung von ZWEI Repositories — diesem hier und
+`mcp-continuous-auditor`, der Laufzeit, die die Kette fährt. Dieser Guard
+prüft die Repos, weil Topic und Homepage Eigenschaften eines Repositories
+sind; welche Skills die Kette bilden, steht daneben in `members`.
+
+Der Anlass ist älter als diese Aufteilung und gilt unverändert. Gemessen am
+Tag, an dem dieser Guard entstand, war die Schnittmenge der Topics über die
+damals fünf Repos **leer**: `mcp-continuous-auditor` trug überhaupt keine
+Topics, die anderen vier benutzten zwei verschiedene Vokabulare
+(`claude-skill` gegen `claude-skills`), und eine Homepage hatte nur eines von
+fünf.
 
 Damit war die Kette genau dort unsichtbar, wo jemand sie findet, der nicht
 schon eines der Repos offen hat: in der Suche. Ein Topic ist die einzige
@@ -28,9 +34,9 @@ DREI ENTSCHEIDUNGEN, DIE NICHT VERHANDELBAR SIND
 2. **Ein fehlendes Feld ist nicht ein leeres Feld.** Liefert die API zu einem
    Repo gar kein `topics`, dann ist das *unbekannt* und nicht *keine Topics*.
    Beides als «Topic fehlt» zu melden wäre bequem und einmal falsch — nämlich
-   wenn die API das Feld nicht mehr mitschickt, und dann meldet der Guard fünf
-   Befunde, wo null Evidenz vorliegt. Das ist die Trennung, die `FID-006`
-   verlangt.
+   wenn die API das Feld nicht mehr mitschickt, und dann meldet der Guard je
+   einen Befund pro Repo, wo null Evidenz vorliegt. Das ist die Trennung, die
+   `FID-006` verlangt.
 
 3. **Der Guard schreibt nicht.** Topics und Homepage zu setzen braucht ein
    Token mit Administrationsrechten, und Repo-Metadaten zu ändern gehört einem
@@ -41,13 +47,13 @@ Der Vergleich ist eine reine Funktion: `compare()` nimmt das Metadaten-Dict
 entgegen und ist ohne Netz testbar. Netz braucht nur `fetch()`, und das ist
 absichtlich die dünnste Funktion der Datei.
 
-Geprüft wird pro Mitglied:
+Geprüft wird pro Repo:
   * das gemeinsame Topic aus dem Manifest ist gesetzt,
   * die Homepage zeigt auf den gemeinsamen Einstiegspunkt,
   * die Description ist nicht leer (die erste Zeile, die jemand liest).
 
 Exit-Codes:
-  0  alle Mitglieder tragen Topic, Homepage und Description
+  0  alle Repos tragen Topic, Homepage und Description
   1  Abweichung, oder die Metadaten konnten nicht geholt werden
   2  Aufruffehler (Manifest nicht lesbar)
 
@@ -87,16 +93,28 @@ def _default_manifest() -> Path:
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
-    """Manifest lesen und auf die Felder prüfen, die compare() braucht."""
+    """Manifest lesen und auf die Felder prüfen, die compare() braucht.
+
+    ZWEI LISTEN, WEIL ES ZWEI FRAGEN SIND. Seit Phase 3 der Zusammenführung
+    ist Mitglied der Kette ein SKILL, nicht ein Repo — und die Skills liegen
+    inzwischen fast alle im selben Repository. `members` trägt die Kette
+    (welche Frage an welcher Stelle), `repos` sagt diesem Wächter, wessen
+    GitHub-Metadaten er prüfen soll. Beides in einer Liste zu führen ginge nur,
+    solange Skill und Repo dasselbe waren.
+    """
     data = json.loads(path.read_text(encoding="utf-8"))
-    for key in ("topic", "homepage", "members"):
+    for key in ("topic", "homepage", "members", "repos"):
         if not data.get(key):
             raise ValueError(f"{path}: Feld '{key}' fehlt oder ist leer")
-    repos = [m.get("repo") for m in data["members"]]
-    if not all(repos):
-        raise ValueError(f"{path}: ein Mitglied ohne 'repo'")
-    if len(set(repos)) != len(repos):
+
+    skills = [m.get("skill") for m in data["members"]]
+    if not all(skills):
+        raise ValueError(f"{path}: ein Mitglied ohne 'skill'")
+    if len(set(skills)) != len(skills):
         raise ValueError(f"{path}: doppeltes Mitglied in 'members'")
+
+    if len(set(data["repos"])) != len(data["repos"]):
+        raise ValueError(f"{path}: doppeltes Repo in 'repos'")
     return data
 
 
@@ -213,7 +231,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="check_quality_chain",
         description=(
-            "Prüft, ob die fünf Repos der Qualitätskette auf GitHub als Gruppe "
+            "Prüft, ob die Repos der Qualitätskette auf GitHub als Gruppe "
             "erkennbar sind: gemeinsames Topic, gemeinsame Homepage, "
             "Description gesetzt."
         ),
@@ -233,13 +251,14 @@ def main(argv: list[str] | None = None) -> int:
     topic = manifest["topic"]
     homepage = manifest["homepage"]
 
+    # Geprüft werden REPOS, nicht Mitglieder: Topic und Homepage sind
+    # Eigenschaften eines Repositories, und seit Phase 3 tragen zwei Repos die
+    # vier Skills der Kette.
     results: list[dict[str, Any]] = []
-    for member in manifest["members"]:
-        repo = member["repo"]
+    for repo in manifest["repos"]:
         meta, status = fetch(repo, args.timeout)
         entry: dict[str, Any] = {
             "repo": repo,
-            "stage": member.get("stage"),
             "status": status,
             "metadata": None if meta is None else _jsonable(meta),
             "problems": [],
@@ -259,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     report = {
         "topic": topic,
         "homepage": homepage,
-        "members": results,
+        "repos": results,
         "ok": ok,
     }
 
@@ -278,7 +297,7 @@ def main(argv: list[str] | None = None) -> int:
     if ok:
         print()
         print(
-            f"Alle {len(results)} Mitglieder tragen Topic '{topic}', die "
+            f"Alle {len(results)} Repos tragen Topic '{topic}', die "
             f"Homepage und eine Description."
         )
         return 0

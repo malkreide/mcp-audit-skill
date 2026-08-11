@@ -343,19 +343,20 @@ Komplementär nutzbar — keiner der Genannten ersetzt die anderen.
 
 ### Die MCP-Qualitätskette
 
-Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt — dieses kommt als viertes von fünf. Das gemeinsame GitHub-Topic ist [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain) und listet alle fünf auf einer Seite.
+Vier Skills, ein Lebenszyklus. Jeder beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt — dieser kommt zuletzt. Seit der Zusammenführung liegen sie in **zwei** Repos: dieses trägt alle vier Skills, `mcp-continuous-auditor` ist die Laufzeit, die sie immer wieder fährt. Das gemeinsame GitHub-Topic ist [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain) und listet beide auf einer Seite.
 
-| Phase | Repo | Seine Regeln in diesem Katalog |
+| Phase | Skill | Seine Regeln in diesem Katalog |
 |---|---|---|
-| vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | liefert die Ground Truth, gegen die `FID-002` misst |
-| im Bau | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | [`FID-001`–`FID-006`](./checks/) |
-| im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | [`SDK-006`](./checks/SDK-006.md) + [`DEP-001`](./checks/DEP-001.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md); seit seiner v2.0.0 zusätzlich [`ARCH-015`](./checks/ARCH-015.md)–[`ARCH-017`](./checks/ARCH-017.md), [`SCALE-008`](./checks/SCALE-008.md), [`SCALE-009`](./checks/SCALE-009.md)/[`SCALE-010`](./checks/SCALE-010.md), [`HITL-006`](./checks/HITL-006.md), [`SEC-025`](./checks/SEC-025.md)/[`SEC-026`](./checks/SEC-026.md); dazu [`OBS-008`](./checks/OBS-008.md) für dessen Regel 14 und [`OPS-010`](./checks/OPS-010.md) für dessen Regel 6 |
-| nach dem Bau | **`mcp-audit-skill`** | **Dieser Skill** — der Katalog selbst |
-| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | der Vorfall hinter [`OPS-005`](./checks/OPS-005.md) — eine Testsuite, die kein Workflow je ausgeführt hat ([#29](https://github.com/malkreide/mcp-continuous-auditor/pull/29)) |
+| vor dem Bau | [`mcp-data-source-probe`](./skills/mcp-data-source-probe/) | liefert die Ground Truth, gegen die `FID-002` misst |
+| im Bau | [`mcp-data-fidelity`](./skills/mcp-data-fidelity/) | [`FID-001`–`FID-006`](./checks/) |
+| im Bau | [`mcp-transport-hardening`](./skills/mcp-transport-hardening/) | [`SDK-006`](./checks/SDK-006.md) + [`DEP-001`](./checks/DEP-001.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md); seit seiner v2.0.0 zusätzlich [`ARCH-015`](./checks/ARCH-015.md)–[`ARCH-017`](./checks/ARCH-017.md), [`SCALE-008`](./checks/SCALE-008.md), [`SCALE-009`](./checks/SCALE-009.md)/[`SCALE-010`](./checks/SCALE-010.md), [`HITL-006`](./checks/HITL-006.md), [`SEC-025`](./checks/SEC-025.md)/[`SEC-026`](./checks/SEC-026.md); dazu [`OBS-008`](./checks/OBS-008.md) für dessen Regel 14 und [`OPS-010`](./checks/OPS-010.md) für dessen Regel 6 |
+| nach dem Bau | **`mcp-audit`** | **Dieser Skill** — der Katalog selbst, in der Repo-Wurzel |
+
+Fährt die Kette, ist aber kein Glied darin: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor). Er beantwortet keine Frage im Lebenszyklus eines Servers — er stellt alle vier erneut, nach Zeitplan, und beantwortet «hält er morgen noch?». Der Vorfall hinter [`OPS-005`](./checks/OPS-005.md) stammt von dort: eine Testsuite, die kein Workflow je ausgeführt hat ([#29](https://github.com/malkreide/mcp-continuous-auditor/pull/29)).
 
 Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
-Die Mitgliedschaft steht an einer Stelle: [`docs/quality-chain.json`](./docs/quality-chain.json). [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) prüft wöchentlich, ob alle fünf das Topic auf GitHub tatsächlich tragen — Metadaten, die keine Arbeitskopie testen kann, und genau deshalb hatten die fünf bis zum ersten Hinsehen kein einziges Topic gemeinsam.
+Die Mitgliedschaft steht an einer Stelle: [`docs/quality-chain.json`](./docs/quality-chain.json) — `members` nennt die vier Skills, `repos` die zwei Repos, die sie tragen. [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) prüft wöchentlich, ob beide das Topic auf GitHub tatsächlich tragen — Metadaten, die keine Arbeitskopie testen kann, und genau deshalb hatten die Repos bis zum ersten Hinsehen kein einziges Topic gemeinsam.
 
 Jener Skill ist mit seiner v2.0.0 auf zwölf Regeln gegangen, entlang der Spec
 `2026-07-28` — die beiden Seiten überlappen sich damit fast überall. Drei der

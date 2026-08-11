@@ -343,19 +343,20 @@ Usable side by side — none of these replaces the others.
 
 ### The MCP quality chain
 
-Five repositories, one lifecycle. Each answers a different question, in the order they come up — this one comes second to last. The shared GitHub topic is [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain), which lists all five on one page.
+Four skills, one lifecycle. Each answers a different question, in the order they come up — this one comes last. Since the consolidation they live in **two** repositories: this one carries all four skills, `mcp-continuous-auditor` is the runtime that keeps re-running them. The shared GitHub topic is [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain), which lists both on one page.
 
-| Stage | Repository | Its rules in this catalogue |
+| Stage | Skill | Its rules in this catalogue |
 |---|---|---|
-| before the build | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | supplies the ground truth `FID-002` measures against |
-| in the build | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | [`FID-001`–`FID-006`](./checks/) |
-| in the build | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | [`SDK-006`](./checks/SDK-006.md) + [`DEP-001`](./checks/DEP-001.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md); since its v2.0.0 also [`ARCH-015`](./checks/ARCH-015.md)–[`ARCH-017`](./checks/ARCH-017.md), [`SCALE-008`](./checks/SCALE-008.md), [`SCALE-009`](./checks/SCALE-009.md)/[`SCALE-010`](./checks/SCALE-010.md), [`HITL-006`](./checks/HITL-006.md), [`SEC-025`](./checks/SEC-025.md)/[`SEC-026`](./checks/SEC-026.md); plus [`OBS-008`](./checks/OBS-008.md) for its rule 14 and [`OPS-010`](./checks/OPS-010.md) for its rule 6 |
-| after the build | **`mcp-audit-skill`** | **This skill** — the catalogue itself |
-| in operation | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | the incident behind [`OPS-005`](./checks/OPS-005.md) — a test suite no workflow ever ran ([#29](https://github.com/malkreide/mcp-continuous-auditor/pull/29)) |
+| before the build | [`mcp-data-source-probe`](./skills/mcp-data-source-probe/) | supplies the ground truth `FID-002` measures against |
+| in the build | [`mcp-data-fidelity`](./skills/mcp-data-fidelity/) | [`FID-001`–`FID-006`](./checks/) |
+| in the build | [`mcp-transport-hardening`](./skills/mcp-transport-hardening/) | [`SDK-006`](./checks/SDK-006.md) + [`DEP-001`](./checks/DEP-001.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md); since its v2.0.0 also [`ARCH-015`](./checks/ARCH-015.md)–[`ARCH-017`](./checks/ARCH-017.md), [`SCALE-008`](./checks/SCALE-008.md), [`SCALE-009`](./checks/SCALE-009.md)/[`SCALE-010`](./checks/SCALE-010.md), [`HITL-006`](./checks/HITL-006.md), [`SEC-025`](./checks/SEC-025.md)/[`SEC-026`](./checks/SEC-026.md); plus [`OBS-008`](./checks/OBS-008.md) for its rule 14 and [`OPS-010`](./checks/OPS-010.md) for its rule 6 |
+| after the build | **`mcp-audit`** | **This skill** — the catalogue itself, at the repository root |
+
+Running the chain, not a link in it: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor). It asks no question in a server's lifecycle — it asks all four again, on a schedule, and answers «does it still hold up tomorrow?». The incident behind [`OPS-005`](./checks/OPS-005.md) came from there: a test suite no workflow ever ran ([#29](https://github.com/malkreide/mcp-continuous-auditor/pull/29)).
 
 Alongside, not part of the chain: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — Anthropic's generic build guidance, complemented rather than replaced. It is someone else's repository and cannot carry the topic.
 
-Membership is declared once, in [`docs/quality-chain.json`](./docs/quality-chain.json). [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) verifies weekly that all five actually carry the topic on GitHub — that is metadata no working copy can test, which is exactly why the five had no topic in common until someone looked.
+Membership is declared once, in [`docs/quality-chain.json`](./docs/quality-chain.json) — `members` names the four skills, `repos` the two repositories that carry them. [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) verifies weekly that both actually carry the topic on GitHub — that is metadata no working copy can test, which is exactly why the repositories had no topic in common until someone looked.
 
 That skill went to twelve rules with its v2.0.0, following spec `2026-07-28`,
 and the two sides now overlap almost everywhere. Three of the twelve still have

@@ -25,12 +25,14 @@ Zusammenlegen der vier Pruefgerueste — den holt Repo A allein ein.
 
 ```
 mcp-audit/
+├── SKILL.md                    # DER mcp-audit-Skill selbst — bleibt in der
+│                               #   Wurzel, das Paket spiegelt den Baum (4.2c)
 ├── checks/                     # KATALOG, 121 Dateien — bleibt, wo er ist
-├── skills/
-│   ├── mcp-audit/              # SKILL.md, templates/, docs/
-│   ├── mcp-data-source-probe/  # SKILL.md, reference/
-│   ├── mcp-data-fidelity/      # SKILL.md, reference/
-│   └── mcp-transport-hardening/# SKILL.md, reference/
+├── templates/                  # was das Audit nach draussen schreibt
+├── skills/                     # die drei Companions  ← Phase 3a, steht
+│   ├── mcp-data-source-probe/  # SKILL.md, READMEs, CHANGELOG, reference/
+│   ├── mcp-data-fidelity/      # dito
+│   └── mcp-transport-hardening/# dito
 ├── tools/
 │   ├── harness/                # das EINE Geruest  ← Phase 0, steht
 │   │   ├── _core.py            #   Registry, Ausfuehrung, CheckFailed
@@ -363,15 +365,30 @@ Bis dahin bleibt das Manifest bei fuenf Repo-Eintraegen. Die Zahl ist damit
 nicht falsch, sondern noch nicht umgestellt — und G12 zieht erst nach
 `tools/gates/`, wenn sie es ist.
 
-**Was in Phase 3 konkret mitzieht** (erhoben, nicht geschaetzt):
+**Umgesetzt in Phase 3b** — und dabei kam eine Aufteilung dazu, die im Plan
+noch nicht stand:
 
-| Stelle | heute | dann |
+| Stelle | vorher | jetzt |
 |---|---|---|
-| `docs/quality-chain.json` | 5 `members` mit `repo` | 4 mit `skill` |
-| `tests/test_quality_chain.py:176` | `assert len(manifest["members"]) == 5` | `== 4` |
-| `tools/check_quality_chain.py` | liest `m["repo"]`, prueft Topic/Homepage je Repo | prueft die Metadaten der zwei verbleibenden Repos |
-| `README.md` / `README.de.md`, Abschnitt Kette | 5 Zeilen | 4 Zeilen + Auditor in der Prosa |
-| `readmes.py` der drei Companions (`CHAIN_SECTIONS`) | 5 harte Namen | entfaellt mit dem Umzug der Repos |
+| `docs/quality-chain.json` | 5 `members` mit `repo` | 4 `members` mit `skill` + `path`, dazu `repos` mit 2 Eintraegen |
+| `tools/check_quality_chain.py` | iteriert `members`, liest `m["repo"]` | iteriert `repos` |
+| `tests/test_quality_chain.py` | `assert len(members) == 5` | `== 4`, plus vier neue Anker |
+| beide READMEs, Abschnitt Kette | 5 Repo-Zeilen | 4 Skill-Zeilen + Auditor in der Prosa |
+| `readmes.py` der drei Companions | 5 harte Namen | unveraendert, entfaellt mit Phase 2b |
+
+**ZWEI LISTEN, WEIL ES ZWEI FRAGEN SIND.** Der Plan hatte `members` einfach
+von Repos auf Skills umgestellt — beim Umsetzen zeigte sich, dass das dem
+Waechter den Gegenstand nimmt: Topic und Homepage sind Eigenschaften eines
+REPOSITORIES, und drei der vier Skills haben seit Phase 3a keins mehr. Das
+Manifest fuehrt deshalb beides getrennt: `members` ist die Kette (welche Frage
+an welcher Stelle), `repos` sagt dem Waechter, wessen Metadaten er prueft.
+Solange Skill und Repo dasselbe waren, fiel das nicht auf.
+
+`path` je Mitglied ist dabei neu und traegt eine eigene Pruefung: Sie haelt
+das Manifest gegen den BAUM statt gegen eine Annahme — jedes Mitglied zeigt
+auf eine echte `SKILL.md`, deren Frontmatter-`name` mit dem Manifest
+uebereinstimmt. Ein Mitglied, dessen Verzeichnis niemand mehr pflegt, faellt
+damit hier auf und nicht erst, wenn jemand den Skill installieren will.
 
 ## 7. Phasen
 
@@ -382,7 +399,7 @@ nicht falsch, sondern noch nicht umgestellt — und G12 zieht erst nach
 | **2a** | G1 und G2 nach `tools/gates/toolchain.py`, Einstiegspunkte als Huellen | **erledigt** — gegen alle vier Baeume gruen, 1315 Tests |
 | **2b** | Die uebrigen 14 generischen Familien, die 10 skill-eigenen nach `tools/suites/` | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
 | **3a** | Die drei Companions per `git subtree` nach `skills/<name>/`, Historie erhalten | **erledigt** — drei `SKILL.md` am Platz, Frontmatter-`name` unveraendert, 1315 Tests gruen |
-| **3b** | Kette auf vier Skills umstellen (6.1), beide READMEs nachziehen | `quality-chain.json` fuehrt vier Skills |
+| **3b** | Kette auf vier Skills umstellen (6.1), beide READMEs nachziehen | **erledigt** — `quality-chain.json` fuehrt vier Skills und zwei Repos, 1319 Tests gruen |
 | **4** | Katalog-Drift auf lokal umstellen; `weekly-drift.yml` + `linked_checks.py` loeschen | Pruefung laeuft im PR, `offline=True` |
 | **5** | Herkunftsrepos archivieren mit Zeiger-README; `mcp-continuous-auditor` auf den neuen Tag pinnen | keine offenen Verweise mehr |
 
