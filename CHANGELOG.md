@@ -6,6 +6,53 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — die Mutationssuiten (Phase 2b-iv-d)
+
+`tests/suites/` führt **98** Mutationen über die drei Companion-Suiten — 45 für
+`probe`, 36 für `fidelity`, 17 für `transport`. Zu jeder Prüfung gibt es
+mindestens einen Baum, auf dem sie rot werden **muss**, samt der Zusicherung,
+*was* sie dann sagt. Damit löst dieses Repository die letzte Zusage ein, die
+seine READMEs schon gemacht hatten.
+
+Von 192 Mutationen der Herkunftsrepos ziehen 98 mit. Der Rest gehörte zu den
+repo-bezogenen Prüfungen: Wo `audit` denselben Gegenstand einmal statt viermal
+prüft, braucht es auch nur eine Mutation. Der Wächter bleibt trotzdem scharf —
+eine Prüfung ohne Mutation lässt die Suite fehlschlagen, ein Eintrag auf eine
+Prüfung, die es nicht gibt, ebenfalls.
+
+**Ein Format statt zwei.** Zwei Repos schrieben eine Dataclass mit *Prüfnummer*,
+eines ein Tupel mit dem *Funktionsnamen*. Es gilt der Funktionsname: Die Nummern
+sind seit Phase 0 suite-lokal — `audit/1` und `probe/1` gibt es beide —, eine
+Mutation müsste also zusätzlich die Suite nennen.
+
+### Behoben — drei stille Vorgaben in den Mutationen selbst
+
+Alle drei sind beim ersten Lauf aufgefallen, und alle drei wären ohne die
+`expect`-Zusicherung durchgegangen:
+
+| Was | Wirkung |
+|---|---|
+| `regex_sub(count=1)` | «alle Regel-Überschriften umbenannt» benannte *eine* um — die Prüfung wurde rot, aber mit dem Befund für einen anderen Defekt |
+| `replace(count=1)` | `retry_backoff.py` ruft `random.random()` **zweimal**; die Vorlage jitterte weiter, und die Mutation blieb **grün** |
+| `fifteen` als «unbekanntes» Zahlwort | `ENGLISH_NUMBERS` reicht bis `twenty` — rot, aber im falschen Zweig |
+
+Der zweite ist der teuerste: Eine Mutation, die grün bleibt, sieht aus wie eine
+bestandene Prüfung.
+
+### Entfernt — der synthetische Katalog-Generator, 230 Zeilen
+
+`mcp-data-fidelity-skill` baute in seiner `conftest.py` einen Katalog nach, der
+zu `SKILL.md` passt — samt einer eingestandenen Grenze: Er belegte, dass die
+Prüfung einen *stimmigen* Katalog durchlässt, und ausdrücklich nicht, dass der
+echte stimmt. Der echte liegt jetzt daneben, und
+`test_der_unveraenderte_baum_ist_gruen` belegt genau das, was der Generator
+nicht konnte.
+
+**Kosten, gemessen:** Der Fixture-Baum ist eine Kopie des Arbeitsbaums (296
+Dateien), einmal je Sitzung gebaut und je Test dupliziert. Die Suite geht von
+5 s auf 25 s. Das ist der Preis dafür, dass die Prüfungen gegen den *echten*
+Baum fahren statt gegen eine Attrappe, die die Anker per Konstruktion enthält.
+
 ### Geändert — die Companion-READMEs beschreiben jetzt diesen Baum (Phase 2b-iv-c)
 
 Die sechs READMEs der drei eingezogenen Skills trugen seit Phase 3a ein

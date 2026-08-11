@@ -186,15 +186,15 @@ gewöhnliche Funktion unter [`tools/suites/mcp_data_fidelity/`](../../tools/suit
 und hängt im gemeinsamen Gerüst — `python -m tools.harness --suite fidelity`
 fährt genau die sechs dieses Skills.
 
-**Eines ist noch nicht mitgezogen, und das gehört benannt statt beschönigt:**
-Im früheren eigenständigen Repo dieses Skills hatte jeder Check mindestens
-einen Baum in `tests/mutations.py`, auf dem er rot werden **musste**, samt der
-Zusicherung, *was* er dann sagt. Diese Mutationssuiten liegen noch in den
-Herkunftsrepos; sie umzuhängen ist der letzte offene Schritt der
-Zusammenführung (siehe
-[`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md)).
-Bis dahin ist das eine Absicht und keine Zusage — genau die Sorte Behauptung,
-gegen die diese Skills geschrieben sind, weshalb sie hier dasteht.
+Zu jedem Check gibt es ausserdem mindestens einen Baum in
+[`tests/suites/`](../../tests/suites/), auf dem er rot werden **muss**, samt
+der Zusicherung, *was* er dann sagt. Ein Check ohne Mutation lässt die Suite
+fehlschlagen — und eine Mutation, deren Suchtext nicht mehr im Baum steht,
+ebenfalls: Eine Mutation, die ins Leere greift, ist ein Test, der nichts mehr
+testet.
+
+Derselbe Satz, eine Ebene höher: Ein Check, der sich nicht so verletzen lässt,
+dass es jemandem auffällt, ist noch kein Check.
 
 Vor einem grösseren Pull Request bitte ein Issue eröffnen, damit die Form vorher
 geklärt ist.
