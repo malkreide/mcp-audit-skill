@@ -1,0 +1,232 @@
+name: validate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python references are syntactically valid
+        run: |
+          if [ -d reference ]; then
+            python -m compileall -q reference/
+            echo "ok — reference/ compiles"
+          else
+            echo "skipped — no reference/ directory yet"
+          fi
+
+      # Nur Formatierung, kein `ruff check` ueber den ganzen Baum —
+      # Begruendung in ruff.toml. Ruff gepinnt, damit ein Upstream-Release den
+      # Formatter nicht aendert und die CI an unberuehrtem Vorlagen-Code rot
+      # wird. Bewusst anheben.
+      #
+      # ACHTUNG: diese Version und die `rev` in .pre-commit-config.yaml
+      # muessen uebereinstimmen — Check 7 prueft es, Check 8 haelt sie
+      # zusaetzlich gegen die ruff, die gleich wirklich laeuft.
+      - name: Ruff installieren
+        run: pip install ruff==0.16.1
+
+      # DIE PRUEFUNGEN STEHEN VOR DEN GATES, und die Registry macht das
+      # billig: `validate.sh` faehrt alle Offline-Pruefungen in einem
+      # Kommando, darunter Check 7 (Pin-Sync) und Check 8 (Pin gegen laufende
+      # ruff). Erst danach duerfen `ruff format --check` und die Lint-Gates
+      # ein Urteil faellen — sonst ist es auf einer Version entstanden, die
+      # niemand gepinnt hat, und niemand erfaehrt es.
+      #
+      # Ein Lauf nennt ALLE Befunde auf einmal (`run_all` bricht nicht beim
+      # ersten ab). Vorher kostete jeder Fehlschlag eine eigene Runde, weil
+      # der abgebrochene Job die Schritte dahinter gar nicht mehr fuhr.
+      #
+      # Die Netz-Pruefung bleibt hier draussen und laeuft als letzter Schritt:
+      # sie ist die einzige, die kein Commit gruen machen kann.
+      - name: Alle Offline-Pruefungen (tools/checks)
+        env:
+          PYTHONUTF8: "1"
+        run: bash scripts/validate.sh
+
+      - name: Formatierung der Referenz-Vorlagen
+        run: ruff format --check .
+
+      # Bis hierher war `reference/patterns.py` die groesste ungeprueft
+      # gebliebene Python-Datei der Kette: `compileall` sagt «Syntax ok»,
+      # `ruff format --check` sagt «Layout ok». Was keiner von beiden sagt, ist
+      # ob ein Import ungenutzt ist, ein Name doppelt gebunden wird oder ein
+      # Vergleich `is` gegen ein Literal stellt. In einer Copy-Paste-Vorlage
+      # wandert jeder dieser Defekte in fremde Codebasen weiter — die Datei ist
+      # zugleich die ungeprueftste und die, die Leute kopieren.
+      #
+      # DIESER SCHRITT STEHT NACH DEM VERSIONS-SCHRITT, nicht davor: erst dort
+      # ist belegt, dass die ruff auf dem PATH die gepinnte ist. Ein Lint-Gate
+      # auf einer ungepinnten ruff meldet ein Ergebnis, das niemand reproduziert.
+      #
+      # `--extend-select`, nicht `ruff check .`: ruff.toml fuehrt `select = []`,
+      # und zwar bewusst — ein `ruff check` im Clone soll auf Vorlagen-Code
+      # keine Fehlalarme werfen (Begruendung dort). Ohne die Flags liest dieser
+      # Schritt genau dieses `select = []` und meldet «All checks passed», ohne
+      # eine einzige Regel geprueft zu haben. Gemessen, weil es der Fehler ist,
+      # der hier am leichtesten passiert: `ruff check reference/` ist an diesem
+      # Baum gruen — und waere es auch an einem kaputten. Ein Gate, das nichts
+      # prueft und gruen meldet, ist schlimmer als keines (OPS-005).
+      #
+      # Der Regelsatz steht ausdruecklich da, statt sich auf ruffs Default zu
+      # verlassen: Der Default ist selbst etwas, das ein Upstream-Release
+      # verschiebt, und dann prueft dieses Gate ueber Nacht etwas anderes als
+      # gestern, ohne dass jemand die Datei angefasst hat. Derselbe Grund wie
+      # beim Pin eine Ebene hoeher.
+      #
+      # `line-length` und `target-version` kommen weiterhin AUS ruff.toml — die
+      # Flags oben erweitern nur die Regelauswahl. Das ist Absicht: eine zweite
+      # Zahl in dieser Datei waere eine zweite Stelle, die auseinanderlaufen
+      # kann, und fuer genau diesen Fall faehrt dieses Repo schon einen eigenen
+      # Sync-Check. Dass ruff.toml hier wirklich gelesen wird, ist nachgemessen
+      # und nicht bloss angenommen: mit `--extend-select E501` ist der Baum bei
+      # `line-length = 88` rot (3 Treffer) und bei 200 gruen.
+      #
+      # F821 ist die eine Ausnahme, und sie ist der Grund fuer `select = []`:
+      # die Vorlagen referenzieren absichtlich Namen aus der Zielumgebung
+      # (`get_settings`, `mcp`, `AuthError`, die Settings-Felder). Gemessen: 31
+      # Treffer, alle beabsichtigt.
+      #
+      # DER PREIS DAVON IST EINGELOEST, nicht bloss benannt: Ein Tippfehler in
+      # einem offenen Namen — `sttings.host` statt `settings.host` — faellt
+      # unter einer pauschalen Ausnahme ebenfalls nicht auf. Deshalb bleibt
+      # `--ignore F821` HIER, und F821 wird im Schritt darunter einzeln gegen
+      # eine Positivliste geprueft. Die Arbeitsteilung ist Absicht: dieser
+      # Schritt beurteilt Lint-Regeln, jener beurteilt Namen.
+      #
+      # E501 bleibt draussen: Zeilenlaenge gehoert dem Formatter, und E501
+      # feuert genau auf das, was `ruff format` NICHT umbrechen kann (lange
+      # Strings, URLs in Kommentaren). Gemessen: 3 Treffer, alle dieser Art.
+      # Sie mitzunehmen hiesse, erklaerenden Vorlagentext umzubrechen, damit
+      # ein Gate gruen wird — der Schwanz wedelt mit dem Hund.
+      - name: Lint der Referenz-Vorlagen
+        run: |
+          ruff check --extend-select E4,E7,E9,F --ignore F821 reference/
+          echo "ok — reference/ lint-sauber (E4,E7,E9,F ohne F821)"
+
+      # ZWEITES LINT-PROFIL, UND DAS IST DER PREIS DER AUSLAGERUNG.
+      #
+      # `tools/` und `tests/` sind kein Vorlagen-Code, sondern Werkzeug: es laeuft, es hat Tests,
+      # und es hat keine offenen Namen aus einer Zielumgebung. Damit faellt der
+      # Grund fuer `--ignore F821` weg — hier ist ein undefinierter Name schlicht
+      # ein Fehler. Dasselbe Profil fuer beide Baeume zu fahren hiesse, die
+      # Nachsicht, die `reference/` braucht, auf Code auszudehnen, der sie nicht
+      # braucht.
+      #
+      # Was ueber `reference/` hinausgeht: I (Importreihenfolge), UP (veraltete
+      # Idiome), B (bugbear), SIM, C4, RET. Gemessen an ci/ mit 0.16.1: sauber.
+      #
+      # PTH bleibt bewusst draussen. Es haette genau einen Treffer — `Path(".")`
+      # in version_badge.py — und der stammt wortgleich aus dem Heredoc, das
+      # dieses Skript ersetzt. Die Auslagerung sollte das Verhalten nicht
+      # anfassen; eine Stilregel ist kein Anlass, davon abzuweichen.
+      - name: Lint der Pruefskripte
+        run: |
+          ruff check --extend-select E4,E7,E9,F,I,UP,B,SIM,C4,RET tools/ tests/
+          echo "ok — tools/ und tests/ lint-sauber (strenger als reference/, ohne F821-Ausnahme)"
+
+      # Der Import-Smoke-Test braucht die Pakete, die `reference/patterns.py`
+      # oben importiert. `starlette` und `uvicorn` kommen als Abhaengigkeiten
+      # von `mcp` mit und stehen deshalb nicht einzeln hier — sie einzeln zu
+      # pinnen hiesse, das Aufloesungsergebnis des SDK zu ueberstimmen.
+      #
+      # `mcp` ist exakt gepinnt, und dieser Pin ist der tragende: Die Vorlage
+      # beschreibt die Oberflaeche von SDK 2.x (`mcp.server.mcpserver.MCPServer`,
+      # `mcp.server.transport_security`). Was der Schritt darunter prueft, ist
+      # die Vorlage gegen GENAU DIESE Version.
+      #
+      # Was er damit NICHT prueft, gehoert dazugesagt: Er merkt nicht, wenn
+      # upstream die Oberflaeche in 2.1 verschiebt — dann bleibt er gruen und
+      # die Vorlage veraltet still. Diesen Pin zu heben ist die Handlung, die
+      # das misst, und sie gehoert bewusst gemacht, nicht von einem Resolver
+      # nebenbei. Umgekehrt gilt der Grund vom ruff-Pin genauso: ungepinnt
+      # faerbt ein fremdes Release die CI an unberuehrtem Vorlagen-Code rot.
+      - name: Vorlagen-Abhaengigkeiten installieren
+        run: pip install mcp==2.0.0 pytest==9.1.1
+
+      # `compileall` beweist, dass die Datei PARST. Das ist weniger, als es
+      # klingt: Ein Import auf ein Modul, das es nicht mehr gibt, ein Dekorator,
+      # der beim Auswerten wirft, ein Tippfehler in einem Namen auf Modulebene —
+      # alles das parst einwandfrei und faellt erst beim Importieren auf.
+      #
+      # Genau hier ist das keine Theorie, sondern der Zweck: Die Vorlage
+      # importiert `from mcp.server.mcpserver import MCPServer` und
+      # `from mcp.server.transport_security import TransportSecuritySettings`.
+      # Das sind die zwei Zeilen, um die es in Regel 1 geht — die 1.x-Fassung
+      # (`mcp.server.fastmcp`) existiert in 2.0.0 nachweislich nicht mehr.
+      # Dieser Schritt ist damit der einzige im Job, der die Vorlage gegen die
+      # ECHTE SDK-Oberflaeche haelt statt gegen ihren eigenen Text.
+      #
+      # `PYTHONPATH=reference` statt eines Pakets: `reference/` ist bewusst
+      # kein Modulbaum (kein `__init__.py`), sondern eine Sammlung von
+      # Vorlagen. Das hier aendert daran nichts und braucht keine neue Datei.
+      #
+      # Kein Skip, wenn der Import scheitert — derselbe Grund wie ueberall in
+      # dieser Datei: «nicht gelaufen» als «bestanden» zu melden ist die eine
+      # Auskunft, die schlimmer ist als keine.
+      - name: reference/patterns.py laesst sich importieren
+        env:
+          PYTHONPATH: reference
+          PYTHONUTF8: "1"
+        run: |
+          python -c "import patterns; print('ok — reference/patterns.py importiert, SDK-Oberflaeche aufgeloest')"
+
+      # DIESER SCHRITT STEHT VOR DEN SECHS CHECKS, DIE ER PRUEFT.
+      #
+      # Fallen beide, ist die Reihenfolge die Diagnose: Sind die Tests rot, ist
+      # die PRUEFLOGIK kaputt und die Befunde der Checks dahinter wertlos —
+      # gruen wie rot. Sind die Tests gruen und ein Check rot, ist der BAUM
+      # kaputt. Stuenden die Tests dahinter, waeren beide Faelle im Log nicht
+      # auseinanderzuhalten.
+      #
+      # Was die Tests belegen, stand vorher nur in der Prosa: dass ein
+      # entfernter Anker FEHLER heisst und nicht «uebersprungen». Nachgemessen
+      # an dieser Suite — den Anker-Abbruch in version_badge.py durch ein
+      # `continue` zu ersetzen laesst den Check am echten Baum gruen (exit 0)
+      # und macht `test_mutation_wird_rot[badge/ANKER-badge-weg]` rot. Ohne
+      # diese Suite waere das eine gruene CI gewesen.
+      #
+      # pytest kommt aus dem Schritt «Vorlagen-Abhaengigkeiten installieren»
+      # darueber — kein zweiter Pin.
+      - name: Tests der Pruefskripte
+        env:
+          PYTHONUTF8: "1"
+        run: python -m pytest tests/ -q
+
+      # DIESER SCHRITT STEHT ABSICHTLICH ALS LETZTER.
+      #
+      # Er ist der einzige, den kein Commit gruen machen kann: Die Description
+      # liegt ausserhalb des Repos, also behebt sie nur ein Mensch mit
+      # `gh repo edit`. Stand er weiter oben, brach er den Job ab und die vier
+      # Schritte dahinter liefen NICHT — gemessen am ersten Lauf, der ihn
+      # ausloeste (PR #13, vierzehn Regeln gegen «thirteen» in der Description).
+      # Das ist OPS-005 an der eigenen Pipeline: Ein uebersprungener Schritt
+      # sieht im Job-Log aus wie einer, der nicht dran war, und ein roter
+      # Badge-Check waere hinter dem roten Description-Check unsichtbar
+      # geblieben. Ein Guard, der nur von aussen zu befriedigen ist, darf die
+      # Guards nicht verdecken, die ein Commit befriedigt.
+      #
+      # Ein fehlgeschlagener API-Aufruf ist ein FEHLER, kein Skip (`curl -f`,
+      # kein `|| true`): Ein Check, der bei einem Netzproblem gruen durchlaeuft,
+      # meldet «bestanden», wo «nicht gelaufen» richtig waere — OPS-005.
+      - name: Netz-Pruefung — GitHub description (Check 9)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONUTF8: "1"
+        run: |
+          GITHUB_REPO_JSON=$(curl -sS -f \
+               -H "Authorization: Bearer $GH_TOKEN" \
+               -H "Accept: application/vnd.github+json" \
+               "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY")
+          export GITHUB_REPO_JSON
+          bash scripts/validate.sh --include-network 9

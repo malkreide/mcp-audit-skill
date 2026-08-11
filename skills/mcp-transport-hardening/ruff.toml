@@ -1,0 +1,67 @@
+# Nur Formatierung, kein Linting.
+#
+# Die Python-Dateien dieses Repos liegen unter `reference/` und sind
+# Copy-Paste-Vorlagen fuer die Zielcodebasis, kein lauffaehiges Modul. Sie
+# referenzieren absichtlich Namen aus der Zielumgebung — ruff meldet das
+# korrekt als F821, aber es ist hier kein Defekt, sondern der Zweck. Die CI
+# fuehrt sie deshalb nur durch `compileall` und `ruff format --check`.
+#
+# `select = []` schaltet das Linting aus: wer hier doch einmal `ruff check`
+# laufen laesst, bekommt keine Fehlalarme auf Vorlagen-Code. Damit steht die
+# Entscheidung in der Konfiguration statt nur in einem Commit-Text.
+target-version = "py311"
+
+# Ausdruecklich eingetragen, obwohl 88 der ruff-Default ist.
+#
+# Der Grund liegt nicht hier, sondern im Zielrepo. `reference/patterns.py` ist
+# eine Copy-Paste-Vorlage: Ihr Inhalt wandert in fremde Codebasen, und die
+# bringen ihre eigene ruff-Konfiguration mit. Steht dort `line-length = 100`,
+# formatiert der erste `ruff format`-Lauf den kopierten Block um — und wer das
+# sieht, liest es als Fehler in der Vorlage statt als zwei Konfigurationen, die
+# schlicht verschieden sind.
+#
+# Gemessen an `reference/patterns.py` mit 0.16.1: zwischen 88 und 100 aendern
+# sich 32 Zeilen. Nicht kosmetisch, sondern strukturell — bei 88 mehrzeilig,
+# bei 100 einzeilig:
+#
+#     # 88
+#     assert "readOnlyHint" in dumped, (
+#         "alias lost — this IS a wire change, stop and re-read"
+#     )
+#     # 100
+#     assert "readOnlyHint" in dumped, "alias lost — this IS ..."
+#
+# An diesem Baum aendert der Eintrag nichts: 88 ist, wonach die Datei schon
+# formatiert ist (gemessen, `ruff format --check .` bleibt gruen). Er aendert,
+# was ein Lesender im Zielrepo daraus schliesst — aus «das Skript ist kaputt»
+# wird «die beiden Repos setzen verschiedene Breiten».
+#
+# Denselben Grund fuehrt mcp-data-source-probe-skill in seiner ruff.toml. Wer
+# hier bewusst auf eine andere Breite geht, aendert die Zahl und laesst den
+# Eintrag stehen — ihn zu loeschen stellt nur den Zustand wieder her, in dem
+# die Breite nirgends steht.
+line-length = 88
+
+# Markdown bleibt aussen vor — als Entscheidung, nicht als Versehen.
+#
+# Bis ruff 0.15.8 war die Formatierung von Python-Bloecken in Markdown
+# `preview`-only: `ruff format --check .` liess `.md` unberuehrt. Seit 0.16.1
+# ist sie stabil und standardmaessig an. Da dieses Repo NUR das Format-Gate
+# faehrt (`select = []` unten), waere der Bump hier besonders sichtbar
+# geworden: das einzige Gate haette ueber Nacht Dokumentation beanstandet, die
+# niemand angefasst hat — genau der Effekt, gegen den der Pin existiert.
+#
+# Gemessen beim Bump: kein einziges `.py` formatiert sich unter 0.16.1 anders.
+# Betroffen waere genau eine Datei gewesen: SKILL.md, also der Skill selbst.
+#
+# `extend-exclude`, nicht `exclude`: `exclude` ERSETZT ruffs Vorgabeliste, und
+# damit waeren `.venv/`, `node_modules/` und Konsorten wieder im Gate.
+# Gemessen an einem Baum mit je einer fehlerhaften Datei darunter: ohne
+# Eintrag 1 Datei geprueft, mit `exclude` 3, mit `extend-exclude` wieder 1.
+#
+# Markdown-Formatierung zu uebernehmen ist eine eigene, messbare Aenderung:
+# diese Zeile entfernen, `ruff format .` laufen lassen, Diff lesen.
+extend-exclude = ["*.md"]
+
+[lint]
+select = []
