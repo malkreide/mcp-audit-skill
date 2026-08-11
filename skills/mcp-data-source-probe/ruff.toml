@@ -1,0 +1,56 @@
+# Formatierung UND Linting.
+#
+# Hier stand frueher `select = []` mit der Begruendung, die Dateien unter
+# `reference/` seien Copy-Paste-Vorlagen, die absichtlich Namen aus der
+# Zielumgebung referenzieren — ruff wuerde das als F821 melden, obwohl es hier
+# der Zweck und kein Defekt ist.
+#
+# Fuer dieses Repo stimmt das nicht. `reference/response_envelope.py` und
+# `reference/retry_backoff.py` sind beide geschlossen: sie importieren, was sie
+# brauchen (`pydantic`, `httpx`), definieren alles Uebrige selbst und lassen
+# sich unveraendert importieren — der Import-Smoke-Test in scripts/validate.sh
+# belegt das bei jedem Lauf. Die Begruendung war aus einem Schwester-Repo
+# uebernommen, in dem sie zutrifft; hier hat sie das Linting fuer Dateien
+# abgeschaltet, die es bestehen.
+#
+# Das ist teuer, denn `reference/` ist genau der Code, den Leute kopieren. Was
+# hier durchrutscht, rutscht in jeden `*-mcp`-Server durch, der die Vorlage
+# uebernimmt.
+#
+# Sollte spaeter eine Vorlage dazukommen, die tatsaechlich offene Namen fuehrt:
+# `# noqa: F821` mit Begruendung an die betroffene Zeile — nicht das Regelwerk
+# fuer alle Dateien wieder abschalten.
+target-version = "py311"
+line-length = 88
+
+# Markdown bleibt aussen vor — als Entscheidung, nicht als Versehen.
+#
+# Bis ruff 0.15.8 war die Formatierung von Python-Bloecken in Markdown
+# `preview`-only: `ruff format --check .` liess `.md` unberuehrt. Seit 0.16.1
+# ist sie stabil und standardmaessig an. Der Bump haette das Gate damit ueber
+# Nacht auf Dokumentation ausgeweitet — genau der Effekt, gegen den der Pin
+# existiert.
+#
+# Gemessen beim Bump: kein einziges `.py` formatiert sich unter 0.16.1 anders,
+# `ruff check` findet nichts Neues. Betroffen waere genau eine Datei gewesen:
+# SKILL.md, also der Skill selbst.
+#
+# `extend-exclude`, nicht `exclude`: `exclude` ERSETZT ruffs Vorgabeliste, und
+# damit waeren `.venv/`, `node_modules/` und Konsorten wieder im Gate.
+# Gemessen an einem Baum mit je einer fehlerhaften Datei darunter: ohne Eintrag
+# 1 Datei geprueft, mit `exclude` 3, mit `extend-exclude` wieder 1.
+#
+# Markdown-Formatierung zu uebernehmen ist eine eigene, messbare Aenderung:
+# diese Zeile entfernen, `ruff format .` laufen lassen, Diff lesen.
+extend-exclude = ["*.md"]
+
+[lint]
+# E/W  pycodestyle       — Zeilenlaenge, Whitespace
+# F    pyflakes          — ungenutzte Importe, undefinierte Namen
+# I    isort             — Importreihenfolge (`ruff format` sortiert nicht)
+# UP   pyupgrade         — veraltete Syntax fuer target-version
+# B    flake8-bugbear    — typische Fallen (mutable defaults, …)
+# SIM  flake8-simplify
+# C4   flake8-comprehensions
+# RUF  ruff-spezifisch
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "C4", "RUF"]

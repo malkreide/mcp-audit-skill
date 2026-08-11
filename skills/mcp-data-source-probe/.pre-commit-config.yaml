@@ -1,0 +1,21 @@
+# Pre-Commit-Hook — spiegelt die ruff-Schritte aus
+# .github/workflows/ci.yml.
+#
+# Beide Schritte, `ruff-check` und `ruff-format`: die Dateien unter
+# `reference/` sind zwar Vorlagen, aber geschlossene — sie bestehen das
+# Linting. Die Begruendung steht in ruff.toml.
+#
+# Einmalig pro Clone:
+#     pip install pre-commit
+#     pre-commit install
+#
+# ACHTUNG: `rev` unten und `pip install ruff==…` in ci.yml muessen dieselbe
+# Version nennen — der Schritt «Ruff-Pin-Sync» in ci.yml prueft das.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.1
+    hooks:
+      # Reihenfolge wie in ci.yml: erst linten, dann formatieren.
+      - id: ruff-check
+      - id: ruff-format
