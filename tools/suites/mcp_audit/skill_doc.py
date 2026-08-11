@@ -45,3 +45,16 @@ def frontmatter(root: Path) -> str:
 @register(12, "the quality-chain table names every member", suite=SUITE)
 def chain_table(root: Path) -> str:
     return readme_gates.chain_table(root, sections=CHAIN_SECTIONS)
+
+
+@register(16, "the version badge matches the latest CHANGELOG release", suite=SUITE)
+def version_badge(root: Path) -> str:
+    """G11, hier zuletzt gebunden — weil es bis 2b-iv keinen Gegenstand gab.
+
+    Die READMEs dieses Repos trugen kein Versions-Badge; die der drei
+    Companions schon. Eines einzufuehren war eine Aenderung am PRODUKT und
+    nicht an der Zusammenfuehrung, und deshalb eine Entscheidung des
+    Betreibers. Sie ist getroffen: Das Badge steht in beiden READMEs und wird
+    seither gegen die CHANGELOG-Spitze gehalten.
+    """
+    return readme_gates.version_badge(root)

@@ -120,7 +120,7 @@ vorhanden.
 | G8 | referenzierte Dateien existieren | – | 7 | 2 | 10 | **erledigt** |
 | G9 | Python-Referenzen syntaktisch gueltig | – | 2 | 1 | – | **erledigt** |
 | G10 | `SKILL.md`-Frontmatter wohlgeformt | – | 5 | 4 | 1 | **erledigt** |
-| G11 | Version-Badge == CHANGELOG | – | 9 | 7 | 5 | gebaut, Bindung in 2b-iv (4.2f) |
+| G11 | Version-Badge == CHANGELOG | – | 9 | 7 | 5 | **erledigt** |
 | G12 | Quality-Chain-Tabelle vollstaendig | – | 10 | 8 | 4 | **erledigt** |
 | G13 | GitHub-Description == Zaehlwert | – | 15 | 15 | 9 | gebaut, Bindung offen (4.2g) |
 | G14 | Zaehlwert konsistent ueber alle Dateien | – | 11, 19 | 5 | 3 | **erledigt** |
@@ -533,6 +533,30 @@ Ueberschrift des Abschnitts, auf den das Muster beschraenkt bleibt.
 
 **G11 IST ERSTMALS GEBUNDEN** — als `transport/5`. Das Gate stand seit
 2b-iii-a ohne Gegenstand, weil die READMEs der Repo-Wurzel kein Badge tragen.
+
+### 4.2k Die beiden offenen Fragen sind entschieden
+
+**Die Schrittzahl.** Beide READMEs sprachen vom «six-step workflow»,
+waehrend `SKILL.md` und der Slash-Command acht Schritte fuehren (0 bis 7).
+4.2h liess offen, ob die Angabe veraltet ist oder «die Schritte 1 bis 6»
+meint. Der Betreiber hat entschieden: Es ist die volle Zahl. Beide READMEs
+sagen jetzt acht — und stehen seither unter Aufsicht.
+
+Dafuer hat das Zaehl-Gate eine dritte Faehigkeit bekommen. Es kannte die
+normative QUELLE (nummerierte Abschnitte) und SPIEGEL (Dateien, die dieselbe
+Menge nummeriert aufzaehlen). Eine Prosa-Aussage ist beides nicht: Sie zaehlt
+nicht auf, sie BEHAUPTET eine Zahl. `claims` liest sie, und `as_number` aus
+`gates/repo_meta.py` nimmt Ziffer wie englisches Zahlwort — der englische Text
+sagt «eight-step», der deutsche «8-Schritte». Eine Pruefung, die nur Ziffern
+liest, haette die Haelfte nicht erfasst.
+
+**Das Versions-Badge.** Es fehlte in den READMEs der Repo-Wurzel, weshalb G11
+seit 2b-iii-a ohne Gegenstand war. Eines einzufuehren war eine Aenderung am
+PRODUKT und nicht an der Zusammenfuehrung — deshalb eine Entscheidung des
+Betreibers, nicht der Zusammenfuehrung. Sie ist getroffen: Das Badge steht in
+beiden READMEs und laeuft als `audit/16` gegen die CHANGELOG-Spitze.
+
+Damit ist G11 an allen Stellen gebunden, an denen es einen Gegenstand hat.
 
 ### 4.3 Konfiguration
 

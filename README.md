@@ -2,6 +2,7 @@
 
 > Claude skill for systematic audits of MCP servers against a curated corpus of best-practice standards. **120 checks**, 12 categories, on a dual spec baseline (`2025-11-25` and `2026-07-28`), with a Swiss compliance layer for public administration and a data-fidelity layer for data-source servers.
 
+[![Version](https://img.shields.io/badge/version-2.3.0-blue)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Checks: 120](https://img.shields.io/badge/Checks-120-blue.svg)](./checks/)
 [![Coverage: A1–A9, B1–B12, C1–C4](https://img.shields.io/badge/Best--Practice%20Coverage-A1%E2%80%93A9%2C%20B1%E2%80%93B12%2C%20C1%E2%80%93C4-success)](./CHANGELOG.md)
@@ -114,7 +115,7 @@ Path helpers for the skill scripts live in [`tools/paths.sh`](tools/paths.sh) (B
 
 ### As a Claude Code slash command (`/audit-mcp`)
 
-The skill ships a slash command that runs the six-step workflow as a Claude Code workflow — profile load, applicability filter, automated check execution, findings generation and report creation in one pass.
+The skill ships a slash command that runs the eight-step workflow as a Claude Code workflow — profile load, applicability filter, automated check execution, findings generation and report creation in one pass.
 
 ```bash
 git clone https://github.com/malkreide/mcp-audit-skill.git
