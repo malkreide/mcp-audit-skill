@@ -2,7 +2,7 @@
 
 > Claude skill for systematic audits of MCP servers against a curated corpus of best-practice standards. **120 checks**, 12 categories, on a dual spec baseline (`2025-11-25` and `2026-07-28`), with a Swiss compliance layer for public administration and a data-fidelity layer for data-source servers.
 
-[![Version](https://img.shields.io/badge/version-2.3.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Checks: 120](https://img.shields.io/badge/Checks-120-blue.svg)](./checks/)
 [![Coverage: A1–A9, B1–B12, C1–C4](https://img.shields.io/badge/Best--Practice%20Coverage-A1%E2%80%93A9%2C%20B1%E2%80%93B12%2C%20C1%E2%80%93C4-success)](./CHANGELOG.md)
@@ -379,7 +379,7 @@ control is there.
 
 ## Status
 
-**Version:** v2.3.0 — what the fixture claims, nobody measured. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
+**Version:** v3.0.0 — what the fixture claims, nobody measured. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
 
 **Completeness:**
 - ✅ Methodology (`SKILL.md`) and templates (finding, audit report)

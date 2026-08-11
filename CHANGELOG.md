@@ -6,6 +6,28 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v3.0.0] — 2026-08-11 — Fünf Repositories auf zwei
+
+Der Katalog ist **unverändert**: 120 Checks in zwölf Kategorien auf zwei
+Spec-Baselines, keine Severity, keine Reichweite, kein Kriterium, keine
+Adoptionsstufe bewegt. **Die Re-Audit-Warteschlange bleibt deshalb leer** —
+kein Auslöser aus [§5](SKILL.md#versionierung-des-check-katalogs) greift, und
+kein bestehendes Audit-Verdikt ändert sich.
+
+**Warum trotzdem ein Major.** Was sich bewegt hat, ist nicht der Katalog,
+sondern das Repository um ihn herum. Es liefert jetzt **vier Skills** statt
+einem; die Installationswege von dreien haben sich geändert, ihre Repos sind
+archiviert, und `tools/checks/` heisst `tools/suites/`. Für jeden, der einem
+der alten READMEs folgte oder ein Prüfmodul importierte, ist das ein Bruch.
+SemVer misst die Schnittstelle, und die Schnittstelle dieses Repositories ist
+nicht nur sein Katalog.
+
+Was das im einzelnen war, steht in den Abschnitten darunter — sie sind aus
+`[Unreleased]` übernommen und beschreiben die Phasen 0 bis 5 der
+Zusammenführung. Der vollständige Nachweis, samt jeder Messung und jedem
+offenen Punkt, liegt in
+[`docs/consolidation/MERGE-PLAN.md`](docs/consolidation/MERGE-PLAN.md).
+
 ### Hinzugefügt — was sonst mit den Herkunftsrepos verschwunden wäre (Phase 5)
 
 Ein archiviertes Repository fährt keine Workflows mehr. Alles, was nur dort
