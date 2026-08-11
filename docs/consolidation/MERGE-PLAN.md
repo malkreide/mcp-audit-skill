@@ -122,10 +122,10 @@ vorhanden.
 | G10 | `SKILL.md`-Frontmatter wohlgeformt | – | 5 | 4 | 1 | **erledigt** |
 | G11 | Version-Badge == CHANGELOG | – | 9 | 7 | 5 | gebaut, Bindung in 2b-iv (4.2f) |
 | G12 | Quality-Chain-Tabelle vollstaendig | – | 10 | 8 | 4 | **erledigt** |
-| G13 | GitHub-Description == Zaehlwert | – | 15 | 15 | 9 | Phase 2b |
+| G13 | GitHub-Description == Zaehlwert | – | 15 | 15 | 9 | gebaut, Bindung offen (4.2g) |
 | G14 | Zaehlwert konsistent ueber alle Dateien | – | 11, 19 | 5 | 3 | Phase 2b |
 | G15 | referenzierte Workflows existieren | – | – | 16 | – | Phase 2b-iii (4.2e) |
-| G16 | Tag == CHANGELOG | – | – | 13 | – | Phase 2b |
+| G16 | Tag == CHANGELOG | – | – | 13 | – | **erledigt** |
 
 Drei Entscheide dazu:
 
@@ -375,6 +375,49 @@ zaehlen Regeln) samt der Frage, wie ein Monorepo mit vier verschiedenen
 Zaehlwerten damit umgeht. Ein `offline=False`-Gate in einen Schritt zu legen,
 dessen Abnahme lokal laufen soll, haette die Abnahme selbst entwertet.
 
+### 4.2g Was 2b-iii-b gezeigt hat (G13, G16) — und ein offener Befund
+
+**DIE DESCRIPTION DIESES REPOS IST SEIT LAENGEREM FALSCH.** Gemessen beim
+Zusammenfuehren von G13: Die GitHub-Description nennt **116 Checks**, der
+Katalog steht bei **120**. Der Waechter dafuer existiert hier bereits
+(`tools/check_repo_description.py` plus `.github/workflows/repo-description.yml`)
+und greift korrekt — der Workflow ist auf `main` rot. Niemand hat nachgezogen.
+
+Reparieren kann das kein Commit: Die Description liegt ausserhalb des
+Repositories. Sie braucht ein `gh repo edit` mit Administrationsrechten und
+gehoert damit einem Menschen. Der Waechter druckt das fertige Kommando.
+
+**G13 IST GEBAUT, ABER NOCH NICHT GEBUNDEN.** Die vier Fassungen pruefen
+dasselbe in vier Formen — dieses Repo zwei ZAHLEN, probe und transport je ein
+ZAHLWORT in einer eigenen Wendung, fidelity wieder anders. Verallgemeinert ist
+das eine Liste von ZUSAGEN: je ein Muster mit einer Gruppe `wert` und die
+Zahl, die dort stehen muss. Ziffer oder Zahlwort entscheidet der Text.
+
+Aus der Fassung DIESES Repos kam die gruendlichste Eigenschaft: Sie liest
+ALLE Vorkommen, nicht nur das erste. Eine Description, die dieselbe Zusage
+zweimal mit verschiedenen Zahlen macht, widerspricht sich selbst — wer nur das
+erste Vorkommen liest, meldet sie als in Ordnung.
+
+Gebunden ist sie hier noch nicht, und der Grund ist Sorgfalt statt Aufwand:
+`tools/check_repo_description.py` hat einen eigenen Workflow und Tests, die
+seine Meldungstexte WOERTLICH zusichern
+(`"Description nennt 80 Checks, Katalog hat 85"`). Die beiden Einstiege auf
+eine Implementierung zu ziehen — wie bei `check_ruff_pin.py` in Phase 2a —
+aendert diese Texte und gehoert in einen Schritt, der nichts anderes tut.
+
+**G16 laeuft mit `offline=False`, und das gehoert zur Sache.** Sie braucht
+einen Tag-Kontext und laeuft im Tag-Lauf der CI, nicht im lokalen Runner.
+`scripts/validate.sh` faehrt nur die Offline-Pruefungen, damit ein frischer
+Clone ohne Zugangsdaten vollstaendig durchlaeuft — deshalb zeigt der lokale
+Lauf zwoelf Pruefungen und nicht dreizehn. Abgenommen wurde sie gegen alle
+sieben CHANGELOG-Spitzen im Zugriff: die vier Herkunftsrepos und die drei
+`skills/<name>/`.
+
+**G15 bleibt uebrig** und wird 2b-iii-d. Der Grund steht in 4.2e: Sie braucht
+einen Scope-Parameter, weil vier ihrer sieben Treffer in diesem Repo
+Katalog-Beispiele sind und keine Selbstverweise. Das ist die einzige der
+sechzehn Familien, die neu ENTWORFEN und nicht bloss zusammengelegt wird.
+
 ### 4.3 Konfiguration
 
 | Datei | Entscheid |
@@ -512,7 +555,8 @@ damit hier auf und nicht erst, wenn jemand den Skill installieren will.
 | **2b-i** | G3–G6 nach `tools/gates/ruff.py` | **erledigt** — gegen drei Baeume gruen, audit bekommt zwei Pruefungen dazu |
 | **2b-ii** | G7–G9 (Dateien und Hygiene) | **erledigt** — gegen alle vier Baeume gruen, audit bekommt drei Pruefungen dazu |
 | **2b-iii-a** | G10–G12 (Doku-Anker, offline) | **erledigt** — gegen alle vier Baeume gruen, audit bekommt zwei Pruefungen dazu |
-| **2b-iii-b** | G13, G15, G16 — die kontextgebundenen (Netz, Tag, Scope) | |
+| **2b-iii-b** | G13 und G16 — die Zusagen ausserhalb der Arbeitskopie | **erledigt** — G16 gebunden als `audit/13`, G13 gebaut (4.2g) |
+| **2b-iii-d** | G15 mit Scope-Parameter | |
 | **2b-iii-c** | G14 (Zaehlwerte, parametrisiert nach Einheit) | |
 | **2b-iv** | die 10 skill-eigenen Pruefungen, READMEs neu fassen | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
 | **3a** | Die drei Companions per `git subtree` nach `skills/<name>/`, Historie erhalten | **erledigt** — drei `SKILL.md` am Platz, Frontmatter-`name` unveraendert, 1315 Tests gruen |

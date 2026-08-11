@@ -28,12 +28,13 @@ Lauf, ohne dass etwas rot wird — deshalb haelt
 `test_registry_deckt_jedes_pruefmodul_ab` die Zeile gegen den Paketinhalt.
 """
 
-from . import hygiene, ruff_gate, skill_archive, skill_doc, toolchain
+from . import hygiene, release, ruff_gate, skill_archive, skill_doc, toolchain
 from ._suite import SUITE
 
 __all__ = [
     "SUITE",
     "hygiene",
+    "release",
     "ruff_gate",
     "skill_archive",
     "skill_doc",

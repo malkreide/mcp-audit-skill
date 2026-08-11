@@ -6,6 +6,27 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — der Tag wird geprüft (Phase 2b-iii-b)
+
+- **`audit/13`** — Tag und CHANGELOG-Spitze nennen dieselbe Version. Der Tag
+  ist die dritte Stelle, die eine Version behauptet, und die einzige, die man
+  nach dem Veröffentlichen nicht mehr stillschweigend korrigieren kann. Sie
+  läuft mit `offline=False` im Tag-Lauf der CI; `scripts/validate.sh` zeigt
+  deshalb weiterhin zwölf Prüfungen.
+
+**Offener Befund, gemessen beim Zusammenführen von G13:** Die
+GitHub-Description dieses Repos nennt **116 Checks**, der Katalog steht bei
+**120**. Der Wächter dafür existiert (`tools/check_repo_description.py` plus
+`repo-description.yml`) und greift korrekt — der Workflow ist auf `main` rot.
+Reparieren kann das kein Commit: Die Description liegt ausserhalb des
+Repositories und braucht ein `gh repo edit`.
+
+`tools/gates/repo_meta.py` ist gebaut und getestet, aber noch nicht gebunden:
+`check_repo_description.py` hat Tests, die seine Meldungstexte wörtlich
+zusichern. Die zwei Einstiege auf eine Implementierung zu ziehen ändert diese
+Texte und gehört in einen eigenen Schritt.
+
+
 ### Geändert — die Doku-Anker laufen über gemeinsame Gates (Phase 2b-iii-a)
 
 Die Familien G10–G12 stehen jetzt in `tools/gates/skill_doc.py` und
