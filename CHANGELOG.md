@@ -6,6 +6,29 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — drei weitere Prüfungen aus den Schwesterrepos (Phase 2b-ii)
+
+Die Familien G7–G9 laufen jetzt über `tools/gates/hygiene.py` und
+`tools/gates/references.py`. Dieses Repo bekommt dabei drei Gates dazu, die
+es nicht hatte:
+
+- **`audit/8`** — kein kompiliertes Python im Index. Belegte Vorgeschichte:
+  In `mcp-data-source-probe-skill` war eine `.pyc` schon einmal eingecheckt
+  (dessen CHANGELOG 1.1.0, «Removed»). Der Vorfall stand dokumentiert, ein
+  Wächter dagegen fehlte — ein Schwesterrepo hatte ihn, zwei nicht.
+- **`audit/9`** — jede referenzierte Datei ist da. Steht früh in der
+  Nummerierung, weil sie die Abstürze der anderen erklärt.
+- **`audit/10`** — die Vorlagen unter `skills/*/reference/` lassen sich
+  übersetzen. Sie *importieren* zu wollen wäre falsch: Vorlagen-Code
+  referenziert Namen, die erst im Zielserver existieren.
+
+Das Muster von `audit/8` ist die **Vereinigung** der beiden Fassungen: probes
+Regex und transports Tupel fanden je etwas, das dem anderen entging.
+
+Abgenommen gegen alle vier echten Bäume mit je eigenen Parametern: zwölf
+Läufe, zwölf grün.
+
+
 ### Hinzugefügt — zwei Prüfungen, die dieses Repo nicht hatte (Phase 2b-i)
 
 Die Ruff-Familien G3–G6 laufen jetzt über eine Implementierung in
