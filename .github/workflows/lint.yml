@@ -24,6 +24,17 @@ jobs:
       # den Pin zusaetzlich gegen die ruff, die gleich wirklich laeuft.
       - run: pip install ruff==0.16.1
 
+      # Die Laufzeit-Abhaengigkeiten der Vorlagen unter
+      # `skills/mcp-data-source-probe/reference/`. `probe/3` importiert sie
+      # wirklich, statt sie nur zu kompilieren — ohne `pydantic` und `httpx`
+      # wird die Pruefung ROT und nicht uebersprungen. Das ist Absicht: «nicht
+      # gelaufen» als «bestanden» zu melden ist die eine Auskunft, die
+      # schlimmer ist als keine.
+      #
+      # Gepinnt aus demselben Grund wie ruff — ein Upstream-Release soll die
+      # CI an unberuehrtem Vorlagen-Code nicht rot faerben.
+      - run: pip install -r requirements-reference.txt
+
       # EIN KOMMANDO STATT VIER SCHRITTE.
       #
       # Die Gates dieses Jobs stehen als nummerierte Pruefungen unter

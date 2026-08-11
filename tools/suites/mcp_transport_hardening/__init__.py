@@ -33,7 +33,8 @@ ABSORBED: dict[int, str] = {
     4: "audit/12 — die Ketten-Tabelle steht einmal, gegen ein Manifest",
     7: "audit/1 — es gibt eine ruff.toml und eine lint.yml",
     8: "audit/2 — es gibt einen PATH und eine laufende ruff",
-    9: "audit/13 (gebaut, Bindung offen) — es gibt eine GitHub-Description",
+    9: "G13 (tools/gates/repo_meta.py, gebaut, Bindung offen) — es gibt eine "
+    "GitHub-Description",
     11: "audit/8 — es gibt einen git-Index",
 }
 

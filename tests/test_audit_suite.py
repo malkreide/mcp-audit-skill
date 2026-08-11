@@ -34,6 +34,8 @@ if str(REPO_ROOT) not in sys.path:
 
 import tools.suites  # noqa: E402
 import tools.suites.mcp_audit  # noqa: E402
+import tools.suites.mcp_data_fidelity  # noqa: E402
+import tools.suites.mcp_data_source_probe  # noqa: E402
 import tools.suites.mcp_transport_hardening  # noqa: E402
 from tools.gates import ruff as gates_ruff  # noqa: E402
 from tools.gates import toolchain as gates_toolchain  # noqa: E402
@@ -189,6 +191,14 @@ def test_bewerte_meldet_auch_ohne_ausgabe_etwas():
             tools.suites.mcp_transport_hardening.SUITE,
             tools.suites.mcp_transport_hardening.ABSORBED,
         ),
+        (
+            tools.suites.mcp_data_fidelity.SUITE,
+            tools.suites.mcp_data_fidelity.ABSORBED,
+        ),
+        (
+            tools.suites.mcp_data_source_probe.SUITE,
+            tools.suites.mcp_data_source_probe.ABSORBED,
+        ),
     ],
 )
 def test_nummern_sind_lueckenlos_und_eindeutig(suite, absorbed):
@@ -220,7 +230,17 @@ def test_nummern_sind_lueckenlos_und_eindeutig(suite, absorbed):
     )
 
 
-def test_registry_deckt_jedes_pruefmodul_ab():
+@pytest.mark.parametrize(
+    "paket",
+    [
+        tools.suites.mcp_audit,
+        tools.suites.mcp_transport_hardening,
+        tools.suites.mcp_data_fidelity,
+        tools.suites.mcp_data_source_probe,
+    ],
+    ids=lambda p: p.SUITE,
+)
+def test_registry_deckt_jedes_pruefmodul_ab(paket):
     """Ein Modul ohne Importzeile in __init__.py registriert nichts.
 
     VOLLSTAENDIG STATISCH — weder importiert noch `all_checks()` befragt, und
@@ -232,22 +252,31 @@ def test_registry_deckt_jedes_pruefmodul_ab():
 
     Verglichen werden zwei TEXTE: welche Module `@register(` enthalten, und
     welche `__init__.py` importiert.
+
+    UEBER ALLE SUITEN und nicht nur ueber `audit`: Die Zusage gilt je Paket,
+    und eine zweite Suite, die niemand so prueft, ist genau der Fall, den der
+    Test beschreibt.
     """
-    paket = pathlib.Path(tools.suites.mcp_audit.__file__).parent
+    verzeichnis = pathlib.Path(paket.__file__).parent
     mit_register = {
         datei.stem
-        for datei in sorted(paket.glob("*.py"))
+        for datei in sorted(verzeichnis.glob("*.py"))
         if not datei.name.startswith("_")
         and "@register(" in datei.read_text(encoding="utf-8")
     }
-    init = (paket / "__init__.py").read_text(encoding="utf-8")
+    assert mit_register, (
+        f"{verzeichnis.name}: kein einziges Modul ruft @register — dann prueft "
+        "dieser Test nichts und meldete es als Erfolg."
+    )
+    init = (verzeichnis / "__init__.py").read_text(encoding="utf-8")
     importiert = importierte_namen(init)
 
     fehlend = sorted(mit_register - importiert)
     assert not fehlend, (
         f"Diese Module rufen @register, stehen aber nicht in der Importzeile "
-        f"von __init__.py: {fehlend}. Ohne sie verschwinden ihre Pruefungen "
-        "aus jedem Lauf von validate.sh, ohne dass etwas rot wird."
+        f"von {verzeichnis.name}/__init__.py: {fehlend}. Ohne sie verschwinden "
+        "ihre Pruefungen aus jedem Lauf von validate.sh, ohne dass etwas rot "
+        "wird."
     )
 
 
