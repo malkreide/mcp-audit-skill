@@ -106,24 +106,24 @@ vorhanden.
 
 **Generisch — 16 Familien, die heute 43 Registrierungen tragen** → `tools/gates/`
 
-| # | Familie | audit | probe | fidelity | transport |
-|---|---|---|---|---|---|
-| G1 | ruff-Pin-Sync CI ↔ pre-commit | 1 | 16 | 12 | 7 |
-| G2 | laufende ruff == Pin | 2 | 18 | 18 | 8 |
-| G3 | `ruff check` | 3 | 13 | 10 | – |
-| G4 | `ruff format --check` | 4 | 14 | 11 | – |
-| G5 | das ruff-Gate beisst noch | – | 12 | 9 | – |
-| G6 | Zeilenbreite wirksam | – | – | 17 | – |
-| G7 | kein Bytecode getrackt | – | 4 | 3 | 11 |
-| G8 | referenzierte Dateien existieren | – | 7 | 2 | 10 |
-| G9 | Python-Referenzen syntaktisch gueltig | – | 2 | 1 | – |
-| G10 | `SKILL.md`-Frontmatter wohlgeformt | – | 5 | 4 | 1 |
-| G11 | Version-Badge == CHANGELOG | – | 9 | 7 | 5 |
-| G12 | Quality-Chain-Tabelle vollstaendig | – | 10 | 8 | 4 |
-| G13 | GitHub-Description == Zaehlwert | – | 15 | 15 | 9 |
-| G14 | Zaehlwert konsistent ueber alle Dateien | – | 11, 19 | 5 | 3 |
-| G15 | referenzierte Workflows existieren | – | – | 16 | – |
-| G16 | Tag == CHANGELOG | – | – | 13 | – |
+| # | Familie | audit | probe | fidelity | transport | Stand |
+|---|---|---|---|---|---|---|
+| G1 | ruff-Pin-Sync CI ↔ pre-commit | 1 | 16 | 12 | 7 | **erledigt** |
+| G2 | laufende ruff == Pin | 2 | 18 | 18 | 8 | **erledigt** |
+| G3 | `ruff check` | 3 | 13 | 10 | – | Phase 2b |
+| G4 | `ruff format --check` | 4 | 14 | 11 | – | Phase 2b |
+| G5 | das ruff-Gate beisst noch | – | 12 | 9 | – | Phase 2b |
+| G6 | Zeilenbreite wirksam | – | – | 17 | – | Phase 2b |
+| G7 | kein Bytecode getrackt | – | 4 | 3 | 11 | Phase 2b |
+| G8 | referenzierte Dateien existieren | – | 7 | 2 | 10 | Phase 2b |
+| G9 | Python-Referenzen syntaktisch gueltig | – | 2 | 1 | – | Phase 2b |
+| G10 | `SKILL.md`-Frontmatter wohlgeformt | – | 5 | 4 | 1 | Phase 2b |
+| G11 | Version-Badge == CHANGELOG | – | 9 | 7 | 5 | Phase 2b |
+| G12 | Quality-Chain-Tabelle vollstaendig | – | 10 | 8 | 4 | Phase 2b |
+| G13 | GitHub-Description == Zaehlwert | – | 15 | 15 | 9 | Phase 2b |
+| G14 | Zaehlwert konsistent ueber alle Dateien | – | 11, 19 | 5 | 3 | Phase 2b |
+| G15 | referenzierte Workflows existieren | – | – | 16 | – | Phase 2b |
+| G16 | Tag == CHANGELOG | – | – | 13 | – | Phase 2b |
 
 Drei Entscheide dazu:
 
@@ -174,6 +174,49 @@ Totalausfall, deshalb sind es zwei Pruefungen und nicht eine.
 Der Suite-Name steht in `tools/suites/<name>/_suite.py` und nicht in dessen
 `__init__.py`: Dort stehen die Modul-Importe, und die Pruefmodule brauchen den
 Namen genau waehrend dieses Imports — beides in einer Datei waere ein Zyklus.
+
+### 4.2b Was der erste Zusammenzug gezeigt hat (G1/G2, erledigt)
+
+Die Toolchain-Familie ist zusammengelegt: `tools/gates/toolchain.py` traegt
+jetzt eine Implementierung fuer alle vier Suiten. Drei Befunde daraus, die
+fuer die uebrigen vierzehn Familien gelten:
+
+**1. Der Unterschied war ein Dateiname.** Der ruff-Pin steht hier in
+`lint.yml`, in den drei Schwesterrepos in `ci.yml`. Das war der einzige
+inhaltliche Grund, warum vier Kopien existierten. Er ist jetzt Parameter
+(`ci_workflow=`), und ein Test faehrt beide Schreibweisen gegen dieselbe
+Implementierung.
+
+**2. Verbesserungen sind in ihrer Kopie haengengeblieben.** Nur
+`mcp-data-fidelity-skill` prueft, ob die Pre-Commit-Hooks ueberhaupt noch da
+sind, und listet beschattende `ruff`-Binaries im Befund. Die anderen drei tun
+es nicht — ohne dass jemand dagegen entschieden haette. Beides ist mit dem
+Zusammenzug fuer alle da. Das ist der eigentliche Ertrag der Uebung, und er
+ist groesser als die eingesparten Zeilen.
+
+**3. Nicht jeder Unterschied ist Drift.** `mcp-transport-hardening-skill`
+fuehrt nur `ruff-format` und keinen `ruff-check`-Hook. Das sah zunaechst nach
+einer Luecke aus, ist aber begruendet: Dort steht `select = []` in `ruff.toml`
+bewusst, damit ein `ruff check` im Clone nicht ueber Vorlagen-Code faellt, und
+die CI prueft stattdessen gezielt mit `ruff check --extend-select …` auf
+`reference/` und `tools/ tests/`. Deshalb ist `required_hooks` LEER per
+Vorgabe und wird je Suite genannt: Eine Vorgabe waere keine gemeinsame
+Zusage, sondern eine erfundene — und der erste, der sie «erfuellt», braeche
+die Absicht des Repos, das sie nicht teilt.
+
+**Wo die Logik hinkam, und warum das eine Entscheidung war.** Vorher trug
+`tools/check_ruff_pin.py` die Vergleichsfunktion, weil der Pre-Commit-Hook sie
+DIREKT aufruft (`entry: python3 tools/check_ruff_pin.py`, `language: system`),
+und das Suite-Modul war der Adapter. Haette der generische Zusammenzug daneben
+eine zweite Implementierung gestellt, waere aus der Entdopplung eine
+Verdopplung geworden. Jetzt traegt `tools/gates/` die Logik, und beide
+Einstiege sind Huellen darum — der Hook-Einstiegspunkt ist unveraendert, und
+die Tests der reinen Funktionen laufen ueber ihre alten Importe weiter.
+
+**Abnahme des Zusammenzugs:** Das Gate wurde gegen ALLE VIER echten Baeume
+gefahren, jeder mit seinen eigenen Parametern — die Pruefungen nehmen `root`
+entgegen, das geht auch, bevor ein Inhalt umzieht. Acht Laeufe, acht gruen.
+Dieselbe Abnahme gilt fuer jede weitere Familie.
 
 ### 4.3 Konfiguration
 
@@ -293,7 +336,8 @@ nicht falsch, sondern noch nicht umgestellt — und G12 zieht erst nach
 |---|---|---|
 | **0** | Geruest `tools/harness/` + Suite-Skopierung + `skills/`-Scaffold | **erledigt** — 15 neue Tests gruen, 1290 bestehende unveraendert gruen |
 | **1** | Die 5 eigenen Gates dieses Repos auf `tools/harness/` heben; `tools/checks/` faellt weg | **erledigt** — `validate.sh` meldet 5 Pruefungen als `audit/1…5`, alle gruen |
-| **2** | Die 16 generischen Gates nach `tools/gates/` (aus je der besten Fassung), die 10 skill-eigenen nach `tools/suites/` | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
+| **2a** | G1 und G2 nach `tools/gates/toolchain.py`, Einstiegspunkte als Huellen | **erledigt** — gegen alle vier Baeume gruen, 1315 Tests |
+| **2b** | Die uebrigen 14 generischen Familien, die 10 skill-eigenen nach `tools/suites/` | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
 | **3** | Inhalte per `git subtree` nach `skills/<name>/`, Historie erhalten; Kette auf Skills umstellen (6.1) | vier `SKILL.md` am Platz, Frontmatter-`name` unveraendert; `quality-chain.json` fuehrt vier Skills, beide READMEs ziehen nach |
 | **4** | Katalog-Drift auf lokal umstellen; `weekly-drift.yml` + `linked_checks.py` loeschen | Pruefung laeuft im PR, `offline=True` |
 | **5** | Herkunftsrepos archivieren mit Zeiger-README; `mcp-continuous-auditor` auf den neuen Tag pinnen | keine offenen Verweise mehr |
