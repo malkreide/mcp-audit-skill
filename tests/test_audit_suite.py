@@ -34,10 +34,11 @@ if str(REPO_ROOT) not in sys.path:
 
 import tools.suites  # noqa: E402
 import tools.suites.mcp_audit  # noqa: E402
+from tools.gates import ruff as gates_ruff  # noqa: E402
 from tools.gates import toolchain as gates_toolchain  # noqa: E402
 from tools.harness import CheckFailed, all_checks  # noqa: E402
 from tools.harness._core import Check, run  # noqa: E402
-from tools.suites.mcp_audit import SUITE, ruff_gate  # noqa: E402
+from tools.suites.mcp_audit import SUITE  # noqa: E402
 
 CHECKS_BY_NAME = {c.run.__name__: c for c in all_checks(suite=SUITE)}
 
@@ -117,7 +118,7 @@ def test_ANKER_ruff_version_ohne_ruff_ist_ein_befund(tree, monkeypatch):
 
 @pytest.mark.parametrize("name", ["ruff_check", "ruff_format"])
 def test_ANKER_die_gates_ohne_ruff_sind_ein_befund(tree, monkeypatch, name):
-    monkeypatch.setattr(ruff_gate.shutil, "which", lambda _: None)
+    monkeypatch.setattr(gates_ruff.shutil, "which", lambda _: None)
     with pytest.raises(CheckFailed) as befund:
         CHECKS_BY_NAME[name].run(tree)
     assert "FAIL statt skip" in str(befund.value)
@@ -127,20 +128,20 @@ def test_ANKER_die_gates_ohne_ruff_sind_ein_befund(tree, monkeypatch, name):
 
 
 def test_bewerte_gruen_bei_exit_null():
-    ok, message = ruff_gate.bewerte("check", 0, "All checks passed!")
+    ok, message = gates_ruff.bewerte("check", 0, "All checks passed!")
     assert ok
     assert "All checks passed!" in message
 
 
 def test_bewerte_reicht_die_ausgabe_durch():
-    ok, message = ruff_gate.bewerte("check", 1, "beispiel.py:1:8: F401 unused import")
+    ok, message = gates_ruff.bewerte("check", 1, "beispiel.py:1:8: F401 unused import")
     assert not ok
     assert "F401" in message
 
 
 def test_bewerte_haengt_beim_format_den_hinweis_an():
     """Ein Befund soll sagen, wie er zu beheben ist."""
-    ok, message = ruff_gate.bewerte("format", 1, "1 file would be reformatted")
+    ok, message = gates_ruff.bewerte("format", 1, "1 file would be reformatted")
     assert not ok
     assert "reformatted" in message
     assert "ruff format ." in message
@@ -149,7 +150,7 @@ def test_bewerte_haengt_beim_format_den_hinweis_an():
 def test_bewerte_meldet_auch_ohne_ausgabe_etwas():
     """Eine leere Erfolgsmeldung liesse den Lauf schweigen, wo er reden soll."""
     for kind in ("check", "format"):
-        ok, message = ruff_gate.bewerte(kind, 0, "")
+        ok, message = gates_ruff.bewerte(kind, 0, "")
         assert ok
         assert message
 

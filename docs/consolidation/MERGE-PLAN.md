@@ -112,10 +112,10 @@ vorhanden.
 |---|---|---|---|---|---|---|
 | G1 | ruff-Pin-Sync CI ↔ pre-commit | 1 | 16 | 12 | 7 | **erledigt** |
 | G2 | laufende ruff == Pin | 2 | 18 | 18 | 8 | **erledigt** |
-| G3 | `ruff check` | 3 | 13 | 10 | – | Phase 2b |
-| G4 | `ruff format --check` | 4 | 14 | 11 | – | Phase 2b |
-| G5 | das ruff-Gate beisst noch | – | 12 | 9 | – | Phase 2b |
-| G6 | Zeilenbreite wirksam | – | – | 17 | – | Phase 2b |
+| G3 | `ruff check` | 3 | 13 | 10 | – | **erledigt** |
+| G4 | `ruff format --check` | 4 | 14 | 11 | – | **erledigt** |
+| G5 | das ruff-Gate beisst noch | – | 12 | 9 | – | **erledigt** |
+| G6 | Zeilenbreite wirksam | – | – | 17 | – | **erledigt** |
 | G7 | kein Bytecode getrackt | – | 4 | 3 | 11 | Phase 2b |
 | G8 | referenzierte Dateien existieren | – | 7 | 2 | 10 | Phase 2b |
 | G9 | Python-Referenzen syntaktisch gueltig | – | 2 | 1 | – | Phase 2b |
@@ -130,9 +130,8 @@ vorhanden.
 Drei Entscheide dazu:
 
 * **G6 und G16 werden verallgemeinert.** Beide existieren heute nur in
-  fidelity, gelten aber fuer jeden Skill. In diesem Repo steht G6 zudem als
-  pytest (`tests/test_ruff_line_length.py`) statt als Check — nach dem Merge
-  eine Implementierung, zwei Einstiege.
+  fidelity, gelten aber fuer jeden Skill. (Der urspruengliche Zusatz, G6 stehe
+  hier bereits als pytest, war falsch — siehe 4.2d.)
 * **G13 und G14 werden parametrisiert.** Sie zaehlen dasselbe unter anderem
   Namen: probe zaehlt Schritte, fidelity und transport zaehlen Regeln. Die
   Einheit wird Parameter, die Logik ist eine.
@@ -262,6 +261,40 @@ bleibt noetig (Abschnitt 6). Er laeuft weiter im Herkunftsrepo, solange das
 existiert — vor dem Archivieren gehoert er nach `.github/workflows/` dieses
 Repos, mit angepasstem Pfad. `weekly-drift.yml` dagegen entfaellt ersatzlos,
 das ist Phase 4.
+
+### 4.2d Was 2b-i gezeigt hat (G3–G6)
+
+**Zum zweiten Mal: nicht jeder Unterschied ist Drift.** `line_length_effective`
+misst beide Haelften — ob das Lint-Gate bei genau der deklarierten Breite E501
+meldet, und ob der Formatter dort umbricht. Die erste Haelfte hat in DIESEM
+Repo keinen Gegenstand: `ruff.toml` fuehrt E501 ausdruecklich nicht im
+`select` («das entscheidet der Formatter»). Mit der Fassung aus
+`mcp-data-fidelity-skill` waere jeder Lauf hier rot geworden — aus einem
+Grund, der eine Zeile weiter oben als Entscheidung dokumentiert steht.
+
+`lint_enforces_e501` hat deshalb **keine Vorgabe** und ist ein Pflichtargument.
+Anders als bei `required_hooks` in 2a gibt es hier keine harmlose Seite:
+`True` erfaende einen Befund, `False` naehme der Pruefung stillschweigend ihre
+Lint-Haelfte. Wer sie bindet, muss es sagen.
+
+**Die Zusammenfuehrung bringt diesem Repo zwei Pruefungen, die es nicht
+hatte** — `audit/6` (beisst das Gate noch?) und `audit/7` (wirkt die Breite?).
+Beide gab es nur in den Schwesterrepos. `audit/6` ist dabei kein Luxus,
+sondern faellig geworden: Phase 3a hat `ruff.toml` um
+`[lint.per-file-ignores]` fuer `skills/*/reference/*.py` erweitert, und genau
+diese Sorte Schalter schaltet ein Gate stillschweigend ab, wenn ihn jemand
+weitet.
+
+**Eine Plan-Annahme war falsch.** Unter 4.2 stand, G6 existiere in diesem Repo
+bereits als pytest (`tests/test_ruff_line_length.py`) und werde durch den
+Merge zu «eine Implementierung, zwei Einstiege». Das stimmt nicht: Jener Test
+prueft, ob die Zahl die RICHTIGE ist (der schmalste Wert im Portfolio), G6
+misst, ob sie WIRKT. Zwei Fragen, keine Dublette — beide bleiben.
+
+**Was aus welcher Fassung kam:** der aufgeloeste Binary-Pfad
+(`shutil.which`) aus audit, `--no-cache` und `--output-format=concise` aus
+probe und fidelity, die Breiten-Sonde aus fidelity allein. Jedes davon war in
+seiner Kopie haengengeblieben.
 
 ### 4.3 Konfiguration
 
@@ -397,7 +430,10 @@ damit hier auf und nicht erst, wenn jemand den Skill installieren will.
 | **0** | Geruest `tools/harness/` + Suite-Skopierung + `skills/`-Scaffold | **erledigt** — 15 neue Tests gruen, 1290 bestehende unveraendert gruen |
 | **1** | Die 5 eigenen Gates dieses Repos auf `tools/harness/` heben; `tools/checks/` faellt weg | **erledigt** — `validate.sh` meldet 5 Pruefungen als `audit/1…5`, alle gruen |
 | **2a** | G1 und G2 nach `tools/gates/toolchain.py`, Einstiegspunkte als Huellen | **erledigt** — gegen alle vier Baeume gruen, 1315 Tests |
-| **2b** | Die uebrigen 14 generischen Familien, die 10 skill-eigenen nach `tools/suites/` | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
+| **2b-i** | G3–G6 nach `tools/gates/ruff.py` | **erledigt** — gegen drei Baeume gruen, audit bekommt zwei Pruefungen dazu |
+| **2b-ii** | G7–G9, G15 (Dateien und Hygiene) | |
+| **2b-iii** | G10–G14, G16 (Doku und Zaehlwerte) | |
+| **2b-iv** | die 10 skill-eigenen Pruefungen, READMEs neu fassen | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
 | **3a** | Die drei Companions per `git subtree` nach `skills/<name>/`, Historie erhalten | **erledigt** — drei `SKILL.md` am Platz, Frontmatter-`name` unveraendert, 1315 Tests gruen |
 | **3b** | Kette auf vier Skills umstellen (6.1), beide READMEs nachziehen | **erledigt** — `quality-chain.json` fuehrt vier Skills und zwei Repos, 1319 Tests gruen |
 | **4** | Katalog-Drift auf lokal umstellen; `weekly-drift.yml` + `linked_checks.py` loeschen | Pruefung laeuft im PR, `offline=True` |

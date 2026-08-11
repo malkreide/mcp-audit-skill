@@ -6,6 +6,37 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — zwei Prüfungen, die dieses Repo nicht hatte (Phase 2b-i)
+
+Die Ruff-Familien G3–G6 laufen jetzt über eine Implementierung in
+`tools/gates/ruff.py`. Aus der Zusammenführung fallen für dieses Repo zwei
+neue Gates ab, die es bisher nur in den Schwesterrepos gab:
+
+- **`audit/6`** legt eine absichtlich fehlerhafte Datei unter das
+  Referenz-Verzeichnis und besteht darauf, dass beide Gates sie beim Namen
+  nennen. Das ist fällig geworden: Phase 3a hat `ruff.toml` um
+  `[lint.per-file-ignores]` für `skills/*/reference/*.py` erweitert — genau
+  die Sorte Schalter, die ein Gate stillschweigend abschaltet, wenn ihn
+  jemand weitet.
+- **`audit/7`** misst, ob die deklarierte Zeilenbreite die ist, die auch
+  durchgesetzt wird. Nicht dasselbe wie `tests/test_ruff_line_length.py`:
+  Jener prüft, ob die Zahl die *richtige* ist, dieser, ob sie *wirkt*.
+
+`audit/3` und `audit/4` haben dabei aus den anderen Fassungen dazugelernt:
+`--no-cache` (sonst geht ein Ergebnis aus einem früheren Lauf als aktuelles
+durch) und `--output-format=concise`.
+
+**`lint_enforces_e501` hat bewusst keine Vorgabe.** Dieses Repo führt E501
+ausdrücklich nicht im `select` — «das entscheidet der Formatter». Mit der
+Fassung aus `mcp-data-fidelity-skill` wäre jeder Lauf hier rot geworden, aus
+einem Grund, der in `ruff.toml` als Entscheidung dokumentiert steht. Anders
+als bei `required_hooks` gibt es hier keine harmlose Seite, also muss jede
+Suite es sagen.
+
+Abgenommen gegen drei echte Bäume — audit, probe, fidelity — mit je eigenen
+Parametern: zwölf Läufe, zwölf grün.
+
+
 ### Geändert — die Qualitätskette zählt Skills (Phase 3b)
 
 Mitglied der Kette ist jetzt ein **Skill**, nicht ein Repo: vier statt fünf.
