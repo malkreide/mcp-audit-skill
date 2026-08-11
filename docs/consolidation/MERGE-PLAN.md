@@ -123,7 +123,7 @@ vorhanden.
 | G11 | Version-Badge == CHANGELOG | – | 9 | 7 | 5 | gebaut, Bindung in 2b-iv (4.2f) |
 | G12 | Quality-Chain-Tabelle vollstaendig | – | 10 | 8 | 4 | **erledigt** |
 | G13 | GitHub-Description == Zaehlwert | – | 15 | 15 | 9 | gebaut, Bindung offen (4.2g) |
-| G14 | Zaehlwert konsistent ueber alle Dateien | – | 11, 19 | 5 | 3 | Phase 2b |
+| G14 | Zaehlwert konsistent ueber alle Dateien | – | 11, 19 | 5 | 3 | **erledigt** |
 | G15 | referenzierte Workflows existieren | – | – | 16 | – | Phase 2b-iii (4.2e) |
 | G16 | Tag == CHANGELOG | – | – | 13 | – | **erledigt** |
 
@@ -418,6 +418,48 @@ einen Scope-Parameter, weil vier ihrer sieben Treffer in diesem Repo
 Katalog-Beispiele sind und keine Selbstverweise. Das ist die einzige der
 sechzehn Familien, die neu ENTWORFEN und nicht bloss zusammengelegt wird.
 
+### 4.2h Was 2b-iii-c gezeigt hat (G14) — und eine Frage an den Betreiber
+
+**Die Einheit war der ganze Unterschied.** probe zaehlt Schritte, fidelity und
+transport zaehlen Regeln — die Bewegung darunter ist dreimal dieselbe: EINE
+normative Quelle (die nummerierten Abschnitte in `SKILL.md`), gegen die jede
+andere Stelle gehalten wird, die dieselbe Menge aufzaehlt.
+
+**Zwei Verschaerfungen gegenueber allen drei Fassungen:**
+
+1. Geprueft wird die LUECKENLOSIGKEIT, nicht nur die Anzahl. Wer Abschnitt 4
+   von sechs loescht, hat fuenf — eine reine Anzahl-Pruefung gegen eine
+   ebenfalls angepasste Zaehlung waere gruen, waehrend die Numerierung
+   1,2,3,5,6 lautet. Die Zahl stimmt dann, die Sache nicht.
+2. Ein Spiegel muss DIESELBEN Nummern nennen, nicht bloss gleich viele. Eine
+   Datei, die 0..7 fuehrt, waehrend die Quelle 1..8 sagt, hat dieselbe Anzahl
+   und meint etwas anderes.
+
+**`audit/14` prueft etwas, das vorher niemand geprueft hat:** dass `SKILL.md`
+und `.claude/commands/audit-mcp.md` denselben Ablauf fuehren. Beide
+nummerieren acht Schritte (0 bis 7); kaeme in `SKILL.md` einer dazu, ohne dass
+der Command ihn kennt, fuehre der Skill weniger, als seine Dokumentation
+verspricht — und nichts sagte es.
+
+**OFFENE FRAGE AN DEN BETREIBER.** Beide READMEs sprechen vom «six-step
+workflow» beziehungsweise «6-Schritte-Workflow», waehrend `SKILL.md` und der
+Command acht Schritte fuehren. Zwei Lesarten sind moeglich:
+
+* Die Angabe ist VERALTET und muesste acht heissen; oder
+* sie meint «die Schritte 1 bis 6» — also ohne die Vorbereitung (Schritt 0)
+  und den bedingten Release-Vorschlag (Schritt 7).
+
+Welche gilt, steht nirgends im Repository. Eine Pruefung darf das nicht raten,
+und dieser Schritt hat es nicht geraten: `audit/14` prueft die beiden
+Stellen, die unmissverstaendlich nummerieren. Ist die Frage entschieden, laesst
+sich die README-Angabe als dritter Spiegel dazunehmen.
+
+**Nebenbefund, gleich behoben:** Die siebte Suite-Datei liess `ruff format`
+die Importzeile in `tools/suites/mcp_audit/__init__.py` mehrzeilig umbrechen.
+`test_registry_deckt_jedes_pruefmodul_ab` las nur die einzeilige Form und
+wurde rot — der richtige Ausgang. Waere er umgekehrt gruen geblieben, haette
+der Waechter ab da nichts mehr bewacht. Er liest jetzt beide Formen.
+
 ### 4.3 Konfiguration
 
 | Datei | Entscheid |
@@ -557,7 +599,7 @@ damit hier auf und nicht erst, wenn jemand den Skill installieren will.
 | **2b-iii-a** | G10–G12 (Doku-Anker, offline) | **erledigt** — gegen alle vier Baeume gruen, audit bekommt zwei Pruefungen dazu |
 | **2b-iii-b** | G13 und G16 — die Zusagen ausserhalb der Arbeitskopie | **erledigt** — G16 gebunden als `audit/13`, G13 gebaut (4.2g) |
 | **2b-iii-d** | G15 mit Scope-Parameter | |
-| **2b-iii-c** | G14 (Zaehlwerte, parametrisiert nach Einheit) | |
+| **2b-iii-c** | G14 (Zaehlwerte, parametrisiert nach Einheit) | **erledigt** — gegen fuenf Baeume gruen, audit bekommt eine Pruefung dazu |
 | **2b-iv** | die 10 skill-eigenen Pruefungen, READMEs neu fassen | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
 | **3a** | Die drei Companions per `git subtree` nach `skills/<name>/`, Historie erhalten | **erledigt** — drei `SKILL.md` am Platz, Frontmatter-`name` unveraendert, 1315 Tests gruen |
 | **3b** | Kette auf vier Skills umstellen (6.1), beide READMEs nachziehen | **erledigt** — `quality-chain.json` fuehrt vier Skills und zwei Repos, 1319 Tests gruen |
