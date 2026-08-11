@@ -33,8 +33,18 @@ SCHRITT = re.compile(r"^## Schritt (?P<nummer>\d+)", re.M)
 COMMAND = ".claude/commands/audit-mcp.md"
 OUTPUT_SCHRITT = re.compile(r"^\*\*Output Schritt (?P<nummer>\d+)", re.M)
 
+#: Beide READMEs behaupten die Zahl in PROSA statt sie aufzuzaehlen. Bis 2b-iv
+#: stand dort «six-step» beziehungsweise «6-Schritte» — entweder veraltet oder
+#: «die Schritte 1 bis 6» gemeint, und nichts im Repository sagte welches. Der
+#: Betreiber hat entschieden: Es ist die volle Zahl, also acht. Seither steht
+#: sie hier unter Aufsicht.
+PROSA = (
+    ("README.md", re.compile(r"(?P<wert>[\w-]+)-step workflow")),
+    ("README.de.md", re.compile(r"(?P<wert>\d+)-Schritte-Workflow")),
+)
 
-@register(14, "SKILL.md and the slash command run the same steps", suite=SUITE)
+
+@register(14, "every statement of the step count agrees", suite=SUITE)
 def step_count_agrees(root: Path) -> str:
     return gates.count_agrees(
         root,
@@ -42,4 +52,5 @@ def step_count_agrees(root: Path) -> str:
         pattern=SCHRITT,
         unit="Schritte",
         mirrors=((COMMAND, OUTPUT_SCHRITT, None),),
+        claims=PROSA,
     )

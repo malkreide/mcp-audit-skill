@@ -245,3 +245,70 @@ def test_ANKER_eine_fehlende_abschnitts_ueberschrift_ist_ein_befund(tmp_path):
             mirrors=(("README.md", LIST_ITEM, "Regeln"),),
         )
     assert "nicht gefunden" in str(befund.value)
+
+
+# --------------------------------------------------------------------------
+# Aussagen in Prosa
+# --------------------------------------------------------------------------
+
+
+PROSA_ZIFFER = re.compile(r"(?P<wert>\d+)-Schritte-Workflow")
+PROSA_WORT = re.compile(r"(?P<wert>[\w-]+)-step workflow")
+
+
+def test_eine_stimmige_prosa_aussage_ist_gruen(tmp_path):
+    schreibe(tmp_path, "SKILL.md", ["## Schritt 1", "## Schritt 2"])
+    schreibe(tmp_path, "README.de.md", ["der 2-Schritte-Workflow"])
+    meldung = gates.count_agrees(
+        tmp_path,
+        source="SKILL.md",
+        pattern=SCHRITT,
+        unit="Schritte",
+        claims=(("README.de.md", PROSA_ZIFFER),),
+    )
+    assert "sagt 2" in meldung
+
+
+def test_ANKER_prosa_liest_ziffer_und_zahlwort(tmp_path):
+    """Der englische Text sagt «eight-step», der deutsche «8-Schritte». Eine
+    Pruefung, die nur Ziffern liest, haette die Haelfte nicht erfasst."""
+    schreibe(tmp_path, "SKILL.md", ["## Schritt 1", "## Schritt 2"])
+    schreibe(tmp_path, "README.md", ["the two-step workflow"])
+    assert gates.count_agrees(
+        tmp_path,
+        source="SKILL.md",
+        pattern=SCHRITT,
+        unit="Schritte",
+        claims=(("README.md", PROSA_WORT),),
+    )
+
+
+def test_eine_veraltete_prosa_aussage_ist_ein_befund(tmp_path):
+    """Der Fall, der diese Faehigkeit veranlasst hat: Beide READMEs sprachen
+    vom «six-step workflow», waehrend SKILL.md acht Schritte fuehrte."""
+    schreibe(tmp_path, "SKILL.md", ["## Schritt 1", "## Schritt 2"])
+    schreibe(tmp_path, "README.de.md", ["der 6-Schritte-Workflow"])
+    with pytest.raises(CheckFailed) as befund:
+        gates.count_agrees(
+            tmp_path,
+            source="SKILL.md",
+            pattern=SCHRITT,
+            unit="Schritte",
+            claims=(("README.de.md", PROSA_ZIFFER),),
+        )
+    text = str(befund.value)
+    assert "behauptet 6" in text and "fuehrt 2" in text
+
+
+def test_ANKER_eine_fehlende_wendung_ist_ein_befund(tmp_path):
+    schreibe(tmp_path, "SKILL.md", ["## Schritt 1"])
+    schreibe(tmp_path, "README.de.md", ["ganz anders formuliert"])
+    with pytest.raises(CheckFailed) as befund:
+        gates.count_agrees(
+            tmp_path,
+            source="SKILL.md",
+            pattern=SCHRITT,
+            unit="Schritte",
+            claims=(("README.de.md", PROSA_ZIFFER),),
+        )
+    assert "Anker weg" in str(befund.value)

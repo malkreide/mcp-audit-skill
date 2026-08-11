@@ -6,6 +6,24 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — die beiden offenen Fragen sind entschieden
+
+- **Beide READMEs tragen ein Versions-Badge.** Es fehlte, weshalb G11 seit
+  2b-iii-a ohne Gegenstand war. Es läuft jetzt als **`audit/16`** gegen die
+  CHANGELOG-Spitze — damit ist G11 an allen Stellen gebunden, an denen es
+  einen Gegenstand hat.
+- **Die Schrittzahl in beiden READMEs steht auf acht** statt auf sechs.
+  `SKILL.md` und der Slash-Command führen acht Schritte (0 bis 7); ob die
+  READMEs veraltet waren oder «die Schritte 1 bis 6» meinten, stand nirgends
+  im Repository. Jetzt ist es entschieden und steht unter Aufsicht.
+
+Dafür hat das Zähl-Gate eine dritte Fähigkeit bekommen. Es kannte die
+normative *Quelle* und *Spiegel*, die dieselbe Menge nummeriert aufzählen.
+Eine Prosa-Aussage ist beides nicht: Sie zählt nicht auf, sie **behauptet**
+eine Zahl. `claims` liest sie, und `as_number` nimmt Ziffer wie englisches
+Zahlwort — der englische Text sagt «eight-step», der deutsche «8-Schritte».
+
+
 ### Hinzugefügt — die erste Companion-Suite (Phase 2b-iv-a)
 
 `tools/suites/mcp_transport_hardening/` führt sechs Prüfungen für den

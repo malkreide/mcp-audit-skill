@@ -31,6 +31,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from tools.gates.repo_meta import as_number
 from tools.harness import CheckFailed
 
 
@@ -99,6 +100,7 @@ def count_agrees(
     pattern: re.Pattern[str],
     unit: str,
     mirrors: tuple[tuple[str, re.Pattern[str], str | None], ...] = (),
+    claims: tuple[tuple[str, re.Pattern[str]], ...] = (),
 ) -> str:
     """G14 — jede Stelle, die dieselbe Menge aufzaehlt, zaehlt dieselbe Zahl.
 
@@ -135,5 +137,35 @@ def count_agrees(
                 "aendert, zieht hier nach."
             )
         zeilen.append(f"{name}: dieselben {len(gespiegelt)} {unit}")
+
+    # Aussagen in PROSA — «der 8-Schritte-Workflow», «patterns for the twelve
+    # rules». Sie zaehlen nicht auf, sie behaupten eine Zahl. Ziffer oder
+    # englisches Zahlwort entscheidet der Text; `as_number` liest beides,
+    # dieselbe Funktion, die `gates/repo_meta.py` fuer die GitHub-Description
+    # benutzt.
+    for name, muster in claims:
+        text = _lies(root, name)
+        treffer = muster.search(text)
+        if not treffer:
+            raise CheckFailed(
+                f"{name}: die erwartete Wendung fehlt (Muster "
+                f"{muster.pattern!r}) — Anker weg oder umformuliert; diese "
+                "Pruefung wuerde stillschweigend aufhoeren zu pruefen."
+            )
+        behauptet = as_number(treffer.group("wert"))
+        if behauptet is None:
+            raise CheckFailed(
+                f"{name}: die Wendung sagt {treffer.group('wert')!r}, und das "
+                "ist keine Zahl, die diese Pruefung kennt — ENGLISH_NUMBERS in "
+                "tools/gates/repo_meta.py ergaenzen."
+            )
+        if behauptet != len(nummern):
+            raise CheckFailed(
+                f"{name}: die Prosa behauptet {behauptet} {unit}, {source} "
+                f"fuehrt {len(nummern)}.\n"
+                f"  Die Quelle ist {source}; wer dort etwas aendert, zieht hier "
+                "nach."
+            )
+        zeilen.append(f"{name}: sagt {behauptet}")
 
     return "; ".join(zeilen)
