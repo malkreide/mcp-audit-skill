@@ -184,14 +184,14 @@ ordinary function under [`tools/suites/mcp_data_fidelity/`](../../tools/suites/m
 registered into the shared harness — `python -m tools.harness --suite fidelity`
 runs exactly this skill's six.
 
-**One thing has not moved yet, and it is worth naming rather than glossing
-over:** in this skill's former standalone repository every check had at least
-one tree in `tests/mutations.py` that it **must** go red on, together with an
-assertion about *what it then says*. Those mutation suites are still in the
-origin repositories; moving them is the last open step of the consolidation
-(see [`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md)).
-Until then the sentence stands as an intention, not as a guarantee — which is
-exactly the kind of claim this skill exists to catch, so it says so here.
+Each check also has at least one tree in
+[`tests/suites/`](../../tests/suites/) that it **must** go red on, together
+with an assertion about *what it then says*. A check without a mutation fails
+the suite — and so does a mutation whose search text is no longer in the tree,
+because a mutation that grips nothing is a test that tests nothing.
+
+The same sentence, one level up: a check that cannot be violated in a way that
+something notices is not yet a check.
 
 Open an issue before a large pull request, so the shape can be settled first.
 

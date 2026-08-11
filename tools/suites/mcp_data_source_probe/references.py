@@ -15,6 +15,7 @@ die Haelfte, die daran ANSCHLIESST.
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -45,6 +46,54 @@ REFERENCED_FILES = (
     f"{BASE}/reference/retry_backoff.py",
     f"{BASE}/reference/adoption.toml",
 )
+
+
+def brauchbare_bash() -> str:
+    """Eine bash, die auch wirklich laeuft — nicht bloss eine, die es gibt.
+
+    BEIM EINZUG DAZUGEKOMMEN, und der Anlass ist gemessen: Auf
+    `windows-latest` liegt in `System32` eine `bash.exe`, die nur der Starter
+    fuer das Windows Subsystem for Linux ist. Ohne installierte Distribution
+    antwortet sie mit «Windows Subsystem for Linux has no installed
+    distributions» und einem Exit-Code ungleich null — und die
+    Herkunftsfassung las das als «die Vorlage parst nicht».
+
+    Ein Befund, der auf die falsche Datei zeigt: Jemand haette die Vorlage
+    gesucht und dort nichts gefunden. Das Herkunftsrepo hat den Fall nie
+    gesehen, weil seine CI nur Linux fuhr; die Matrix dieses Repos enthaelt
+    `windows-latest`, und dort ist er beim ersten Lauf aufgeschlagen.
+
+    Deshalb wird JEDE `bash` auf dem PATH kurz angesprochen (`bash -c ""`) und
+    die erste genommen, die antwortet. Findet sich keine, ist das ein Befund
+    ueber die UMGEBUNG — mit eigenem Text, damit er nicht mit einem ueber die
+    Vorlage verwechselt wird.
+    """
+    gesehen: list[str] = []
+    for verzeichnis in os.environ.get("PATH", "").split(os.pathsep):
+        if not verzeichnis:
+            continue
+        for name in ("bash", "bash.exe"):
+            kandidat = Path(verzeichnis) / name
+            if not kandidat.is_file() or str(kandidat) in gesehen:
+                continue
+            gesehen.append(str(kandidat))
+            probe = subprocess.run(
+                [str(kandidat), "-c", ""],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if probe.returncode == 0:
+                return str(kandidat)
+
+    raise CheckFailed(
+        "Keine benutzbare bash auf dem PATH — diese Pruefung kann nicht "
+        "laufen.\n"
+        f"  angesprochen wurden: {gesehen or '— keine gefunden'}\n"
+        "  FAIL statt skip: «nicht gelaufen» als «bestanden» zu melden ist die "
+        "eine Auskunft, die schlimmer ist als keine. Und ausdruecklich KEIN "
+        "Befund ueber die Vorlage — die ist hier gar nicht angesehen worden."
+    )
 
 
 def reference_sources(root: Path) -> list[Path]:
@@ -78,7 +127,7 @@ def shell_syntax(root: Path) -> str:
             "zu parsen."
         )
     done = subprocess.run(
-        ["bash", "-n", str(pfad)],
+        [brauchbare_bash(), "-n", str(pfad)],
         capture_output=True,
         text=True,
         check=False,
