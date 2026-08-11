@@ -73,7 +73,7 @@ def numbered(
 
 
 def _abschnitt(text: str, ueberschrift: str, quelle: str) -> str:
-    """Der Rumpf unter einer `##`-Ueberschrift, bis zur naechsten.
+    r"""Der Rumpf unter einer `##`-Ueberschrift, bis zur naechsten.
 
     Ohne diese Einschraenkung zaehlt ein Muster wie `^\d+\. \*\*` JEDE
     nummerierte Liste des Dokuments mit — gemessen beim Umzug von
@@ -106,8 +106,9 @@ def count_agrees(
 
     `mirrors` sind die abhaengigen Stellen: je eine Datei, das Muster, mit dem
     dort dieselbe Menge nummeriert auftaucht, und optional die Ueberschrift des
-    Abschnitts, auf den das Muster beschraenkt bleibt (`None` = ganze Datei). Sie muessen nicht nur
-    gleich VIELE, sondern DIESELBEN Nummern nennen — eine Datei, die 0..7
+    Abschnitts, auf den das Muster beschraenkt bleibt (`None` = ganze
+    Datei). Sie muessen nicht nur gleich VIELE, sondern DIESELBEN Nummern
+    nennen — eine Datei, die 0..7
     fuehrt, waehrend die Quelle 1..8 sagt, hat dieselbe Anzahl und meint
     etwas anderes.
     """

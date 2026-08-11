@@ -1,19 +1,10 @@
-# mcp-data-source-probe-skill
+# mcp-data-source-probe
 
 ![Version](https://img.shields.io/badge/version-1.7.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
 > Claude Skill that probes a public data source *before* an MCP server is built against it — and measures whether the finished server returns what the source actually holds.
-
-> [!NOTE]
-> **This skill moved into `mcp-audit` in Phase 3 of the consolidation.** Paths
-> named below still describe its former standalone repository. The shared
-> configuration (`ruff.toml`, `.pre-commit-config.yaml`) now lives at the
-> repository root; the checks under `tools/checks/` move to
-> `tools/suites/mcp_data_source_probe/` in Phase 2b, and these READMEs are rewritten together
-> with that step rather than twice. See
-> [`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md).
 
 🇩🇪 [Deutsche Version](README.de.md)
 
@@ -43,19 +34,16 @@ The fourth discipline — **ground truth before self-confidence** — was added 
 ## Installation
 
 ```bash
-git clone https://github.com/malkreide/mcp-data-source-probe-skill.git
-cp -r mcp-data-source-probe-skill ~/.claude/skills/mcp-data-source-probe
+git clone https://github.com/malkreide/mcp-audit-skill.git
+cp -r mcp-audit-skill/skills/mcp-data-source-probe ~/.claude/skills/mcp-data-source-probe
 ```
 
 The directory name must be `mcp-data-source-probe` — skill discovery uses it.
 
-To install the companion skill `mcp-data-fidelity` as well (see below), clone it
-from its own repository:
-
-```bash
-git clone https://github.com/malkreide/mcp-data-fidelity-skill.git
-cp -r mcp-data-fidelity-skill ~/.claude/skills/mcp-data-fidelity
-```
+The four skills of the chain live in **one** repository since the
+consolidation; copy whichever ones you want, they are independent at install
+time. `mcp-audit` itself sits at the repository root and additionally ships as
+a packaged `mcp-audit.skill`.
 
 ## Usage / Quickstart
 
@@ -75,51 +63,63 @@ BASE="https://api.example.ch/v2" OUTDIR=/tmp/probe bash reference/probe_template
 ## Project Structure
 
 ```
-.
+skills/mcp-data-source-probe/
 ├── SKILL.md                              # the procedure itself
-├── reference/
-│   ├── probe_template.sh                 # runnable probe harness: scope, coverage,
-│   │                                     #   widening, freshness, order
-│   ├── befund_tabelle_template.md        # findings table: default matrix, recall
-│   │                                     #   ground truth, refresh rhythm, spec target
-│   ├── response_envelope.py              # pydantic v2 envelope with source + provenance
-│   └── retry_backoff.py                  # exponential backoff reference implementation
-├── companion/
-│   └── mcp-data-fidelity/
-│       └── README.md                     # pointer — the skill moved to its own repo
-├── scripts/
-│   └── validate.sh                       # entry point; CI runs this file
-├── tools/
-│   └── checks/                           # the checks themselves — one function per gate
-└── tests/
-    ├── mutations.py                      # per check, a tree it MUST go red on
-    └── test_*.py                         # runs them, and holds the checks against this repo
+├── CHANGELOG.md                          # this skill's own version history
+├── README.md / README.de.md
+└── reference/
+    ├── probe_template.sh                 # runnable probe harness: scope, coverage,
+    │                                     #   widening, freshness, order
+    ├── befund_tabelle_template.md        # findings table: default matrix, recall
+    │                                     #   ground truth, refresh rhythm, spec target
+    ├── response_envelope.py              # pydantic v2 envelope with source + provenance
+    ├── retry_backoff.py                  # exponential backoff reference implementation
+    └── adoption.toml                     # what each template guarantees, per property
 ```
 
-## Companion skill: `mcp-data-fidelity`
+Around it, shared by all four skills — one configuration, one harness, one
+test suite:
 
-`mcp-data-fidelity` used to ship in this repository under `companion/`. It now
-lives in its own repository, which is its canonical home:
-**[`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill)**.
+```
+mcp-audit/
+├── ruff.toml                             # one line width, one rule set
+├── .pre-commit-config.yaml               # ruff pinned to the same version as CI
+├── scripts/validate.sh                   # entry point; CI runs this file
+├── tools/harness/                        # the registry — knows no single check
+├── tools/gates/                          # the sixteen generic checks
+├── tools/suites/mcp_data_source_probe/   # this skill's own nine checks
+└── tests/                                # runs them, and holds them against the tree
+```
+
+`python -m tools.harness --suite probe` runs only this skill's checks;
+`bash scripts/validate.sh` runs all four suites in one go.
+
+## Sibling skill: `mcp-data-fidelity`
+
+`mcp-data-fidelity` used to ship inside this skill, under `companion/`. It
+then moved to its own repository, and since the consolidation both live in
+`mcp-audit` as siblings: [`../mcp-data-fidelity/`](../mcp-data-fidelity/). The
+pointer directory is gone with it — a pointer to the folder next door is not a
+pointer, it is a detour.
 
 The two divide the work by phase. `mcp-data-source-probe` covers what happens
 *before and around* the build: probing the source, choosing an architecture,
-measuring recall against ground truth. `mcp-data-fidelity` covers the code
-itself — it complements Anthropic's `mcp-builder` with six rules for tools that
-query an external source:
+measuring recall against ground truth. `mcp-data-fidelity` covers the query
+code itself — it complements Anthropic's `mcp-builder` with rules for tools
+that query an external source, from sending scope parameters explicitly to
+declaring how many rows a sum silently dropped.
 
-1. Send scope parameters explicitly, never inherit them
-2. Send parameter groups in full — a partial set silently inherits server defaults
-3. An empty result carries a concrete next step
-4. The tool description is a hallucination surface
-5. Query syntax belongs in the description, recall belongs in the tests
-6. Confirm the response shape before counting it — a misread nesting returns the
-   same empty list as a genuine zero-hit answer
+**The rules are not restated here, deliberately.** This section listed six of
+them, written when there were six; there are fourteen now, and the list had
+been wrong for months without anyone noticing — nothing held it against its
+source. A neighbouring directory needs no copy:
+[its README](../mcp-data-fidelity/README.md) carries the current list, and
+[its SKILL.md](../mcp-data-fidelity/SKILL.md) the rules themselves.
 
-It exists as a companion rather than a patch because `mcp-builder` is a vendored
-Anthropic skill: editing it in place would be overwritten on the next sync, and
-forking it would cut off upstream improvements. Installing both means the generic
-build guidance and these rules apply together.
+It exists as a companion rather than a patch because `mcp-builder` is a
+vendored Anthropic skill: editing it in place would be overwritten on the next
+sync, and forking it would cut off upstream improvements. Installing both means
+the generic build guidance and these rules apply together.
 
 ## The four disciplines
 
@@ -134,21 +134,24 @@ And the portfolio's mnemonic for the two time values that get confused most ofte
 
 ### The MCP quality chain
 
-Five repositories, one lifecycle. Each answers a different question, in the order they come up — this one comes first. The shared GitHub topic is [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain), which lists all five on one page.
+Four skills, one lifecycle. Each answers a different question, in the order they come up — this one comes first. Since the consolidation they live in **one** repository — this one; `mcp-continuous-auditor` is the runtime that keeps re-running them. The shared GitHub topic is [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain), which lists both repositories on one page.
 
-| Stage | Repository | Question it answers |
+| Stage | Skill | Question it answers |
 |---|---|---|
-| before the build | **`mcp-data-source-probe-skill`** | **This skill:** is the source usable, and what does it hold? |
-| in the build | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Does it return what the source actually holds? Shipped here under `companion/` until it got its own repository |
-| in the build | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Does it come up, and does it turn away the right callers? |
-| after the build | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Does it hold up against the catalogue? |
-| in operation | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Does it still hold up tomorrow? Step 1.4's recall ground truth, kept running instead of measured once |
+| before the build | **`mcp-data-source-probe`** | **This skill:** is the source usable, and what does it hold? |
+| in the build | [`mcp-data-fidelity`](../mcp-data-fidelity/) | Does it return what the source actually holds? Shipped under this skill's `companion/` until it got its own repository — and since the consolidation it sits right next door, which is why that pointer directory is gone. |
+| in the build | [`mcp-transport-hardening`](../mcp-transport-hardening/) | Does it come up, and does it turn away the right callers? |
+| after the build | [`mcp-audit`](../../) | Does it hold up against the catalogue? |
+
+Running the chain, not a link in it: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor). It asks no question in a server's lifecycle — it asks all four again, on a schedule, and answers «does it still hold up tomorrow?» — step 1.4's recall ground truth, kept running instead of measured once
 
 Alongside, not part of the chain: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — Anthropic's generic build guidance, complemented rather than replaced. It is someone else's repository and cannot carry the topic.
 
 Plus the server the fourth discipline came from: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), whose [issue #11](https://github.com/malkreide/termdat-mcp/issues/11) produced it.
 
 Probe by this skill and build by `mcp-data-fidelity`, and you pass the `FID` checks; fail them in an audit and the remediation is there.
+
+Membership is declared once, in [`docs/quality-chain.json`](../../docs/quality-chain.json) — `members` names the four skills, `repos` the two repositories that carry them. A check holds all eleven copies of this table against it — eight READMEs and three `SKILL.md` — so a fifth member cannot be added in one place and forgotten in ten.
 
 ## Changelog
 
@@ -173,7 +176,8 @@ proves it.
 Before opening a pull request, run the checks:
 
 ```bash
-pip install -r requirements-reference.txt -r requirements-dev.txt
+pip install ruff==0.16.1 pytest pyyaml
+pip install -r requirements-reference.txt
 bash scripts/validate.sh
 ```
 
@@ -191,12 +195,20 @@ Changing or adding a check needs one more command:
 pytest
 ```
 
-The checks are ordinary functions under `tools/checks/`, and every one of them
-has at least one tree in `tests/mutations.py` that it **must** go red on —
-along with an assertion about *what it then says*. A check without a mutation
-fails the suite. The reason is written down in `ruff.toml`: it once held
-`select = []`, both ruff steps reported "All checks passed!", and nobody
-noticed, because nothing went red.
+The checks are ordinary functions under [`tools/suites/mcp_data_source_probe/`](../../tools/suites/mcp_data_source_probe/),
+registered into the shared harness — `python -m tools.harness --suite probe`
+runs exactly this skill's nine. The reason the suite matters at all is written
+down in `ruff.toml`: it once held `select = []`, both ruff steps reported "All
+checks passed!", and nobody noticed, because nothing went red.
+
+**One thing has not moved yet, and it is worth naming rather than glossing
+over:** in this skill's former standalone repository every check had at least
+one tree in `tests/mutations.py` that it **must** go red on, together with an
+assertion about *what it then says*. Those mutation suites are still in the
+origin repositories; moving them is the last open step of the consolidation
+(see [`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md)).
+Until then that is an intention, not a guarantee — which is exactly the kind of
+claim these skills exist to catch, so it says so here.
 
 Open an issue before a large pull request, so the shape can be settled first.
 
@@ -221,7 +233,7 @@ Found an error in the procedure, or a case it gets wrong? Please open an issue.
 
 ## License
 
-MIT License — see [LICENSE](LICENSE)
+MIT License — see [LICENSE](../../LICENSE)
 
 ## Author
 

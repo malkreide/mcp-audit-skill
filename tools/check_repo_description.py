@@ -99,7 +99,8 @@ def compare(description: str, n_checks: int, n_categories: int) -> list[str]:
 
     if not found_categories:
         problems.append(
-            f"Description nennt keine Kategorien-Zahl — erwartet «{n_categories} Kategorien»"
+            "Description nennt keine Kategorien-Zahl — erwartet "
+            f"«{n_categories} Kategorien»"
         )
     for n in found_categories:
         if n != n_categories:

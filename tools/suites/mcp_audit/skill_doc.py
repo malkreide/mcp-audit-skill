@@ -30,10 +30,36 @@ from ._suite import SUITE
 SKILL_PATH = "SKILL.md"
 EXPECTED_NAME = "mcp-audit"
 
-#: Wo die Ketten-Tabelle steht, je Sprachfassung.
+#: Wo die Ketten-Tabelle steht — ACHT Dateien, nicht zwei.
+#:
+#: Bis 2b-iv-c waren es die beiden READMEs der Repo-Wurzel. Die drei Companions
+#: fuehren dieselbe Tabelle in ihren eigenen READMEs, und in den Herkunftsrepos
+#: hat sie dort auch je eine Pruefung gehalten (`transport/4`, `fidelity/8`,
+#: `probe/10`). Beim Einzug sind die drei nach hier absorbiert worden — mit der
+#: Begruendung, die Tabelle stehe jetzt «einmal, gegen ein Manifest». Das
+#: stimmte fuer die Implementierung und nicht fuer den GEGENSTAND: Sechs
+#: Tabellen blieben ungeprueft zurueck, und alle sechs beschrieben in genau
+#: diesem Zeitraum noch fuenf Repositories statt vier Skills.
+#:
+#: Die Absorption ist damit nachgeholt statt bloss behauptet. Ein Mitglied
+#: laesst sich jetzt nicht mehr an einer Stelle ergaenzen und an sieben
+#: vergessen.
 CHAIN_SECTIONS = (
     ("README.md", "The MCP quality chain"),
     ("README.de.md", "Die MCP-Qualitätskette"),
+    ("skills/mcp-data-source-probe/README.md", "The MCP quality chain"),
+    ("skills/mcp-data-source-probe/README.de.md", "Die MCP-Qualitätskette"),
+    ("skills/mcp-data-fidelity/README.md", "The MCP quality chain"),
+    ("skills/mcp-data-fidelity/README.de.md", "Die MCP-Qualitätskette"),
+    ("skills/mcp-transport-hardening/README.md", "The MCP quality chain"),
+    ("skills/mcp-transport-hardening/README.de.md", "Die MCP-Qualitätskette"),
+    # Und die drei `SKILL.md` — die Dateien, die Claude tatsaechlich laedt.
+    # Sie fuehren dieselbe Tabelle unter einer `##`-Ueberschrift; dass das
+    # Gate bis 2b-iv-c nur `###` kannte, ist der Grund, warum sie am
+    # laengsten «Fuenf Repos» sagten.
+    ("skills/mcp-data-source-probe/SKILL.md", "Verwandte Skills"),
+    ("skills/mcp-data-fidelity/SKILL.md", "Verwandte Skills"),
+    ("skills/mcp-transport-hardening/SKILL.md", "Verwandte Skills"),
 )
 
 

@@ -25,8 +25,11 @@ whose target moves during the run is not an audit — it is a statement about no
 particular revision.
 
 Usage:
-    python tools/audit_init.py make-run-id srgssr-mcp [--base-dir audits/] [--now 2026-05-02T09:12:45+00:00]
-    python tools/audit_init.py init srgssr-mcp [--base-dir audits/] [--skill-version 2.3.0] [--catalog-dir checks/] [--target-repo ../srgssr-mcp]
+    python tools/audit_init.py make-run-id srgssr-mcp \
+        [--base-dir audits/] [--now 2026-05-02T09:12:45+00:00]
+    python tools/audit_init.py init srgssr-mcp \
+        [--base-dir audits/] [--skill-version 2.3.0] \
+        [--catalog-dir checks/] [--target-repo ../srgssr-mcp]
     python tools/audit_init.py verify-target audits/<run>/
 """
 

@@ -1,19 +1,10 @@
-# mcp-data-fidelity-skill
+# mcp-data-fidelity
 
 ![Version](https://img.shields.io/badge/version-1.7.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
 > Claude Skill für MCP-Server-Tools, die eine externe Datenquelle abfragen — damit ein Server nicht still weniger liefert, als die Quelle hat.
-
-> [!NOTE]
-> **Dieser Skill ist in Phase 3 der Zusammenführung nach `mcp-audit` gezogen.**
-> Die unten genannten Pfade beschreiben noch sein früheres eigenständiges
-> Repository. Die gemeinsame Konfiguration (`ruff.toml`,
-> `.pre-commit-config.yaml`) liegt jetzt in der Repo-Wurzel; die Prüfungen
-> unter `tools/checks/` ziehen in Phase 2b nach `tools/suites/mcp_data_fidelity/`, und
-> diese READMEs werden zusammen mit jenem Schritt umgeschrieben statt zweimal.
-> Siehe [`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md).
 
 🇬🇧 [English Version](README.md)
 
@@ -53,11 +44,16 @@ Die Regeln 1–6 und 10–14 stammen aus Vorfällen, die Regeln 7–9 aus der MC
 ## Installation
 
 ```bash
-git clone https://github.com/malkreide/mcp-data-fidelity-skill.git
-cp -r mcp-data-fidelity-skill ~/.claude/skills/mcp-data-fidelity
+git clone https://github.com/malkreide/mcp-audit-skill.git
+cp -r mcp-audit-skill/skills/mcp-data-fidelity ~/.claude/skills/mcp-data-fidelity
 ```
 
 Der Verzeichnisname muss `mcp-data-fidelity` lauten — die Skill-Erkennung nutzt ihn.
+
+Die vier Skills der Kette liegen seit der Zusammenführung in **einem**
+Repository; kopiere die, die du brauchst — beim Installieren sind sie
+unabhängig voneinander. `mcp-audit` selbst liegt in der Repo-Wurzel und wird
+zusätzlich als gepacktes `mcp-audit.skill` ausgeliefert.
 
 ## Verwendung
 
@@ -71,18 +67,30 @@ Der Skill greift selbstständig, sobald ein Such-, Query- oder Filter-Tool entwo
 ## Projektstruktur
 
 ```
-.
-├── SKILL.md                  # die vierzehn Regeln, mit Release-Checkliste
-├── reference/
-│   └── patterns.py           # Copy-Paste-Patterns für FastMCP / httpx / Pydantic v2
-├── scripts/
-│   └── validate.sh           # Einstieg für die Checks; die CI ruft diese Datei auf
-├── tools/
-│   └── checks/               # die Checks selbst — eine Funktion pro Gate
-└── tests/
-    ├── mutations.py          # pro Check ein Baum, auf dem er rot werden MUSS
-    └── test_*.py             # fährt sie, und hält die Checks gegens echte Repo
+skills/mcp-data-fidelity/
+├── SKILL.md                              # die vierzehn Regeln, mit Release-Checkliste
+├── CHANGELOG.md                          # die eigene Versionsgeschichte
+├── README.md / README.de.md
+└── reference/
+    └── patterns.py                       # Copy-Paste-Patterns für FastMCP / httpx / Pydantic v2
 ```
+
+Darum herum, geteilt von allen vier Skills — eine Konfiguration, ein Gerüst,
+eine Testsuite:
+
+```
+mcp-audit/
+├── ruff.toml                             # eine Zeilenbreite, ein Regelsatz
+├── .pre-commit-config.yaml               # ruff auf dieselbe Version gepinnt wie die CI
+├── scripts/validate.sh                   # Einstieg; die CI ruft diese Datei auf
+├── tools/harness/                        # die Registry — kennt keine einzige Prüfung
+├── tools/gates/                          # die sechzehn generischen Prüfungen
+├── tools/suites/mcp_data_fidelity/       # die sechs Prüfungen dieses Skills
+└── tests/                                # fährt sie, und hält sie gegen den Baum
+```
+
+`python -m tools.harness --suite fidelity` fährt nur die Prüfungen dieses
+Skills; `bash scripts/validate.sh` fährt alle vier Suiten in einem Lauf.
 
 ## Woher diese Regeln stammen
 
@@ -109,21 +117,26 @@ Die Regeln 7–9 haben diese Herkunft **nicht**, und der Skill sagt das dort, wo
 
 ### Die MCP-Qualitätskette
 
-Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt. Das gemeinsame GitHub-Topic ist [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain) und listet alle fünf auf einer Seite.
+Vier Skills, ein Lebenszyklus. Jeder beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt. Seit der Zusammenführung liegen sie in **einem** Repository — diesem; `mcp-continuous-auditor` ist die Laufzeit, die sie immer wieder fährt. Das gemeinsame GitHub-Topic ist [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain) und listet beide Repositories auf einer Seite.
 
-| Phase | Repo | Frage, die es beantwortet |
+| Phase | Skill | Frage, die er beantwortet |
 |---|---|---|
-| vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6). Hat diesen Skill unter `companion/` ausgeliefert, bis dieses Repo sein Zuhause wurde. |
-| im Bau | **`mcp-data-fidelity-skill`** | **Dieser Skill:** liefert er, was die Quelle hat? |
-| im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
-| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Regeln 1–6 liegen auf `FID-001`–`FID-006` — nicht eins zu eins: Regeln 3 und 4 teilen sich `FID-003`, Regel 5 braucht `FID-005`, `FID-002` und `OPS-009`, Regel 6 ist `FID-006`. Die Regeln 7–9 liegen ausserhalb von `FID`, in `ARCH-020`, `HITL-006` und `ARCH-018`, die Abgrenzung von Regel 9 gegen die Leermenge in `FID-003`; Regel 10 liegt auf `ARCH-003`; Regel 13 liegt mit auf `FID-006` — `DRIFT-007` wurde am 2026-08-07 zurückgezogen und ging darin auf, die Nummer wird bewusst nicht neu vergeben —, Regel 14 hat `FID-007`, beide aus demselben Vorfall eröffnet wie die Regeln selbst (Katalogstand: 120 Checks auf `main`, geschnitten v2.3.0 vom 2026-08-08; `FID-001`, `FID-002`, `FID-003`, `FID-005` und `ARCH-003` sind `enforced`, der Rest `advisory` — `ARCH-003` ist das einzige, das `always` gilt statt nur bei externen Anfragen). Ohne Check ist einzig Regel 12. Vollständige Tabelle samt der Reichweite, die jeder Check *nicht* abdeckt, in `SKILL.md`. |
-| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Seine Recall-Floors sind Regel 5, laufend gegen die echte Quelle gemessen. |
+| vor dem Bau | [`mcp-data-source-probe`](../mcp-data-source-probe/) | Taugt die Quelle, und was hat sie? Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6). Hat diesen Skill unter `companion/` ausgeliefert, bis er ein eigenes Repo bekam — die beiden liegen wieder nebeneinander, und jenes Zeiger-Verzeichnis ist weg. |
+| im Bau | **`mcp-data-fidelity`** | **Dieser Skill:** liefert er, was die Quelle hat? |
+| im Bau | [`mcp-transport-hardening`](../mcp-transport-hardening/) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
+| nach dem Bau | [`mcp-audit`](../../) | Hält er gegen den Katalog? Die Regeln 1–6 liegen auf `FID-001`–`FID-006` — nicht eins zu eins: Regeln 3 und 4 teilen sich `FID-003`, Regel 5 braucht `FID-005`, `FID-002` und `OPS-009`, Regel 6 ist `FID-006`. Die Regeln 7–9 liegen ausserhalb von `FID`, in `ARCH-020`, `HITL-006` und `ARCH-018`, die Abgrenzung von Regel 9 gegen die Leermenge in `FID-003`; Regel 10 liegt auf `ARCH-003`; Regel 13 liegt mit auf `FID-006` — `DRIFT-007` wurde am 2026-08-07 zurückgezogen und ging darin auf, die Nummer wird bewusst nicht neu vergeben —, Regel 14 hat `FID-007`, beide aus demselben Vorfall eröffnet wie die Regeln selbst (Katalogstand: 120 Checks auf `main`, geschnitten v2.3.0 vom 2026-08-08; `FID-001`, `FID-002`, `FID-003`, `FID-005` und `ARCH-003` sind `enforced`, der Rest `advisory` — `ARCH-003` ist das einzige, das `always` gilt statt nur bei externen Anfragen). Ohne Check ist einzig Regel 12. Vollständige Tabelle samt der Reichweite, die jeder Check *nicht* abdeckt, in `SKILL.md`. |
+
+Fährt die Kette, ist aber kein Glied darin: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor). Er beantwortet keine Frage im Lebenszyklus eines Servers — er stellt alle vier immer wieder neu und antwortet auf «hält er morgen noch?» Seine Recall-Floors sind Regel 5, laufend gegen die echte Quelle gemessen.
 
 Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
 Dazu die beiden Server, aus denen dieser Skill stammt: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) die Regeln 1–5 hervorgebracht hat, und [`amtsblatt-mcp`](https://github.com/malkreide/amtsblatt-mcp), dessen [`ARCH-003`-Finding](https://github.com/malkreide/amtsblatt-mcp/blob/main/audits/2026-07-30T105205-Z-amtsblatt-mcp/findings/ARCH-003.md) Regel 10 und den Scope-Zusatz zu Regel 1 hervorgebracht hat.
 
 Wer nach den Regeln 1–6 baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet hier die Behebung. Die Regeln 7–9 sind ausserhalb von `FID` abgedeckt, und diese Checks sind `advisory` — sie werden gezählt, nicht erzwungen. Die `FID`-Checks hinter den Regeln 1–5 sind es nicht: `FID-001`, `FID-002`, `FID-003` und `FID-005` führen kein `adoption`-Feld, und ohne das Feld gilt `enforced` — ein Verstoss blockiert. `ARCH-003` hinter Regel 10 blockiert ebenfalls und ist das einzige davon, das `always` gilt statt nur bei externen Anfragen. Ohne Check ist einzig Regel 12; bei den übrigen ist nur noch Reichweite offen, am weitesten bei Regel 7 — ihr Check misst auf Baseline `2026-07-28`, den Pagination-Verlust gibt es aber auch auf `2025-11-25`. Die Regeln 13 und 14 haben ihre Checks binnen eines Tages bekommen, nachdem sie hier geschrieben waren — und `DRIFT-007` wurde am Tag darauf wieder zurückgezogen und ging in `FID-006` auf. Das gehört dazugesagt, bevor jemand einer Zeile vertraut, und zwar in beide Richtungen: Der Katalog bewegt sich schneller als dieser Skill, und ein Check kann auch verschwinden statt dazuzukommen. Was Lücke ist und was benannter Rand, steht je Zeile in `SKILL.md`.
+
+Eines hat die Zusammenführung an dieser Tabelle geändert, und das gehört dazugesagt: Der Katalog, auf den sie abbildet, liegt jetzt im selben Commit, unter [`checks/`](../../checks/). Eine Zeile, die einen Check nennt, den es nicht mehr gibt, fängt `fidelity/14` in genau dem Pull Request, der sie schreibt — dafür brauchte es vorher einen Wochenplan, einen gepinnten Commit und einen Netzabruf.
+
+Die Mitgliedschaft steht an einer Stelle, in [`docs/quality-chain.json`](../../docs/quality-chain.json) — `members` nennt die vier Skills, `repos` die zwei Repositories, die sie tragen. Eine Prüfung hält alle elf Fassungen dieser Tabelle dagegen — acht READMEs und drei `SKILL.md` —; ein fünftes Mitglied lässt sich damit nicht an einer Stelle ergänzen und an zehn vergessen.
 
 ## Changelog
 
@@ -159,7 +172,7 @@ der Beleg dafür nur aus einem Mock stammt, ist es noch kein Beleg.
 Vor einem Pull Request die Checks laufen lassen:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install ruff==0.16.1 pytest pyyaml
 bash scripts/validate.sh
 pytest
 ```
@@ -169,11 +182,19 @@ Kopie, die auseinanderlaufen könnte. Jeder Check läuft auch nach einem
 Fehlschlag weiter, ein roter Durchlauf benennt damit alle Probleme auf einmal.
 
 `pytest` wendet den Absatz oben auf die Checks selbst an. Jeder ist eine
-gewöhnliche Funktion unter `tools/checks/`, und zu jedem gibt es in
-`tests/mutations.py` mindestens einen Baum, auf dem er rot werden **muss** —
-samt der Zusicherung, *was* er dann sagt. Ein Check ohne Mutation lässt die
-Suite fehlschlagen. Derselbe Satz, eine Ebene höher: Ein Check, der sich nicht
-so verletzen lässt, dass es jemandem auffällt, ist noch kein Check.
+gewöhnliche Funktion unter [`tools/suites/mcp_data_fidelity/`](../../tools/suites/mcp_data_fidelity/)
+und hängt im gemeinsamen Gerüst — `python -m tools.harness --suite fidelity`
+fährt genau die sechs dieses Skills.
+
+**Eines ist noch nicht mitgezogen, und das gehört benannt statt beschönigt:**
+Im früheren eigenständigen Repo dieses Skills hatte jeder Check mindestens
+einen Baum in `tests/mutations.py`, auf dem er rot werden **musste**, samt der
+Zusicherung, *was* er dann sagt. Diese Mutationssuiten liegen noch in den
+Herkunftsrepos; sie umzuhängen ist der letzte offene Schritt der
+Zusammenführung (siehe
+[`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md)).
+Bis dahin ist das eine Absicht und keine Zusage — genau die Sorte Behauptung,
+gegen die diese Skills geschrieben sind, weshalb sie hier dasteht.
 
 Vor einem grösseren Pull Request bitte ein Issue eröffnen, damit die Form vorher
 geklärt ist.
@@ -211,7 +232,7 @@ ein Issue eröffnen.
 
 ## Lizenz
 
-MIT License — siehe [LICENSE](LICENSE)
+MIT License — siehe [LICENSE](../../LICENSE)
 
 ## Autor
 

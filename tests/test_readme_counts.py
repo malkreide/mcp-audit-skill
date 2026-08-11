@@ -177,11 +177,13 @@ class TestReadmeMatchesCatalog:
                 continue
             for n in patterns["checks"].findall(line):
                 assert int(n) == total, (
-                    f"{name}:{lineno} nennt {n} Checks, Katalog hat {total}: {line.strip()!r}"
+                    f"{name}:{lineno} nennt {n} Checks, Katalog hat "
+                    f"{total}: {line.strip()!r}"
                 )
             for n in patterns["checks_trailing"].findall(line):
                 assert int(n) == total, (
-                    f"{name}:{lineno} nennt {n} Checks, Katalog hat {total}: {line.strip()!r}"
+                    f"{name}:{lineno} nennt {n} Checks, Katalog hat "
+                    f"{total}: {line.strip()!r}"
                 )
             for n in patterns["categories"].findall(line):
                 assert int(n) == n_categories, (

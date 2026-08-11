@@ -112,11 +112,13 @@ class TestHermetic:
 
     def test_duplicate_id_rejected(self, tmp_path):
         (tmp_path / "a.md").write_text(
-            "---\nid: SAME-001\ntitle: \"a\"\ncategory: ARCH\nseverity: medium\napplies_when: 'always'\n---\n",
+            '---\nid: SAME-001\ntitle: "a"\ncategory: ARCH\n'
+            "severity: medium\napplies_when: 'always'\n---\n",
             encoding="utf-8",
         )
         (tmp_path / "b.md").write_text(
-            "---\nid: SAME-001\ntitle: \"b\"\ncategory: ARCH\nseverity: medium\napplies_when: 'always'\n---\n",
+            '---\nid: SAME-001\ntitle: "b"\ncategory: ARCH\n'
+            "severity: medium\napplies_when: 'always'\n---\n",
             encoding="utf-8",
         )
         with pytest.raises(ValueError, match="Duplicate check id"):

@@ -1,19 +1,10 @@
-# mcp-data-source-probe-skill
+# mcp-data-source-probe
 
 ![Version](https://img.shields.io/badge/version-1.7.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
 > Claude Skill, der eine öffentliche Datenquelle prüft, *bevor* ein MCP-Server dagegen gebaut wird — und misst, ob der fertige Server liefert, was die Quelle tatsächlich hat.
-
-> [!NOTE]
-> **Dieser Skill ist in Phase 3 der Zusammenführung nach `mcp-audit` gezogen.**
-> Die unten genannten Pfade beschreiben noch sein früheres eigenständiges
-> Repository. Die gemeinsame Konfiguration (`ruff.toml`,
-> `.pre-commit-config.yaml`) liegt jetzt in der Repo-Wurzel; die Prüfungen
-> unter `tools/checks/` ziehen in Phase 2b nach `tools/suites/mcp_data_source_probe/`, und
-> diese READMEs werden zusammen mit jenem Schritt umgeschrieben statt zweimal.
-> Siehe [`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md).
 
 🇬🇧 [English Version](README.md)
 
@@ -43,19 +34,16 @@ Die vierte Disziplin — **Ground Truth vor Selbstvertrauen** — kam nach einem
 ## Installation
 
 ```bash
-git clone https://github.com/malkreide/mcp-data-source-probe-skill.git
-cp -r mcp-data-source-probe-skill ~/.claude/skills/mcp-data-source-probe
+git clone https://github.com/malkreide/mcp-audit-skill.git
+cp -r mcp-audit-skill/skills/mcp-data-source-probe ~/.claude/skills/mcp-data-source-probe
 ```
 
 Der Verzeichnisname muss `mcp-data-source-probe` lauten — die Skill-Erkennung nutzt ihn.
 
-Den Companion-Skill `mcp-data-fidelity` (siehe unten) zusätzlich installieren —
-er liegt in einem eigenen Repo:
-
-```bash
-git clone https://github.com/malkreide/mcp-data-fidelity-skill.git
-cp -r mcp-data-fidelity-skill ~/.claude/skills/mcp-data-fidelity
-```
+Die vier Skills der Kette liegen seit der Zusammenführung in **einem**
+Repository; kopiere die, die du brauchst — beim Installieren sind sie
+unabhängig voneinander. `mcp-audit` selbst liegt in der Repo-Wurzel und wird
+zusätzlich als gepacktes `mcp-audit.skill` ausgeliefert.
 
 ## Verwendung
 
@@ -75,50 +63,65 @@ BASE="https://api.example.ch/v2" OUTDIR=/tmp/probe bash reference/probe_template
 ## Projektstruktur
 
 ```
-.
-├── SKILL.md                              # das Vorgehen selbst
-├── reference/
-│   ├── probe_template.sh                 # lauffähiges Probe-Gerüst: Scope, Abdeckung,
-│   │                                     #   Widening, Frische, Reihenfolge
-│   ├── befund_tabelle_template.md        # Befund-Tabelle: Default-Matrix, Recall-Ground-
-│   │                                     #   Truth, Aktualisierungsrhythmus, Spec-Ziel
-│   ├── response_envelope.py              # Pydantic-v2-Envelope mit source + provenance
-│   └── retry_backoff.py                  # Referenz-Implementation für exponentielles Backoff
-├── companion/
-│   └── mcp-data-fidelity/
-│       └── README.md                     # Pointer — der Skill hat ein eigenes Repo
-├── scripts/
-│   └── validate.sh                       # Einstieg; die CI ruft diese Datei auf
-├── tools/
-│   └── checks/                           # die Checks selbst — eine Funktion pro Gate
-└── tests/
-    ├── mutations.py                      # pro Check ein Baum, auf dem er rot werden MUSS
-    └── test_*.py                         # fährt sie, und hält die Checks gegens echte Repo
+skills/mcp-data-source-probe/
+├── SKILL.md                              # das Verfahren selbst
+├── CHANGELOG.md                          # die eigene Versionsgeschichte
+├── README.md / README.de.md
+└── reference/
+    ├── probe_template.sh                 # lauffähiges Probe-Gerüst: Scope, Coverage,
+    │                                     #   Weitung, Frische, Reihenfolge
+    ├── befund_tabelle_template.md        # Befundtabelle: Default-Matrix, Recall-
+    │                                     #   Ground-Truth, Refresh-Rhythmus, Spec-Ziel
+    ├── response_envelope.py              # Pydantic-v2-Envelope mit Quelle + Provenienz
+    ├── retry_backoff.py                  # Referenz-Implementation für Backoff
+    └── adoption.toml                     # was jede Vorlage zusichert, je Eigenschaft
 ```
 
-## Companion-Skill: `mcp-data-fidelity`
+Darum herum, geteilt von allen vier Skills — eine Konfiguration, ein Gerüst,
+eine Testsuite:
 
-`mcp-data-fidelity` wurde bisher in diesem Repo unter `companion/` ausgeliefert.
-Er hat jetzt ein eigenes Repo, das sein kanonisches Zuhause ist:
-**[`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill)**.
+```
+mcp-audit/
+├── ruff.toml                             # eine Zeilenbreite, ein Regelsatz
+├── .pre-commit-config.yaml               # ruff auf dieselbe Version gepinnt wie die CI
+├── scripts/validate.sh                   # Einstieg; die CI ruft diese Datei auf
+├── tools/harness/                        # die Registry — kennt keine einzige Prüfung
+├── tools/gates/                          # die sechzehn generischen Prüfungen
+├── tools/suites/mcp_data_source_probe/   # die neun Prüfungen dieses Skills
+└── tests/                                # fährt sie, und hält sie gegen den Baum
+```
 
-Die beiden teilen sich die Arbeit nach Phase. `mcp-data-source-probe` deckt ab, was
-*vor und um* den Bau herum passiert: Quelle proben, Architektur wählen, Recall gegen
-Ground Truth messen. `mcp-data-fidelity` deckt den Code selbst ab — er ergänzt
-Anthropics `mcp-builder` um sechs Regeln für Tools, die eine externe Quelle abfragen:
+`python -m tools.harness --suite probe` fährt nur die Prüfungen dieses
+Skills; `bash scripts/validate.sh` fährt alle vier Suiten in einem Lauf.
 
-1. Scope-Parameter explizit senden, nie erben
-2. Parameter-Gruppen vollständig senden — eine Teilmenge erbt still die Server-Defaults
-3. Eine Leermenge trägt einen konkreten nächsten Schritt
-4. Die Tool-Description ist eine Halluzinations-Oberfläche
-5. Query-Syntax gehört in die Description, Recall in die Tests
-6. Die Antwort auf Struktur prüfen, bevor gezählt wird — eine falsch angenommene
-   Verschachtelung liefert dieselbe leere Liste wie ein echter Nullbefund
+## Nachbarskill: `mcp-data-fidelity`
 
-Er existiert als Companion und nicht als Patch, weil `mcp-builder` ein von Anthropic
-mitgeliefertes Skill ist: Eine Änderung darin würde beim nächsten Sync überschrieben,
-ein Fork würde künftige Verbesserungen abschneiden. Wer beide installiert, bekommt die
-generische Bauanleitung und diese Regeln zusammen.
+`mcp-data-fidelity` wurde einmal innerhalb dieses Skills ausgeliefert, unter
+`companion/`. Danach bekam er ein eigenes Repo, und seit der Zusammenführung
+liegen beide als Geschwister in `mcp-audit`:
+[`../mcp-data-fidelity/`](../mcp-data-fidelity/). Das Zeiger-Verzeichnis ist
+damit weg — ein Zeiger auf den Ordner nebenan ist kein Zeiger, sondern ein
+Umweg.
+
+Die beiden teilen sich die Arbeit nach Phase. `mcp-data-source-probe` deckt ab,
+was *vor und um* den Bau herum passiert: Quelle proben, Architektur wählen,
+Recall gegen Ground Truth messen. `mcp-data-fidelity` deckt den Abfrage-Code
+selbst ab — er ergänzt Anthropics `mcp-builder` um Regeln für Tools, die eine
+externe Quelle abfragen, vom expliziten Scope-Parameter bis zur Kennzeichnung,
+wie viele Zeilen eine Summe stillschweigend ausgelassen hat.
+
+**Die Regeln stehen hier bewusst nicht noch einmal.** Dieser Abschnitt zählte
+sechs davon auf, geschrieben, als es sechs waren; es sind inzwischen vierzehn,
+und die Liste stand monatelang falsch da, ohne dass es jemandem auffiel —
+nichts hielt sie gegen ihre Quelle. Ein Nachbarverzeichnis braucht keine
+Kopie: [dessen README](../mcp-data-fidelity/README.md) führt die aktuelle
+Liste, [dessen SKILL.md](../mcp-data-fidelity/SKILL.md) die Regeln selbst.
+
+Er existiert als Companion und nicht als Patch, weil `mcp-builder` ein von
+Anthropic mitgeliefertes Skill ist: Eine Änderung darin würde beim nächsten
+Sync überschrieben, ein Fork würde künftige Verbesserungen abschneiden. Wer
+beide installiert, bekommt die generische Bauanleitung und diese Regeln
+zusammen.
 
 ## Die vier Disziplinen
 
@@ -133,21 +136,24 @@ Dazu der Merksatz fürs Portfolio, für die beiden Zeitangaben, die am häufigst
 
 ### Die MCP-Qualitätskette
 
-Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt — dieses kommt zuerst. Das gemeinsame GitHub-Topic ist [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain) und listet alle fünf auf einer Seite.
+Vier Skills, ein Lebenszyklus. Jeder beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt — dieser kommt zuerst. Seit der Zusammenführung liegen sie in **einem** Repository — diesem; `mcp-continuous-auditor` ist die Laufzeit, die sie immer wieder fährt. Das gemeinsame GitHub-Topic ist [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain) und listet beide Repositories auf einer Seite.
 
-| Phase | Repo | Frage, die es beantwortet |
+| Phase | Skill | Frage, die er beantwortet |
 |---|---|---|
-| vor dem Bau | **`mcp-data-source-probe-skill`** | **Dieser Skill:** taugt die Quelle, und was hat sie? |
-| im Bau | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? Wurde hier unter `companion/` ausgeliefert, bis er ein eigenes Repo bekam |
-| im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? |
-| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? |
-| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Die Recall-Ground-Truth aus Schritt 1.4, laufend statt einmalig gemessen |
+| vor dem Bau | **`mcp-data-source-probe`** | **Dieser Skill:** taugt die Quelle, und was hat sie? |
+| im Bau | [`mcp-data-fidelity`](../mcp-data-fidelity/) | Liefert er, was die Quelle hat? Wurde unter dem `companion/` dieses Skills ausgeliefert, bis er ein eigenes Repo bekam — und liegt seit der Zusammenführung direkt nebenan, weshalb jenes Zeiger-Verzeichnis weg ist. |
+| im Bau | [`mcp-transport-hardening`](../mcp-transport-hardening/) | Kommt er hoch, weist er richtig ab? |
+| nach dem Bau | [`mcp-audit`](../../) | Hält er gegen den Katalog? |
+
+Fährt die Kette, ist aber kein Glied darin: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor). Er beantwortet keine Frage im Lebenszyklus eines Servers — er stellt alle vier immer wieder neu und antwortet auf «hält er morgen noch?» — die Recall-Ground-Truth aus Schritt 1.4, laufend statt einmalig gemessen
 
 Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 
 Dazu der Server, aus dem die vierte Disziplin stammt: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), dessen [Issue #11](https://github.com/malkreide/termdat-mcp/issues/11) sie hervorgebracht hat.
 
 Wer nach diesem Skill probt und nach `mcp-data-fidelity` baut, besteht die `FID`-Checks; wer sie beim Audit reisst, findet dort das Vorgehen zur Behebung.
+
+Die Mitgliedschaft steht an einer Stelle, in [`docs/quality-chain.json`](../../docs/quality-chain.json) — `members` nennt die vier Skills, `repos` die zwei Repositories, die sie tragen. Eine Prüfung hält alle elf Fassungen dieser Tabelle dagegen — acht READMEs und drei `SKILL.md` —; ein fünftes Mitglied lässt sich damit nicht an einer Stelle ergänzen und an zehn vergessen.
 
 ## Changelog
 
@@ -174,7 +180,8 @@ die sie belegt.
 Vor einem Pull Request die Checks laufen lassen:
 
 ```bash
-pip install -r requirements-reference.txt -r requirements-dev.txt
+pip install ruff==0.16.1 pytest pyyaml
+pip install -r requirements-reference.txt
 bash scripts/validate.sh
 ```
 
@@ -193,12 +200,21 @@ Wer einen Check ändert oder hinzufügt, braucht ausserdem:
 pytest
 ```
 
-Die Checks stehen als gewöhnliche Funktionen unter `tools/checks/`, und zu jedem
-gibt es in `tests/mutations.py` mindestens einen Baum, auf dem er rot werden
-**muss** — samt der Zusicherung, *was* er dann sagt. Ein Check ohne Mutation
-lässt die Suite fehlschlagen. Der Grund steht in `ruff.toml`: Dort stand einmal
-`select = []`, beide Ruff-Schritte meldeten «All checks passed!», und niemand
-merkte es, weil nichts rot wurde.
+Die Checks stehen als gewöhnliche Funktionen unter [`tools/suites/mcp_data_source_probe/`](../../tools/suites/mcp_data_source_probe/)
+und hängen im gemeinsamen Gerüst — `python -m tools.harness --suite probe`
+fährt genau die neun dieses Skills. Warum die Suite überhaupt zählt, steht in
+`ruff.toml`: Dort stand einmal `select = []`, beide Ruff-Schritte meldeten
+«All checks passed!», und niemand merkte es, weil nichts rot wurde.
+
+**Eines ist noch nicht mitgezogen, und das gehört benannt statt beschönigt:**
+Im früheren eigenständigen Repo dieses Skills hatte jeder Check mindestens
+einen Baum in `tests/mutations.py`, auf dem er rot werden **musste**, samt der
+Zusicherung, *was* er dann sagt. Diese Mutationssuiten liegen noch in den
+Herkunftsrepos; sie umzuhängen ist der letzte offene Schritt der
+Zusammenführung (siehe
+[`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md)).
+Bis dahin ist das eine Absicht und keine Zusage — genau die Sorte Behauptung,
+gegen die diese Skills geschrieben sind, weshalb sie hier dasteht.
 
 Vor einem grösseren Pull Request bitte ein Issue eröffnen, damit die Form vorher
 geklärt ist.
@@ -227,7 +243,7 @@ Issue eröffnen.
 
 ## Lizenz
 
-MIT License — siehe [LICENSE](LICENSE)
+MIT License — siehe [LICENSE](../../LICENSE)
 
 ## Autor
 

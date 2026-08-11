@@ -183,25 +183,35 @@ def test_bewerte_meldet_auch_ohne_ausgabe_etwas():
 # --------------------------------------------------------------------------
 
 
+def suite_tabellen(paket):
+    """`(SUITE, ABSORBED, RETIRED)` — die beiden Tabellen sind optional.
+
+    Ueber `getattr` und nicht ueber eine Pflichtdeklaration: Eine Suite ohne
+    Luecken soll keine leeren Tabellen fuehren muessen. Was NICHT optional ist,
+    ist die Lueckenlosigkeit selbst — der Test unten faellt auf eine Luecke
+    ohne Eintrag, ganz gleich ob die Tabelle fehlt oder der Eintrag darin.
+    """
+    return (
+        paket.SUITE,
+        getattr(paket, "ABSORBED", {}),
+        getattr(paket, "RETIRED", {}),
+    )
+
+
 @pytest.mark.parametrize(
-    ("suite", "absorbed"),
+    ("suite", "absorbed", "retired"),
     [
-        (SUITE, {}),
-        (
-            tools.suites.mcp_transport_hardening.SUITE,
-            tools.suites.mcp_transport_hardening.ABSORBED,
-        ),
-        (
-            tools.suites.mcp_data_fidelity.SUITE,
-            tools.suites.mcp_data_fidelity.ABSORBED,
-        ),
-        (
-            tools.suites.mcp_data_source_probe.SUITE,
-            tools.suites.mcp_data_source_probe.ABSORBED,
-        ),
+        suite_tabellen(paket)
+        for paket in (
+            tools.suites.mcp_audit,
+            tools.suites.mcp_transport_hardening,
+            tools.suites.mcp_data_fidelity,
+            tools.suites.mcp_data_source_probe,
+        )
     ],
+    ids=lambda v: v if isinstance(v, str) else "",
 )
-def test_nummern_sind_lueckenlos_und_eindeutig(suite, absorbed):
+def test_nummern_sind_lueckenlos_und_eindeutig(suite, absorbed, retired):
     """Lueckenlos JE SUITE — ueber die registrierten UND die absorbierten.
 
     Der vereinigte Nummernraum ueber alle Suiten ist absichtlich nicht
@@ -210,23 +220,41 @@ def test_nummern_sind_lueckenlos_und_eindeutig(suite, absorbed):
     Innerhalb einer Suite darf es dagegen Luecken geben, seit fuenf von
     transports elf Pruefungen im Monorepo repo-bezogen sind und genau einmal
     statt viermal existieren. Damit der Waechter dabei nicht stumpf wird,
-    nennt `ABSORBED` jede Luecke samt ihrem neuen Ort, und geprueft wird die
-    VEREINIGUNG: Eine Luecke ohne Eintrag bleibt ein Befund.
+    nennt jede Suite ihre Luecken — und zwar getrennt nach Grund:
+
+      * `ABSORBED`: Die Zusage ist weiter da, an einer Stelle statt an vieren.
+        Der Eintrag nennt den neuen Ort und ist damit nachpruefbar.
+      * `RETIRED`: Der GEGENSTAND ist weg. `probe/8` bewachte den Zeiger auf
+        `companion/mcp-data-fidelity/`; das Verzeichnis ist mit 2b-iv-c
+        aufgeloest.
+
+    Geprueft wird die VEREINIGUNG aus allen dreien. Eine Luecke ohne Eintrag
+    bleibt ein Befund, und dieselbe Nummer in beiden Tabellen ebenfalls: Eine
+    Pruefung ist entweder anderswo aufgegangen oder ohne Gegenstand.
     """
     numbers = [c.number for c in all_checks(suite=suite)]
     assert numbers == sorted(set(numbers)), f"{suite}: nicht eindeutig: {numbers}"
 
-    doppelt = sorted(set(numbers) & set(absorbed))
-    assert not doppelt, (
-        f"{suite}: {doppelt} steht in ABSORBED und ist trotzdem registriert. "
-        "Der Eintrag behauptet dann eine Luecke, die es nicht gibt."
+    for name, tabelle in (("ABSORBED", absorbed), ("RETIRED", retired)):
+        doppelt = sorted(set(numbers) & set(tabelle))
+        assert not doppelt, (
+            f"{suite}: {doppelt} steht in {name} und ist trotzdem registriert. "
+            "Der Eintrag behauptet dann eine Luecke, die es nicht gibt."
+        )
+
+    beide = sorted(set(absorbed) & set(retired))
+    assert not beide, (
+        f"{suite}: {beide} steht in ABSORBED UND in RETIRED. Eine Pruefung ist "
+        "entweder anderswo aufgegangen oder ohne Gegenstand — beides zugleich "
+        "heisst, dass eine der beiden Begruendungen nicht stimmt."
     )
 
-    vereinigt = sorted([*numbers, *absorbed])
+    vereinigt = sorted([*numbers, *absorbed, *retired])
     assert vereinigt == list(range(1, len(vereinigt) + 1)), (
         f"{suite}: nicht lueckenlos: registriert {numbers}, absorbiert "
-        f"{sorted(absorbed)}. Eine Luecke ohne ABSORBED-Eintrag ist fast immer "
-        "eine Pruefung, die aus der Registry gefallen ist."
+        f"{sorted(absorbed)}, zurueckgezogen {sorted(retired)}. Eine Luecke "
+        "ohne Eintrag ist fast immer eine Pruefung, die aus der Registry "
+        "gefallen ist."
     )
 
 

@@ -1,19 +1,10 @@
-# mcp-data-fidelity-skill
+# mcp-data-fidelity
 
 ![Version](https://img.shields.io/badge/version-1.7.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Claude Skill](https://img.shields.io/badge/Claude-Skill-orange)
 
 > Claude Skill for MCP server tools that query an external data source — so that a server does not quietly return less than the source holds.
-
-> [!NOTE]
-> **This skill moved into `mcp-audit` in Phase 3 of the consolidation.** Paths
-> named below still describe its former standalone repository. The shared
-> configuration (`ruff.toml`, `.pre-commit-config.yaml`) now lives at the
-> repository root; the checks under `tools/checks/` move to
-> `tools/suites/mcp_data_fidelity/` in Phase 2b, and these READMEs are rewritten together
-> with that step rather than twice. See
-> [`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md).
 
 🇩🇪 [Deutsche Version](README.de.md)
 
@@ -53,11 +44,16 @@ Rules 1–6 and 10–14 come from incidents. Rules 7–9 are derived from MCP sp
 ## Installation
 
 ```bash
-git clone https://github.com/malkreide/mcp-data-fidelity-skill.git
-cp -r mcp-data-fidelity-skill ~/.claude/skills/mcp-data-fidelity
+git clone https://github.com/malkreide/mcp-audit-skill.git
+cp -r mcp-audit-skill/skills/mcp-data-fidelity ~/.claude/skills/mcp-data-fidelity
 ```
 
 The directory name must be `mcp-data-fidelity` — skill discovery uses it.
+
+The four skills of the chain live in **one** repository since the
+consolidation; copy whichever ones you want, they are independent at install
+time. `mcp-audit` itself sits at the repository root and additionally ships as
+a packaged `mcp-audit.skill`.
 
 ## Usage / Quickstart
 
@@ -71,18 +67,30 @@ The skill triggers on its own when a search, query, or filter tool is designed, 
 ## Project Structure
 
 ```
-.
-├── SKILL.md                  # the fourteen rules, with the release checklist
-├── reference/
-│   └── patterns.py           # copy-paste FastMCP / httpx / pydantic v2 patterns
-├── scripts/
-│   └── validate.sh           # entry point for the checks; CI runs this file
-├── tools/
-│   └── checks/               # the checks themselves — one function per gate
-└── tests/
-    ├── mutations.py          # per check, a tree it MUST go red on
-    └── test_*.py             # runs them, and holds the checks against this repo
+skills/mcp-data-fidelity/
+├── SKILL.md                              # the fourteen rules, with the release checklist
+├── CHANGELOG.md                          # this skill's own version history
+├── README.md / README.de.md
+└── reference/
+    └── patterns.py                       # copy-paste FastMCP / httpx / pydantic v2 patterns
 ```
+
+Around it, shared by all four skills — one configuration, one harness, one
+test suite:
+
+```
+mcp-audit/
+├── ruff.toml                             # one line width, one rule set
+├── .pre-commit-config.yaml               # ruff pinned to the same version as CI
+├── scripts/validate.sh                   # entry point; CI runs this file
+├── tools/harness/                        # the registry — knows no single check
+├── tools/gates/                          # the sixteen generic checks
+├── tools/suites/mcp_data_fidelity/       # this skill's own six checks
+└── tests/                                # runs them, and holds them against the tree
+```
+
+`python -m tools.harness --suite fidelity` runs only this skill's checks;
+`bash scripts/validate.sh` runs all four suites in one go.
 
 ## Where these rules come from
 
@@ -109,21 +117,26 @@ Rules 7–9 do **not** have that provenance, and the skill says so where it stat
 
 ### The MCP quality chain
 
-Five repositories, one lifecycle. Each answers a different question, in the order they come up. The shared GitHub topic is [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain), which lists all five on one page.
+Four skills, one lifecycle. Each answers a different question, in the order they come up. Since the consolidation they live in **one** repository — this one; `mcp-continuous-auditor` is the runtime that keeps re-running them. The shared GitHub topic is [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain), which lists both repositories on one page.
 
-| Stage | Repository | Question it answers |
+| Stage | Skill | Question it answers |
 |---|---|---|
-| before the build | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Is the source usable, and what does it hold? Default matrix (1.2b), recall ground truth (1.4), empty results (3.6). Distributed this skill under `companion/` until this repository became its home. |
-| in the build | **`mcp-data-fidelity-skill`** | **This skill:** does it return what the source actually holds? |
-| in the build | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Does it come up, and does it turn away the right callers? The same silent class one layer down — not what the answer contains, but whether one arrives at all |
-| after the build | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Does it hold up against the catalogue? Rules 1–6 map onto `FID-001`–`FID-006` — not one to one: rules 3 and 4 share `FID-003`, rule 5 needs `FID-005`, `FID-002` and `OPS-009`, rule 6 is `FID-006`. Rules 7–9 sit outside `FID`, in `ARCH-020`, `HITL-006` and `ARCH-018`, with rule 9's boundary against the empty set in `FID-003`; rule 10 sits on `ARCH-003`; rule 13 sits on `FID-006` as well — `DRIFT-007` was withdrawn on 2026-08-07 and absorbed into it, and the number is deliberately never reused — and rule 14 has `FID-007`, both raised from the same incident as the rules themselves (catalogue: 120 checks on `main`, v2.3.0 cut 2026-08-08; `FID-001`, `FID-002`, `FID-003`, `FID-005` and `ARCH-003` are enforced, the rest advisory — `ARCH-003` is the only one that applies always rather than only on external requests). Rule 12 is the only one on no check at all. Full table, with what each check does *not* cover, in `SKILL.md`. |
-| in operation | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Does it still hold up tomorrow? Its recall floors are rule 5 kept running against the live source. |
+| before the build | [`mcp-data-source-probe`](../mcp-data-source-probe/) | Is the source usable, and what does it hold? Default matrix (1.2b), recall ground truth (1.4), empty results (3.6). Distributed this skill under `companion/` until it got its own repository — the two are neighbours again, and that pointer directory is gone. |
+| in the build | **`mcp-data-fidelity`** | **This skill:** does it return what the source actually holds? |
+| in the build | [`mcp-transport-hardening`](../mcp-transport-hardening/) | Does it come up, and does it turn away the right callers? The same silent class one layer down — not what the answer contains, but whether one arrives at all |
+| after the build | [`mcp-audit`](../../) | Does it hold up against the catalogue? Rules 1–6 map onto `FID-001`–`FID-006` — not one to one: rules 3 and 4 share `FID-003`, rule 5 needs `FID-005`, `FID-002` and `OPS-009`, rule 6 is `FID-006`. Rules 7–9 sit outside `FID`, in `ARCH-020`, `HITL-006` and `ARCH-018`, with rule 9's boundary against the empty set in `FID-003`; rule 10 sits on `ARCH-003`; rule 13 sits on `FID-006` as well — `DRIFT-007` was withdrawn on 2026-08-07 and absorbed into it, and the number is deliberately never reused — and rule 14 has `FID-007`, both raised from the same incident as the rules themselves (catalogue: 120 checks on `main`, v2.3.0 cut 2026-08-08; `FID-001`, `FID-002`, `FID-003`, `FID-005` and `ARCH-003` are enforced, the rest advisory — `ARCH-003` is the only one that applies always rather than only on external requests). Rule 12 is the only one on no check at all. Full table, with what each check does *not* cover, in `SKILL.md`. |
+
+Running the chain, not a link in it: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor). It asks no question in a server's lifecycle — it asks all four again, on a schedule, and answers «does it still hold up tomorrow?» Its recall floors are rule 5 kept running against the live source.
 
 Alongside, not part of the chain: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — Anthropic's generic build guidance, complemented rather than replaced. It is someone else's repository and cannot carry the topic.
 
 Plus the two servers this skill came from: [`termdat-mcp`](https://github.com/malkreide/termdat-mcp), whose [issue #11](https://github.com/malkreide/termdat-mcp/issues/11) produced rules 1–5, and [`amtsblatt-mcp`](https://github.com/malkreide/amtsblatt-mcp), whose [`ARCH-003` finding](https://github.com/malkreide/amtsblatt-mcp/blob/main/audits/2026-07-30T105205-Z-amtsblatt-mcp/findings/ARCH-003.md) produced rule 10 and the scope addendum to rule 1.
 
 Build by rules 1–6 and you pass the `FID` checks; fail them in an audit and the remediation is here. Rules 7–9 are covered outside `FID`, and those checks are `advisory` — they are counted, not enforced. The `FID` checks behind rules 1–5 are not: `FID-001`, `FID-002`, `FID-003` and `FID-005` carry no `adoption` field, and without it `enforced` applies, so a violation blocks. `ARCH-003` behind rule 10 blocks too, and is the only one of them that applies `always` rather than only on external requests. Rule 12 is the only one with no check at all; for the rest what remains open is scope rather than coverage, the widest of those being rule 7 — its check measures on baseline `2026-07-28`, while pagination loss also happens on `2025-11-25`. Rules 13 and 14 gained `DRIFT-007` and `FID-007` within a day of being written here — and `DRIFT-007` was withdrawn again the day after, absorbed into `FID-006`. That is worth knowing before trusting any row, and in both directions: the catalogue moves faster than this skill, and a check can disappear as well as appear. Which is a gap and which is a named edge is stated per row in `SKILL.md`.
+
+One thing the consolidation changed about this table, and it is worth stating: the catalogue it maps onto now sits in the same commit, under [`checks/`](../../checks/). A row that names a check which no longer exists is caught by `fidelity/14` in the pull request that writes it — it used to take a weekly job, a pinned commit and a network fetch to notice.
+
+Membership is declared once, in [`docs/quality-chain.json`](../../docs/quality-chain.json) — `members` names the four skills, `repos` the two repositories that carry them. A check holds all eleven copies of this table against it — eight READMEs and three `SKILL.md` — so a fifth member cannot be added in one place and forgotten in ten.
 
 ## Changelog
 
@@ -157,7 +170,7 @@ comes only from a mock, it is not yet evidence.
 Before opening a pull request, run the checks:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install ruff==0.16.1 pytest pyyaml
 bash scripts/validate.sh
 pytest
 ```
@@ -167,11 +180,18 @@ out of step. Every check runs even after one fails, so a red run names every
 problem at once.
 
 `pytest` applies the paragraph above to the checks themselves. Each one is an
-ordinary function under `tools/checks/`, and each has at least one tree in
-`tests/mutations.py` that it **must** go red on — along with an assertion about
-*what it then says*. A check without a mutation fails the suite. The same
-sentence, one level up: a check that cannot be violated in a way that something
-notices is not yet a check.
+ordinary function under [`tools/suites/mcp_data_fidelity/`](../../tools/suites/mcp_data_fidelity/),
+registered into the shared harness — `python -m tools.harness --suite fidelity`
+runs exactly this skill's six.
+
+**One thing has not moved yet, and it is worth naming rather than glossing
+over:** in this skill's former standalone repository every check had at least
+one tree in `tests/mutations.py` that it **must** go red on, together with an
+assertion about *what it then says*. Those mutation suites are still in the
+origin repositories; moving them is the last open step of the consolidation
+(see [`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md)).
+Until then the sentence stands as an intention, not as a guarantee — which is
+exactly the kind of claim this skill exists to catch, so it says so here.
 
 Open an issue before a large pull request, so the shape can be settled first.
 
@@ -203,7 +223,7 @@ Found an error in the rules, or a case they get wrong? Please open an issue.
 
 ## License
 
-MIT License — see [LICENSE](LICENSE)
+MIT License — see [LICENSE](../../LICENSE)
 
 ## Author
 

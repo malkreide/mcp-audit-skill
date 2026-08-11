@@ -165,7 +165,8 @@ def _render(report: dict[str, Any]) -> str:
     if not lines:
         checked = sum(f["claims_found"] for f in report["files"])
         lines.append(
-            f"  ok — {checked} Angabe(n) geprueft, alle stimmen mit summary.json ueberein"
+            f"  ok — {checked} Angabe(n) geprueft, alle stimmen mit "
+            "summary.json ueberein"
         )
     return "\n".join(lines)
 

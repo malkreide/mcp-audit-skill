@@ -894,15 +894,16 @@ Die Regeln 7–9 haben diese Herkunft **nicht**. Sie kommen aus der Spec 2026-07
 
 ## Verwandte Skills
 
-Fünf Repos, ein Lebenszyklus — gemeinsames GitHub-Topic [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain).
+Vier Skills, ein Lebenszyklus — seit der Zusammenführung in **einem** Repository, gemeinsames GitHub-Topic [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain).
 
-| Phase | Repo | Frage, die es beantwortet |
+| Phase | Skill | Frage, die er beantwortet |
 |---|---|---|
-| vor dem Bau | [`mcp-data-source-probe`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? Default-Matrix (1.2b), Recall-Ground-Truth (1.4), Leermengen (3.6) |
-| im Bau | **`mcp-data-fidelity`** | **Dieser Skill:** liefert er, was die Quelle hat? |
-| im Bau | [`mcp-transport-hardening`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Dieselbe stille Fehlerklasse eine Schicht tiefer — nicht der Inhalt der Antwort, sondern ob überhaupt eine kommt |
-| nach dem Bau | [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? Die Zuordnung Regel → Check steht unten |
-| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Seine Recall-Floors sind Regel 5, laufend gegen die echte Quelle gemessen |
+| vor dem Bau | [`mcp-data-source-probe`](../mcp-data-source-probe/) | Taugt die Quelle, und was hat sie? |
+| im Bau | **`mcp-data-fidelity`** | **Dieser Skill:** liefert er, was die Quelle hat? Vierzehn Regeln für den Abfrage-Code; als Audit-Checks `FID-001`–`FID-007` und weitere ausserhalb von `FID` |
+| im Bau | [`mcp-transport-hardening`](../mcp-transport-hardening/) | Kommt er hoch, weist er richtig ab? Die Umsetzung im Einstiegspunkt und das Abweis-Verhalten |
+| nach dem Bau | [`mcp-audit`](../../) | Hält er gegen den Katalog? |
+
+Fährt die Kette, ist aber kein Glied darin: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) — er stellt alle vier Fragen immer wieder neu und antwortet auf «hält er morgen noch?»
 
 Daneben, nicht Teil der Kette: `mcp-builder` — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 

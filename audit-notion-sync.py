@@ -375,7 +375,8 @@ def cmd_pull(args: argparse.Namespace) -> None:
     if out_path.exists() and not args.force:
         fail(
             f"{out_path} exists. Refusing to overwrite without --force.\n"
-            "  Tip: copy your manual overrides elsewhere first; pull regenerates the file."
+            "  Tip: copy your manual overrides elsewhere first; pull "
+            "regenerates the file."
         )
 
     status_filter = None if args.all else DEFAULT_STATUS_FILTER

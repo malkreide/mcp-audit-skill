@@ -624,26 +624,77 @@ war das die Luecke, die er selbst beschreibt; er ist jetzt ueber alle vier
 parametrisiert und meldet ausserdem, wenn ein Paket gar kein `@register`
 enthaelt.
 
-### 4.2m Offen: der Companion-Zeiger von probe
+### 4.2m Was 2b-iv-c gezeigt hat — zwei Entscheidungen und ein blinder Fleck
 
-`skills/mcp-data-source-probe/companion/mcp-data-fidelity/README.md` sagt, wo
-`mcp-data-fidelity` jetzt liegt: im Repo `malkreide/mcp-data-fidelity-skill`.
-Das war richtig, als der Skill dorthin zog. Seit Phase 3a liegt er als
-GESCHWISTER unter `skills/mcp-data-fidelity/`, und Phase 5 archiviert das
-genannte Repo.
+**BEIDE OFFENEN FRAGEN AUS 4.2l SIND ENTSCHIEDEN.**
 
-Der Zeiger zeigt damit heute noch richtig und ab Phase 5 nicht mehr. `probe/8`
-haelt fest, was DA STEHT, statt zu raten, was da stehen soll — die Pruefung
-kann den Umzug nicht anstossen, aber sie kann nicht mit ihm auseinanderlaufen.
+*E501 und `W` sind jetzt im `select`.* Die 28 gemessenen Befunde sind
+**umbrochen, nicht ausgenommen** — bis auf eine Zeile, die sich nicht
+umbrechen liess: der `grep`-Einzeiler in transports `patterns.py`, der
+kopierbar bleiben muss. Er fuehrt seine Modulliste jetzt in einer
+Shell-Variablen und ist zwei kopierbare Zeilen statt einer zu langen.
+`LINT_ENFORCES_E501` in `tools/suites/mcp_audit/ruff_gate.py` steht auf `True`,
+`audit/7` misst damit wieder beide Gates.
 
-**Zwei Wege, und beide sind eine Entscheidung ueber das Produkt:**
+Beim Messen ist noch etwas herausgekommen, das die alte Begruendung widerlegt:
+**Alle 24 E501-Zeilen hatte `ruff format` durchgelassen.** Er bricht Prosa in
+Docstrings und Kommentaren nicht um. «Das entscheidet der Formatter» galt also
+fuer Code und nicht fuer Text — die Begruendung deckte weniger ab, als sie
+versprach.
 
-1. Das Verzeichnis aufloesen. Es existiert nur, weil die beiden Skills einmal
-   in einem Repo lagen und dann nicht mehr. Jetzt liegen sie wieder in einem.
-2. Den Zeiger auf `skills/mcp-data-fidelity/` umbiegen und `CANONICAL_REPO` in
-   `tools/suites/mcp_data_source_probe/companion.py` im selben Commit mitziehen.
+*Das Companion-Verzeichnis ist aufgeloest.* `companion/mcp-data-fidelity/`
+existierte nur, weil die beiden Skills einmal in einem Repo lagen und dann
+nicht mehr; sie liegen wieder in einem, als Geschwister. `probe/8` ist damit
+ohne Gegenstand.
 
-Gehoert zu 2b-iv-c (die sechs Companion-READMEs) und ist **vor Phase 5** faellig.
+**DAS BRAUCHTE EINE ZWEITE TABELLE, UND DAS IST DER PUNKT.** `ABSORBED` sagt
+«die Zusage steht jetzt in `audit/N`» — nachpruefbar. Fuer `probe/8` stimmt
+das nicht: Der GEGENSTAND ist weg. Beides in einen Topf zu werfen waere bequem
+und unwahr, deshalb `RETIRED` daneben. Der Registry-Test haelt die Vereinigung
+aus registrierten, absorbierten und zurueckgezogenen Nummern gegen `1..N` und
+faellt zusaetzlich, wenn dieselbe Nummer in beiden Tabellen steht.
+
+**DER BLINDE FLECK, UND ER WAR SELBSTGEMACHT.** `transport/4`, `fidelity/8`
+und `probe/10` hielten je die Ketten-Tabelle ihres Skills. Beim Einzug sind
+alle drei nach `audit/12` absorbiert worden, mit der Begruendung, die Tabelle
+stehe jetzt «einmal, gegen ein Manifest». Das stimmte fuer die
+IMPLEMENTIERUNG und nicht fuer den GEGENSTAND: `audit/12` las die beiden
+READMEs der Wurzel und sonst nichts. **Neun Tabellen blieben ungeprueft
+zurueck** — und alle neun sagten in genau diesem Zeitraum weiter «Fuenf Repos»
+statt «Vier Skills».
+
+Zwei Dinge daran sind bemerkenswert. Erstens: Der `ABSORBED`-Eintrag war
+formal richtig und praktisch falsch — eine Absorption ist erst dann eine, wenn
+die aufnehmende Pruefung denselben Gegenstand abdeckt. Zweitens: Drei der neun
+Tabellen stehen in den `SKILL.md`, also in genau den Dateien, die Claude
+tatsaechlich laedt. Sie blieben am laengsten falsch, weil das Gate auf `###`
+bestand und sie `##` fuehren. **Der Anker ist der TEXT der Ueberschrift, nicht
+ihre Tiefe** — das Gate liest jetzt beide.
+
+`audit/12` deckt damit **elf** Tabellen ab. Daneben steht ein statischer
+Waechter (`test_ANKER_jede_companion_datei_mit_kettentabelle_steht_in_chain_sections`),
+der `CHAIN_SECTIONS` gegen den Baum haelt: Eine vierte Companion-Datei oder
+eine dritte Sprachfassung faellt sonst wieder still heraus.
+
+**WAS BEIM UMSCHREIBEN DER READMES SONST NOCH FALSCH WAR** — alles gemessen,
+nichts vermutet:
+
+| Was | Wie lange falsch |
+|---|---|
+| probes Companion-Abschnitt zaehlte **sechs** Regeln von `mcp-data-fidelity` auf | seit dessen siebter Regel; es sind vierzehn |
+| probes `SKILL.md` nannte `FID-001`–`FID-005` | seit `FID-006`; es sind `FID-001`–`FID-007` |
+| `[LICENSE](LICENSE)` in allen sechs READMEs | seit Phase 3a — `LICENSE` liegt in der Wurzel |
+| `pip install -r requirements-dev.txt` | seit Phase 3a — die Datei ist nicht mitgezogen |
+| «jeder Check hat einen Baum in `tests/mutations.py`» | seit Phase 3a — die Mutationssuiten sind noch in den Herkunftsrepos |
+
+Die Regelliste in probes README ist nicht nachgezogen, sondern **entfernt**
+worden. Eine Kopie neben dem Nachbarverzeichnis ist genau der Zustand, aus dem
+sie falsch wurde; jetzt steht dort ein Verweis.
+
+Der letzte Punkt der Tabelle ist eine SCHULD und keine Behebung: Die
+Mutationssuiten der drei Companions liegen weiter in den Herkunftsrepos. Die
+READMEs sagen das jetzt ausdruecklich, statt eine Zusage zu machen, die dieses
+Repository nicht einloest.
 
 ### 4.3 Konfiguration
 
@@ -787,7 +838,7 @@ damit hier auf und nicht erst, wenn jemand den Skill installieren will.
 | **2b-iii-c** | G14 (Zaehlwerte, parametrisiert nach Einheit) | **erledigt** — gegen fuenf Baeume gruen, audit bekommt eine Pruefung dazu |
 | **2b-iv-a** | Suite `transport` vollstaendig, als Vorlage | **erledigt** — 6 Pruefungen, G11 erstmals gebunden |
 | **2b-iv-b** | Suiten `probe` und `fidelity` | **erledigt** — 10 + 6 Pruefungen, 37 Checks gesamt; Phase 4 faellt dabei heraus (4.2l) |
-| **2b-iv-c** | die sechs READMEs der Companions neu fassen | |
+| **2b-iv-c** | die sechs READMEs der Companions neu fassen | **erledigt** — dazu die drei `SKILL.md`-Tabellen, `E501`/`W` im Lint, Companion-Verzeichnis aufgeloest (4.2m) |
 | **3a** | Die drei Companions per `git subtree` nach `skills/<name>/`, Historie erhalten | **erledigt** — drei `SKILL.md` am Platz, Frontmatter-`name` unveraendert, 1315 Tests gruen |
 | **3b** | Kette auf vier Skills umstellen (6.1), beide READMEs nachziehen | **erledigt** — `quality-chain.json` fuehrt vier Skills und zwei Repos, 1319 Tests gruen |
 | **4** | Katalog-Drift auf lokal umstellen; `weekly-drift.yml` + `linked_checks.py` loeschen | **erledigt mit 2b-iv-b** — `fidelity/14` laeuft offline im PR; die 640 Zeilen stehen nur noch im Herkunftsrepo und gehen mit Phase 5 |

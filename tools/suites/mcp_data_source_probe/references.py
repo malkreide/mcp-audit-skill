@@ -44,7 +44,6 @@ REFERENCED_FILES = (
     f"{BASE}/reference/response_envelope.py",
     f"{BASE}/reference/retry_backoff.py",
     f"{BASE}/reference/adoption.toml",
-    f"{BASE}/companion/mcp-data-fidelity/README.md",
 )
 
 

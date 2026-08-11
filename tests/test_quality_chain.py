@@ -34,6 +34,7 @@ from tools.check_quality_chain import (
     fix_commands,
     load_manifest,
 )
+from tools.suites.mcp_audit.skill_doc import CHAIN_SECTIONS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = REPO_ROOT / "docs" / "quality-chain.json"
@@ -248,12 +249,36 @@ def test_doppelte_repos_werden_abgelehnt(tmp_path):
         load_manifest(path)
 
 
+def test_ANKER_jede_companion_datei_mit_kettentabelle_steht_in_chain_sections():
+    """Die Bindung selbst, gegen den Baum gehalten.
+
+    `audit/12` prueft nur, was in `CHAIN_SECTIONS` steht. Eine vierte
+    Companion-README — oder eine dritte Sprachfassung — waere damit still
+    ungeprueft, und die Tabelle darin duerfte veralten, waehrend der Lauf
+    gruen meldet. Genau das ist zwischen 2b-iv-a und 2b-iv-c passiert: Die
+    drei Herkunfts-Pruefungen waren nach `audit/12` absorbiert, `audit/12`
+    las aber nur die beiden READMEs der Wurzel, und die sechs
+    Companion-Tabellen beschrieben in dieser Zeit noch fuenf Repositories.
+    """
+    gefuehrt = {datei for datei, _ in CHAIN_SECTIONS}
+    vorhanden = {
+        pfad.relative_to(REPO_ROOT).as_posix()
+        for muster in ("skills/*/README*.md", "skills/*/SKILL.md")
+        for pfad in sorted(REPO_ROOT.glob(muster))
+    }
+    assert vorhanden, "keine Companion-Datei gefunden — dann prueft dieser Test nichts"
+    fehlend = sorted(vorhanden - gefuehrt)
+    assert not fehlend, (
+        f"Diese Dateien fuehren eine Ketten-Tabelle, stehen aber nicht in "
+        f"CHAIN_SECTIONS: {fehlend}. Ihre Tabelle darf damit veralten, ohne "
+        "dass etwas rot wird."
+    )
+
+
 @pytest.mark.parametrize(
     ("readme", "heading"),
-    [
-        ("README.md", "The MCP quality chain"),
-        ("README.de.md", "Die MCP-Qualitätskette"),
-    ],
+    CHAIN_SECTIONS,
+    ids=lambda wert: wert if wert.endswith(".md") else "",
 )
 def test_readme_tabelle_nennt_jedes_mitglied_des_manifests(readme, heading):
     """Die Tabelle ist die menschenlesbare Fassung des Manifests.

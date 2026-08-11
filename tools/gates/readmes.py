@@ -142,14 +142,19 @@ def chain_table(
         if not pfad.is_file():
             raise CheckFailed(f"{datei} fehlt")
         text = pfad.read_text(encoding="utf-8")
+        # `##` ODER `###`: Der Anker ist der TEXT der Ueberschrift, nicht ihre
+        # Tiefe. Die READMEs fuehren die Tabelle unter «Related repositories»
+        # als `###`, die drei `SKILL.md` unter `## Verwandte Skills` als `##`.
+        # Auf eine Tiefe zu bestehen hiesse, die Haelfte der Tabellen
+        # ungeprueft zu lassen — und genau das war bis 2b-iv-c der Fall.
         abschnitt = re.search(
-            rf"^### {re.escape(ueberschrift)}\n(.*?)(?=^#{{2,3}} |\Z)",
+            rf"^#{{2,3}} {re.escape(ueberschrift)}\n(.*?)(?=^#{{2,3}} |\Z)",
             text,
             re.M | re.S,
         )
         if not abschnitt:
             raise CheckFailed(
-                f"{datei}: Abschnitt '### {ueberschrift}' nicht gefunden — "
+                f"{datei}: Abschnitt '{ueberschrift}' nicht gefunden — "
                 "Anker weg oder umformuliert, diese Pruefung wuerde "
                 "stillschweigend aufhoeren zu pruefen"
             )
@@ -162,4 +167,4 @@ def chain_table(
                 "entweder ist die Tabelle nicht nachgezogen worden, oder das "
                 "Mitglied gehoert dort nicht mehr hin."
             )
-    return f"beide Ketten-Tabellen nennen alle {len(namen)} Mitglieder"
+    return f"{len(sections)} Ketten-Tabellen nennen alle {len(namen)} Mitglieder"
