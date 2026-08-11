@@ -34,6 +34,7 @@ if str(REPO_ROOT) not in sys.path:
 
 import tools.suites  # noqa: E402
 import tools.suites.mcp_audit  # noqa: E402
+import tools.suites.mcp_transport_hardening  # noqa: E402
 from tools.gates import ruff as gates_ruff  # noqa: E402
 from tools.gates import toolchain as gates_toolchain  # noqa: E402
 from tools.harness import CheckFailed, all_checks  # noqa: E402
@@ -180,18 +181,42 @@ def test_bewerte_meldet_auch_ohne_ausgabe_etwas():
 # --------------------------------------------------------------------------
 
 
-def test_nummern_sind_lueckenlos_und_eindeutig():
-    """Lueckenlos JE SUITE, nicht ueber alle.
+@pytest.mark.parametrize(
+    ("suite", "absorbed"),
+    [
+        (SUITE, {}),
+        (
+            tools.suites.mcp_transport_hardening.SUITE,
+            tools.suites.mcp_transport_hardening.ABSORBED,
+        ),
+    ],
+)
+def test_nummern_sind_lueckenlos_und_eindeutig(suite, absorbed):
+    """Lueckenlos JE SUITE — ueber die registrierten UND die absorbierten.
 
-    Der vereinigte Nummernraum ist absichtlich nicht lueckenlos — `audit/1`
-    und `probe/1` existieren beide. Innerhalb der Suite gilt die Invariante
-    unveraendert weiter.
+    Der vereinigte Nummernraum ueber alle Suiten ist absichtlich nicht
+    lueckenlos: `audit/1` und `transport/1` existieren beide.
+
+    Innerhalb einer Suite darf es dagegen Luecken geben, seit fuenf von
+    transports elf Pruefungen im Monorepo repo-bezogen sind und genau einmal
+    statt viermal existieren. Damit der Waechter dabei nicht stumpf wird,
+    nennt `ABSORBED` jede Luecke samt ihrem neuen Ort, und geprueft wird die
+    VEREINIGUNG: Eine Luecke ohne Eintrag bleibt ein Befund.
     """
-    numbers = [c.number for c in all_checks(suite=SUITE)]
-    assert numbers == sorted(set(numbers)), f"nicht eindeutig: {numbers}"
-    assert numbers == list(range(1, len(numbers) + 1)), (
-        f"nicht lueckenlos: {numbers}. Eine Luecke ist fast immer eine "
-        "Pruefung, die aus der Registry gefallen ist."
+    numbers = [c.number for c in all_checks(suite=suite)]
+    assert numbers == sorted(set(numbers)), f"{suite}: nicht eindeutig: {numbers}"
+
+    doppelt = sorted(set(numbers) & set(absorbed))
+    assert not doppelt, (
+        f"{suite}: {doppelt} steht in ABSORBED und ist trotzdem registriert. "
+        "Der Eintrag behauptet dann eine Luecke, die es nicht gibt."
+    )
+
+    vereinigt = sorted([*numbers, *absorbed])
+    assert vereinigt == list(range(1, len(vereinigt) + 1)), (
+        f"{suite}: nicht lueckenlos: registriert {numbers}, absorbiert "
+        f"{sorted(absorbed)}. Eine Luecke ohne ABSORBED-Eintrag ist fast immer "
+        "eine Pruefung, die aus der Registry gefallen ist."
     )
 
 

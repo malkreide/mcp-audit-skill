@@ -41,5 +41,5 @@ def step_count_agrees(root: Path) -> str:
         source=SOURCE,
         pattern=SCHRITT,
         unit="Schritte",
-        mirrors=((COMMAND, OUTPUT_SCHRITT),),
+        mirrors=((COMMAND, OUTPUT_SCHRITT, None),),
     )

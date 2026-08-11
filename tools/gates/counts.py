@@ -71,18 +71,40 @@ def numbered(
     return nummern
 
 
+def _abschnitt(text: str, ueberschrift: str, quelle: str) -> str:
+    """Der Rumpf unter einer `##`-Ueberschrift, bis zur naechsten.
+
+    Ohne diese Einschraenkung zaehlt ein Muster wie `^\d+\. \*\*` JEDE
+    nummerierte Liste des Dokuments mit — gemessen beim Umzug von
+    `mcp-transport-hardening`: Dessen README fuehrt nach den vierzehn Regeln
+    noch zwei weitere Listen, und die Nummern lasen sich zusammen als
+    1..14,1..5,1..3.
+    """
+    treffer = re.search(
+        rf"^## {re.escape(ueberschrift)}\n(.*?)(?=^## |\Z)", text, re.M | re.S
+    )
+    if not treffer:
+        raise CheckFailed(
+            f"{quelle}: Abschnitt '## {ueberschrift}' nicht gefunden — Anker "
+            "weg oder umformuliert; diese Pruefung wuerde stillschweigend "
+            "aufhoeren zu pruefen."
+        )
+    return treffer.group(1)
+
+
 def count_agrees(
     root: Path,
     *,
     source: str,
     pattern: re.Pattern[str],
     unit: str,
-    mirrors: tuple[tuple[str, re.Pattern[str]], ...] = (),
+    mirrors: tuple[tuple[str, re.Pattern[str], str | None], ...] = (),
 ) -> str:
     """G14 — jede Stelle, die dieselbe Menge aufzaehlt, zaehlt dieselbe Zahl.
 
-    `mirrors` sind die abhaengigen Stellen: je eine Datei und das Muster, mit
-    dem dort dieselbe Menge nummeriert auftaucht. Sie muessen nicht nur
+    `mirrors` sind die abhaengigen Stellen: je eine Datei, das Muster, mit dem
+    dort dieselbe Menge nummeriert auftaucht, und optional die Ueberschrift des
+    Abschnitts, auf den das Muster beschraenkt bleibt (`None` = ganze Datei). Sie muessen nicht nur
     gleich VIELE, sondern DIESELBEN Nummern nennen — eine Datei, die 0..7
     fuehrt, waehrend die Quelle 1..8 sagt, hat dieselbe Anzahl und meint
     etwas anderes.
@@ -90,10 +112,11 @@ def count_agrees(
     nummern = numbered(_lies(root, source), pattern=pattern, quelle=source, unit=unit)
 
     zeilen = [f"{source}: {len(nummern)} {unit} ({nummern[0]}–{nummern[-1]})"]
-    for name, spiegel in mirrors:
-        gespiegelt = numbered(
-            _lies(root, name), pattern=spiegel, quelle=name, unit=unit
-        )
+    for name, spiegel, ueberschrift in mirrors:
+        text = _lies(root, name)
+        if ueberschrift is not None:
+            text = _abschnitt(text, ueberschrift, name)
+        gespiegelt = numbered(text, pattern=spiegel, quelle=name, unit=unit)
         if gespiegelt != nummern:
             fehlend = sorted(set(nummern) - set(gespiegelt))
             zuviel = sorted(set(gespiegelt) - set(nummern))

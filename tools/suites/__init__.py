@@ -13,6 +13,6 @@ Pruefungen aus jedem Lauf, ohne dass etwas rot wird — der Runner meldete dann
 Zeile gegen den Verzeichnisinhalt.
 """
 
-from . import mcp_audit
+from . import mcp_audit, mcp_transport_hardening
 
-__all__ = ["mcp_audit"]
+__all__ = ["mcp_audit", "mcp_transport_hardening"]
