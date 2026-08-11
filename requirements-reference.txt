@@ -31,3 +31,18 @@ httpx==0.28.1
 # Abhaengigkeiten von `mcp` mit, und sie einzeln zu pinnen hiesse, das
 # Aufloesungsergebnis des SDK zu ueberstimmen.
 mcp==2.0.0
+
+# `pytest` steht hier als Abhaengigkeit einer VORLAGE, nicht als Testwerkzeug.
+#
+# `skills/mcp-transport-hardening/reference/patterns.py` importiert es auf
+# Modulebene: Der Skill zeigt zu jeder Regel ein Testrezept, und die Rezepte
+# sind Teil dessen, was kopiert wird. Wer die Vorlage uebernimmt, uebernimmt
+# sie mitsamt ihren Tests — eine Vorlage, die ihren eigenen Nachweis nicht
+# mitbringt, ist die Haelfte wert.
+#
+# Aufgefallen ist es in der CI und nicht hier: `lint.yml` installiert diese
+# Datei, aber kein pytest, und `transport/12` meldete prompt «Import scheitert
+# an fehlendem Paket 'pytest'» — mit der richtigen Datei im Befund. Das
+# Herkunftsrepo installierte `mcp==2.0.0 pytest==9.1.1` aus genau diesem Grund
+# in einem Zug.
+pytest==9.1.1
