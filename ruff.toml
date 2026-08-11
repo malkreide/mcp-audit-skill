@@ -107,9 +107,11 @@ line-length = 88
 # der erzwungene Satz exakt diese Liste, unabhaengig davon, ob eine spaetere
 # ruff-Version ihre Defaults aendert.
 #
-#   E4 — pycodestyle: Importe (u.a. E402, Import nicht am Dateianfang)
-#   E7 — pycodestyle: Anweisungen (Vergleiche, mehrere Statements pro Zeile)
-#   E9 — pycodestyle: Syntax- und IO-Fehler
+#   E  — pycodestyle: Importe (E402), Anweisungen (E7), Syntax (E9) UND
+#        Zeilenlaenge (E501) — siehe die Notiz unten.
+#   W  — pycodestyle-Warnungen, u.a. W605 (ungueltige Escape-Sequenz im
+#        String; ein `\d` ausserhalb eines Raw-Strings ist ein Regex, das
+#        gerade noch funktioniert und beim naechsten Python-Release nicht mehr)
 #   F  — Pyflakes (ungenutzte Importe und Variablen, f-String-Fehler, …)
 #   I  — Import-Sortierung (isort)
 #   UP — pyupgrade (moderne Syntax, z.B. `X | None`, collections.abc)
@@ -118,8 +120,26 @@ line-length = 88
 #   SIM— flake8-simplify
 #   RUF— ruff-eigene Regeln
 #
-# E501 (Zeilenlaenge) bleibt bewusst aussen vor: das entscheidet der Formatter.
-select = ["E4", "E7", "E9", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+# E501 STAND BIS 2b-iv-c NICHT HIER, mit der Begruendung «das entscheidet der
+# Formatter». Die Begruendung ist beim Einzug von `mcp-data-fidelity-skill`
+# gefallen, und zwar an einer Messung: Jenes Repo fuehrte `E` vollstaendig,
+# und seine Pruefung 17 mass die Breite an BEIDEN Gates. Die Absorption nach
+# `audit/7` haette nur die Formatter-Haelfte behalten — eine schmalere Zusage,
+# die niemand entschieden hatte.
+#
+# Nachgemessen beim Weiten: 28 Befunde, 24× E501 und 4× W605. **Alle 24
+# E501-Zeilen hat `ruff format` durchgelassen**, weil er Prosa in Docstrings
+# und Kommentaren nicht umbricht und lange Ausdruecke nur dort trennt, wo er
+# eine Trennstelle findet. Die alte Begruendung deckte also weniger ab, als
+# sie versprach: Der Formatter entscheidet die Breite von CODE, nicht die von
+# Text. Beides zusammen ist die Zusage; einzeln ist jedes davon eine halbe.
+#
+# Der Preis stand ebenfalls in der Messung und ist bezahlt: Die 24 Zeilen sind
+# umbrochen, nicht ausgenommen. Genau eine liess sich nicht umbrechen — der
+# `grep`-Einzeiler in `skills/mcp-transport-hardening/reference/patterns.py`,
+# der kopierbar bleiben muss. Er fuehrt seine Modulliste jetzt in einer
+# Shell-Variablen und ist damit zwei kopierbare Zeilen statt einer zu langen.
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 
 # Die Prosa im Repo ist deutsch und nutzt bewusste Typografie — Geviert- und
 # Halbgeviertstriche (—, –), Pfeile (→), typografische Anfuehrungszeichen.

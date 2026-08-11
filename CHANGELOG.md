@@ -6,6 +6,68 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — die Companion-READMEs beschreiben jetzt diesen Baum (Phase 2b-iv-c)
+
+Die sechs READMEs der drei eingezogenen Skills trugen seit Phase 3a ein
+Status-Banner: «die unten genannten Pfade beschreiben noch das frühere
+eigenständige Repository». Sie sind neu gefasst — Titel, Installation,
+Projektstruktur, Ketten-Tabelle und der Companion-Abschnitt. Das Banner ist weg,
+weil es nichts mehr zu warnen gibt.
+
+Gemessen beim Umschreiben, alles seit Phase 3a falsch: `[LICENSE](LICENSE)` in
+allen sechs (die Datei liegt in der Wurzel), `pip install -r
+requirements-dev.txt` (nicht mitgezogen), und der Satz «jeder Check hat einen
+Baum in `tests/mutations.py`» — die Mutationssuiten der drei Companions liegen
+weiterhin in den Herkunftsrepos. Der letzte Punkt ist **nicht** behoben, sondern
+benannt: Die READMEs sagen jetzt, dass das eine Absicht ist und keine Zusage.
+
+Ausserdem seit sieben Regeln falsch: probes Companion-Abschnitt zählte **sechs**
+Regeln von `mcp-data-fidelity` auf; es sind vierzehn. Die Liste ist nicht
+nachgezogen, sondern **entfernt** worden — eine Kopie neben dem
+Nachbarverzeichnis ist genau der Zustand, aus dem sie falsch wurde.
+
+### Behoben — neun Ketten-Tabellen waren ungeprüft
+
+`transport/4`, `fidelity/8` und `probe/10` hielten je die Ketten-Tabelle ihres
+Skills; beim Einzug sind alle drei nach `audit/12` absorbiert worden. Das war
+für die *Implementierung* richtig und für den *Gegenstand* falsch: `audit/12`
+las die beiden READMEs der Wurzel und sonst nichts. Neun Tabellen blieben
+zurück, und alle neun sagten weiter «Fünf Repos» statt «Vier Skills».
+
+Drei davon stehen in den `SKILL.md` — den Dateien, die Claude tatsächlich lädt.
+Sie blieben am längsten falsch, weil das Gate auf `###` bestand und sie `##`
+führen. **Der Anker ist der Text der Überschrift, nicht ihre Tiefe.**
+
+`audit/12` deckt jetzt **elf** Tabellen ab, und ein statischer Wächter hält
+`CHAIN_SECTIONS` gegen den Baum: Eine vierte Companion-Datei fällt nicht wieder
+still heraus.
+
+### Geändert — `E501` und `W` sind im Lint
+
+`ruff.toml` nahm die Zeilenlänge bis hierher ausdrücklich nicht in den
+`select` — «das entscheidet der Formatter». Die Begründung ist beim Einzug von
+`mcp-data-fidelity-skill` gefallen, dessen Prüfung 17 die Breite an *beiden*
+Gates mass. Die 28 gemessenen Befunde (24× E501, 4× W605) sind **umbrochen,
+nicht ausgenommen**; `audit/7` misst wieder beide Hälften.
+
+Beim Messen widerlegt: Alle 24 E501-Zeilen hatte `ruff format` durchgelassen —
+er bricht Prosa in Docstrings und Kommentaren nicht um. Die alte Begründung galt
+für Code, nicht für Text.
+
+### Entfernt — `companion/mcp-data-fidelity/`
+
+Das Verzeichnis existierte nur, weil die beiden Skills einmal in einem Repo
+lagen und dann nicht mehr. Sie liegen wieder in einem, als Geschwister unter
+`skills/` — ein Zeiger auf den Ordner nebenan ist kein Zeiger, sondern ein
+Umweg.
+
+`probe/8` ist damit ohne Gegenstand, und das brauchte eine **zweite** Tabelle
+neben `ABSORBED`: Die sagt «die Zusage steht jetzt in `audit/N`» und ist
+nachprüfbar. Hier ist der Gegenstand weg — das ist ein anderer Grund, und
+`RETIRED` nennt ihn getrennt. Der Registry-Test hält die Vereinigung aus allen
+dreien gegen `1..N` und fällt zusätzlich, wenn eine Nummer in beiden Tabellen
+steht.
+
 ### Hinzugefügt — die letzten beiden Companion-Suiten (Phase 2b-iv-b)
 
 `tools/suites/mcp_data_source_probe/` führt **zehn** Prüfungen (1, 3, 5–9, 11,

@@ -155,11 +155,13 @@ class TestTheScannerActuallyDetects:
         "body,label",
         [
             (
-                '```bash\nexport PYTHONUTF8=1   # Bash\n$env:PYTHONUTF8 = "1"   # PowerShell\n```\n',
+                "```bash\nexport PYTHONUTF8=1   # Bash\n"
+                '$env:PYTHONUTF8 = "1"   # PowerShell\n```\n',
                 "beide Zeilen im selben Block",
             ),
             (
-                '```bash\nexport NOTION_TOKEN="x"\n```\n\n```powershell\n$env:NOTION_TOKEN = "x"\n```\n',
+                '```bash\nexport NOTION_TOKEN="x"\n```\n\n'
+                '```powershell\n$env:NOTION_TOKEN = "x"\n```\n',
                 "zweiter Block direkt darunter",
             ),
             ("Normaler Fliesstext ueber `export` als Wort.\n", "Prosa, kein Befehl"),

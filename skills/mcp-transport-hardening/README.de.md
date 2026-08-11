@@ -1,4 +1,4 @@
-# mcp-transport-hardening-skill
+# mcp-transport-hardening
 
 ![Version](https://img.shields.io/badge/version-2.4.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -6,22 +6,13 @@
 
 > Claude Skill für MCP-Server — damit ein Server unter dem konfigurierten Transport überhaupt hochkommt, das auch ansagt, abweist wen er abweisen muss, und das alles auch ohne Sitzung durchhält.
 
-> [!NOTE]
-> **Dieser Skill ist in Phase 3 der Zusammenführung nach `mcp-audit` gezogen.**
-> Die unten genannten Pfade beschreiben noch sein früheres eigenständiges
-> Repository. Die gemeinsame Konfiguration (`ruff.toml`,
-> `.pre-commit-config.yaml`) liegt jetzt in der Repo-Wurzel; die Prüfungen
-> unter `tools/checks/` ziehen in Phase 2b nach `tools/suites/mcp_transport_hardening/`, und
-> diese READMEs werden zusammen mit jenem Schritt umgeschrieben statt zweimal.
-> Siehe [`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md).
-
 🇬🇧 [English Version](README.md)
 
 ## Übersicht
 
 Companion zu Anthropics `mcp-builder`. Dessen Best Practices decken ab, ob ein Server **korrekt gebaut** ist — Naming, Annotations, Pagination, Transport, Fehlerbehandlung. Dieser Skill deckt die Frage daneben ab: **kommt er unter dem konfigurierten Transport überhaupt hoch, weist er ab wen er abweisen muss, und hält das auch, wenn die Sitzung wegfällt?**
 
-Das ist eine eigene Fehlerklasse, weil sie still ist — nur anders still als bei [`mcp-data-fidelity`](https://github.com/malkreide/mcp-data-fidelity-skill). Dort liefert der Server eine plausible Antwort, die inhaltlich falsch ist. Hier liefert er gar keine: grüne Unit-Tests, sauberer Linter, und in Produktion startet der Prozess nicht oder beantwortet jede Anfrage unter einem echten Hostnamen mit HTTP 421. Der Startpfad ist genau der Teil, den eine Suite, die Module importiert, nie berührt.
+Das ist eine eigene Fehlerklasse, weil sie still ist — nur anders still als bei [`mcp-data-fidelity`](../mcp-data-fidelity/). Dort liefert der Server eine plausible Antwort, die inhaltlich falsch ist. Hier liefert er gar keine: grüne Unit-Tests, sauberer Linter, und in Produktion startet der Prozess nicht oder beantwortet jede Anfrage unter einem echten Hostnamen mit HTTP 421. Der Startpfad ist genau der Teil, den eine Suite, die Module importiert, nie berührt.
 
 Drei Leitfragen:
 
@@ -73,11 +64,16 @@ Die Regeln 1–7 gelten auf **beiden** Spec-Baselines: Bind, Verdrahtung, Host-A
 ## Installation
 
 ```bash
-git clone https://github.com/malkreide/mcp-transport-hardening-skill.git
-cp -r mcp-transport-hardening-skill ~/.claude/skills/mcp-transport-hardening
+git clone https://github.com/malkreide/mcp-audit-skill.git
+cp -r mcp-audit-skill/skills/mcp-transport-hardening ~/.claude/skills/mcp-transport-hardening
 ```
 
 Der Verzeichnisname muss `mcp-transport-hardening` lauten — die Skill-Erkennung nutzt ihn.
+
+Die vier Skills der Kette liegen seit der Zusammenführung in **einem**
+Repository; kopiere die, die du brauchst — beim Installieren sind sie
+unabhängig voneinander. `mcp-audit` selbst liegt in der Repo-Wurzel und wird
+zusätzlich als gepacktes `mcp-audit.skill` ausgeliefert.
 
 ## Verwendung
 
@@ -92,11 +88,30 @@ Der Skill greift selbstständig, sobald ein Server auf eine neue SDK-Major oder 
 ## Projektstruktur
 
 ```
-.
-├── SKILL.md                  # die vierzehn Regeln, mit Release-Checkliste
+skills/mcp-transport-hardening/
+├── SKILL.md                              # die vierzehn Regeln, jede mit Nachweis
+├── CHANGELOG.md                          # die eigene Versionsgeschichte
+├── README.md / README.de.md
 └── reference/
-    └── patterns.py           # Copy-Paste-Patterns für MCP-SDK 2.x / ASGI / uvicorn
+    └── patterns.py                       # Copy-Paste-Patterns für MCP SDK 2.x / ASGI / uvicorn
 ```
+
+Darum herum, geteilt von allen vier Skills — eine Konfiguration, ein Gerüst,
+eine Testsuite:
+
+```
+mcp-audit/
+├── ruff.toml                             # eine Zeilenbreite, ein Regelsatz
+├── .pre-commit-config.yaml               # ruff auf dieselbe Version gepinnt wie die CI
+├── scripts/validate.sh                   # Einstieg; die CI ruft diese Datei auf
+├── tools/harness/                        # die Registry — kennt keine einzige Prüfung
+├── tools/gates/                          # die sechzehn generischen Prüfungen
+├── tools/suites/mcp_transport_hardening/ # die sechs Prüfungen dieses Skills
+└── tests/                                # fährt sie, und hält sie gegen den Baum
+```
+
+`python -m tools.harness --suite transport` fährt nur die Prüfungen dieses
+Skills; `bash scripts/validate.sh` fährt alle vier Suiten in einem Lauf.
 
 ## Woher diese Regeln stammen
 
@@ -134,17 +149,20 @@ Die Messung, die den Fall gefunden hat, kostet nichts und steht jetzt im Nachwei
 
 ### Die MCP-Qualitätskette
 
-Fünf Repos, ein Lebenszyklus. Jedes beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt. Das gemeinsame GitHub-Topic ist [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain) und listet alle fünf auf einer Seite.
+Vier Skills, ein Lebenszyklus. Jeder beantwortet eine andere Frage, in der Reihenfolge, in der sie aufkommt. Seit der Zusammenführung liegen sie in **einem** Repository — diesem; `mcp-continuous-auditor` ist die Laufzeit, die sie immer wieder fährt. Das gemeinsame GitHub-Topic ist [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain) und listet beide Repositories auf einer Seite.
 
-| Phase | Repo | Frage, die es beantwortet |
+| Phase | Skill | Frage, die er beantwortet |
 |---|---|---|
-| vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Taugt die Quelle, und was hat sie? |
-| im Bau | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? |
-| im Bau | **`mcp-transport-hardening-skill`** | **Dieser Skill:** kommt er hoch, weist er richtig ab, bleibt er zustandslos? |
-| nach dem Bau | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? |
-| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? |
+| vor dem Bau | [`mcp-data-source-probe`](../mcp-data-source-probe/) | Taugt die Quelle, und was hat sie? |
+| im Bau | [`mcp-data-fidelity`](../mcp-data-fidelity/) | Liefert er, was die Quelle hat? |
+| im Bau | **`mcp-transport-hardening`** | **Dieser Skill:** kommt er hoch, weist er richtig ab, bleibt er zustandslos? |
+| nach dem Bau | [`mcp-audit`](../../) | Hält er gegen den Katalog? |
+
+Fährt die Kette, ist aber kein Glied darin: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor). Er beantwortet keine Frage im Lebenszyklus eines Servers — er stellt alle vier immer wieder neu und antwortet auf «hält er morgen noch?»
 
 Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/skills/tree/main/skills/mcp-builder) — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
+
+Die Mitgliedschaft steht an einer Stelle, in [`docs/quality-chain.json`](../../docs/quality-chain.json) — `members` nennt die vier Skills, `repos` die zwei Repositories, die sie tragen. Eine Prüfung hält alle elf Fassungen dieser Tabelle dagegen — acht READMEs und drei `SKILL.md` —; ein fünftes Mitglied lässt sich damit nicht an einer Stelle ergänzen und an zehn vergessen.
 
 ### Abgrenzung: dieser Skill, der Katalog, die Live-Probe
 
@@ -208,7 +226,7 @@ ein Issue eröffnen.
 
 ## Lizenz
 
-MIT License — siehe [LICENSE](LICENSE)
+MIT License — siehe [LICENSE](../../LICENSE)
 
 ## Autor
 

@@ -220,7 +220,8 @@ class Parser:
             self.advance()
             return True
         if tok.kind == "IDENT":
-            # Could be: dotted_ident.includes("x"), dotted_ident == ..., dotted_ident != ...
+            # Could be: dotted_ident.includes("x"), dotted_ident == ...,
+            # dotted_ident != ...
             ident_tokens = self._collect_dotted()
             nxt = self.peek()
             if nxt.kind == "DOT":

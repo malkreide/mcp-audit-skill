@@ -114,7 +114,8 @@ class TestSkillMatchesCatalog:
         )
         for lineno, m in found:
             assert int(m.group("count")) == total, (
-                f"SKILL.md:{lineno} nennt {m.group('count')} Checks, Katalog hat {total}"
+                f"SKILL.md:{lineno} nennt {m.group('count')} Checks, "
+                f"Katalog hat {total}"
             )
             assert m.group("word").lower() == expected_word, (
                 f"SKILL.md:{lineno} nennt «{m.group('word')} Kategorien», "

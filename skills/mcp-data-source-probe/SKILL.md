@@ -1097,14 +1097,15 @@ Kodifiziert in 4.2, 4.3, Schritt 5 und «Nach dem Release».
 
 ## Verwandte Skills
 
-Fünf Repos, ein Lebenszyklus — gemeinsames GitHub-Topic [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain). Dieser Skill kommt zuerst.
+Vier Skills, ein Lebenszyklus — seit der Zusammenführung in **einem** Repository, gemeinsames GitHub-Topic [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain). Dieser Skill kommt zuerst.
 
-| Phase | Repo | Frage, die es beantwortet |
+| Phase | Skill | Frage, die er beantwortet |
 |---|---|---|
 | vor dem Bau | **`mcp-data-source-probe`** | **Dieser Skill:** taugt die Quelle, und was hat sie? |
-| im Bau | [`mcp-data-fidelity`](https://github.com/malkreide/mcp-data-fidelity-skill) | Liefert er, was die Quelle hat? Sechs Regeln für den Abfrage-Code; als Audit-Checks `FID-001`–`FID-005`. Wurde hier unter `companion/` ausgeliefert, bis er ein eigenes Repo bekam |
-| im Bau | [`mcp-transport-hardening`](https://github.com/malkreide/mcp-transport-hardening-skill) | Kommt er hoch, weist er richtig ab? Die Umsetzung im Einstiegspunkt und das Abweis-Verhalten (siehe «Welchen Transport-Modus unterstützen?») |
-| nach dem Bau | [`mcp-audit`](https://github.com/malkreide/mcp-audit-skill) | Hält er gegen den Katalog? |
-| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Hält er morgen noch? Die Recall-Ground-Truth aus 1.4, laufend statt einmalig gemessen |
+| im Bau | [`mcp-data-fidelity`](../mcp-data-fidelity/) | Liefert er, was die Quelle hat? Vierzehn Regeln für den Abfrage-Code; als Audit-Checks `FID-001`–`FID-007` und weitere ausserhalb von `FID` |
+| im Bau | [`mcp-transport-hardening`](../mcp-transport-hardening/) | Kommt er hoch, weist er richtig ab? Die Umsetzung im Einstiegspunkt und das Abweis-Verhalten |
+| nach dem Bau | [`mcp-audit`](../../) | Hält er gegen den Katalog? |
+
+Fährt die Kette, ist aber kein Glied darin: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) — er stellt alle vier Fragen immer wieder neu und antwortet auf «hält er morgen noch?» Die Recall-Ground-Truth aus 1.4, laufend statt einmalig gemessen.
 
 Daneben, nicht Teil der Kette: `mcp-builder` — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.

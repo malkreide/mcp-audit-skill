@@ -59,12 +59,16 @@ def ruff_gate_bites(root: Path) -> str:
     return gates.gate_bites(root, probe_dir=PROBE_DIR)
 
 
-#: Dieses Repo fuehrt E501 AUSDRUECKLICH NICHT im `select` — `ruff.toml` sagt
-#: dazu: «das entscheidet der Formatter». Die Lint-Haelfte der Pruefung unten
-#: haette hier also keinen Gegenstand; sie zu verlangen hiesse, einen Befund zu
-#: erfinden, wo eine Entscheidung steht. `mcp-data-fidelity-skill` fuehrt E501
-#: und wird die Vorgabe `True` mitbringen.
-LINT_ENFORCES_E501 = False
+#: SEIT 2b-iv-c `True`. Bis dahin fuehrte `ruff.toml` E501 ausdruecklich NICHT
+#: im `select` («das entscheidet der Formatter»), und die Lint-Haelfte der
+#: Pruefung unten haette keinen Gegenstand gehabt.
+#:
+#: Gefallen ist die Entscheidung am Einzug von `mcp-data-fidelity-skill`: Jenes
+#: Repo fuehrte `E` vollstaendig und mass die Breite an BEIDEN Gates. Die
+#: Absorption nach hier haette stillschweigend die halbe Zusage behalten. Der
+#: Betreiber hat entschieden zu weiten; die 28 dabei gemessenen Befunde sind
+#: umbrochen, nicht ausgenommen. Die lange Fassung steht in `ruff.toml`.
+LINT_ENFORCES_E501 = True
 
 
 @register(

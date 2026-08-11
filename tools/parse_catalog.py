@@ -221,7 +221,8 @@ def ids_for_baseline(catalog: dict[str, dict[str, Any]], baseline: str) -> list[
     """
     if baseline not in VALID_SPEC_BASELINES:
         raise ValueError(
-            f"invalid spec_baseline {baseline!r}; expected one of {VALID_SPEC_BASELINES}"
+            f"invalid spec_baseline {baseline!r}; expected one of "
+            f"{VALID_SPEC_BASELINES}"
         )
     return sorted(
         cid

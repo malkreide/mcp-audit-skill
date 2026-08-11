@@ -249,7 +249,8 @@ def _render(report: dict[str, Any]) -> str:
     prefix = "would carry" if report["dry_run"] else "carried"
     for item in report["carried"]:
         lines.append(
-            f"  {prefix} {item['check_id']:<12} <- {item['from']} ({item['substance']} chars)"
+            f"  {prefix} {item['check_id']:<12} <- {item['from']} "
+            f"({item['substance']} chars)"
         )
     for cid in report["kept"]:
         lines.append(f"  kept    {cid:<12} (already documented in this run)")
@@ -314,7 +315,8 @@ def main(argv: list[str] | None = None) -> int:
     summary_path = Path(args.summary) if args.summary else target / "summary.json"
     if not summary_path.exists():
         print(
-            f"Error: {summary_path} not found — aggregate the run before carrying forward",
+            f"Error: {summary_path} not found — aggregate the run before "
+            "carrying forward",
             file=sys.stderr,
         )
         return 2

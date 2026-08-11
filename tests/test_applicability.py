@@ -212,7 +212,8 @@ class TestLogicalOperators:
         # Force: (false or false) and true -> false
         assert (
             evaluate(
-                '(transport == "HTTP/SSE" or transport == "dual") and tools_make_external_requests == true',
+                '(transport == "HTTP/SSE" or transport == "dual") '
+                "and tools_make_external_requests == true",
                 srgssr_profile,
             )
             is False
@@ -229,7 +230,9 @@ class TestIncludes:
     def test_includes_chained_or(self, srgssr_profile):
         assert (
             evaluate(
-                'deployment.includes("Railway") or deployment.includes("Render") or deployment.includes("local-stdio")',
+                'deployment.includes("Railway") '
+                'or deployment.includes("Render") '
+                'or deployment.includes("local-stdio")',
                 srgssr_profile,
             )
             is True
@@ -238,7 +241,9 @@ class TestIncludes:
     def test_includes_with_grouping(self, cloud_oauth_profile):
         assert (
             evaluate(
-                '(deployment.includes("Railway") or deployment.includes("Render")) and write_capable == true',
+                '(deployment.includes("Railway") '
+                'or deployment.includes("Render")) '
+                "and write_capable == true",
                 cloud_oauth_profile,
             )
             is True

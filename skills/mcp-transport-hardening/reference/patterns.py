@@ -1,4 +1,6 @@
-"""Copy-paste patterns for the fourteen transport-hardening rules (MCP SDK 2.x / ASGI / uvicorn).
+"""Copy-paste patterns for the fourteen transport-hardening rules.
+
+Target stack: MCP SDK 2.x / ASGI / uvicorn.
 
 Each block is self-contained and annotated with the rule it implements. Adapt the
 names; keep the shape. The comments are deliberately verbose — they are the part
@@ -569,7 +571,10 @@ _sleep = asyncio.sleep
 
 
 async def poll_until_ready(deadline_s: float, delay_s: float = 0.05) -> None:
-    """Stand-in for any production loop that waits. Note `_sleep`, not `asyncio.sleep`."""
+    """Stand-in for any production loop that waits.
+
+    Note `_sleep`, not `asyncio.sleep`.
+    """
     waited = 0.0
     while waited < deadline_s:
         await _sleep(delay_s)
@@ -608,7 +613,8 @@ def _no_sleep(monkeypatch: Any) -> None:
     checking the concurrency it claims. Alongside that, a grep — a `setattr`
     whose target is an imported foreign module is a finding on sight:
 
-        grep -rnE 'setattr\\(\\s*([A-Za-z_][A-Za-z0-9_.]*\\.)?(asyncio|time|socket|os|random|subprocess)\\s*,' tests/
+        mods='asyncio|time|socket|os|random|subprocess'
+        grep -rnE "setattr\\(\\s*(\\w[\\w.]*\\.)?($mods)\\s*," tests/
     """
 
     async def _instant(_delay: float) -> None:

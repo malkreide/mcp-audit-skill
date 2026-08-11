@@ -391,13 +391,14 @@ def build_report(
     profile: dict[str, Any],
     findings_dir: Path,
 ) -> str:
-    server = summary.get("audit_meta", {}).get("server_name", "<server>")
-    audit_date = summary.get("audit_meta", {}).get("audit_date", "")
+    meta = summary.get("audit_meta", {})
+    server = meta.get("server_name", "<server>")
+    audit_date = meta.get("audit_date", "")
     parts = [
         f"# MCP-Server Audit-Report — `{server}`\n",
         f"**Audit-Datum:** {audit_date}",
-        f"**Skill-Version:** {summary.get('audit_meta', {}).get('skill_version', '?')}",
-        f"**Catalog-Version:** {summary.get('audit_meta', {}).get('catalog_version', '?')}",
+        f"**Skill-Version:** {meta.get('skill_version', '?')}",
+        f"**Catalog-Version:** {meta.get('catalog_version', '?')}",
         "",
         "---",
         "",
