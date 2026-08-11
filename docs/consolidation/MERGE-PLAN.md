@@ -558,6 +558,93 @@ beiden READMEs und laeuft als `audit/16` gegen die CHANGELOG-Spitze.
 
 Damit ist G11 an allen Stellen gebunden, an denen es einen Gegenstand hat.
 
+### 4.2l Was 2b-iv-b gezeigt hat — Phase 4 faellt heraus, und eine Absorption kostet
+
+**DER KATALOG-DRIFT-APPARAT IST WEG, WEIL DIE VORAUSSETZUNG WEG IST.**
+`fidelity/14` hielt die Regel↔Check-Tabelle gegen den Katalog dieses Repos und
+begruendete ausfuehrlich, warum sie NICHT vor den Merge-Button gehoert: *«Das
+ist keine Eigenschaft eines Commits, sondern der verstrichenen Zeit.»* Das
+stimmte, solange Tabelle und Katalog in verschiedenen Repositories lagen. Seit
+Phase 3a liegen sie im selben Baum — die Abweichung ist damit eine Eigenschaft
+des Diffs, und die Pruefung ist ein gewoehnliches Offline-Gate.
+
+Ersatzlos entfallen sind damit: `scripts/linked_checks.py` (52 Zeilen),
+`weekly-drift.yml` (179 Zeilen), die drei Umgebungsvariablen `$CATALOGUE_*`
+und die Unterscheidung «nicht erreichbar» vs. «abgewichen». Der gepinnte
+Commit war die aufwendigste dieser Vorkehrungen und ist die lehrreichste: Zwei
+Abrufe von `main` koennten ein Release auseinanderliegen. Ein Arbeitsbaum kann
+das nicht — er IST ein Stand. **Phase 4 ist damit erledigt, ohne dass sie als
+eigener Schritt stattgefunden haette.**
+
+**EIN LOCH IM PORTIERTEN CODE, BEIM UMZUG GESCHLOSSEN.** `GERMAN_NUMBERS.get()`
+machte aus einem unbekannten Zahlwort ein `None`, und der Vergleich darunter
+meldete dann einen DRIFT: «Tabelle sagt 'vier' (None), Katalog hat 4». Der
+Befund zeigte auf den Katalog, waehrend der Fehler in der Pruefdatei lag. Die
+Schwester-Pruefung in probe hatte diesen Waechter schon; fidelity nicht.
+Aufgefallen ist es nicht beim Lesen, sondern daran, dass zwei Fixture-Tests
+prompt darueber rot wurden.
+
+**DIE ABSORPTION VON `fidelity/17` IST NICHT VERLUSTFREI, und das steht so
+da.** Sie mass die Zeilenbreite an BEIDEN Gates, weil das Herkunftsrepo `E`
+vollstaendig im `select` fuehrte und E501 damit als Lint-Regel griff. Die
+`ruff.toml` dieses Repos fuehrt `E4,E7,E9` und sagt ausdruecklich: «E501 bleibt
+bewusst aussen vor — das entscheidet der Formatter». `audit/7` misst deshalb
+nur die Formatter-Haelfte; dasselbe gilt fuer `W`.
+
+Das ist eine ENTSCHEIDUNG und kein Versehen — aber eine ueber fremdes Gut: Sie
+fiel beim Zusammenlegen der Konfigurationen in Phase 3a, und der Skill, dessen
+Vorlagen sie betrifft, zieht erst jetzt ein. **Offene Frage an den Betreiber:**
+`select` um `E501` und `W` weiten (dann faellt die Begruendung in `ruff.toml`),
+oder es bei der Formatter-Haelfte belassen.
+
+**Gemessen, damit die Frage nicht im Ungefaehren steht:** `ruff check
+--extend-select E,W` findet ueber den ganzen Baum **28 Befunde** — 24× E501 und
+4× W605. Sie liegen breit gestreut (`tools/gates/counts.py` 5, drei Testdateien
+je 2–3, `skills/mcp-transport-hardening/reference/patterns.py` 3, der Rest
+einzeln). Das ist kein Ein-Zeilen-Schalter, sondern eine eigene, sichtbare
+Aenderung — und genau deshalb steht sie hier als Frage und nicht als
+Nebenwirkung dieses Umzugs.
+
+Bemerkenswert daran: Die 24 E501-Zeilen sind alle vom Formatter durchgelassen
+worden. `ruff format` bricht Prosa in Docstrings und Kommentaren nicht um; die
+Begruendung «das entscheidet der Formatter» deckt damit weniger ab, als sie
+verspricht. Die Zusage ist also nicht nur schmaler als in fidelitys
+Herkunftsrepo, sie hat auch einen anderen Gegenstand.
+
+**`probe/3` IST DIE EINZIGE PRUEFUNG MIT EINER LAUFZEIT-ABHAENGIGKEIT.** Sie
+importiert die Vorlagen wirklich, statt sie nur zu kompilieren, und braucht
+dafuer `pydantic` und `httpx`. `requirements-reference.txt` ist mitgezogen und
+wird in `lint.yml` installiert. Fehlen die Pakete, wird die Pruefung ROT und
+nicht uebersprungen.
+
+**Der Waechter ueber die Importzeilen galt nur fuer `audit`.** Er vergleicht
+zwei Texte — welche Module `@register(` enthalten und welche `__init__.py`
+importiert — und lief bis hierher gegen genau ein Paket. Mit der dritten Suite
+war das die Luecke, die er selbst beschreibt; er ist jetzt ueber alle vier
+parametrisiert und meldet ausserdem, wenn ein Paket gar kein `@register`
+enthaelt.
+
+### 4.2m Offen: der Companion-Zeiger von probe
+
+`skills/mcp-data-source-probe/companion/mcp-data-fidelity/README.md` sagt, wo
+`mcp-data-fidelity` jetzt liegt: im Repo `malkreide/mcp-data-fidelity-skill`.
+Das war richtig, als der Skill dorthin zog. Seit Phase 3a liegt er als
+GESCHWISTER unter `skills/mcp-data-fidelity/`, und Phase 5 archiviert das
+genannte Repo.
+
+Der Zeiger zeigt damit heute noch richtig und ab Phase 5 nicht mehr. `probe/8`
+haelt fest, was DA STEHT, statt zu raten, was da stehen soll — die Pruefung
+kann den Umzug nicht anstossen, aber sie kann nicht mit ihm auseinanderlaufen.
+
+**Zwei Wege, und beide sind eine Entscheidung ueber das Produkt:**
+
+1. Das Verzeichnis aufloesen. Es existiert nur, weil die beiden Skills einmal
+   in einem Repo lagen und dann nicht mehr. Jetzt liegen sie wieder in einem.
+2. Den Zeiger auf `skills/mcp-data-fidelity/` umbiegen und `CANONICAL_REPO` in
+   `tools/suites/mcp_data_source_probe/companion.py` im selben Commit mitziehen.
+
+Gehoert zu 2b-iv-c (die sechs Companion-READMEs) und ist **vor Phase 5** faellig.
+
 ### 4.3 Konfiguration
 
 | Datei | Entscheid |
@@ -699,11 +786,11 @@ damit hier auf und nicht erst, wenn jemand den Skill installieren will.
 | **2b-iii-d** | G15 mit Scope-Parameter | **erledigt** — 16 von 16 generischen Familien zusammengelegt |
 | **2b-iii-c** | G14 (Zaehlwerte, parametrisiert nach Einheit) | **erledigt** — gegen fuenf Baeume gruen, audit bekommt eine Pruefung dazu |
 | **2b-iv-a** | Suite `transport` vollstaendig, als Vorlage | **erledigt** — 6 Pruefungen, G11 erstmals gebunden |
-| **2b-iv-b** | Suiten `probe` und `fidelity` | |
+| **2b-iv-b** | Suiten `probe` und `fidelity` | **erledigt** — 10 + 6 Pruefungen, 37 Checks gesamt; Phase 4 faellt dabei heraus (4.2l) |
 | **2b-iv-c** | die sechs READMEs der Companions neu fassen | |
 | **3a** | Die drei Companions per `git subtree` nach `skills/<name>/`, Historie erhalten | **erledigt** — drei `SKILL.md` am Platz, Frontmatter-`name` unveraendert, 1315 Tests gruen |
 | **3b** | Kette auf vier Skills umstellen (6.1), beide READMEs nachziehen | **erledigt** — `quality-chain.json` fuehrt vier Skills und zwei Repos, 1319 Tests gruen |
-| **4** | Katalog-Drift auf lokal umstellen; `weekly-drift.yml` + `linked_checks.py` loeschen | Pruefung laeuft im PR, `offline=True` |
+| **4** | Katalog-Drift auf lokal umstellen; `weekly-drift.yml` + `linked_checks.py` loeschen | **erledigt mit 2b-iv-b** — `fidelity/14` laeuft offline im PR; die 640 Zeilen stehen nur noch im Herkunftsrepo und gehen mit Phase 5 |
 | **5** | Herkunftsrepos archivieren mit Zeiger-README; `mcp-continuous-auditor` auf den neuen Tag pinnen | keine offenen Verweise mehr |
 
 Phase 1 und 2 sind unabhaengig von 3 — das Geruest laesst sich umstellen,

@@ -6,6 +6,54 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — die letzten beiden Companion-Suiten (Phase 2b-iv-b)
+
+`tools/suites/mcp_data_source_probe/` führt **zehn** Prüfungen (1, 3, 5–9, 11,
+17, 19), `tools/suites/mcp_data_fidelity/` **sechs** (2, 4–7, 14). Damit fahren
+`scripts/validate.sh` und `python -m tools.harness` 37 Prüfungen über vier
+Suiten in einem Kommando.
+
+**Neun beziehungsweise zwölf der ursprünglichen Prüfungen sind nicht
+mitgezogen** — ihr Gegenstand ist das *Repository* und nicht der Skill. Jede
+Lücke steht mit ihrem neuen Ort in der `ABSORBED`-Tabelle ihrer Suite, und der
+Registry-Test hält die Vereinigung aus registrierten und absorbierten Nummern
+gegen `1..N`. Die Nummern aus den CHANGELOGs der Herkunftsrepos bleiben damit
+gültig.
+
+### Entfernt — der Katalog-Drift-Apparat, 640 Zeilen
+
+`fidelity/14` hielt die Regel↔Check-Tabelle gegen den Katalog *dieses* Repos
+und begründete ausführlich, warum sie nicht vor den Merge-Button gehört: «Das
+ist keine Eigenschaft eines Commits, sondern der verstrichenen Zeit.» Das
+stimmte, **solange Tabelle und Katalog in verschiedenen Repositories lagen**.
+Seit Phase 3a liegen sie im selben Baum.
+
+Die Prüfung ist deshalb ein gewöhnliches Offline-Gate geworden. Ersatzlos
+entfallen: `scripts/linked_checks.py`, `weekly-drift.yml`, die drei
+Umgebungsvariablen `$CATALOGUE_*` und die Unterscheidung «nicht erreichbar» vs.
+«abgewichen». Der gepinnte Commit war die aufwendigste dieser Vorkehrungen —
+zwei Abrufe von `main` könnten ein Release auseinanderliegen. Ein Arbeitsbaum
+kann das nicht: er *ist* ein Stand.
+
+### Behoben — ein Loch im portierten Code
+
+`GERMAN_NUMBERS.get()` machte in der Katalog-Prüfung aus einem unbekannten
+Zahlwort ein `None`, und der Vergleich darunter meldete daraufhin einen Drift:
+«Tabelle sagt 'vier' (None), Katalog hat 4». Der Befund zeigte auf den
+Katalog, während der Fehler in der Prüfdatei lag. Die Schwester-Prüfung in
+probe hatte diesen Wächter schon.
+
+Ebenfalls behoben: Der Wächter über die Importzeilen der Suiten lief nur gegen
+`audit`. Mit der dritten Suite war das genau die Lücke, die er selbst
+beschreibt — er ist jetzt über alle vier parametrisiert.
+
+### Hinzugefügt — `requirements-reference.txt`
+
+`probe/3` importiert die Vorlagen unter
+`skills/mcp-data-source-probe/reference/` wirklich, statt sie nur zu
+kompilieren, und braucht dafür `pydantic` und `httpx`. `lint.yml` installiert
+sie. Fehlen sie, wird die Prüfung **rot** und nicht übersprungen.
+
 ### Geändert — die beiden offenen Fragen sind entschieden
 
 - **Beide READMEs tragen ein Versions-Badge.** Es fehlte, weshalb G11 seit
