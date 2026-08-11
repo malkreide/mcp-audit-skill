@@ -21,10 +21,23 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      # SEIT 2b-iv-d BRAUCHT DIESER JOB MEHR ALS PYTEST. Die Mutationstests
+      # unter `tests/suites/` fahren die Pruefungen der Companion-Suiten gegen
+      # eine Kopie des Arbeitsbaums, und zwei davon haengen an der Umgebung:
+      #
+      #   * `probe/3` importiert die Vorlagen WIRKLICH — `pydantic`, `httpx`.
+      #   * `transport/6` ruft `ruff` fuer die F821-Liste, gepinnt wie in
+      #     `lint.yml`, damit hier keine andere Version misst als dort.
+      #
+      # Beide melden ohne ihre Abhaengigkeit einen BEFUND und ueberspringen
+      # nicht — «nicht gelaufen» als «bestanden» zu melden ist die eine
+      # Auskunft, die schlimmer ist als keine. Genau deshalb faellt der Job
+      # auf, wenn diese Zeilen fehlen, statt still weniger zu pruefen.
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pyyaml
+          pip install pytest pyyaml ruff==0.16.1
+          pip install -r requirements-reference.txt
 
       - name: Run pytest (UTF-8 forced)
         env:
