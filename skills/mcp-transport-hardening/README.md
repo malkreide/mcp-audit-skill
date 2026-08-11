@@ -6,6 +6,15 @@
 
 > Claude Skill for MCP servers — so that a server comes up at all under the transport it is configured for, says so on stderr, turns away who it must turn away, and holds up once the session is gone.
 
+> [!NOTE]
+> **This skill moved into `mcp-audit` in Phase 3 of the consolidation.** Paths
+> named below still describe its former standalone repository. The shared
+> configuration (`ruff.toml`, `.pre-commit-config.yaml`) now lives at the
+> repository root; the checks under `tools/checks/` move to
+> `tools/suites/mcp_transport_hardening/` in Phase 2b, and these READMEs are rewritten together
+> with that step rather than twice. See
+> [`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md).
+
 🇩🇪 [Deutsche Version](README.de.md)
 
 ## Overview

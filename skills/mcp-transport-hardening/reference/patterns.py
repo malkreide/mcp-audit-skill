@@ -41,13 +41,13 @@ from typing import Any
 
 import pytest
 import uvicorn
-from starlette.testclient import TestClient
 
 # Rule 1(a) — the mechanical half of the major bump. Under 1.x this read
 #   from mcp.server.fastmcp import FastMCP
 # The import error points at every site, so search-and-replace finishes the job.
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
+from starlette.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # NOT part of this migration, and the most expensive thing to get wrong here:

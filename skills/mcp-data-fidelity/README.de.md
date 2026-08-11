@@ -6,6 +6,15 @@
 
 > Claude Skill für MCP-Server-Tools, die eine externe Datenquelle abfragen — damit ein Server nicht still weniger liefert, als die Quelle hat.
 
+> [!NOTE]
+> **Dieser Skill ist in Phase 3 der Zusammenführung nach `mcp-audit` gezogen.**
+> Die unten genannten Pfade beschreiben noch sein früheres eigenständiges
+> Repository. Die gemeinsame Konfiguration (`ruff.toml`,
+> `.pre-commit-config.yaml`) liegt jetzt in der Repo-Wurzel; die Prüfungen
+> unter `tools/checks/` ziehen in Phase 2b nach `tools/suites/mcp_data_fidelity/`, und
+> diese READMEs werden zusammen mit jenem Schritt umgeschrieben statt zweimal.
+> Siehe [`docs/consolidation/MERGE-PLAN.md`](../../docs/consolidation/MERGE-PLAN.md).
+
 🇬🇧 [English Version](README.md)
 
 ## Übersicht

@@ -1,8 +1,0 @@
-.DS_Store
-*.log
-/tmp/
-.env
-__pycache__/
-*.pyc
-.pytest_cache/
-.ruff_cache/

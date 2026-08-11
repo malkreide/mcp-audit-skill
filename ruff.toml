@@ -125,3 +125,25 @@ select = ["E4", "E7", "E9", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 # Halbgeviertstriche (—, –), Pfeile (→), typografische Anfuehrungszeichen.
 # Die Ambiguous-Unicode-Regeln wuerden die als Verwechslungszeichen melden.
 ignore = ["RUF001", "RUF002", "RUF003"]
+
+# Vorlagen-Code unter `skills/*/reference/` ist absichtlich unvollstaendig.
+#
+# Diese Dateien zeigen MUSTER, sie laufen nicht: Sie referenzieren Namen, die
+# im Zielserver existieren und hier nicht (`log`, `ctx`, Handler-Symbole).
+# Gemessen beim Einzug in Phase 3: 31 der 32 Befunde in
+# `skills/mcp-transport-hardening/reference/patterns.py` waren F821, dazu einer
+# in `skills/mcp-data-fidelity/`. Das Herkunftsrepo faehrt aus genau diesem
+# Grund `ruff check --extend-select E4,E7,E9,F --ignore F821 reference/` statt
+# `ruff check .`.
+#
+# Warum eine Ausnahme und keine Anpassung der Dateien: Ein Vorlagen-Schnipsel
+# mit erfundenen Definitionen drumherum waere nicht mehr das, was jemand
+# kopiert. Die Ausnahme ist eng — sie gilt fuer `reference/` unter `skills/`,
+# nicht fuer den uebrigen Baum.
+#
+# RUF100 steht daneben, weil ein `# noqa: BLE001` in der Vorlage auf einen
+# Regelsatz zeigt, den dieses Repo nicht fuehrt. Die Direktive dort zu
+# entfernen hiesse, die Vorlage fuer ihren eigentlichen Zielkontext zu
+# verschlechtern.
+[lint.per-file-ignores]
+"skills/*/reference/*.py" = ["F821", "RUF100"]

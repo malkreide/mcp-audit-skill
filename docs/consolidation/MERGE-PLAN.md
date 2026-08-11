@@ -218,6 +218,49 @@ gefahren, jeder mit seinen eigenen Parametern — die Pruefungen nehmen `root`
 entgegen, das geht auch, bevor ein Inhalt umzieht. Acht Laeufe, acht gruen.
 Dieselbe Abnahme gilt fuer jede weitere Familie.
 
+### 4.2c Was Phase 3a gezeigt hat
+
+**Die Wurzel-`SKILL.md` bleibt, wo sie ist — begruendet.** Der Plan sah
+`skills/mcp-audit/SKILL.md` vor. Beim Umsetzen stellte sich heraus, dass das
+am Paketformat scheitert: `mcp-audit.skill` SPIEGELT den Repository-Baum, und
+`SKILL.md` muss an der Paketwurzel liegen. Ein Umzug brauchte eine
+Umsortierung statt einer Spiegelung — also genau den Bruch, gegen den
+`skill-manifest.txt` geschrieben ist, samt Umbau von `build_skill.py` und
+`skill_package.py`. Aufteilung deshalb: die Wurzel IST der `mcp-audit`-Skill,
+`skills/` haelt die drei Companions. Begruendung ausfuehrlich in
+`skills/README.md`.
+
+**`ruff.toml` «audit gewinnt» reicht nicht — Vorlagen-Code braucht eine
+Ausnahme.** Gemessen beim Einzug: 31 der 32 Befunde in
+`skills/mcp-transport-hardening/reference/patterns.py` waren F821
+(undefinierter Name), dazu einer in `skills/mcp-data-fidelity/`. Das ist kein
+Maengel, sondern der Zweck: Vorlagen-Code zeigt Muster und referenziert Namen,
+die erst im Zielserver existieren. Das Herkunftsrepo faehrt aus genau diesem
+Grund `--ignore F821`. Geloest mit `[lint.per-file-ignores]` fuer
+`skills/*/reference/*.py` — eng gefasst, damit der uebrige Baum streng bleibt.
+
+**Der strengere Regelsatz hat sofort etwas gefunden.** Ein I001 (unsortierte
+Importe) in `skills/mcp-transport-hardening/reference/patterns.py`, das
+dessen engeres `ruff check --extend-select E4,E7,E9,F` nie geprueft hat. Eine
+Zeile, mechanisch behoben. Das ist derselbe Ertrag wie in Phase 2a, aus der
+anderen Richtung: Vier Konfigurationen pruefen vier verschiedene Teilmengen,
+und keine davon ist die Vereinigung.
+
+**Die READMEs der drei Skills nennen Pfade ihres alten Repos.** Gemessen 33
+Verweise auf `scripts/`, `tools/checks/`, `ruff.toml`, `.pre-commit-config.yaml`
+und Workflows. Ein Teil davon existiert in der neuen Wurzel, ein Teil kommt
+erst mit Phase 2b. Sie jetzt umzuschreiben hiesse, sie nach 2b ein zweites Mal
+umzuschreiben; sie unkommentiert stehen zu lassen hiesse, falsche Pfade zu
+dokumentieren. Zwischenloesung: ein Hinweis am Kopf beider READMEs je Skill,
+der den Stand nennt und auf diesen Plan zeigt. Die Neufassung gehoert zu 2b.
+
+**`sdk-drift.yml` ist NICHT mitgezogen und muss vor Phase 5 umziehen.** Der
+Workflow misst `reference/patterns.py` gegen die jeweils neueste `mcp`-SDK und
+bleibt noetig (Abschnitt 6). Er laeuft weiter im Herkunftsrepo, solange das
+existiert — vor dem Archivieren gehoert er nach `.github/workflows/` dieses
+Repos, mit angepasstem Pfad. `weekly-drift.yml` dagegen entfaellt ersatzlos,
+das ist Phase 4.
+
 ### 4.3 Konfiguration
 
 | Datei | Entscheid |
@@ -338,7 +381,8 @@ nicht falsch, sondern noch nicht umgestellt — und G12 zieht erst nach
 | **1** | Die 5 eigenen Gates dieses Repos auf `tools/harness/` heben; `tools/checks/` faellt weg | **erledigt** — `validate.sh` meldet 5 Pruefungen als `audit/1…5`, alle gruen |
 | **2a** | G1 und G2 nach `tools/gates/toolchain.py`, Einstiegspunkte als Huellen | **erledigt** — gegen alle vier Baeume gruen, 1315 Tests |
 | **2b** | Die uebrigen 14 generischen Familien, die 10 skill-eigenen nach `tools/suites/` | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
-| **3** | Inhalte per `git subtree` nach `skills/<name>/`, Historie erhalten; Kette auf Skills umstellen (6.1) | vier `SKILL.md` am Platz, Frontmatter-`name` unveraendert; `quality-chain.json` fuehrt vier Skills, beide READMEs ziehen nach |
+| **3a** | Die drei Companions per `git subtree` nach `skills/<name>/`, Historie erhalten | **erledigt** — drei `SKILL.md` am Platz, Frontmatter-`name` unveraendert, 1315 Tests gruen |
+| **3b** | Kette auf vier Skills umstellen (6.1), beide READMEs nachziehen | `quality-chain.json` fuehrt vier Skills |
 | **4** | Katalog-Drift auf lokal umstellen; `weekly-drift.yml` + `linked_checks.py` loeschen | Pruefung laeuft im PR, `offline=True` |
 | **5** | Herkunftsrepos archivieren mit Zeiger-README; `mcp-continuous-auditor` auf den neuen Tag pinnen | keine offenen Verweise mehr |
 

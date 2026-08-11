@@ -6,6 +6,38 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — die drei Companion-Skills ziehen ein (Phase 3a)
+
+`mcp-data-source-probe`, `mcp-data-fidelity` und `mcp-transport-hardening`
+liegen jetzt unter `skills/<name>/`, eingezogen per `git subtree`. Die
+Historie der Herkunftsrepos ist erhalten:
+`git log --follow skills/<name>/SKILL.md` liest sie.
+
+Mitgekommen sind Inhalt und Referenzen — `SKILL.md`, beide READMEs,
+`CHANGELOG.md`, `reference/`. Die Frontmatter-`name` sind unverändert; daran
+hängt, ob Claude den Skill zieht. Die Prüfungen der drei Skills folgen in
+Phase 2b; bis dahin laufen die Herkunftsrepos weiter und fahren ihre eigenen
+Gates.
+
+- **`ruff.toml` bekommt `[lint.per-file-ignores]` für `skills/*/reference/*.py`.**
+  Gemessen beim Einzug: 31 der 32 Befunde in transports `patterns.py` waren
+  F821 (undefinierter Name). Das ist kein Mangel, sondern der Zweck —
+  Vorlagen-Code referenziert Namen, die erst im Zielserver existieren, und das
+  Herkunftsrepo fährt aus genau diesem Grund `--ignore F821`. Die Ausnahme ist
+  eng gefasst; der übrige Baum bleibt streng.
+- **Der strengere Regelsatz hat sofort etwas gefunden:** unsortierte Importe in
+  transports `patterns.py`, die dessen engeres
+  `ruff check --extend-select E4,E7,E9,F` nie geprüft hat. Eine Zeile.
+- **Die Wurzel-`SKILL.md` bleibt, wo sie ist.** Ein Umzug nach
+  `skills/mcp-audit/` scheitert am Paketformat: `mcp-audit.skill` spiegelt den
+  Repository-Baum, und `SKILL.md` muss an der Paketwurzel liegen. Die Wurzel
+  IST der `mcp-audit`-Skill, `skills/` hält die drei Companions —
+  ausführlich begründet in `skills/README.md`.
+
+Noch nicht umgestellt: die Qualitätskette zählt weiterhin fünf Repos. Das ist
+Phase 3b und in `docs/consolidation/MERGE-PLAN.md` unter 6.1 beschrieben.
+
+
 ### Geändert — die erste generische Prüffamilie ist zusammengelegt (Phase 2a)
 
 `tools/gates/toolchain.py` trägt jetzt eine Implementierung des Ruff-Pin-Gates
