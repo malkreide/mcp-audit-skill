@@ -119,9 +119,9 @@ vorhanden.
 | G7 | kein Bytecode getrackt | – | 4 | 3 | 11 | **erledigt** |
 | G8 | referenzierte Dateien existieren | – | 7 | 2 | 10 | **erledigt** |
 | G9 | Python-Referenzen syntaktisch gueltig | – | 2 | 1 | – | **erledigt** |
-| G10 | `SKILL.md`-Frontmatter wohlgeformt | – | 5 | 4 | 1 | Phase 2b |
-| G11 | Version-Badge == CHANGELOG | – | 9 | 7 | 5 | Phase 2b |
-| G12 | Quality-Chain-Tabelle vollstaendig | – | 10 | 8 | 4 | Phase 2b |
+| G10 | `SKILL.md`-Frontmatter wohlgeformt | – | 5 | 4 | 1 | **erledigt** |
+| G11 | Version-Badge == CHANGELOG | – | 9 | 7 | 5 | gebaut, Bindung in 2b-iv (4.2f) |
+| G12 | Quality-Chain-Tabelle vollstaendig | – | 10 | 8 | 4 | **erledigt** |
 | G13 | GitHub-Description == Zaehlwert | – | 15 | 15 | 9 | Phase 2b |
 | G14 | Zaehlwert konsistent ueber alle Dateien | – | 11, 19 | 5 | 3 | Phase 2b |
 | G15 | referenzierte Workflows existieren | – | – | 16 | – | Phase 2b-iii (4.2e) |
@@ -337,6 +337,44 @@ Dateihygiene.
 Die drei uebrigen Treffer sind echt und bekannt: Es ist die Schuld aus Phase
 3a, die 2b-iv einloest.
 
+### 4.2f Was 2b-iii-a gezeigt hat (G10–G12)
+
+**G12 hatte die Liste dreimal — und einmal falsch.** Jedes der drei
+Companion-Repos fuehrte die Mitglieder der Kette als HARTE LISTE im eigenen
+Pruefmodul (`MEMBERS`, fuenf Namen). Seit Phase 3b sind es vier, und zwar
+Skills statt Repos — die drei Kopien sagen seither dasselbe Veraltete. Die
+zusammengefuehrte Fassung liest `docs/quality-chain.json`. Eine Tabelle gegen
+eine Kopie zu halten prueft nur, ob beide dieselbe Unwahrheit sagen.
+
+**G12 vereinigt ausserdem zwei Einstiege.** Die Pruefung existierte hier
+bereits als pytest (`tests/test_quality_chain.py`) und in den drei
+Schwesterrepos als Check — zwei Implementierungen derselben Frage. Jetzt gibt
+es eine in `tools/gates/readmes.py`; der Check ruft sie als `audit/12`, der
+Test ruft sie als Test. Dieselbe Bewegung wie bei `tools/check_ruff_pin.py`
+in Phase 2a.
+
+**G11 IST GEBAUT, ABER HIER NICHT VERDRAHTET.** Die READMEs dieses Repos
+tragen kein Versions-Badge; die der drei Companions schon. Die Pruefung haette
+hier also keinen Gegenstand, und ein Badge einzufuehren waere eine Aenderung
+am PRODUKT, nicht an der Zusammenfuehrung — mit einer Zahl, die jemand
+pflegen muss. Sie ist gegen alle drei Companions abgenommen, in ihren
+Herkunftsrepos wie in `skills/<name>/`, und wird in 2b-iv gebunden.
+
+**Der `base`-Parameter ist neu und traegt das Monorepo.** In den
+Herkunftsrepos lag genau ein CHANGELOG und ein Satz READMEs an der Wurzel.
+Hier sind es vier Saetze; ohne `base` waere nur einer davon pruefbar. Die
+Abnahme faehrt G10 und G11 deshalb doppelt: gegen die vier Herkunftsbaeume UND
+gegen die drei `skills/<name>/`-Verzeichnisse dieses Repos.
+
+**Warum G13, G14, G15 und G16 nicht in diesem Schritt sind.** G10 bis G12
+pruefen Anker INNERHALB der Arbeitskopie und laufen offline. Die vier
+uebrigen brauchen je etwas von aussen: G13 die GitHub-API, G16 einen
+Tag-Kontext, G15 den in 4.2e begruendeten Scope-Parameter, und G14 eine
+Parametrisierung nach Einheit (probe zaehlt Schritte, fidelity und transport
+zaehlen Regeln) samt der Frage, wie ein Monorepo mit vier verschiedenen
+Zaehlwerten damit umgeht. Ein `offline=False`-Gate in einen Schritt zu legen,
+dessen Abnahme lokal laufen soll, haette die Abnahme selbst entwertet.
+
 ### 4.3 Konfiguration
 
 | Datei | Entscheid |
@@ -473,7 +511,9 @@ damit hier auf und nicht erst, wenn jemand den Skill installieren will.
 | **2a** | G1 und G2 nach `tools/gates/toolchain.py`, Einstiegspunkte als Huellen | **erledigt** — gegen alle vier Baeume gruen, 1315 Tests |
 | **2b-i** | G3–G6 nach `tools/gates/ruff.py` | **erledigt** — gegen drei Baeume gruen, audit bekommt zwei Pruefungen dazu |
 | **2b-ii** | G7–G9 (Dateien und Hygiene) | **erledigt** — gegen alle vier Baeume gruen, audit bekommt drei Pruefungen dazu |
-| **2b-iii** | G10–G14, G16 (Doku und Zaehlwerte) + G15 (4.2e) | |
+| **2b-iii-a** | G10–G12 (Doku-Anker, offline) | **erledigt** — gegen alle vier Baeume gruen, audit bekommt zwei Pruefungen dazu |
+| **2b-iii-b** | G13, G15, G16 — die kontextgebundenen (Netz, Tag, Scope) | |
+| **2b-iii-c** | G14 (Zaehlwerte, parametrisiert nach Einheit) | |
 | **2b-iv** | die 10 skill-eigenen Pruefungen, READMEs neu fassen | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
 | **3a** | Die drei Companions per `git subtree` nach `skills/<name>/`, Historie erhalten | **erledigt** — drei `SKILL.md` am Platz, Frontmatter-`name` unveraendert, 1315 Tests gruen |
 | **3b** | Kette auf vier Skills umstellen (6.1), beide READMEs nachziehen | **erledigt** — `quality-chain.json` fuehrt vier Skills und zwei Repos, 1319 Tests gruen |

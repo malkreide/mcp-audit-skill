@@ -6,6 +6,32 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — die Doku-Anker laufen über gemeinsame Gates (Phase 2b-iii-a)
+
+Die Familien G10–G12 stehen jetzt in `tools/gates/skill_doc.py` und
+`tools/gates/readmes.py`. Dazu zwei neue Gates für dieses Repo:
+
+- **`audit/11`** — `SKILL.md` trägt ein wohlgeformtes Frontmatter. Der
+  erwartete Name ist Parameter; die Erfolgsmeldung nennt den verbleibenden
+  Spielraum der Description, weil die 1024-Zeichen-Grenze nah genug ist, dass
+  eine ergänzte Trigger-Wendung sie in einer Bearbeitung reisst.
+- **`audit/12`** — die Ketten-Tabelle nennt jedes Mitglied.
+
+**`audit/12` ersetzt keine Prüfung, es vereinigt zwei.** Die Frage wurde hier
+schon als pytest gestellt und in den drei Schwesterrepos als Check — mit je
+einer eigenen, hart geführten Liste von fünf Repo-Namen. Seit Phase 3b sind es
+vier Skills, die Kopien sagen also dasselbe Veraltete. Jetzt liest eine
+Implementierung `docs/quality-chain.json`, und beide Einstiege rufen sie.
+
+**G11 (Versions-Badge) ist gebaut, aber nicht verdrahtet:** Die READMEs
+dieses Repos tragen kein Badge. Eines einzuführen wäre eine Änderung am
+Produkt, nicht an der Zusammenführung. Sie ist gegen alle drei Companions
+abgenommen und wird in 2b-iv gebunden.
+
+Abgenommen gegen die vier Herkunftsbäume **und** die drei
+`skills/<name>/`-Verzeichnisse: dreizehn Läufe, dreizehn grün.
+
+
 ### Hinzugefügt — drei weitere Prüfungen aus den Schwesterrepos (Phase 2b-ii)
 
 Die Familien G7–G9 laufen jetzt über `tools/gates/hygiene.py` und
