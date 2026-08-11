@@ -108,7 +108,7 @@ def test_ein_stimmiger_spiegel_ist_gruen(baum):
         source="SKILL.md",
         pattern=REGEL,
         unit="Regeln",
-        mirrors=(("README.md", REGEL),),
+        mirrors=(("README.md", REGEL, None),),
     )
     assert "2 Regeln" in meldung
 
@@ -127,7 +127,7 @@ def test_ein_fehlender_eintrag_im_spiegel_wird_beim_namen_genannt(baum):
             source="SKILL.md",
             pattern=REGEL,
             unit="Regeln",
-            mirrors=(("README.md", REGEL),),
+            mirrors=(("README.md", REGEL, None),),
         )
     assert "fehlt [2]" in str(befund.value)
 
@@ -144,7 +144,7 @@ def test_ANKER_gleich_viele_ist_nicht_dasselbe_wie_dieselben(tmp_path):
             source="SKILL.md",
             pattern=SCHRITT,
             unit="Schritte",
-            mirrors=(("cmd.md", SCHRITT),),
+            mirrors=(("cmd.md", SCHRITT, None),),
         )
     text = str(befund.value)
     assert "zusaetzlich [0]" in text
@@ -159,7 +159,7 @@ def test_die_meldung_nennt_die_quelle_als_massgeblich(baum):
             source="SKILL.md",
             pattern=REGEL,
             unit="Regeln",
-            mirrors=(("README.md", REGEL),),
+            mirrors=(("README.md", REGEL, None),),
         )
     assert "Die Quelle ist SKILL.md" in str(befund.value)
 
@@ -179,6 +179,69 @@ def test_mehrere_spiegel_werden_alle_geprueft(baum):
             source="SKILL.md",
             pattern=REGEL,
             unit="Regeln",
-            mirrors=(("README.md", REGEL), ("README.de.md", REGEL)),
+            mirrors=(("README.md", REGEL, None), ("README.de.md", REGEL, None)),
         )
     assert "README.de.md" in str(befund.value)
+
+
+# --------------------------------------------------------------------------
+# Der Abschnitts-Scope
+# --------------------------------------------------------------------------
+
+
+LIST_ITEM = re.compile(r"^(?P<nummer>\d+)\. \*\*", re.M)
+
+
+def test_ANKER_ohne_abschnitt_zaehlt_jede_liste_des_dokuments_mit(tmp_path):
+    """Gemessen beim Umzug von `mcp-transport-hardening`.
+
+    Dessen README fuehrt nach den vierzehn Regeln noch zwei weitere
+    nummerierte Listen — zusammen lasen sich die Nummern als 1..14,1..5,1..3
+    und damit als «nicht fortlaufend». Der Befund war richtig, der Gegenstand
+    falsch.
+    """
+    schreibe(tmp_path, "SKILL.md", ["## Regel 1", "## Regel 2"])
+    schreibe(
+        tmp_path,
+        "README.md",
+        ["## Regeln", "1. **a**", "2. **b**", "", "## Anderes", "1. **x**"],
+    )
+    with pytest.raises(CheckFailed) as befund:
+        gates.count_agrees(
+            tmp_path,
+            source="SKILL.md",
+            pattern=REGEL,
+            unit="Regeln",
+            mirrors=(("README.md", LIST_ITEM, None),),
+        )
+    assert "nicht fortlaufend" in str(befund.value)
+
+
+def test_mit_abschnitt_zaehlt_nur_die_gemeinte_liste(tmp_path):
+    schreibe(tmp_path, "SKILL.md", ["## Regel 1", "## Regel 2"])
+    schreibe(
+        tmp_path,
+        "README.md",
+        ["## Regeln", "1. **a**", "2. **b**", "", "## Anderes", "1. **x**"],
+    )
+    assert gates.count_agrees(
+        tmp_path,
+        source="SKILL.md",
+        pattern=REGEL,
+        unit="Regeln",
+        mirrors=(("README.md", LIST_ITEM, "Regeln"),),
+    )
+
+
+def test_ANKER_eine_fehlende_abschnitts_ueberschrift_ist_ein_befund(tmp_path):
+    schreibe(tmp_path, "SKILL.md", ["## Regel 1"])
+    schreibe(tmp_path, "README.md", ["## Anders benannt", "1. **a**"])
+    with pytest.raises(CheckFailed) as befund:
+        gates.count_agrees(
+            tmp_path,
+            source="SKILL.md",
+            pattern=REGEL,
+            unit="Regeln",
+            mirrors=(("README.md", LIST_ITEM, "Regeln"),),
+        )
+    assert "nicht gefunden" in str(befund.value)

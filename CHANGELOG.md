@@ -6,6 +6,32 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — die erste Companion-Suite (Phase 2b-iv-a)
+
+`tools/suites/mcp_transport_hardening/` führt sechs Prüfungen für den
+Transport-Skill: Frontmatter, Regel-Abschnitte, Regelzahl, Versions-Badge,
+offene Namen und referenzierte Dateien. **G11 ist damit erstmals gebunden** —
+das Gate stand seit 2b-iii-a ohne Gegenstand, weil die READMEs der Repo-Wurzel
+kein Badge tragen.
+
+**Fünf der ursprünglich elf Prüfungen sind nicht mitgezogen.** Ihr Gegenstand
+ist das *Repository* und nicht der Skill: ruff-Pin, laufende ruff, getrackter
+Bytecode, Ketten-Tabelle, GitHub-Description. Es gibt eine `ruff.toml`, einen
+git-Index, ein Manifest — sie mitzunehmen hiesse, `ruff check` viermal über
+denselben Baum zu fahren.
+
+Damit hat die Suite Lücken in der Nummerierung, was mit der Zusage aus Phase 0
+kollidiert. Aufgelöst über **`ABSORBED`**: Jede Suite nennt zu jeder Lücke,
+wohin die Prüfung gegangen ist; geprüft wird die Vereinigung. Die Nummern
+bleiben stehen, der Wächter bleibt scharf.
+
+**Eine Änderung aus Phase 3a hatte eine Prüfung neutralisiert.** Die
+`per-file-ignores` für `skills/*/reference/*.py` nehmen F821 aus — und genau
+F821 sucht die Positivlisten-Prüfung. Sie fand null Namen und verweigerte
+korrekt das Bestehen. Behoben, und beide Stellen sagen jetzt, dass sie
+zusammengehören.
+
+
 ### Hinzugefügt — tote Workflow-Verweise werden gefangen (2b-iii-d)
 
 - **`audit/15`** hält jeden Verweis auf eine Workflow-Datei gegen den Baum.

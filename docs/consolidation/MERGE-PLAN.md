@@ -496,6 +496,44 @@ sie nichts getan.
 die Bindungen (G11 und G13, siehe 4.2f und 4.2g) und die zehn skill-eigenen
 Pruefungen — beides Phase 2b-iv.
 
+### 4.2j Was 2b-iv-a gezeigt hat — repo-bezogen gegen skill-bezogen
+
+**FUENF VON TRANSPORTS ELF PRUEFUNGEN SIND NICHT MITGEZOGEN, und das ist die
+wichtigste Entscheidung des Umzugs.** Ihr Gegenstand ist das REPOSITORY und
+nicht der Skill: ruff-Pin, laufende ruff, getrackter Bytecode,
+Ketten-Tabelle, GitHub-Description. Im Herkunftsrepo fielen Skill und
+Repository zusammen; hier nicht mehr — es gibt EINE `ruff.toml`, EINEN
+git-Index, EIN Manifest. Sie mitzunehmen hiesse, `ruff check` viermal ueber
+denselben Baum zu fahren.
+
+Damit haelt die Suite nur noch 1, 2, 3, 5, 6 und 10 — **mit Luecken**. Das
+kollidiert mit der Zusage aus Phase 0, dass keine Pruefung umnumeriert wird.
+Aufgeloest ueber `ABSORBED`: Jede Suite nennt zu jeder Luecke, wohin die
+Pruefung gegangen ist, und der Test haelt die VEREINIGUNG aus registrierten
+und absorbierten Nummern gegen 1..N. Die Nummern bleiben stehen, und der
+Waechter bleibt scharf — eine Luecke OHNE Eintrag ist weiterhin ein Befund,
+und ein Eintrag, dessen Nummer wieder registriert wird, ebenfalls.
+
+**MEINE EIGENE AENDERUNG AUS PHASE 3a HAT EINE PRUEFUNG NEUTRALISIERT.** Die
+`per-file-ignores` fuer `skills/*/reference/*.py` nehmen F821 aus — und genau
+F821 sucht transports Positivlisten-Pruefung. Sie fand null Namen und
+verweigerte korrekt das Bestehen («das ist kein sauberer Baum, sondern eine
+Pruefung, die nichts geprueft hat»). Behoben mit
+`--config 'lint.per-file-ignores = {}'` fuer diesen einen Lauf.
+
+Beides gehoert zusammen und steht jetzt in beiden Dateien: Der Ignore macht
+den Baum lintbar, obwohl die Vorlagen absichtlich offene Namen fuehren; die
+Pruefung sorgt dafuer, dass er dabei keinen Tippfehler mitverdeckt.
+
+**Das Zaehl-Gate brauchte einen Abschnitts-Scope.** Transports README fuehrt
+nach den vierzehn Regeln noch zwei weitere nummerierte Listen; ohne
+Einschraenkung las sich die Numerierung als 1..14,1..5,1..3. Der Befund war
+richtig, der Gegenstand falsch. `mirrors` traegt deshalb jetzt optional die
+Ueberschrift des Abschnitts, auf den das Muster beschraenkt bleibt.
+
+**G11 IST ERSTMALS GEBUNDEN** — als `transport/5`. Das Gate stand seit
+2b-iii-a ohne Gegenstand, weil die READMEs der Repo-Wurzel kein Badge tragen.
+
 ### 4.3 Konfiguration
 
 | Datei | Entscheid |
@@ -636,7 +674,9 @@ damit hier auf und nicht erst, wenn jemand den Skill installieren will.
 | **2b-iii-b** | G13 und G16 — die Zusagen ausserhalb der Arbeitskopie | **erledigt** — G16 gebunden als `audit/13`, G13 gebaut (4.2g) |
 | **2b-iii-d** | G15 mit Scope-Parameter | **erledigt** — 16 von 16 generischen Familien zusammengelegt |
 | **2b-iii-c** | G14 (Zaehlwerte, parametrisiert nach Einheit) | **erledigt** — gegen fuenf Baeume gruen, audit bekommt eine Pruefung dazu |
-| **2b-iv** | die 10 skill-eigenen Pruefungen, READMEs neu fassen | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
+| **2b-iv-a** | Suite `transport` vollstaendig, als Vorlage | **erledigt** — 6 Pruefungen, G11 erstmals gebunden |
+| **2b-iv-b** | Suiten `probe` und `fidelity` | |
+| **2b-iv-c** | die sechs READMEs der Companions neu fassen | |
 | **3a** | Die drei Companions per `git subtree` nach `skills/<name>/`, Historie erhalten | **erledigt** — drei `SKILL.md` am Platz, Frontmatter-`name` unveraendert, 1315 Tests gruen |
 | **3b** | Kette auf vier Skills umstellen (6.1), beide READMEs nachziehen | **erledigt** — `quality-chain.json` fuehrt vier Skills und zwei Repos, 1319 Tests gruen |
 | **4** | Katalog-Drift auf lokal umstellen; `weekly-drift.yml` + `linked_checks.py` loeschen | Pruefung laeuft im PR, `offline=True` |
