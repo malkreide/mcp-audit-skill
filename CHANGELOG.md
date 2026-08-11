@@ -6,6 +6,43 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — was sonst mit den Herkunftsrepos verschwunden wäre (Phase 5)
+
+Ein archiviertes Repository fährt keine Workflows mehr. Alles, was nur dort
+lief, hört damit auf — **ohne dass etwas rot wird**. Vor dem Archivieren stand
+deshalb die Inventur, und sie hat zwei Lücken gefunden, beide in
+`mcp-transport-hardening-skill`:
+
+- **`transport/12` — die Vorlage importiert gegen die gepinnte SDK.** Dessen CI
+  war die einzige Stelle, die `reference/patterns.py` gegen die *echte*
+  SDK-Oberfläche hielt statt gegen ihren eigenen Text. Hier übersetzte
+  `audit/10` sie nur, und `compileall` beweist weniger, als es klingt: Die
+  Vorlage importiert `from mcp.server.mcpserver import MCPServer`, und die
+  1.x-Fassung (`mcp.server.fastmcp`) gibt es in 2.0.0 nachweislich nicht mehr.
+  Ein Import auf ein Modul, das es nicht mehr gibt, parst einwandfrei.
+- **`.github/workflows/sdk-drift.yml`** — mitgezogen, liest den Pin jetzt aus
+  `requirements-reference.txt` statt aus einer fremden `ci.yml`.
+
+Die beiden sind eine Zusage in zwei Hälften: Der Pin (`mcp==2.0.0`) macht den
+PR-Lauf reproduzierbar, der Wochenlauf macht die Drift sichtbar. Einzeln ist
+jede eine halbe.
+
+### Geändert — G9 hat einen zweiten Gegenstand
+
+Die Import-Mechanik stand in `probe/3` und hatte genau einen Anlass («lädt die
+Vorlage überhaupt?»). `transport/12` bringt einen zweiten, aus einem *anderen*
+Grund («beschreibt sie noch die Oberfläche, die es gibt?»). Zwei Gründe, ein
+Mechanismus — sie steht jetzt in `tools/gates/references.py::python_imports`.
+
+### Behoben — die Auslagerung hat sofort etwas gekostet
+
+Das Gate übernahm zunächst den `_`-Filter von `python_sources`, und **vier
+Mutationen von `probe/3` wurden damit grün** — sie legen eine kaputte
+`_mutant.py` ab. Die Mutationssuite hat es beim ersten Lauf gemeldet, einen Tag
+nach ihrem Einzug; ohne sie wäre `probe/3` still schmaler geworden. Der Filter
+ist jetzt ein Parameter, und warum die beiden Hälften verschieden zählen, steht
+dort.
+
 ### Hinzugefügt — die Mutationssuiten (Phase 2b-iv-d)
 
 `tests/suites/` führt **98** Mutationen über die drei Companion-Suiten — 45 für

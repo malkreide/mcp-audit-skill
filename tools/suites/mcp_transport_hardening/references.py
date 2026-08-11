@@ -26,12 +26,14 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from tools.gates import references as ref_gates
 from tools.harness import CheckFailed, register
 
 from ._suite import SUITE
 from .skill_doc import BASE
 
 TARGET = f"{BASE}/reference/"
+REFERENCE_DIR = f"{BASE}/reference"
 
 #: Die offenen Namen, jeder mit dem Grund, warum er offen sein DARF. Der Grund
 #: ist der eigentliche Inhalt dieser Tabelle: eine stumme Namensliste waere nur
@@ -171,3 +173,35 @@ def reference_open_names(root: Path) -> str:
         )
 
     return f"{len(gefunden)} offene Namen, alle mit Begruendung auf der Liste"
+
+
+@register(12, "reference/patterns.py imports against the pinned SDK", suite=SUITE)
+def reference_imports(root: Path) -> str:
+    """MIT PHASE 5 HERUEBERGEHOLT — sonst waere sie mit dem Repo verschwunden.
+
+    Diese Zusage lief im Herkunftsrepo als CI-Schritt und hatte hier bis
+    Phase 5 KEINEN Gegenstand: `audit/10` uebersetzt die Vorlage, mehr nicht.
+    `compileall` beweist, dass die Datei PARST, und das ist weniger, als es
+    klingt — die Vorlage importiert `from mcp.server.mcpserver import
+    MCPServer` und `from mcp.server.transport_security import
+    TransportSecuritySettings`. Das sind die zwei Zeilen, um die es in Regel 1
+    geht, und die 1.x-Fassung (`mcp.server.fastmcp`) gibt es in 2.0.0
+    nachweislich nicht mehr. Ein Import auf ein Modul, das es nicht mehr gibt,
+    parst einwandfrei.
+
+    DERSELBE MECHANISMUS WIE `probe/3`, ABER AUS EINEM ANDEREN GRUND. Dort
+    lautet die Frage «laedt die Vorlage ueberhaupt?», hier «beschreibt sie noch
+    die Oberflaeche, die es gibt?». Der zweite Gegenstand ist der Anlass, die
+    Mechanik nach `tools/gates/references.py` zu heben — vorher waere es eine
+    Abstraktion ohne zweiten Fall gewesen.
+
+    GEGEN DIE GEPINNTE SDK, nicht gegen die neueste. Der Pin steht in
+    `requirements-reference.txt` und ist Absicht: Ungepinnt faerbte ein fremdes
+    Release die CI an unberuehrtem Vorlagen-Code rot. Was diese Pruefung damit
+    NICHT merkt — dass upstream die Oberflaeche in 2.1 verschiebt —, misst
+    `.github/workflows/sdk-drift.yml` woechentlich gegen die jeweils neueste.
+    Die beiden gehoeren zusammen; einzeln ist jede eine halbe Zusage.
+    """
+    return ref_gates.python_imports(
+        root, source_dirs=(REFERENCE_DIR,), praefix="_transport_reference_"
+    )
