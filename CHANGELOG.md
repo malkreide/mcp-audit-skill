@@ -6,6 +6,26 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — tote Workflow-Verweise werden gefangen (2b-iii-d)
+
+- **`audit/15`** hält jeden Verweis auf eine Workflow-Datei gegen den Baum.
+  Der Anlass steht im CHANGELOG eines Schwesterrepos: Eine Umbenennung liess
+  drei Stellen namentlich auf die alte Datei zeigen; gefunden hat sie ein
+  `grep` von Hand.
+
+**Die einzige der sechzehn Familien, die erweitert und nicht bloss
+zusammengelegt wurde.** Die Herkunftsfassung nahm an, jede `.yml`-Erwähnung
+sei ein Verweis auf einen eigenen Workflow. Hier stimmt das nicht: Von sieben
+unauflösbaren Erwähnungen waren vier Beispiele aus dem **Katalog**, die
+beschreiben, was ein *geprüfter Server* haben soll.
+
+`scope` nennt deshalb die Pfade, die über *dieses* Repository sprechen — als
+Allowlist, weil in einem Monorepo mit Katalog der Regelfall die fremde Rede
+ist. Ein Scope-Eintrag ohne Treffer ist selbst ein Befund.
+
+Damit sind **16 von 16 generischen Prüffamilien** zusammengelegt.
+
+
 ### Hinzugefügt — `SKILL.md` und der Slash-Command führen denselben Ablauf (2b-iii-c)
 
 - **`audit/14`** hält die acht nummerierten Schritte in `SKILL.md` gegen die
