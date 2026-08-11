@@ -43,6 +43,26 @@ from tools.suites.mcp_audit import SUITE  # noqa: E402
 CHECKS_BY_NAME = {c.run.__name__: c for c in all_checks(suite=SUITE)}
 
 
+def importierte_namen(init: str) -> set[str]:
+    """Die Namen aus `from . import …`, ein- ODER mehrzeilig.
+
+    Die mehrzeilige Form mit Klammern kam mit der siebten Suite-Datei: `ruff
+    format` bricht die Zeile ab einer bestimmten Laenge selbst um. Ein Muster,
+    das nur die einzeilige Form kennt, laese ab da eine LEERE Menge — und
+    dieser Test meldete dann jedes Modul als fehlend. Er ist damals genau so
+    rot geworden, was der richtige Ausgang ist; die stille Variante waere
+    gewesen, wenn er umgekehrt gruen geblieben waere.
+    """
+    einzeilig = re.findall(r"^from \. import ([^(\n]+)$", init, re.M)
+    mehrzeilig = re.findall(r"^from \. import \(\s*(.*?)\)", init, re.M | re.S)
+    return {
+        name.strip()
+        for block in [*einzeilig, *mehrzeilig]
+        for name in block.split(",")
+        if name.strip()
+    }
+
+
 @pytest.fixture
 def tree(tmp_path: pathlib.Path) -> pathlib.Path:
     """Eine Wegwerf-Kopie des echten Repos.
@@ -196,8 +216,7 @@ def test_registry_deckt_jedes_pruefmodul_ab():
         and "@register(" in datei.read_text(encoding="utf-8")
     }
     init = (paket / "__init__.py").read_text(encoding="utf-8")
-    importiert = set(re.findall(r"^from \. import (.+)$", init, re.M))
-    importiert = {name.strip() for zeile in importiert for name in zeile.split(",")}
+    importiert = importierte_namen(init)
 
     fehlend = sorted(mit_register - importiert)
     assert not fehlend, (
@@ -226,8 +245,7 @@ def test_jede_suite_steht_in_der_importzeile():
         if d.is_dir() and not d.name.startswith(("_", "."))
     }
     init = (paket / "__init__.py").read_text(encoding="utf-8")
-    importiert = set(re.findall(r"^from \. import (.+)$", init, re.M))
-    importiert = {name.strip() for zeile in importiert for name in zeile.split(",")}
+    importiert = importierte_namen(init)
 
     fehlend = sorted(vorhanden - importiert)
     assert not fehlend, (

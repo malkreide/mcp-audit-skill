@@ -6,6 +6,24 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — `SKILL.md` und der Slash-Command führen denselben Ablauf (2b-iii-c)
+
+- **`audit/14`** hält die acht nummerierten Schritte in `SKILL.md` gegen die
+  `**Output Schritt N**`-Zeilen in `.claude/commands/audit-mcp.md`. Beide
+  beschreiben denselben Ablauf an zwei Stellen; geprüft hat das bisher nichts.
+
+Das generische Gate (`tools/gates/counts.py`) ist gegenüber allen drei
+Herkunftsfassungen **schärfer**: Es prüft die Lückenlosigkeit und nicht nur die
+Anzahl, und ein Spiegel muss dieselben *Nummern* nennen, nicht bloss gleich
+viele. Wer Abschnitt 4 von sechs löscht, hat fünf — und eine reine
+Anzahl-Prüfung wäre daneben grün geblieben.
+
+**Offene Frage:** Beide READMEs sprechen vom «six-step workflow», während
+`SKILL.md` acht Schritte führt. Ob das veraltet ist oder «die Schritte 1 bis 6»
+meint — ohne Vorbereitung und bedingten Release-Vorschlag — steht nirgends im
+Repository. `audit/14` rät das nicht; siehe `MERGE-PLAN.md`, 4.2h.
+
+
 ### Hinzugefügt — der Tag wird geprüft (Phase 2b-iii-b)
 
 - **`audit/13`** — Tag und CHANGELOG-Spitze nennen dieselbe Version. Der Tag
