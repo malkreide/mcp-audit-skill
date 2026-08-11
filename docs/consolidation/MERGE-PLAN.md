@@ -124,7 +124,7 @@ vorhanden.
 | G12 | Quality-Chain-Tabelle vollstaendig | – | 10 | 8 | 4 | **erledigt** |
 | G13 | GitHub-Description == Zaehlwert | – | 15 | 15 | 9 | gebaut, Bindung offen (4.2g) |
 | G14 | Zaehlwert konsistent ueber alle Dateien | – | 11, 19 | 5 | 3 | **erledigt** |
-| G15 | referenzierte Workflows existieren | – | – | 16 | – | Phase 2b-iii (4.2e) |
+| G15 | referenzierte Workflows existieren | – | – | 16 | – | **erledigt** |
 | G16 | Tag == CHANGELOG | – | – | 13 | – | **erledigt** |
 
 Drei Entscheide dazu:
@@ -460,6 +460,42 @@ die Importzeile in `tools/suites/mcp_audit/__init__.py` mehrzeilig umbrechen.
 wurde rot — der richtige Ausgang. Waere er umgekehrt gruen geblieben, haette
 der Waechter ab da nichts mehr bewacht. Er liest jetzt beide Formen.
 
+### 4.2i Was 2b-iii-d gezeigt hat (G15) — die letzte Familie
+
+**Sie ist die einzige der sechzehn, die ERWEITERT und nicht bloss
+zusammengelegt wurde.** Die Herkunftsfassung durchsuchte den ganzen Baum und
+nahm an, jede Erwaehnung einer `.yml` sei ein Verweis auf einen EIGENEN
+Workflow. In einem Skill-Repo stimmt das. Hier nicht — und das war gemessen,
+nicht vermutet: Von sieben unaufloesbaren Erwaehnungen waren VIER Beispiele
+aus dem Katalog, die beschreiben, was ein GEPRUEFTER SERVER haben soll.
+
+**`scope` ist eine ALLOWLIST und keine Ausnahmeliste.** In einem gewoehnlichen
+Repo ist der Regelfall die eigene Rede, und eine Ausnahmeliste ist das
+richtige Werkzeug. In einem Monorepo mit Katalog ist der Regelfall die FREMDE
+Rede — dann ist die Ausnahmeliste die laengere Liste, und sie waechst still.
+Ein Scope-Eintrag ohne Treffer ist deshalb selbst ein Befund: Wer ein
+Verzeichnis umbenennt und den Scope nicht nachzieht, naehme es sonst
+stillschweigend aus der Pruefung.
+
+**Warum `tests/` draussen bleibt, obwohl es echte Verweise enthaelt.** Tests
+nennen Workflow-Namen als FIXTURE-DATEN — `tests/test_gates_toolchain.py`
+schreibt `ci.yml` in einen Wegwerf-Baum, um zu belegen, dass der Pfad wirklich
+ein Parameter ist. Das ist keine Behauptung ueber diesen Baum. Und wo ein Test
+wirklich an einer Datei haengt, braucht er keinen Zeiger-Waechter: Verschwindet
+sie, faellt der Test direkt um. Dieser Waechter existiert fuer PROSA und
+KONFIGURATION, wo ein toter Zeiger still bleibt.
+
+**Die Ausnahmetabelle traegt drei Waechter ueber sich selbst** — uebernommen
+und unveraendert gut: Ein zurueckgezogener Pfad, den es wieder gibt, naehme
+einen LEBENDEN Workflow von der Pruefung aus; eine Datei unter
+`historical_in`, die die Erwaehnung gar nicht mehr enthaelt, ist eine Ausnahme
+ohne Gegenstand; und findet die Pruefung im ganzen Scope keine Erwaehnung, hat
+sie nichts getan.
+
+**Damit sind 16 von 16 generischen Familien zusammengelegt.** Was bleibt, sind
+die Bindungen (G11 und G13, siehe 4.2f und 4.2g) und die zehn skill-eigenen
+Pruefungen — beides Phase 2b-iv.
+
 ### 4.3 Konfiguration
 
 | Datei | Entscheid |
@@ -598,7 +634,7 @@ damit hier auf und nicht erst, wenn jemand den Skill installieren will.
 | **2b-ii** | G7–G9 (Dateien und Hygiene) | **erledigt** — gegen alle vier Baeume gruen, audit bekommt drei Pruefungen dazu |
 | **2b-iii-a** | G10–G12 (Doku-Anker, offline) | **erledigt** — gegen alle vier Baeume gruen, audit bekommt zwei Pruefungen dazu |
 | **2b-iii-b** | G13 und G16 — die Zusagen ausserhalb der Arbeitskopie | **erledigt** — G16 gebunden als `audit/13`, G13 gebaut (4.2g) |
-| **2b-iii-d** | G15 mit Scope-Parameter | |
+| **2b-iii-d** | G15 mit Scope-Parameter | **erledigt** — 16 von 16 generischen Familien zusammengelegt |
 | **2b-iii-c** | G14 (Zaehlwerte, parametrisiert nach Einheit) | **erledigt** — gegen fuenf Baeume gruen, audit bekommt eine Pruefung dazu |
 | **2b-iv** | die 10 skill-eigenen Pruefungen, READMEs neu fassen | 26 Implementierungen tragen 53 Registrierungen; jede Suite lueckenlos |
 | **3a** | Die drei Companions per `git subtree` nach `skills/<name>/`, Historie erhalten | **erledigt** — drei `SKILL.md` am Platz, Frontmatter-`name` unveraendert, 1315 Tests gruen |

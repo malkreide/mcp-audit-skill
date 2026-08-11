@@ -36,6 +36,7 @@ from . import (
     skill_archive,
     skill_doc,
     toolchain,
+    workflows,
 )
 from ._suite import SUITE
 
@@ -48,4 +49,5 @@ __all__ = [
     "skill_archive",
     "skill_doc",
     "toolchain",
+    "workflows",
 ]
