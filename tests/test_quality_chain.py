@@ -24,7 +24,6 @@ mitschickt.
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 import pytest
@@ -262,16 +261,14 @@ def test_readme_tabelle_nennt_jedes_mitglied_des_manifests(readme, heading):
     Kein Vergleich der Prosa — nur, dass kein Mitglied fehlt. Wer eines
     hinzufügt und die READMEs vergisst, sieht es hier statt in vier Wochen.
     """
-    text = (REPO_ROOT / readme).read_text(encoding="utf-8")
-    section = re.search(
-        rf"^### {re.escape(heading)}\n(.*?)(?=^#{{2,3}} )", text, re.M | re.S
-    )
-    assert section, f"{readme}: Abschnitt '### {heading}' nicht gefunden"
-    body = section.group(1)
+    # EINE IMPLEMENTIERUNG, ZWEI EINSTIEGE. Seit Phase 2b-iii steht die Logik
+    # in `tools/gates/readmes.py` und laeuft als `audit/12` im Gate-Lauf.
+    # Dieser Test ruft dieselbe Funktion — er ist der zweite Einstieg, nicht
+    # eine zweite Fassung. Vorher waren es zwei: hier ein pytest, in den drei
+    # Schwesterrepos je ein Check mit eigener, hart gefuehrter Namensliste.
+    from tools.gates.readmes import chain_table
 
-    for member in load_manifest(MANIFEST_PATH)["members"]:
-        name = member["skill"]
-        assert name in body, f"{readme}: '{name}' fehlt in der Ketten-Tabelle"
+    assert chain_table(REPO_ROOT, sections=((readme, heading),))
 
 
 @pytest.mark.parametrize("readme", ["README.md", "README.de.md"])
