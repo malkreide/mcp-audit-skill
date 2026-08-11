@@ -1,35 +1,40 @@
-"""Pruefungen an der Werkzeugkette: der ruff-Pin und die laufende ruff.
+"""Pruefungen an der Werkzeugkette — die Bindung der generischen Gates.
 
-DIE REINE LOGIK STEHT NICHT HIER, SONDERN BLEIBT IN `tools/check_ruff_pin.py`
-UND `tools/check_ruff_version.py`. Das ist Absicht und der einzige Punkt, an
-dem dieses Repo von der Kettenkonvention abweicht:
+DIE LOGIK STEHT NICHT HIER, SONDERN IN `tools/gates/toolchain.py`. Sie ist
+dieselbe wie in den drei Schwesterrepos; was sich unterscheidet, sind zwei
+Werte, und die stehen unten.
 
-* Der Pre-Commit-Hook ruft `python3 tools/check_ruff_pin.py` DIREKT auf
-  (`.pre-commit-config.yaml`, `language: system`). Die Datei muss ihren
-  Einstiegspunkt behalten, sonst bricht der Hook — und er ist das, was die
-  Zusage «was lokal durchlaeuft, laeuft auch in der CI durch» ueberhaupt
-  einloest.
-* Beide READMEs benennen `tools/check_ruff_pin.py` namentlich als die Stelle,
-  die den Pin erzwingt.
-
-Die Alternative waere gewesen, die Funktionen hierher zu ziehen und dort
-Shims zurueckzulassen. Das ergaebe zwei Dateien, wo eine reicht, und die
-Frage «welche gilt?» — genau die Sorte zweiter Stelle, gegen die diese
-Pruefungen existieren. Stattdessen: EINE Implementierung, zwei Einstiege.
-Dieses Modul ist der Adapter, kein zweiter Ort.
+DASS SIE AUCH NICHT MEHR IN `tools/check_ruff_pin.py` STEHT, ist die
+Aenderung aus Phase 2. Vorher war es umgekehrt: Das Skript trug die
+Vergleichsfunktion, weil der Pre-Commit-Hook es direkt aufruft
+(`.pre-commit-config.yaml`, `language: system`), und dieses Modul war der
+Adapter. Mit der Zusammenfuehrung waeren daraus zwei Implementierungen
+geworden — die generische fuer die vier Suiten und die alte fuer den Hook.
+Jetzt traegt `tools/gates/` die Logik, und BEIDE Einstiege sind Huellen
+darum: dieses Modul fuer die Registry, `tools/check_ruff_pin.py` fuer den
+Hook. Der Einstiegspunkt des Hooks ist unveraendert geblieben; beide READMEs
+nennen ihn namentlich.
 """
 
 from __future__ import annotations
 
-import shutil
-import subprocess
 from pathlib import Path
 
-from tools import check_ruff_pin as crp
-from tools import check_ruff_version as crv
-from tools.harness import CheckFailed, register
+from tools.gates import toolchain as gates
+from tools.harness import register
 
 from ._suite import SUITE
+
+#: Der Pin steht hier in `lint.yml`, in den drei Schwesterrepos in `ci.yml` —
+#: der einzige Grund, warum diese Dateien je auseinanderliefen.
+CI_WORKFLOW = ".github/workflows/lint.yml"
+
+#: Die Hooks, die dieses Repo lokal fahren MUSS. Ausdruecklich genannt und
+#: nicht geerbt: `mcp-transport-hardening-skill` fuehrt begruendet nur
+#: `ruff-format` — dort steht `select = []` in `ruff.toml`, und die CI prueft
+#: gezielt statt ueber den ganzen Baum. Eine Vorgabe waere dort eine erfundene
+#: Zusage statt einer gemeinsamen.
+REQUIRED_HOOKS = ("ruff-check", "ruff-format")
 
 
 @register(
@@ -47,24 +52,9 @@ def ruff_pin_sync(root: Path) -> str:
     ruff, die anschliessend die Gates faehrt, diese Version traegt, sagt sie
     nicht.
     """
-    workflow = root / crp.LINT_WORKFLOW
-    precommit = root / crp.PRECOMMIT_CONFIG
-    for path in (workflow, precommit):
-        if not path.is_file():
-            raise CheckFailed(f"Datei nicht lesbar: {path}")
-
-    ok, message = crp.compare(
-        workflow.read_text(encoding="utf-8"),
-        precommit.read_text(encoding="utf-8"),
+    return gates.ruff_pin_sync(
+        root, ci_workflow=CI_WORKFLOW, required_hooks=REQUIRED_HOOKS
     )
-    if not ok:
-        raise CheckFailed(
-            f"{message}\n"
-            "  Beide Stellen im selben Commit bumpen: `rev:` in "
-            f"{crp.PRECOMMIT_CONFIG.as_posix()} und `pip install ruff==…` in "
-            f"{crp.LINT_WORKFLOW.as_posix()}."
-        )
-    return message
 
 
 @register(2, "the ruff on PATH is the pinned one", suite=SUITE)
@@ -82,24 +72,4 @@ def ruff_version_matches_pin(root: Path) -> str:
     Entwicklungsumgebungen, in denen eine 0.15.8 die installierte 0.16.1
     verdeckte.
     """
-    workflow = root / crp.LINT_WORKFLOW
-    if not workflow.is_file():
-        raise CheckFailed(f"Datei nicht lesbar: {workflow}")
-    pins = crp.workflow_pins(workflow.read_text(encoding="utf-8"))
-    pinned = pins[0] if pins else None
-
-    # FAIL statt skip: Eine uebersprungene Pruefung meldete «bestanden», wo
-    # «nicht gelaufen» richtig waere.
-    executable = shutil.which("ruff")
-    if executable is None:
-        raise CheckFailed(
-            "ruff liegt nicht auf dem PATH — die laufende Version laesst sich "
-            "nicht ermitteln."
-        )
-    done = subprocess.run(
-        [executable, "--version"], capture_output=True, text=True, check=False
-    )
-    ok, message = crv.compare(pinned, done.stdout + done.stderr, done.returncode)
-    if not ok:
-        raise CheckFailed(f"{message}\n  Gelaufene ruff: {executable}")
-    return message
+    return gates.ruff_version_matches_pin(root, ci_workflow=CI_WORKFLOW)

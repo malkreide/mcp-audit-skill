@@ -6,6 +6,40 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — die erste generische Prüffamilie ist zusammengelegt (Phase 2a)
+
+`tools/gates/toolchain.py` trägt jetzt eine Implementierung des Ruff-Pin-Gates
+für alle vier Skills der Kette. Vorher standen davon vier Fassungen
+nebeneinander, und der einzige inhaltliche Unterschied war ein Dateiname:
+Der Pin steht hier in `lint.yml`, in den drei Schwesterrepos in `ci.yml`.
+
+- **`.github/workflows/…` ist Parameter** (`ci_workflow=`), nicht mehr fest
+  verdrahtet. Ein Test fährt beide Schreibweisen gegen dieselbe
+  Implementierung.
+- **Zwei Verbesserungen aus `mcp-data-fidelity-skill` gelten jetzt überall:**
+  dass die Pre-Commit-Hooks überhaupt noch da sind, und die Auflistung
+  beschattender `ruff`-Binaries im Befund. Beides gab es nur dort, ohne dass
+  jemand dagegen entschieden hätte.
+- **`required_hooks` hat bewusst KEINE Vorgabe.**
+  `mcp-transport-hardening-skill` führt begründet nur `ruff-format` — dort
+  steht `select = []` in `ruff.toml`, und die CI prüft gezielt statt über den
+  ganzen Baum. Eine Vorgabe wäre dort eine erfundene Zusage.
+- **`tools/check_ruff_pin.py` und `tools/check_ruff_version.py` sind Hüllen
+  geworden.** Der Einstiegspunkt des Pre-Commit-Hooks ist unverändert
+  (`entry: python3 tools/check_ruff_pin.py`); die Logik steht eine Ebene
+  tiefer. Ohne diesen Schritt wäre aus der Entdopplung eine Verdopplung
+  geworden — die generische Fassung für die Suiten und die alte für den Hook.
+
+Abgenommen gegen alle vier echten Bäume, jeder mit seinen eigenen Parametern:
+acht Läufe, acht grün. Prüfungen nehmen `root` entgegen, das geht auch, bevor
+ein Inhalt umzieht.
+
+Betroffen: `tools/gates/`, `tools/suites/mcp_audit/toolchain.py`,
+`tools/check_ruff_pin.py`, `tools/check_ruff_version.py`,
+`tests/test_gates_toolchain.py`, `tests/test_audit_suite.py`. Kein Check
+geändert, kein Verdikt gekippt — der Katalog steht unverändert bei 120.
+
+
 ### Geändert — ein Prüfgerüst statt vier (Zusammenführung, Phase 1)
 
 Die fünf Gates dieses Repositories laufen nicht mehr über ein eigenes

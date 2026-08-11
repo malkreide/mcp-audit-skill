@@ -34,9 +34,10 @@ if str(REPO_ROOT) not in sys.path:
 
 import tools.suites  # noqa: E402
 import tools.suites.mcp_audit  # noqa: E402
+from tools.gates import toolchain as gates_toolchain  # noqa: E402
 from tools.harness import CheckFailed, all_checks  # noqa: E402
 from tools.harness._core import Check, run  # noqa: E402
-from tools.suites.mcp_audit import SUITE, ruff_gate, toolchain  # noqa: E402
+from tools.suites.mcp_audit import SUITE, ruff_gate  # noqa: E402
 
 CHECKS_BY_NAME = {c.run.__name__: c for c in all_checks(suite=SUITE)}
 
@@ -102,8 +103,13 @@ def test_ANKER_ruff_version_ohne_ruff_ist_ein_befund(tree, monkeypatch):
     befragt — sie hier zu ersetzen ist genauer und portabler, als eine
     gefaelschte ruff in den PATH zu legen. Ein `#!/bin/sh`-Shim faellt unter
     Windows um, und die Matrix dieses Repos enthaelt windows-latest.
+
+    Gepatcht wird seit Phase 2 im GATE, nicht mehr im Suite-Modul: Dort steht
+    die Logik, das Suite-Modul bindet sie nur noch. Der Anker wandert mit der
+    Naht mit — bliebe er stehen, patchte er ein Modul, das `shutil` gar nicht
+    mehr importiert, und der Test wuerde gruen, ohne zu messen.
     """
-    monkeypatch.setattr(toolchain.shutil, "which", lambda _: None)
+    monkeypatch.setattr(gates_toolchain.shutil, "which", lambda _: None)
     with pytest.raises(CheckFailed) as befund:
         CHECKS_BY_NAME["ruff_version_matches_pin"].run(tree)
     assert "liegt nicht auf dem PATH" in str(befund.value)
