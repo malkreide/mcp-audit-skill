@@ -48,9 +48,13 @@ MUTATIONS: list[Mutation] = [
     # --- reference_imports (probe/3) ---------------------------------------
     Mutation(
         "reference_imports",
+        # Die Meldung ist mit Phase 5 aus der Suite ins Gate gewandert und
+        # liest sich seither als Liste. Die Mutation zieht mit — eine, die auf
+        # den alten Wortlaut zeigt, wuerde beim naechsten Mal aus dem falschen
+        # Grund gruen.
         "ANKER: reference/ ist weg",
         remove(REFERENCE),
-        f"{REFERENCE} fehlt",
+        f"Verzeichnis fehlt: ['{REFERENCE}']",
     ),
     Mutation(
         "reference_imports",

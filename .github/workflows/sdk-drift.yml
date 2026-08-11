@@ -1,0 +1,95 @@
+# Misst, ob `skills/mcp-transport-hardening/reference/patterns.py` noch zur
+# AKTUELLEN SDK-Oberflaeche passt.
+#
+# MIT PHASE 5 AUS `mcp-transport-hardening-skill` HERUEBERGEHOLT. Der Umzug war
+# faellig, weil das Herkunftsrepo archiviert wird und ein archiviertes
+# Repository keine Workflows mehr faehrt — dieser Lauf haette sonst aufgehoert,
+# ohne dass etwas rot geworden waere. Genau die Fehlerklasse, gegen die diese
+# Repositories geschrieben sind, an ihnen selbst.
+#
+# WARUM DAS NICHT INS PR-GATE GEHOERT. `requirements-reference.txt` pinnt
+# `mcp==2.0.0`, und der Pin ist Absicht: Ohne ihn faerbte ein fremdes Release
+# die CI an unberuehrtem Vorlagen-Code rot — dieselbe Begruendung wie beim
+# ruff-Pin.
+#
+# Der Preis davon stand bis 1.8.0 nur im Kommentar: Verschiebt upstream die
+# Oberflaeche in 2.1, bleibt `transport/12` gruen und die Vorlage veraltet
+# STILL. Niemand erfaehrt es, bis jemand den Pin von Hand hebt.
+#
+# Dieser Lauf loest den Preis ein, ohne den Pin aufzugeben: Er faehrt
+# woechentlich gegen die JEWEILS NEUESTE mcp und meldet, wenn die Vorlage dort
+# nicht mehr importiert. Das PR-Gate bleibt gepinnt und reproduzierbar; die
+# Drift wird trotzdem sichtbar. Ein rotes Ergebnis hier ist kein Grund, einen
+# PR zu blockieren — es ist die Aufforderung, den Pin bewusst zu heben.
+
+name: sdk-drift
+
+on:
+  schedule:
+    # Woechentlich, montags. Nicht taeglich: Die Frage aendert sich langsam,
+    # und ein Lauf, der meistens dasselbe sagt, wird nicht mehr gelesen.
+    #
+    # 17 nach 6 und damit zwischen `repo-description` (23) und
+    # `quality-chain` (41) — die drei Wochenlaeufe stehen bewusst versetzt.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # UNGEPINNT — das ist der ganze Zweck dieses Laufs. Ein fehlgeschlagener
+      # Install ist ein FEHLER, kein Skip: «nicht gelaufen» als «bestanden» zu
+      # melden waere hier besonders teuer, weil dieser Lauf die einzige Stelle
+      # ist, die ueberhaupt nach der Drift schaut.
+      #
+      # `pytest` kommt mit, weil die Vorlage es auf Modulebene importiert —
+      # sie zeigt Testrezepte, und die sind Teil dessen, was kopiert wird.
+      - name: Neueste mcp installieren
+        run: pip install --upgrade mcp pytest
+
+      # DER ANKER IST SEIT PHASE 5 `requirements-reference.txt` UND NICHT MEHR
+      # `ci.yml`. Dort steht der Pin jetzt, und dort liest ihn auch der
+      # PR-Lauf — zwei Leser, eine Stelle.
+      - name: Gepinnte gegen aufgeloeste Version melden
+        run: |
+          pinned=$(sed -n 's/^mcp==\([0-9][^ ]*\).*/\1/p' requirements-reference.txt | head -1)
+          if [ -z "$pinned" ]; then
+            echo "::error::requirements-reference.txt nennt kein mcp==<version> — Anker weg. Ohne ihn hat dieser Lauf nichts, wogegen er die aufgeloeste Version haelt."; exit 1
+          fi
+          latest=$(python -c "import importlib.metadata as m; print(m.version('mcp'))")
+          echo "gepinnt in requirements-reference.txt : $pinned"
+          echo "gerade aufgeloest                     : $latest"
+          {
+            echo "| | Version |"
+            echo "|---|---|"
+            echo "| gepinnt in \`requirements-reference.txt\` | \`$pinned\` |"
+            echo "| aktuell auf PyPI | \`$latest\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$pinned" = "$latest" ]; then
+            echo "Keine Drift — der Pin ist die aktuelle Version." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Der Pin liegt hinter PyPI. Der Schritt darunter sagt, ob das die Vorlage betrifft." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Derselbe Import wie in `transport/12`, nur gegen die neueste SDK.
+      # Faellt er, ist die Vorlage veraltet — und zwar nachweisbar, nicht
+      # vermutet.
+      - name: Die Vorlage gegen die neueste SDK importieren
+        env:
+          PYTHONPATH: skills/mcp-transport-hardening/reference
+          PYTHONUTF8: "1"
+        run: |
+          python -c "import patterns; print('ok — Vorlage importiert gegen die aktuelle SDK')" || {
+            echo "::error::skills/mcp-transport-hardening/reference/patterns.py importiert NICHT mehr gegen die aktuelle mcp. Die Vorlage beschreibt eine Oberflaeche, die es so nicht mehr gibt — Regel 1 jenes Skills gehoert nachgezogen und der Pin in requirements-reference.txt im selben Commit gehoben."
+            exit 1
+          }

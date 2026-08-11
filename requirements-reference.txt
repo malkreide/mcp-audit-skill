@@ -13,3 +13,36 @@
 # selbst. Hier steht nur, was noetig ist, um die Vorlagen zu laden.
 pydantic==2.13.4
 httpx==0.28.1
+
+# Fuer `skills/mcp-transport-hardening/reference/patterns.py`, seit Phase 5.
+#
+# DIESER PIN IST DER TRAGENDE. Die Vorlage beschreibt die Oberflaeche von
+# SDK 2.x (`mcp.server.mcpserver.MCPServer`, `mcp.server.transport_security`);
+# `transport/12` haelt sie gegen GENAU DIESE Version. Die 1.x-Fassung
+# (`mcp.server.fastmcp`) existiert in 2.0.0 nachweislich nicht mehr — das ist
+# der Gegenstand von Regel 1 jenes Skills.
+#
+# Was der Pin NICHT merkt, gehoert dazugesagt: Verschiebt upstream die
+# Oberflaeche in 2.1, bleibt `transport/12` gruen und die Vorlage veraltet
+# still. Genau dafuer laeuft `.github/workflows/sdk-drift.yml` woechentlich
+# gegen die jeweils NEUESTE mcp — und liest den Pin aus dieser Datei.
+#
+# `starlette` und `uvicorn` stehen bewusst nicht einzeln hier: Sie kommen als
+# Abhaengigkeiten von `mcp` mit, und sie einzeln zu pinnen hiesse, das
+# Aufloesungsergebnis des SDK zu ueberstimmen.
+mcp==2.0.0
+
+# `pytest` steht hier als Abhaengigkeit einer VORLAGE, nicht als Testwerkzeug.
+#
+# `skills/mcp-transport-hardening/reference/patterns.py` importiert es auf
+# Modulebene: Der Skill zeigt zu jeder Regel ein Testrezept, und die Rezepte
+# sind Teil dessen, was kopiert wird. Wer die Vorlage uebernimmt, uebernimmt
+# sie mitsamt ihren Tests — eine Vorlage, die ihren eigenen Nachweis nicht
+# mitbringt, ist die Haelfte wert.
+#
+# Aufgefallen ist es in der CI und nicht hier: `lint.yml` installiert diese
+# Datei, aber kein pytest, und `transport/12` meldete prompt «Import scheitert
+# an fehlendem Paket 'pytest'» — mit der richtigen Datei im Befund. Das
+# Herkunftsrepo installierte `mcp==2.0.0 pytest==9.1.1` aus genau diesem Grund
+# in einem Zug.
+pytest==9.1.1

@@ -30,7 +30,7 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
-from ._mutation import Mutation, MutationStale, regex_sub, remove
+from ._mutation import Mutation, MutationStale, append, regex_sub, remove
 
 BASE = "skills/mcp-transport-hardening"
 SKILL = f"{BASE}/SKILL.md"
@@ -38,6 +38,7 @@ README = f"{BASE}/README.md"
 README_DE = f"{BASE}/README.de.md"
 CHANGELOG = f"{BASE}/CHANGELOG.md"
 PATTERNS = f"{BASE}/reference/patterns.py"
+REFERENCE_DIR = f"{BASE}/reference"
 
 
 def letzter_regelabschnitt(muster: str, ersatz: str) -> Callable[[Path], None]:
@@ -164,6 +165,36 @@ MUTATIONS: list[Mutation] = [
         "ANKER: die Vorlage ist weg",
         remove(PATTERNS),
         "Kein einziger offener Name",
+    ),
+    # --- reference_imports (transport/12) ----------------------------------
+    #
+    # DIE ZUSAGE, DIE SONST MIT DEM REPO VERSCHWUNDEN WAERE. Sie lief dort als
+    # CI-Schritt und hatte hier bis Phase 5 keinen Gegenstand — `audit/10`
+    # uebersetzt die Vorlage, mehr nicht.
+    Mutation(
+        "reference_imports",
+        # GENAU DER FALL, UM DEN ES GEHT: Die 1.x-Fassung des Imports parst
+        # einwandfrei, und `mcp.server.fastmcp` gibt es in 2.0.0 nachweislich
+        # nicht mehr. `audit/10` bleibt dabei gruen.
+        "die Vorlage nennt die alte SDK-Oberflaeche",
+        regex_sub(
+            PATTERNS,
+            r"^from mcp\.server\.mcpserver import",
+            "from mcp.server.fastmcp import",
+        ),
+        "Import scheitert an fehlendem Paket 'mcp.server.fastmcp'",
+    ),
+    Mutation(
+        "reference_imports",
+        "die Vorlage wirft beim Import",
+        append(PATTERNS, "\nraise RuntimeError('boom')\n"),
+        "RuntimeError",
+    ),
+    Mutation(
+        "reference_imports",
+        "ANKER: das Vorlagen-Verzeichnis ist weg",
+        remove(REFERENCE_DIR),
+        "Verzeichnis fehlt",
     ),
     # --- referenced_files_exist (transport/10) -----------------------------
     #

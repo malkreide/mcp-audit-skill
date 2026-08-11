@@ -745,6 +745,69 @@ die Pruefungen gegen den ECHTEN Baum fahren statt gegen eine Attrappe, die die
 Anker per Konstruktion enthaelt — und die Herkunftsrepos haben ihn aus demselben
 Grund bezahlt.
 
+### 4.2o Was Phase 5 gezeigt hat — die Inventur vor dem Archivieren
+
+**ARCHIVIEREN IST EINE MESSUNG, KEIN HANDGRIFF.** Ein archiviertes Repository
+faehrt keine Workflows mehr. Alles, was nur dort lief, hoert damit auf — und
+zwar ohne dass etwas rot wird. Genau die Fehlerklasse, gegen die diese
+Repositories geschrieben sind, an ihnen selbst. Deshalb stand vor dem
+Archivieren die Frage: Was laeuft dort, das hier keinen Gegenstand hat?
+
+| Was | Herkunft | Stand vor Phase 5 |
+|---|---|---|
+| `validate.sh` + pytest | alle drei | hier, seit 2b-iv |
+| Katalog-Drift (`weekly-drift.yml`) | fidelity | hier als `fidelity/14`, offline (4.2l) |
+| Tag ↔ CHANGELOG | fidelity | hier als `audit/13` |
+| GitHub-Description | alle drei | **entfaellt mit den Repos** — siehe unten |
+| **Import gegen die gepinnte `mcp`** | transport | **fehlte** |
+| **`sdk-drift.yml`** | transport | **fehlte** |
+
+**DIE ZWEI LUECKEN WAREN BEIDE IN TRANSPORT, und sie gehoeren zusammen.**
+Dessen CI importierte `reference/patterns.py` gegen `mcp==2.0.0` — die einzige
+Stelle, die die Vorlage gegen die ECHTE SDK-Oberflaeche hielt statt gegen
+ihren eigenen Text. Hier uebersetzt `audit/10` sie nur. `compileall` beweist,
+dass die Datei PARST, und das ist weniger, als es klingt: Die Vorlage
+importiert `from mcp.server.mcpserver import MCPServer`, und die 1.x-Fassung
+(`mcp.server.fastmcp`) gibt es in 2.0.0 nachweislich nicht mehr. Ein Import auf
+ein Modul, das es nicht mehr gibt, parst einwandfrei.
+
+Nachgeholt als `transport/12`, mit `mcp==2.0.0` in
+`requirements-reference.txt`. Und `sdk-drift.yml` ist mitgezogen: Es liest den
+Pin jetzt aus jener Datei statt aus `ci.yml` und faehrt woechentlich gegen die
+NEUESTE `mcp`. Die beiden sind eine Zusage in zwei Haelften — der Pin macht
+den PR-Lauf reproduzierbar, der Wochenlauf macht die Drift sichtbar. Einzeln
+ist jede eine halbe.
+
+**DAMIT HAT G9 EINEN ZWEITEN GEGENSTAND — die Schwelle, ab der dieses
+Repository verallgemeinert.** Die Import-Mechanik kam aus probe («laedt die
+Vorlage ueberhaupt?») und hat mit transport einen zweiten Anlass aus einem
+ANDEREN Grund («beschreibt sie noch die Oberflaeche, die es gibt?»). Zwei
+Gruende, ein Mechanismus: `tools/gates/references.py::python_imports`.
+
+**UND DIE AUSLAGERUNG HAT SOFORT ETWAS GEKOSTET, das die Mutationssuite
+gefangen hat — einen Tag nach ihrem Einzug.** Das Gate uebernahm zunaechst den
+`_`-Filter von `python_sources`, und vier Mutationen von `probe/3`, die eine
+kaputte `_mutant.py` ablegen, wurden damit **gruen**. Die Suite hat es beim
+ersten Lauf gemeldet; ohne sie waere `probe/3` still schmaler geworden. Der
+Filter ist jetzt ein Parameter, und warum die beiden Haelften verschieden
+zaehlen, steht dort.
+
+**G13 BRAUCHT KEINE BINDUNG MEHR — sein Gegenstand verschwindet.** Die drei
+Herkunftsrepos prueften je ihre eigene GitHub-Description; nach dem Archivieren
+gibt es diese drei Descriptions nicht mehr als etwas, das jemand pflegt. Was
+bleibt, ist die Description DIESES Repos, und die prueft
+`.github/workflows/repo-description.yml` seit jeher woechentlich ueber
+`tools/check_repo_description.py`. G13 als generische Familie steht damit ohne
+zweiten Fall da — das gehoert benannt und nicht durch eine erfundene Bindung
+zugedeckt.
+
+**WAS IN DEN ARCHIVIERTEN REPOS PASSIERT.** Beide READMEs werden zum Zeiger,
+die `CHANGELOG.md` bekommt einen letzten Eintrag, und `.github/workflows/`
+wird geleert. Das Leeren ist Absicht: Ein eingefrorener Baum mit Workflows
+hinterlaesst rote Laeufe, und eine zweite `sdk-drift.yml` waere eine zweite
+Stelle, an der jemand nach dem Wochenlauf sucht. Die Geschichte bleibt — genau
+deshalb wird archiviert und nicht geloescht.
+
 ### 4.3 Konfiguration
 
 | Datei | Entscheid |
@@ -892,7 +955,7 @@ damit hier auf und nicht erst, wenn jemand den Skill installieren will.
 | **3a** | Die drei Companions per `git subtree` nach `skills/<name>/`, Historie erhalten | **erledigt** — drei `SKILL.md` am Platz, Frontmatter-`name` unveraendert, 1315 Tests gruen |
 | **3b** | Kette auf vier Skills umstellen (6.1), beide READMEs nachziehen | **erledigt** — `quality-chain.json` fuehrt vier Skills und zwei Repos, 1319 Tests gruen |
 | **4** | Katalog-Drift auf lokal umstellen; `weekly-drift.yml` + `linked_checks.py` loeschen | **erledigt mit 2b-iv-b** — `fidelity/14` laeuft offline im PR; die 640 Zeilen stehen nur noch im Herkunftsrepo und gehen mit Phase 5 |
-| **5** | Herkunftsrepos archivieren mit Zeiger-README; `mcp-continuous-auditor` auf den neuen Tag pinnen | keine offenen Verweise mehr |
+| **5** | Herkunftsrepos archivieren mit Zeiger-README; `mcp-continuous-auditor` auf den neuen Tag pinnen | **vorbereitet** — Inventur, `transport/12` und `sdk-drift.yml` nachgeholt (4.2o); der Archiv-Schalter und der Release-Schnitt liegen beim Betreiber |
 
 Phase 1 und 2 sind unabhaengig von 3 — das Geruest laesst sich umstellen,
 bevor ein einziger Inhalt umzieht. Das ist Absicht: Die beiden teuren Schritte

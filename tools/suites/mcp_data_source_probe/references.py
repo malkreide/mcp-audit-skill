@@ -14,14 +14,13 @@ die Haelfte, die daran ANSCHLIESST.
 
 from __future__ import annotations
 
-import importlib.util
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 from tools.gates import hygiene as gates
-from tools.harness import CheckFailed, pycache_to_temp, register
+from tools.gates import references as ref_gates
+from tools.harness import CheckFailed, register
 
 from ._suite import SUITE
 from .skill_doc import BASE
@@ -96,22 +95,6 @@ def brauchbare_bash() -> str:
     )
 
 
-def reference_sources(root: Path) -> list[Path]:
-    verzeichnis = root / REFERENCE_DIR
-    if not verzeichnis.is_dir():
-        raise CheckFailed(
-            f"{REFERENCE_DIR} fehlt — Anker weg; diese Pruefung wuerde "
-            "stillschweigend nichts mehr pruefen."
-        )
-    quellen = sorted(verzeichnis.glob("*.py"))
-    if not quellen:
-        raise CheckFailed(
-            f"{REFERENCE_DIR} enthaelt keine .py-Datei — die Pruefung haette "
-            "nichts zu tun und haette genau deshalb Erfolg gemeldet."
-        )
-    return quellen
-
-
 @register(1, "shell reference is syntactically valid", suite=SUITE)
 def shell_syntax(root: Path) -> str:
     """SKILL-EIGEN: Nur dieser Skill liefert eine Shell-Vorlage aus.
@@ -148,58 +131,14 @@ def reference_imports(root: Path) -> str:
     sein eigenes Schema. Genau diese Dateien werden kopiert; eine, die nur
     kompiliert, kostet den Kopierenden die Zeit bis zum ersten Serverstart.
 
-    HAENGT AN `requirements-reference.txt`, und das ist der Grund, warum diese
-    Pruefung nicht generisch werden kann: Sie braucht die Laufzeit-Pakete der
-    Vorlagen (`pydantic`, `httpx`) im Interpreter. FAIL statt skip, wenn sie
-    fehlen — «nicht gelaufen» als «bestanden» zu melden ist die eine Auskunft,
-    die schlimmer ist als keine.
+    DIE MECHANIK STEHT SEIT PHASE 5 IM GATE. Sie hatte bis dahin genau einen
+    Gegenstand; mit `transport/12` hat sie einen zweiten, und zwar aus einem
+    ANDEREN Grund — dort haelt derselbe Import die Vorlage gegen die
+    SDK-Oberflaeche. Zwei Gruende, ein Mechanismus.
     """
-    quellen = reference_sources(root)
-    zeilen = []
-    with pycache_to_temp():
-        for pfad in quellen:
-            name = f"_probe_reference_{pfad.stem}"
-            spec = importlib.util.spec_from_file_location(name, pfad)
-            if spec is None or spec.loader is None:
-                raise CheckFailed(f"{pfad.name}: kein Importer zustaendig")
-            modul = importlib.util.module_from_spec(spec)
-            sys.modules[name] = modul
-            try:
-                spec.loader.exec_module(modul)
-            except ModuleNotFoundError as exc:
-                raise CheckFailed(
-                    f"{pfad.name}: Import scheitert an fehlendem Paket "
-                    f"{exc.name!r}.\n"
-                    "  Ist es eine Abhaengigkeit der Vorlage, gehoert es "
-                    "gepinnt nach requirements-reference.txt:\n"
-                    "    pip install -r requirements-reference.txt\n"
-                    "  Ist es das nicht, importiert die Vorlage etwas, das "
-                    "beim Kopieren nirgends existiert."
-                ) from exc
-            except BaseException as exc:
-                # BaseException, nicht Exception: Eine Vorlage, die beim Import
-                # `sys.exit` aufruft, ist genauso kaputt wie eine, die wirft —
-                # nur wuerde ein SystemExit sonst den ganzen Lauf mitnehmen.
-                if isinstance(exc, KeyboardInterrupt):
-                    raise
-                raise CheckFailed(
-                    f"{pfad.name}: Import scheitert — {type(exc).__name__}: {exc}"
-                ) from exc
-            finally:
-                sys.modules.pop(name, None)
-
-            oeffentlich = [n for n in vars(modul) if not n.startswith("_")]
-            if not oeffentlich:
-                raise CheckFailed(
-                    f"{pfad.name}: importiert, stellt aber keinen Namen bereit "
-                    "— eine Vorlage ohne kopierbares Symbol ist keine Vorlage."
-                )
-            zeilen.append(
-                f"{pfad.name}: importiert, {len(oeffentlich)} oeffentliche Namen"
-            )
-
-    zeilen.append(f"{len(quellen)} Vorlage(n) unter {REFERENCE_DIR} importierbar")
-    return "\n".join(zeilen)
+    return ref_gates.python_imports(
+        root, source_dirs=(REFERENCE_DIR,), praefix="_probe_reference_"
+    )
 
 
 @register(7, "referenced files exist", suite=SUITE)
