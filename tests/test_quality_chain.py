@@ -173,25 +173,76 @@ def test_manifest_ist_lesbar_und_vollstaendig():
     manifest = load_manifest(MANIFEST_PATH)
     assert manifest["topic"] == TOPIC
     assert manifest["homepage"] == HOMEPAGE
-    assert len(manifest["members"]) == 5
+    assert len(manifest["members"]) == 4
+
+
+def test_ANKER_mitglied_ist_ein_skill_und_nicht_ein_repo():
+    """Der Entscheid, den Phase 3 umgesetzt hat.
+
+    Vorher waren Mitglied und Repo dasselbe, weil jeder Skill sein eigenes
+    Repository hatte. Seit dem Einzug liegen drei davon hier — an einem
+    Repo-Namen laesst sich die Mitgliedschaft nicht mehr ablesen.
+    """
+    members = load_manifest(MANIFEST_PATH)["members"]
+    assert all("skill" in m for m in members)
+    assert not any("repo" in m for m in members), (
+        "Ein Mitglied traegt noch 'repo'. Die Kette zaehlt Skills; wessen "
+        "GitHub-Metadaten geprueft werden, steht in 'repos'."
+    )
+
+
+def test_ANKER_jedes_mitglied_zeigt_auf_eine_echte_skill_md():
+    """Das Manifest gegen den Baum, nicht gegen eine Annahme.
+
+    `path` ist der Grund, warum diese Pruefung ueberhaupt moeglich ist: Ein
+    Mitglied, dessen Verzeichnis niemand mehr pflegt, faellt hier auf und
+    nicht erst, wenn jemand den Skill installieren will.
+    """
+    for member in load_manifest(MANIFEST_PATH)["members"]:
+        skill_md = REPO_ROOT / member["path"] / "SKILL.md"
+        assert skill_md.is_file(), f"{member['skill']}: {skill_md} fehlt"
+        kopf = skill_md.read_text(encoding="utf-8")[:400]
+        assert f"name: {member['skill']}" in kopf, (
+            f"{member['skill']}: Frontmatter-name in {skill_md} weicht ab — "
+            "daran haengt, ob Claude den Skill ueberhaupt zieht."
+        )
 
 
 def test_manifest_nennt_dieses_repo():
     """Ein Manifest, das das eigene Repo auslässt, prüft die Kette von aussen
     — und übersieht ausgerechnet die Metadaten, die hier gepflegt werden."""
-    repos = {m["repo"] for m in load_manifest(MANIFEST_PATH)["members"]}
-    assert "malkreide/mcp-audit-skill" in repos
+    assert "malkreide/mcp-audit-skill" in load_manifest(MANIFEST_PATH)["repos"]
+
+
+def test_ANKER_der_auditor_traegt_die_kette_ohne_mitglied_zu_sein():
+    """Er ist kein Skill, sondern die Laufzeit, die die Kette faehrt.
+
+    Trotzdem gehoeren seine Metadaten geprueft: Ohne gemeinsames Topic ist die
+    Gruppe auf GitHub genau dort unsichtbar, wo jemand sie sucht.
+    """
+    manifest = load_manifest(MANIFEST_PATH)
+    assert "malkreide/mcp-continuous-auditor" in manifest["repos"]
+    assert "mcp-continuous-auditor" not in {m["skill"] for m in manifest["members"]}
 
 
 def test_jedes_mitglied_hat_beide_sprachfassungen():
     for member in load_manifest(MANIFEST_PATH)["members"]:
         for key in ("stage", "stage_de", "question", "question_de"):
-            assert member.get(key), f"{member['repo']}: '{key}' fehlt"
+            assert member.get(key), f"{member['skill']}: '{key}' fehlt"
 
 
 def test_doppelte_mitglieder_werden_abgelehnt(tmp_path):
     data = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     data["members"].append(dict(data["members"][0]))
+    path = tmp_path / "quality-chain.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ValueError, match="doppelt"):
+        load_manifest(path)
+
+
+def test_doppelte_repos_werden_abgelehnt(tmp_path):
+    data = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    data["repos"].append(data["repos"][0])
     path = tmp_path / "quality-chain.json"
     path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ValueError, match="doppelt"):
@@ -219,7 +270,7 @@ def test_readme_tabelle_nennt_jedes_mitglied_des_manifests(readme, heading):
     body = section.group(1)
 
     for member in load_manifest(MANIFEST_PATH)["members"]:
-        name = member["repo"].split("/", 1)[1]
+        name = member["skill"]
         assert name in body, f"{readme}: '{name}' fehlt in der Ketten-Tabelle"
 
 

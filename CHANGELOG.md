@@ -6,6 +6,32 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — die Qualitätskette zählt Skills (Phase 3b)
+
+Mitglied der Kette ist jetzt ein **Skill**, nicht ein Repo: vier statt fünf.
+`mcp-continuous-auditor` ist keins — es ist die Laufzeit, die die Kette fährt,
+und steht in beiden READMEs neben der Tabelle statt als fünfte Zeile darin.
+
+- **`docs/quality-chain.json` führt zwei Listen.** `members` ist die Kette —
+  vier Skills mit Stufe, Frage und `path`. `repos` sagt dem Wächter, wessen
+  GitHub-Metadaten er prüft; das sind seit dem Einzug zwei. Beides in einer
+  Liste ginge nur, solange Skill und Repo dasselbe waren.
+- **`path` je Mitglied ist neu und wird geprüft:** Jedes Mitglied zeigt auf
+  eine echte `SKILL.md`, deren Frontmatter-`name` mit dem Manifest
+  übereinstimmt. Das Manifest steht damit gegen den Baum statt gegen eine
+  Annahme.
+- **`tools/check_quality_chain.py` iteriert `repos` statt `members`.** Topic
+  und Homepage sind Eigenschaften eines Repositories — drei der vier Skills
+  haben seit Phase 3a keins mehr.
+- **Beide READMEs** nennen vier Skills mit Link ins jeweilige
+  `skills/`-Verzeichnis; der Auditor steht darunter in der Prosa.
+
+Betroffen: `docs/quality-chain.json`, `tools/check_quality_chain.py`,
+`tests/test_quality_chain.py`, `README.md`, `README.de.md`,
+`mcp-audit.skill`. Kein Check geändert, kein Verdikt gekippt — der Katalog
+steht unverändert bei 120.
+
+
 ### Hinzugefügt — die drei Companion-Skills ziehen ein (Phase 3a)
 
 `mcp-data-source-probe`, `mcp-data-fidelity` und `mcp-transport-hardening`
