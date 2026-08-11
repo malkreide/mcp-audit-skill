@@ -5,14 +5,14 @@ anzulegen und öffentlich zu stellen ist eine Entscheidung, die einem Menschen
 gehört — der Text ist fertig, das Anlegen nicht automatisiert.
 
 **Ist das Hub-Repo nötig?** Nein. Die Topic-Seite
-<https://github.com/topics/mcp-quality-chain> listet die fünf Repos, sobald
+<https://github.com/topics/mcp-quality-chain> listet die beiden Repos, sobald
 das Topic gesetzt ist, und GitHub pflegt sie von selbst. Das Hub-Repo lohnt
 sich dann, wenn die Kette einen Einstieg mit *Reihenfolge* braucht — eine
 Topic-Seite sortiert nach Sternen, nicht nach Lebenszyklus.
 
 **Wenn es angelegt wird**, danach in `docs/quality-chain.json` die Zeile
 `"homepage"` von der Topic-Seite auf `https://github.com/malkreide/mcp-quality-chain`
-umstellen und die fünf Repos entsprechend nachziehen. Der Guard
+umstellen und die beiden Repos entsprechend nachziehen. Der Guard
 (`tools/check_quality_chain.py`) meldet die Abweichung, bis das geschehen ist —
 das ist beabsichtigt.
 
@@ -47,9 +47,9 @@ The connective tissue is the shared GitHub topic
 
 | Stage | Repository | Question it answers |
 |---|---|---|
-| before the build | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | Is the source usable, and what does it hold? |
-| in the build | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | Does it return what the source actually holds? |
-| in the build | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) | Does it come up, turn away the right callers, and stay stateless? |
+| before the build | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-audit-skill/tree/main/skills/mcp-data-source-probe) | Is the source usable, and what does it hold? |
+| in the build | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-audit-skill/tree/main/skills/mcp-data-fidelity) | Does it return what the source actually holds? |
+| in the build | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-audit-skill/tree/main/skills/mcp-transport-hardening) | Does it come up, turn away the right callers, and stay stateless? |
 | after the build | [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) | Does it hold up against the catalogue? |
 | in operation | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | Does it still hold up tomorrow? |
 
@@ -80,16 +80,16 @@ the usual kind.
 ## Where to start
 
 - **Building a new server?** Start at
-  [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill)
+  [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-audit-skill/tree/main/skills/mcp-data-source-probe)
   and work down the table.
 - **Server exists and you want to know where it stands?** Start at
   [`mcp-audit-skill`](https://github.com/malkreide/mcp-audit-skill) — 95 checks
   in 12 categories, each with a source, pass criteria and a remediation path.
 - **Server returns too little and you don't know why?**
-  [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill),
+  [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-audit-skill/tree/main/skills/mcp-data-fidelity),
   rule 1.
 - **Server answers 421 or won't start in deployment?**
-  [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill),
+  [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-audit-skill/tree/main/skills/mcp-transport-hardening),
   rules 2 and 3.
 
 ## The portfolio these came from

@@ -1166,17 +1166,16 @@ Die jeweils offene Warteschlange steht in [`docs/re-audit-queue.md`](docs/re-aud
 
 ### Die MCP-Qualitätskette
 
-Fünf Repos, ein Lebenszyklus — gemeinsames GitHub-Topic [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain). Dieser Katalog ist das vierte Glied und prüft nach dem Bau, was die drei davor beim Bauen fordern. Ein Finding lässt sich damit an den Skill zurückgeben, der die Behebung beschreibt.
+Vier Skills, ein Lebenszyklus — seit der Zusammenführung in **einem** Repository, gemeinsames GitHub-Topic [`mcp-quality-chain`](https://github.com/topics/mcp-quality-chain). Dieser Katalog ist das vierte Glied und prüft nach dem Bau, was die drei davor beim Bauen fordern. Ein Finding lässt sich damit an den Skill zurückgeben, der die Behebung beschreibt — und der liegt jetzt im selben Baum, unter [`skills/`](./skills/).
 
-| Phase | Repo | Seine Regeln in diesem Katalog |
+| Phase | Skill | Seine Regeln in diesem Katalog |
 |---|---|---|
-| vor dem Bau | [`mcp-data-source-probe-skill`](https://github.com/malkreide/mcp-data-source-probe-skill) | liefert die Ground Truth, gegen die `FID-002` misst |
-| im Bau | [`mcp-data-fidelity-skill`](https://github.com/malkreide/mcp-data-fidelity-skill) | [`FID-001`–`FID-006`](./checks/) |
-| im Bau | [`mcp-transport-hardening-skill`](https://github.com/malkreide/mcp-transport-hardening-skill) v2.4.0, vierzehn Regeln | [`SDK-006`](./checks/SDK-006.md) + [`DEP-001`](./checks/DEP-001.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md), [`OPS-010`](./checks/OPS-010.md), [`ARCH-015`](./checks/ARCH-015.md)–[`ARCH-017`](./checks/ARCH-017.md), [`SCALE-008`](./checks/SCALE-008.md), [`SCALE-009`](./checks/SCALE-009.md)/[`SCALE-010`](./checks/SCALE-010.md), [`HITL-006`](./checks/HITL-006.md), [`SEC-025`](./checks/SEC-025.md)/[`SEC-026`](./checks/SEC-026.md), [`OBS-008`](./checks/OBS-008.md) — seine Regeln 2 und 7 hat der Katalog nicht, die Regeln 5 und 13 nur teilweise ([`DRIFT-003`](./checks/DRIFT-003.md) beziehungsweise [`OPS-005`](./checks/OPS-005.md), das den Guard führt, der nie gegen `main` lief, nicht aber den vor ihm geschnittenen Zweig) |
-| nach dem Bau | **`mcp-audit-skill`** | **Dieser Skill** — der Katalog selbst |
-| im Betrieb | [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) | der Vorfall hinter [`OPS-005`](./checks/OPS-005.md) — eine Testsuite, die kein Workflow je ausgeführt hat |
+| vor dem Bau | [`mcp-data-source-probe`](./skills/mcp-data-source-probe/) | liefert die Ground Truth, gegen die `FID-002` misst |
+| im Bau | [`mcp-data-fidelity`](./skills/mcp-data-fidelity/) | [`FID-001`–`FID-006`](./checks/) |
+| im Bau | [`mcp-transport-hardening`](./skills/mcp-transport-hardening/) | [`SDK-006`](./checks/SDK-006.md) + [`DEP-001`](./checks/DEP-001.md), [`ARCH-013`](./checks/ARCH-013.md), [`SEC-024`](./checks/SEC-024.md), [`OPS-010`](./checks/OPS-010.md), [`ARCH-015`](./checks/ARCH-015.md)–[`ARCH-017`](./checks/ARCH-017.md), [`SCALE-008`](./checks/SCALE-008.md), [`SCALE-009`](./checks/SCALE-009.md)/[`SCALE-010`](./checks/SCALE-010.md), [`HITL-006`](./checks/HITL-006.md), [`SEC-025`](./checks/SEC-025.md)/[`SEC-026`](./checks/SEC-026.md), [`OBS-008`](./checks/OBS-008.md) — seine Regeln 2 und 7 hat der Katalog nicht, die Regeln 5 und 13 nur teilweise ([`DRIFT-003`](./checks/DRIFT-003.md) beziehungsweise [`OPS-005`](./checks/OPS-005.md), das den Guard führt, der nie gegen `main` lief, nicht aber den vor ihm geschnittenen Zweig) |
+| nach dem Bau | **`mcp-audit`** | **Dieser Skill** — der Katalog selbst, in der Wurzel dieses Repos |
 
-Zwei Zeilen dieser Zuordnung sind mit `v2.3.0` gewandert, und die Richtungen sind verschieden. `OBS-008` ist unverändert und deckt jetzt trotzdem eine Regel, die es beim letzten Lesen nicht gab — dort hat sich der **Regelsatz** bewegt. `OPS-010` ist neu und gegen eine Lücke geschrieben, die jene Tabelle ausdrücklich erklärt hatte — hier hat sich der **Katalog** bewegt. Eine Kettenzeile altert also aus beiden Richtungen, und keine der beiden meldet sich von selbst. Vorbehalt zur zweiten: `OPS-010` ist `advisory`, ein Server kann ihn verfehlen und das Audit bestehen.
+Fährt die Kette, ist aber kein Glied darin: [`mcp-continuous-auditor`](https://github.com/malkreide/mcp-continuous-auditor) — der Vorfall hinter [`OPS-005`](./checks/OPS-005.md) — eine Testsuite, die kein Workflow je ausgeführt hat
 
 Daneben, nicht Teil der Kette: `mcp-builder` — generische Bauanleitung von Anthropic, wird ergänzt und nicht ersetzt. Fremdes Repo, kann das Topic nicht tragen.
 

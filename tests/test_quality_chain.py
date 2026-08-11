@@ -263,7 +263,12 @@ def test_ANKER_jede_companion_datei_mit_kettentabelle_steht_in_chain_sections():
     gefuehrt = {datei for datei, _ in CHAIN_SECTIONS}
     vorhanden = {
         pfad.relative_to(REPO_ROOT).as_posix()
-        for muster in ("skills/*/README*.md", "skills/*/SKILL.md")
+        for muster in (
+            "README*.md",
+            "SKILL.md",
+            "skills/*/README*.md",
+            "skills/*/SKILL.md",
+        )
         for pfad in sorted(REPO_ROOT.glob(muster))
     }
     assert vorhanden, "keine Companion-Datei gefunden — dann prueft dieser Test nichts"
