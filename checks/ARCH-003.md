@@ -252,5 +252,5 @@ Modus 3 kostet einmalig mehr, wenn der Server noch keinen Mock-Layer für seinen
 - `FID-003` — die Leermenge eindeutig und handlungsfähig machen; dort verbreitert der **Aufrufer**, hier darf es der Server nicht für ihn tun
 - `DRIFT-002` — dieselbe Fehlerform mit einem anderen Datensatz statt einer anderen Abfrage
 - `DRIFT-004` — warum der Mock dort die Annahme pinnt und hier der einzige Messpunkt ist
-- Herkunft von Modus 3: [`mcp-data-fidelity-skill` Regel 10](https://github.com/malkreide/mcp-data-fidelity-skill/blob/main/SKILL.md) («Vorschlagen ist nicht Erweitern») und der Vorschlag in [`mcp-audit-skill#102`](https://github.com/malkreide/mcp-audit-skill/issues/102)
+- Herkunft von Modus 3: [`mcp-data-fidelity-skill` Regel 10](../skills/mcp-data-fidelity/SKILL.md) («Vorschlagen ist nicht Erweitern») und der Vorschlag in [`mcp-audit-skill#102`](https://github.com/malkreide/mcp-audit-skill/issues/102)
 - Belegfall: [`amtsblatt-mcp` 0.22.0](https://github.com/malkreide/amtsblatt-mcp/blob/main/SECURITY.md#suggestions-not-silent-widening-arch-003) — und das [Re-Audit vom 2026-07-30](https://github.com/malkreide/amtsblatt-mcp/blob/main/audits/2026-07-30T105205-Z-amtsblatt-mcp/findings/ARCH-003.md), das den Fall gefunden hat, ohne dass ein Modus danach fragte

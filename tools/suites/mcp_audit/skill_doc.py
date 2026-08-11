@@ -60,6 +60,14 @@ CHAIN_SECTIONS = (
     ("skills/mcp-data-source-probe/SKILL.md", "Verwandte Skills"),
     ("skills/mcp-data-fidelity/SKILL.md", "Verwandte Skills"),
     ("skills/mcp-transport-hardening/SKILL.md", "Verwandte Skills"),
+    # UND DIE WURZEL-`SKILL.md` — der Skill, den dieses Repo selbst ist.
+    #
+    # Sie fehlte bis Phase 5, und das war der teuerste der neun blinden
+    # Flecken aus 4.2m: Sie fuehrt ihre Tabelle unter einer eigenen
+    # Ueberschrift, sagte deshalb am laengsten «Fuenf Repos» — und ist die
+    # Datei, die Claude tatsaechlich laedt. Aufgefallen ist sie nicht beim
+    # Aufraeumen, sondern beim Vorbereiten des Release-Schnitts.
+    ("SKILL.md", "Die MCP-Qualitätskette"),
 )
 
 

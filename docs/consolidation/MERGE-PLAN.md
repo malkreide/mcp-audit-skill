@@ -808,6 +808,45 @@ hinterlaesst rote Laeufe, und eine zweite `sdk-drift.yml` waere eine zweite
 Stelle, an der jemand nach dem Wochenlauf sucht. Die Geschichte bleibt — genau
 deshalb wird archiviert und nicht geloescht.
 
+### 4.2p Der zehnte blinde Fleck — gefunden beim Vorbereiten des Releases
+
+4.2m zaehlte neun ungepruefte Ketten-Tabellen und schloss sie. Es waren
+**zehn**. Die zehnte ist die `SKILL.md` der Repo-Wurzel — der Skill, den
+dieses Repository selbst IST, und die Datei, die Claude tatsaechlich laedt.
+
+Sie fiel durch, weil sie ihre Tabelle unter einer eigenen Ueberschrift fuehrt
+(`### Die MCP-Qualitätskette` unter `## Übergabe & Folge-Skills`), waehrend die
+drei Companion-`SKILL.md` sie unter `Verwandte Skills` fuehren. Der Waechter
+aus 4.2m nahm die Companions dazu — die Wurzel nicht. Sie sagte damit am
+laengsten «Fuenf Repos» und verlinkte die drei Repos, die gerade archiviert
+werden.
+
+**AUFGEFALLEN IST SIE NICHT BEIM AUFRAEUMEN.** Sie fiel beim Nachlesen der
+Versionierungsregel auf, zwanzig Zeilen ueber der Tabelle, waehrend es um die
+Release-Nummer ging. Das ist die Lehre, und sie ist unbequem: Ein Waechter,
+der ueber eine gepflegte Liste laeuft, prueft, woran jemand gedacht hat. Der
+statische Gegenwaechter
+(`test_ANKER_jede_companion_datei_mit_kettentabelle_steht_in_chain_sections`)
+hielt `CHAIN_SECTIONS` gegen `skills/*` — und deckte die Wurzel deshalb auch
+nicht ab. Beide sind jetzt geweitet; `audit/12` faehrt ueber **zwoelf**
+Tabellen.
+
+**DAZU ACHT LINKS IM KATALOG.** Die Inventur aus 4.2o zaehlte *Workflows*, was
+richtig war, aber nicht genug: Sie zaehlte keine VERWEISE. Acht Check-Dateien
+verlinken die Herkunftsrepos in ihren Quellen-Listen. Sieben davon
+beantworten «wo steht die Regel jetzt?» und zeigen seither auf
+`../skills/<name>/`.
+
+Der achte bleibt, wo er ist, und der Unterschied ist derselbe wie bei
+`historical_in` in der Workflow-Tabelle: `ARCH-020` verlinkt einen **Pull
+Request** im archivierten Repo. Ein PR ist ein datierter Vorgang und hat dort
+stattgefunden; ein archiviertes Repository bleibt lesbar, der Link zeigt also
+nicht ins Leere. Er sagt jetzt dazu, dass er das absichtlich tut, und wohin
+die Regel selbst gezogen ist.
+
+Ebenfalls nachgezogen: `docs/hub-readme.md`, der Entwurf fuer ein nie
+angelegtes Hub-Repo. Er beschrieb «die fuenf Repos».
+
 ### 4.3 Konfiguration
 
 | Datei | Entscheid |
