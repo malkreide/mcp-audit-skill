@@ -1,18 +1,25 @@
 """Tests für den Qualitätsketten-Guard und für die Ketten-Tabelle in den READMEs.
 
 Zwei Dinge werden hier geprüft, und sie liegen bewusst in einer Datei, weil sie
-dieselbe Frage von zwei Seiten stellen: Steht die Zugehörigkeit der fünf Repos
-überall gleich?
+dieselbe Frage von zwei Seiten stellen: Steht die Zugehörigkeit überall gleich?
 
-* Die **reine** Seite des Guards — `compare()` und `fix_commands()` bekommen
-  das Metadaten-Dict übergeben. Der Netzaufruf (`fetch()`) wird bewusst *nicht*
-  gemockt: Ein Mock bildete nur die eigene Annahme über die GitHub-Antwort ab
-  und könnte sie nie widerlegen — die Grenze, an der `DRIFT-004` ansetzt.
+* Die **reine** Seite des Guards — `compare()`, `fix_commands()`,
+  `compare_carriers()` und `carrier_fix_commands()` bekommen ihre Daten
+  übergeben. Die Netzaufrufe (`fetch()`, `fetch_carriers()`) werden bewusst
+  *nicht* gemockt: Ein Mock bildete nur die eigene Annahme über die
+  GitHub-Antwort ab und könnte sie nie widerlegen — die Grenze, an der
+  `DRIFT-004` ansetzt.
 
-* Das **Manifest gegen die READMEs**. Die Kette steht an drei Orten in diesem
-  Repo — `docs/quality-chain.json`, `README.md`, `README.de.md` — und an
-  weiteren acht in den vier Schwester-Repos. Die drei hier sind erreichbar,
-  also werden sie erzwungen.
+* Das **Manifest gegen die READMEs**. Die Kette steht an mehreren Orten in
+  diesem Repo — `docs/quality-chain.json`, `README.md`, `README.de.md`, dazu
+  die Ketten-Tabellen unter `skills/`. Sie sind alle erreichbar, also werden
+  sie erzwungen.
+
+Seit der Zusammenführung stellt der Guard die Frage in BEIDE Richtungen, und
+die zweite hat einen eigenen Abschnitt weiter unten: Wer trägt das Topic, ohne
+im Manifest zu stehen? Die Summary-Stufe des Workflows liegt daneben in
+`test_quality_chain_workflow.py` — sie las eine Woche lang ein Schema, das es
+nicht mehr gab.
 
 Die härteste Eigenschaft ist die, die am leichtesten kaputtgeht: ein
 **fehlendes** Feld in der API-Antwort ist ungeprüft und nicht bestanden. Ohne
@@ -30,7 +37,9 @@ import pytest
 
 from tools.check_quality_chain import (
     MISSING,
+    carrier_fix_commands,
     compare,
+    compare_carriers,
     fix_commands,
     load_manifest,
 )
@@ -162,6 +171,144 @@ def test_fuer_ein_ungeprueftes_feld_gibt_es_kein_kommando():
     meta = _meta()
     del meta["topics"]
     assert fix_commands("o/r", meta, TOPIC, HOMEPAGE) == []
+
+
+# --------------------------------------------------------------------------
+# compare_carriers() — die andere Richtung
+# --------------------------------------------------------------------------
+#
+# `compare()` fragt: Trägt jedes Repo aus dem Manifest das Topic? Diese Hälfte
+# fragt das Gegenteil: Trägt jemand das Topic, der NICHT im Manifest steht?
+#
+# Der Anlass ist gemessen. Nach der Zusammenführung wurden die drei
+# Herkunftsrepos archiviert — und ein archiviertes Repo behält seine Topics.
+# Der Wächter war grün, das Manifest richtig, und die Topic-Seite zeigte
+# weiterhin fünf Einträge, wo zwei gelten. Es gab keinen Test, den das rot
+# machen konnte, weil die Frage nie gestellt wurde.
+
+DECLARED = ["malkreide/mcp-audit-skill", "malkreide/mcp-continuous-auditor"]
+
+
+def _carrier(name, archived=False):
+    return {"full_name": name, "archived": archived}
+
+
+def _alle_deklarierten():
+    return [_carrier(name) for name in DECLARED]
+
+
+def test_nur_deklarierte_traeger_sind_kein_befund():
+    assert compare_carriers(_alle_deklarierten(), DECLARED, TOPIC) == []
+
+
+def test_ein_ueberzaehliger_traeger_wird_gemeldet():
+    carriers = [*_alle_deklarierten(), _carrier("malkreide/mcp-data-fidelity-skill")]
+    problems = compare_carriers(carriers, DECLARED, TOPIC)
+    assert len(problems) == 1
+    assert "mcp-data-fidelity-skill" in problems[0]
+    assert problems[0].startswith("Überzählig:")
+
+
+def test_ein_archivierter_traeger_wird_als_solcher_benannt():
+    """Der Zusatz ist kein Schmuck: Er sagt, warum das Aufräumen zwei
+    Handgriffe mehr braucht — siehe `carrier_fix_commands`."""
+    carriers = [*_alle_deklarierten(), _carrier("malkreide/alt-skill", archived=True)]
+    problems = compare_carriers(carriers, DECLARED, TOPIC)
+    assert len(problems) == 1
+    assert "(archiviert)" in problems[0]
+
+
+def test_grossschreibung_macht_kein_repo_ueberzaehlig():
+    """GitHub vergleicht Repo-Namen ohne Rücksicht auf Gross-/Kleinschreibung;
+    täte diese Funktion es nicht, wäre `Malkreide/…` ein erfundener Befund."""
+    carriers = [_carrier("Malkreide/MCP-Audit-Skill")]
+    assert compare_carriers(carriers, DECLARED, TOPIC) == []
+
+
+def test_ANKER_ein_leeres_ergebnis_ist_ein_befund_und_kein_bestehen():
+    """Die deklarierten Repos TRAGEN das Topic — das steht über die Repo-API
+    fest. Findet die Suche daraufhin gar nichts, hat nicht der Bestand
+    gestimmt, sondern der Index hat nicht geantwortet.
+
+    Ohne diesen Test wäre der bequeme Weg — leere Liste, keine Schleife, keine
+    Befunde, «sauber» — von der richtigen Antwort nicht zu unterscheiden.
+    """
+    problems = compare_carriers([], DECLARED, TOPIC)
+    assert len(problems) == 1
+    assert problems[0].startswith("UNVERIFIED:")
+    assert "kein Bestehen" in problems[0]
+
+
+def test_eine_gekappte_trefferliste_sagt_es():
+    carriers = [*_alle_deklarierten(), _carrier("malkreide/fremd")]
+    problems = compare_carriers(carriers, DECLARED, TOPIC, total_count=42)
+    assert any(p.startswith("UNVERIFIED:") and "42" in p for p in problems)
+    # Der Überzählige wird trotzdem gemeldet: unvollständig ist nicht nichts.
+    assert any(p.startswith("Überzählig:") for p in problems)
+
+
+@pytest.mark.parametrize("total", [2, None])
+def test_eine_vollstaendige_trefferliste_meldet_keine_kappung(total):
+    problems = compare_carriers(
+        _alle_deklarierten(), DECLARED, TOPIC, total_count=total
+    )
+    assert problems == []
+
+
+def test_ein_treffer_ohne_namen_ist_unverified():
+    """Nicht zuzuordnen heisst nicht sauber — sonst zählte eine kaputte
+    Antwort als bestandener Vergleich."""
+    carriers = [*_alle_deklarierten(), _carrier(None)]
+    problems = compare_carriers(carriers, DECLARED, TOPIC)
+    assert len(problems) == 1
+    assert problems[0].startswith("UNVERIFIED:")
+
+
+def test_mehrere_ueberzaehlige_werden_alle_gemeldet():
+    fremd = ["malkreide/a", "malkreide/b", "malkreide/c"]
+    carriers = [*_alle_deklarierten(), *(_carrier(n) for n in fremd)]
+    problems = compare_carriers(carriers, DECLARED, TOPIC)
+    assert len(problems) == 3
+    for name in fremd:
+        assert any(name in p for p in problems)
+
+
+# --------------------------------------------------------------------------
+# carrier_fix_commands() — auch hier schreibt der Guard nicht
+# --------------------------------------------------------------------------
+
+
+def test_ohne_ueberzaehlige_gibt_es_kein_kommando():
+    assert carrier_fix_commands(_alle_deklarierten(), DECLARED, TOPIC) == []
+
+
+def test_kommando_fuer_einen_gewoehnlichen_traeger():
+    carriers = [_carrier("malkreide/fremd")]
+    commands = carrier_fix_commands(carriers, DECLARED, TOPIC)
+    assert commands == [f"gh repo edit malkreide/fremd --remove-topic {TOPIC}"]
+
+
+def test_ANKER_ein_archivierter_traeger_braucht_das_paar_drumherum():
+    """Ein archiviertes Repository ist schreibgeschützt — `--remove-topic`
+    allein läuft dort ins Leere. Stünde hier nur das eine Kommando, merkte das
+    erst, wer es ausführt, und zwar an einer Fehlermeldung."""
+    carriers = [_carrier("malkreide/alt-skill", archived=True)]
+    commands = carrier_fix_commands(carriers, DECLARED, TOPIC)
+    assert len(commands) == 1
+    assert "gh repo unarchive malkreide/alt-skill" in commands[0]
+    assert f"--remove-topic {TOPIC}" in commands[0]
+    assert "gh repo archive malkreide/alt-skill" in commands[0]
+
+
+def test_das_manifest_taugt_als_vergleichsliste():
+    """Die Verbindung zwischen Manifest und dieser Prüfung — ohne sie könnte
+    `repos` umbenannt werden, ohne dass hier etwas rot wird."""
+    manifest = load_manifest(MANIFEST_PATH)
+    fremd = [_carrier(name) for name in manifest["repos"]]
+    fremd.append(_carrier("malkreide/nicht-im-manifest"))
+    problems = compare_carriers(fremd, manifest["repos"], manifest["topic"])
+    assert len(problems) == 1
+    assert "nicht-im-manifest" in problems[0]
 
 
 # --------------------------------------------------------------------------

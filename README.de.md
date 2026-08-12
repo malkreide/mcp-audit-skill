@@ -359,6 +359,8 @@ Daneben, nicht Teil der Kette: [`mcp-builder`](https://github.com/anthropics/ski
 
 Die Mitgliedschaft steht an einer Stelle: [`docs/quality-chain.json`](./docs/quality-chain.json) — `members` nennt die vier Skills, `repos` die zwei Repos, die sie tragen. [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) prüft wöchentlich, ob beide das Topic auf GitHub tatsächlich tragen — Metadaten, die keine Arbeitskopie testen kann, und genau deshalb hatten die Repos bis zum ersten Hinsehen kein einziges Topic gemeinsam.
 
+Er stellt die Frage in **beide** Richtungen. «Trägt jedes deklarierte Repo das Topic?» ist die Hälfte, die auffällt, wenn jemand ein Repo hinzufügt und die Metadaten vergisst. Die andere fällt von selbst nie auf: ein Repo, das das Topic trägt und *nicht* deklariert ist. Genau das hat die Zusammenführung erzeugt — ein archiviertes Repo behält seine Topics, also standen die drei ehemaligen Skill-Repos weiter auf der Topic-Seite, während der Wächter grün war und das Manifest stimmte. Wer die Kette über GitHub sucht — den einen Weg, für den dieser Wächter existiert —, fand drei Gräber.
+
 Jener Skill ist mit seiner v2.0.0 auf zwölf Regeln gegangen, entlang der Spec
 `2026-07-28` — die beiden Seiten überlappen sich damit fast überall. Drei der
 zwölf haben hier weiterhin kein Gegenstück: die über den Bind, der die App

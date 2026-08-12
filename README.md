@@ -359,6 +359,8 @@ Alongside, not part of the chain: [`mcp-builder`](https://github.com/anthropics/
 
 Membership is declared once, in [`docs/quality-chain.json`](./docs/quality-chain.json) — `members` names the four skills, `repos` the two repositories that carry them. [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) verifies weekly that both actually carry the topic on GitHub — that is metadata no working copy can test, which is exactly why the repositories had no topic in common until someone looked.
 
+It asks the question in **both** directions. "Does every declared repository carry the topic?" is the half that shows up when somebody adds a repository and forgets the metadata. The other half never shows up on its own: a repository that carries the topic and is *not* declared. That is what the consolidation produced — an archived repository keeps its topics, so the three former skill repositories went on listing themselves on the topic page while the guard stayed green and the manifest stayed right. Anyone finding the chain through GitHub — the one path this guard exists for — met three graves.
+
 That skill went to twelve rules with its v2.0.0, following spec `2026-07-28`,
 and the two sides now overlap almost everywhere. Three of the twelve still have
 no counterpart here: the one about a bind reaching the app — `SEC-016` looks

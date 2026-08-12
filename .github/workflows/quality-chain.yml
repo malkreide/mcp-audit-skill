@@ -1,15 +1,19 @@
 name: quality-chain
 
-# Die fünf Repos der Qualitätskette verweisen in ihren READMEs aufeinander.
-# Auf GitHub selbst taten sie das nicht: die Schnittmenge der Topics über alle
-# fünf war leer, `mcp-continuous-auditor` trug gar keine, und eine Homepage
-# hatte eines von fünf. Genau wie die Repo-Description liegt das ausserhalb
-# jeder Arbeitskopie — also fängt es kein Test, also driftet es.
+# Die Repos der Qualitätskette verweisen in ihren READMEs aufeinander. Auf
+# GitHub selbst taten sie das nicht: die Schnittmenge der Topics über die
+# damals fünf Repos war leer, `mcp-continuous-auditor` trug gar keine, und eine
+# Homepage hatte eines von fünf. Genau wie die Repo-Description liegt das
+# ausserhalb jeder Arbeitskopie — also fängt es kein Test, also driftet es.
 #
-# Dieser Job prüft die Metadaten aller fünf Mitglieder, nicht nur die dieses
-# Repos. Der Guard läuft hier, weil hier das Manifest und die übrige
-# Repo-übergreifende Werkzeugkiste liegen; die vier Schwester-Repos brauchen
-# dafür nichts.
+# Seit der Zusammenführung tragen ZWEI Repositories die vier Skills. Der Job
+# prüft beide, nicht nur dieses. Er läuft hier, weil hier das Manifest und die
+# übrige Repo-übergreifende Werkzeugkiste liegen.
+#
+# UND SEIT DER ARCHIVIERUNG PRÜFT ER DIE ANDERE RICHTUNG MIT: Wer trägt das
+# Topic, ohne im Manifest zu stehen? Die drei archivierten Herkunftsrepos taten
+# genau das — ein archiviertes Repo behält seine Topics, der Wächter war grün,
+# und die Topic-Seite zeigte fünf Einträge, wo zwei gelten.
 #
 # Bewusst NICHT bei `pull_request`: Topics und Homepage kann nur ein Mensch mit
 # Administrationsrechten setzen, und zwar nach dem Merge. Ein PR-Gate würde das
@@ -44,13 +48,14 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Metadaten der fünf Mitglieder gegen das Manifest prüfen
+      - name: Metadaten und Bestand gegen das Manifest prüfen
         id: check
         env:
           PYTHONUTF8: "1"
           PYTHONIOENCODING: "utf-8"
-          # Für öffentliche Repo-Metadaten nicht nötig, aber der Job macht fünf
-          # Anfragen und hebt damit das Limit von 60/h auf 1000/h.
+          # Für die öffentlichen Repo-Metadaten nicht nötig, hebt aber das
+          # Limit von 60/h auf 1000/h. Für die SUCH-API ist er näher an einer
+          # Notwendigkeit: dort sind es unangemeldet 10 Anfragen pro Minute.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python tools/check_quality_chain.py --format json > result.json \
@@ -67,27 +72,35 @@ jobs:
               print("## Qualitätskette\n\nKein Ergebnis — siehe Log des vorigen Schritts.")
               raise SystemExit(0)
           r = json.loads(p.read_text(encoding="utf-8"))
-          members = r["members"]
+
+          # Das Schema stand hier bis 11.8.2026 auf `members`/`stage` — den
+          # Feldern von VOR der Aufteilung in `members` (Skills) und `repos`
+          # (Metadaten-Träger). Der Guard lief seitdem korrekt, und dieser
+          # Schritt starb bei jedem Lauf an einem KeyError, bevor er etwas
+          # schreiben konnte. Deshalb wird hier nichts mehr vorausgesetzt, was
+          # der Report nicht führt.
+          repos = r["repos"]
+          carriers = r["carriers"]
 
           if r.get("ok"):
-              print(f"## Qualitätskette OK\n")
-              print(f"Alle {len(members)} Mitglieder tragen das Topic "
-                    f"`{r['topic']}`, die Homepage und eine Description.\n")
-              for m in members:
-                  print(f"- `{m['repo']}` — {m['stage']}")
+              print("## Qualitätskette OK\n")
+              print(f"Alle {len(repos)} Repos tragen das Topic `{r['topic']}`, die "
+                    f"Homepage und eine Description — und kein weiteres Repo trägt es.\n")
+              for entry in repos:
+                  print(f"- `{entry['repo']}`")
               raise SystemExit(0)
 
           print("## Qualitätskette — Abweichungen\n")
-          print("| Repo | Phase | Befund |")
-          print("|---|---|---|")
-          for m in members:
-              if m["ok"]:
-                  print(f"| `{m['repo']}` | {m['stage']} | OK |")
-              else:
-                  detail = "<br>".join(m["problems"])
-                  print(f"| `{m['repo']}` | {m['stage']} | {detail} |")
+          print("| Gegenstand | Befund |")
+          print("|---|---|")
+          for entry in repos:
+              detail = "OK" if entry["ok"] else "<br>".join(entry["problems"])
+              print(f"| `{entry['repo']}` | {detail} |")
+          bestand = "OK" if carriers["ok"] else "<br>".join(carriers["problems"])
+          print(f"| Bestand des Topics `{r['topic']}` | {bestand} |")
 
-          commands = [c for m in members for c in m.get("fix", [])]
+          commands = [c for entry in repos for c in entry.get("fix", [])]
+          commands += carriers.get("fix", [])
           if commands:
               print("\n**Zu setzen:**\n")
               print("```bash")
@@ -105,6 +118,7 @@ jobs:
       - name: Rot, wenn die Kette nicht zusammenhält
         if: steps.check.outputs.failed == 'true'
         run: |
-          echo "Mindestens ein Mitglied weicht ab oder konnte nicht geholt werden."
+          echo "Mindestens ein Repo weicht ab, ein fremdes Repo trägt das Topic,"
+          echo "oder die Metadaten konnten nicht geholt werden."
           echo "Die fertigen Kommandos stehen in der Job-Summary."
           exit 1
