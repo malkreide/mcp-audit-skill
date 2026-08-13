@@ -396,7 +396,7 @@ mcp-audit-skill/
 │   ├── suites/         mcp_audit · mcp_data_fidelity · mcp_data_source_probe · mcp_transport_hardening
 │   ├── gates/          10 generic gates, parameterised rather than copied
 │   └── check_quality_chain.py    GitHub metadata, in both directions
-├── tests/              54 files, 1713 tests
+├── tests/              one suite per skill, plus the repo-level guards
 │   └── suites/         101 mutations — every check has a tree it must go red on
 ├── docs/quality-chain.json       the single source of membership
 └── mcp-audit.skill     built archive, checked for byte reproducibility

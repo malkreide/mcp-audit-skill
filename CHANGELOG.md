@@ -6,6 +6,24 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben — der Baum nannte zwei Zahlen, die nichts hielt
+
+Der Struktur-Abschnitt sagte «54 Dateien, 1713 Tests». Zwei Commits später
+waren es 55 und 1720 — der Harness-Guard hatte selbst sieben Tests
+mitgebracht. Die Zahl war also schon falsch, als sie gedruckt wurde.
+
+**Nicht nachgezogen, sondern getrennt.** Eine Zahl, die sich mit jedem PR
+ändert, gehört nicht in Prosa: Ein Gate darauf würde bei jeder fremden
+Änderung rot und wäre nach zwei Wochen abgeschaltet. Die Testanzahl steht
+deshalb gar nicht mehr im Baum; die Zeile nennt jetzt die Struktur, die stabil
+ist.
+
+Die **Mutationszahl** bleibt — sie ist eine Zusage und keine Beifang-Statistik
+— und bekommt einen Guard in `tests/test_readme_harness_counts.py`, gegen die
+drei Suiten-Registries. Genau diese Zahl war in dieser Sitzung schon **zweimal
+von Hand zu korrigieren** (98 statt 101 im MERGE-PLAN, dann dieselbe Zahl im
+Suite-Docstring). Beim dritten Mal ist es ein Test.
+
 ### Hinzugefügt — beide READMEs sagen jetzt, wie dieses Repository gebaut ist
 
 Neuer Abschnitt **«How this repository is built» / «Wie dieses Repository gebaut
