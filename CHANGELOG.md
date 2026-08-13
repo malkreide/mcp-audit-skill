@@ -6,6 +6,52 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — beide READMEs sagen jetzt, wie dieses Repository gebaut ist
+
+Neuer Abschnitt **«How this repository is built» / «Wie dieses Repository gebaut
+ist»** in `README.md` und `README.de.md`, zwischen den verwandten Repos und dem
+Status: der Baum, die Harness mit ihren vier Suiten, woran die Prüfungen
+gehalten werden, und was zwischen den beiden Repositories läuft.
+
+Der Anlass ist, dass all das nirgends stand. Wer wissen wollte, wie die vier
+Skills in einem Baum koexistieren, wozu `ABSORBED` und `RETIRED` da sind oder
+warum der Auditor auf einen Tag statt auf `main` zeigt, fand es im Code oder im
+MERGE-PLAN — also dort, wo niemand zuerst nachsieht.
+
+**Und drei veraltete Stellen sind dabei ersetzt.** Beide READMEs schickten
+Mitwirkende auf `bash scripts/validate.sh — die fünf nummerierten Gates`. Fünf
+Gates gibt es seit der Zusammenführung nicht mehr; es sind 37 Prüfungen in vier
+Suiten. Ebenso nannten `README.md`, `README.de.md` und `SKILL.md` «Check 5 in
+`scripts/validate.sh`» statt `audit/5`.
+
+### Behoben — «Check» hiess zwei Dinge, und ein Guard konnte sie nicht trennen
+
+Beim Einbau schlug `test_prose_mentions_match_catalog` an: «README.md nennt 37
+Checks, Katalog hat 120». Der Guard hatte recht — nach seinem Muster war das
+eine Behauptung über den Katalog. Seit der Zusammenführung nennen die READMEs
+aber zwei Sorten Zahl, und beide heissen «Check»: der **Katalog** hat 120, die
+**Harness** fährt 37.
+
+Der bequeme Ausweg wäre gewesen, den Guard Code-Blöcke überspringen zu lassen.
+Das hätte eine echte Zusage abgeschaltet — eine falsche 120 in einem Code-Block
+wäre danach durchgegangen. Stattdessen ist das Wort im Text **qualifiziert**
+(«37 harness checks» / «37 Harness-Checks»), womit das Katalog-Muster dort gar
+nicht mehr greift, und `tests/test_readme_harness_counts.py` legt die Zusage
+daneben, die vorher fehlte:
+
+- die Offline-Zahl gegen `all_checks(offline_only=True)`
+- die Netz-Zahl gegen `all_checks()` — **37 und 38** sind beide richtig, je
+  nachdem: `audit/13` hält das Git-Tag gegen den CHANGELOG und hat ohne Remote
+  nichts zu lesen
+- die Suiten-Tabelle **je Suite**, nicht nur als Summe. Eine Summe kann stimmen,
+  während zwei Zeilen gegeneinander verschoben sind — dieselbe Fehlerklasse, für
+  die `check_reported_numbers.py` je Status vergleicht
+- ein Anker auf die Abschnittsüberschrift und einer auf jede README-Fassung
+
+Unterm Strich wird mehr geprüft als vorher, nicht weniger. Gegen vier Mutationen
+gehalten, alle rot — darunter der Fall, in dem die Summe stimmt und nur die
+Verteilung falsch ist.
+
 ### Hinzugefügt — der Ketten-Wächter fragt jetzt in beide Richtungen
 
 `tools/check_quality_chain.py` stellte bisher eine Frage: **Trägt jedes Repo aus

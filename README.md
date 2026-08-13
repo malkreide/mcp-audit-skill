@@ -230,7 +230,7 @@ bash scripts/build-skill.sh     # → ./mcp-audit.skill
 python tools/build_skill.py     # same, without bash (Windows)
 ```
 
-The build is bit-identical reproducible, and [`skill-manifest.txt`](./skill-manifest.txt) is the single source of truth for its contents. Check 5 in `scripts/validate.sh` holds the committed archive against the sources on every push — a catalogue that grows while the archive does not is exactly the kind of silent incompleteness `OPS-004` is about.
+The build is bit-identical reproducible, and [`skill-manifest.txt`](./skill-manifest.txt) is the single source of truth for its contents. `audit/5` in the harness holds the committed archive against the sources on every push — a catalogue that grows while the archive does not is exactly the kind of silent incompleteness `OPS-004` is about.
 
 ### As a Claude Code skill (clone)
 
@@ -379,6 +379,59 @@ control is there.
 - Notion **MCP Audit Tracker** — running status of all server audits (internal)
 - Notion **MCP Server Portfolio** — master inventory of all servers (internal)
 
+## How this repository is built
+
+Four skills and one catalogue live in this tree. The runtime that drives them lives in `mcp-continuous-auditor`, and the line between the two repositories is drawn along the **blast radius**: a catalogue that is wrong costs one wrong audit; a runtime that is wrong drives agents against other people's servers. Those do not belong on the same release wheel.
+
+```text
+mcp-audit-skill/
+├── SKILL.md            the mcp-audit skill itself — fourth link in the chain
+├── checks/             120 check files, 12 categories
+├── skills/
+│   ├── mcp-data-source-probe/    SKILL.md · reference/ · CHANGELOG
+│   ├── mcp-data-fidelity/
+│   └── mcp-transport-hardening/
+├── tools/
+│   ├── harness/        one command, four suites
+│   ├── suites/         mcp_audit · mcp_data_fidelity · mcp_data_source_probe · mcp_transport_hardening
+│   ├── gates/          10 generic gates, parameterised rather than copied
+│   └── check_quality_chain.py    GitHub metadata, in both directions
+├── tests/              54 files, 1713 tests
+│   └── suites/         101 mutations — every check has a tree it must go red on
+├── docs/quality-chain.json       the single source of membership
+└── mcp-audit.skill     built archive, checked for byte reproducibility
+```
+
+### One harness, four suites
+
+Before the merge each skill repository carried its own, partly word-identical checking machinery. Now there is `python -m tools.harness`.
+
+| Suite | What it holds against the tree | Checks | Mutations |
+|---|---|---:|---:|
+| `audit` | repo level: ruff pin, archive reproducibility, chain tables, release promises | 15 | — |
+| `probe` | shell and Python templates, step counts, adoption manifest | 9 | 45 |
+| `fidelity` | rule counts, rule-to-check table, catalogue drift | 6 | 36 |
+| `transport` | counter-example pairs, open names, import against the pinned SDK | 7 | 20 |
+
+That is **37 harness checks** in one offline run, and 38 with `--include-network`: `audit/13` holds the git tag against the CHANGELOG and has nothing to read without a remote.
+
+The numbers are **suite-scoped**: `audit/1` and `probe/1` exist side by side, and gaplessness is enforced per suite. Where a number is missing, one of two tables says why. `ABSORBED` means the promise still holds, once instead of four times, and names its new home. `RETIRED` means the *subject* is gone. A registry test holds the union of both against `1..N` and fails if a number appears in each.
+
+### What the checks are held to
+
+| Rule | Why it is not negotiable |
+|---|---|
+| An empty result is a finding, not a pass | `ruff check` on a path that does not exist returns an empty hit list *and* exit 0. Without the emptiness check the gate reported "all clean" after losing its subject. |
+| FAIL rather than skip | A check that cannot run reports a finding about the *environment*, in its own words, so it is not mistaken for one about the subject. "Did not run" reported as "passed" is the one answer worse than none. |
+| A missing anchor is an error | When the heading a check compares against disappears, the check has nothing left — and the obvious implementation reports "passed" for that. Every anchor removal has its own mutation. |
+| Every check has a tree it goes red on | 101 mutations, each asserting *what* the check then says. Two anchor tests hold the mapping in both directions: no check without a mutation, no mutation pointing at nothing. |
+
+### What runs between the two repositories
+
+`mcp-continuous-auditor` links into this repository at `tree/v3.0.0/skills/…`, not at `main`. Every one of those links claims something about what a skill *says*. Aimed at `main`, such a claim can stop being true without anything changing and without anything saying so; aimed at a tag it can only go **stale**, and that is a state somebody can see.
+
+In the other direction, [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) checks the GitHub metadata weekly — and asks in both directions: does every declared repository carry the topic, and does a repository carry it that is *not* in the manifest? The second question only surfaced when archiving forced it: an archived repository keeps its topics, so the topic page listed five entries where two apply.
+
 ## Status
 
 **Version:** v3.0.0 — what the fixture claims, nobody measured. CI on Ubuntu + Windows × py3.11 + py3.13. See [CHANGELOG.md](./CHANGELOG.md) for the full release history.
@@ -424,7 +477,7 @@ Run everything over the whole tree without committing:
 ```bash
 pre-commit run --all-files
 pytest tests/ -q
-bash scripts/validate.sh          # the five numbered gates, one run
+python -m tools.harness           # 37 harness checks across four suites
 ```
 
 **If you touch anything the package contains** — a check, a template, `SKILL.md`, a tool — rebuild the archive in the same commit:
