@@ -50,11 +50,13 @@ FASSUNGEN = {
         "heading": "### One harness, four suites",
         "offline": re.compile(r"\*\*(\d+)\s+harness checks\*\*"),
         "network": re.compile(r"and (\d+) with `--include-network`"),
+        "mutations": re.compile(r"(\d+)\s+mutations"),
     },
     "README.de.md": {
         "heading": "### Eine Harness, vier Suiten",
         "offline": re.compile(r"\*\*(\d+)\s+Harness-Checks\*\*"),
         "network": re.compile(r"mit\s+`--include-network`\s+(\d+)"),
+        "mutations": re.compile(r"(\d+)\s+Mutationen"),
     },
 }
 
@@ -113,6 +115,38 @@ def test_die_netz_zahl_stimmt(fassung):
     for n in gefunden:
         assert int(n) == erwartet, (
             f"{name} nennt {n} Checks mit Netz, die Registry führt {erwartet}."
+        )
+
+
+def test_die_mutationszahl_stimmt(fassung):
+    """Der Baum nennt die Mutationszahl. Nichts hielt sie bisher.
+
+    ZWEIMAL IN EINER SITZUNG KORRIGIERT, beide Male von Hand: erst 98 statt
+    101 im MERGE-PLAN, dann dieselbe Zahl im Suite-Docstring. Eine Zahl, die
+    eine ZUSAGE ist, gehört an die Quelle gebunden.
+
+    Die Test-Anzahl daneben ist ausdrücklich NICHT gebunden und steht deshalb
+    gar nicht mehr im Baum: Sie ändert sich mit jedem PR, der einen Test
+    hinzufügt, und ein Gate, das bei jeder fremden Änderung rot wird, ist nach
+    zwei Wochen abgeschaltet. Zusage binden, Beiwerk weglassen.
+    """
+    name, text, muster = fassung
+    from tests.suites import mcp_data_fidelity, mcp_data_source_probe
+    from tests.suites import mcp_transport_hardening as transport
+
+    erwartet = (
+        len(mcp_data_source_probe.MUTATIONS)
+        + len(mcp_data_fidelity.MUTATIONS)
+        + len(transport.MUTATIONS)
+    )
+    gefunden = muster["mutations"].findall(text)
+    assert gefunden, (
+        f"{name}: nennt keine Mutationszahl — leeres Ergebnis ist ein Befund, "
+        "kein Bestehen."
+    )
+    for n in gefunden:
+        assert int(n) == erwartet, (
+            f"{name} nennt {n} Mutationen, die Suiten führen {erwartet}."
         )
 
 
