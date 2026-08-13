@@ -230,7 +230,7 @@ bash scripts/build-skill.sh     # → ./mcp-audit.skill
 python tools/build_skill.py     # dasselbe, ohne bash (Windows)
 ```
 
-Der Build ist bit-identisch reproduzierbar, und [`skill-manifest.txt`](./skill-manifest.txt) ist die einzige Quelle der Wahrheit für den Inhalt. Check 5 in `scripts/validate.sh` hält das eingecheckte Archiv bei jedem Push gegen die Quellen — ein Katalog, der wächst, während das Archiv stehen bleibt, ist genau die stille Unvollständigkeit, um die es in `OPS-004` geht.
+Der Build ist bit-identisch reproduzierbar, und [`skill-manifest.txt`](./skill-manifest.txt) ist die einzige Quelle der Wahrheit für den Inhalt. `audit/5` in der Harness hält das eingecheckte Archiv bei jedem Push gegen die Quellen — ein Katalog, der wächst, während das Archiv stehen bleibt, ist genau die stille Unvollständigkeit, um die es in `OPS-004` geht.
 
 ### Als Claude-Code-Skill (Klon)
 
@@ -380,6 +380,59 @@ Katalog prüft, ob sie da ist.
 - Notion **MCP Audit Tracker** — laufender Status aller Server-Audits (intern)
 - Notion **MCP Server Portfolio** — Master-Inventar aller Server (intern)
 
+## Wie dieses Repository gebaut ist
+
+Vier Skills und ein Katalog liegen in diesem Baum. Die Laufzeit, die sie fährt, liegt in `mcp-continuous-auditor`, und die Linie zwischen beiden Repositories verläuft entlang des **Blast Radius**: Ein Katalog, der falsch ist, kostet ein falsches Audit; eine Laufzeit, die falsch ist, fährt Agenten gegen fremde Server. Das gehört nicht auf dasselbe Release-Rad.
+
+```text
+mcp-audit-skill/
+├── SKILL.md            der mcp-audit-Skill selbst — viertes Glied der Kette
+├── checks/             120 Check-Dateien, 12 Kategorien
+├── skills/
+│   ├── mcp-data-source-probe/    SKILL.md · reference/ · CHANGELOG
+│   ├── mcp-data-fidelity/
+│   └── mcp-transport-hardening/
+├── tools/
+│   ├── harness/        ein Kommando, vier Suiten
+│   ├── suites/         mcp_audit · mcp_data_fidelity · mcp_data_source_probe · mcp_transport_hardening
+│   ├── gates/          10 generische Gates, parametrisiert statt kopiert
+│   └── check_quality_chain.py    GitHub-Metadaten, in beide Richtungen
+├── tests/              54 Dateien, 1713 Tests
+│   └── suites/         101 Mutationen — jede Prüfung hat einen Baum, auf dem sie rot wird
+├── docs/quality-chain.json       die einzige Quelle der Mitgliedschaft
+└── mcp-audit.skill     gebautes Archiv, auf Byte-Reproduzierbarkeit geprüft
+```
+
+### Eine Harness, vier Suiten
+
+Vor der Zusammenführung trug jedes Skill-Repo seine eigene, teils wortgleiche Prüf-Mechanik. Jetzt gibt es `python -m tools.harness`.
+
+| Suite | Was sie gegen den Baum hält | Checks | Mutationen |
+|---|---|---:|---:|
+| `audit` | Repo-Ebene: Ruff-Pin, Archiv-Reproduzierbarkeit, Ketten-Tabellen, Release-Zusagen | 15 | — |
+| `probe` | Shell- und Python-Vorlagen, Schritt-Zählungen, Adoptions-Manifest | 9 | 45 |
+| `fidelity` | Regelzahlen, Regel-zu-Check-Tabelle, Katalog-Drift | 6 | 36 |
+| `transport` | Gegenbeispiel-Paare, offene Namen, Import gegen das gepinnte SDK | 7 | 20 |
+
+Das sind **37 Harness-Checks** in einem Offline-Lauf, mit `--include-network` 38: `audit/13` hält das Git-Tag gegen den CHANGELOG und hat ohne Remote nichts zu lesen.
+
+Die Nummern sind **suite-skopiert**: `audit/1` und `probe/1` gibt es beide, und Lückenlosigkeit wird je Suite erzwungen. Fehlt eine Nummer, sagt eine von zwei Tabellen warum. `ABSORBED` heisst: Die Zusage besteht weiter, einmal statt viermal, und nennt ihr neues Zuhause. `RETIRED` heisst: Der *Gegenstand* ist weg. Ein Registry-Test hält die Vereinigung beider gegen `1..N` und schlägt fehl, wenn eine Nummer in beiden steht.
+
+### Woran die Prüfungen gehalten werden
+
+| Regel | Warum sie nicht verhandelbar ist |
+|---|---|
+| Ein leeres Ergebnis ist ein Befund, kein Bestehen | `ruff check` auf einem Pfad, den es nicht gibt, liefert eine leere Trefferliste *und* Exit 0. Ohne Leer-Prüfung meldete das Gate «alles sauber», nachdem es seinen Gegenstand verloren hatte. |
+| FAIL statt skip | Eine Prüfung, die nicht laufen kann, meldet einen Befund über die *Umgebung*, mit eigenem Text, damit er nicht mit einem über den Gegenstand verwechselt wird. «Nicht gelaufen» als «bestanden» zu melden ist die eine Auskunft, die schlimmer ist als keine. |
+| Ein fehlender Anker ist ein Fehler | Verschwindet die Überschrift, gegen die eine Prüfung vergleicht, hat sie nichts mehr — und die naheliegende Implementierung meldet dafür «bestanden». Jede Anker-Entfernung hat eine eigene Mutation. |
+| Jede Prüfung hat einen Baum, auf dem sie rot wird | 101 Mutationen, jede mit einer Zusicherung, *was* die Prüfung dann sagt. Zwei Anker-Tests halten die Zuordnung in beide Richtungen: keine Prüfung ohne Mutation, keine Mutation ins Leere. |
+
+### Was zwischen den beiden Repositories läuft
+
+`mcp-continuous-auditor` verweist auf dieses Repository unter `tree/v3.0.0/skills/…`, nicht unter `main`. Jeder dieser Links behauptet etwas darüber, was ein Skill *sagt*. Gegen `main` gerichtet kann so eine Behauptung aufhören zu stimmen, ohne dass sich etwas ändert und ohne dass es jemand sagt; gegen einen Tag gerichtet kann sie nur **veralten**, und das ist ein Zustand, den jemand sieht.
+
+In der Gegenrichtung prüft [`tools/check_quality_chain.py`](./tools/check_quality_chain.py) wöchentlich die GitHub-Metadaten — und fragt in beide Richtungen: Trägt jedes deklarierte Repo das Topic, und trägt ein Repo es, das *nicht* im Manifest steht? Die zweite Frage fiel erst auf, als das Archivieren sie erzwang: Ein archiviertes Repo behält seine Topics, also zeigte die Topic-Seite fünf Einträge, wo zwei gelten.
+
 ## Status
 
 **Version:** v3.0.0 — Was die Fixture behauptet, hat niemand gemessen. CI auf Ubuntu + Windows × py3.11 + py3.13. Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
@@ -425,7 +478,7 @@ Alles über den ganzen Baum laufen lassen, ohne zu committen:
 ```bash
 pre-commit run --all-files
 pytest tests/ -q
-bash scripts/validate.sh          # die fünf nummerierten Gates in einem Lauf
+python -m tools.harness           # 37 Harness-Checks über vier Suiten
 ```
 
 **Wer etwas anfasst, das im Paket liegt** — einen Check, ein Template, `SKILL.md`, ein Werkzeug —, baut das Archiv im selben Commit neu:

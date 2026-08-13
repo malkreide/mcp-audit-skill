@@ -1,9 +1,13 @@
 """Die Mutationen der Suite `transport`.
 
 Uebernommen aus `mcp-transport-hardening-skill/tests/mutations.py`. Von dessen
-vierunddreissig Mutationen stehen hier siebzehn — die uebrigen gehoerten zu
-den fuenf Pruefungen, die im Monorepo repo-bezogen sind und in `ABSORBED`
-stehen.
+vierunddreissig Mutationen sind siebzehn mit umgezogen — die uebrigen
+gehoerten zu den fuenf Pruefungen, die im Monorepo repo-bezogen sind und in
+`ABSORBED` stehen.
+
+DAZU DREI, DIE ES IM HERKUNFTSREPO NICHT GAB: `transport/12` haelt die Vorlage
+gegen die gepinnte SDK-Oberflaeche und lief dort nur als CI-Schritt, also ohne
+Mutationen. Diese Datei fuehrt damit ZWANZIG.
 
 ZWEI SORTEN STECKEN DARIN, und die zweite ist der eigentliche Grund fuer diese
 Datei — der Herkunfts-Docstring sagt es besser, als es sich neu formulieren

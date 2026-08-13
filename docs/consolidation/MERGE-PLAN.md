@@ -698,10 +698,16 @@ Repository nicht einloest.
 
 ### 4.2n Was 2b-iv-d gezeigt hat — die Mutationssuiten, und drei stille Vorgaben
 
-**DIE LETZTE OFFENE ZUSAGE IST EINGELOEST.** `tests/suites/` fuehrt 98
+**DIE LETZTE OFFENE ZUSAGE IST EINGELOEST.** `tests/suites/` fuehrt 101
 Mutationen ueber die drei Companion-Suiten — 45 fuer `probe`, 36 fuer
-`fidelity`, 17 fuer `transport`. Zu jeder Pruefung gibt es mindestens einen
+`fidelity`, 20 fuer `transport`. Zu jeder Pruefung gibt es mindestens einen
 Baum, auf dem sie rot werden MUSS, samt der Zusicherung, *was* sie dann sagt.
+
+> **Zur Zahl.** Mit 2b-iv-d waren es 98 (transport: 17). Die drei weiteren
+> kamen in 4.2o dazu, mit `transport/12` — einer Pruefung, die es im
+> Herkunftsrepo nicht als Pruefung gab, sondern nur als CI-Schritt. Diese
+> Stelle nennt den STAND, nicht den Schritt; die beiden Umzugszahlen weiter
+> unten (98 von 192) nennen den Schritt und bleiben deshalb, wie sie sind.
 
 **EIN FORMAT STATT ZWEI.** `probe` und `fidelity` schrieben eine Dataclass mit
 PRUEFNUMMER, `transport` ein Tupel mit dem FUNKTIONSNAMEN. Es gilt der
@@ -710,7 +716,7 @@ suite-lokal — `audit/1` und `probe/1` gibt es beide —, eine Mutation muesste
 also zusaetzlich die Suite nennen, und dieselbe Angabe stuende zweimal da.
 
 **DIE MUTATIONEN FUER DIE ABSORBIERTEN PRUEFUNGEN ZIEHEN NICHT MIT.** Von 192
-Mutationen der drei Herkunftsrepos stehen hier 98. Der Rest gehoerte zu den
+Mutationen der drei Herkunftsrepos sind 98 mit umgezogen. Der Rest gehoerte zu den
 repo-bezogenen Pruefungen — sie ziehen mit jenen um, nicht mit diesen Suiten,
 und wo `audit` denselben Gegenstand einmal statt viermal prueft, braucht es
 auch nur eine Mutation. Der Waechter dagegen bleibt scharf:
@@ -777,6 +783,11 @@ Pin jetzt aus jener Datei statt aus `ci.yml` und faehrt woechentlich gegen die
 NEUESTE `mcp`. Die beiden sind eine Zusage in zwei Haelften — der Pin macht
 den PR-Lauf reproduzierbar, der Wochenlauf macht die Drift sichtbar. Einzeln
 ist jede eine halbe.
+
+`transport/12` ist eine Pruefung wie jede andere und bringt deshalb DREI
+MUTATIONEN mit — die Vorlage nennt die alte SDK-Oberflaeche, die Vorlage wirft
+beim Import, das Vorlagen-Verzeichnis ist weg. Damit steht der Bestand bei 101
+statt bei den 98 aus 2b-iv-d; 4.2n fuehrt die Zahl.
 
 **DAMIT HAT G9 EINEN ZWEITEN GEGENSTAND — die Schwelle, ab der dieses
 Repository verallgemeinert.** Die Import-Mechanik kam aus probe («laedt die
@@ -866,7 +877,7 @@ angelegtes Hub-Repo. Er beschrieb «die fuenf Repos».
 | `README.md` / `README.de.md` (4×) | je Skill mitziehen; dazu **ein** Repo-README, das die vier vorstellt. |
 | `CHANGELOG.md` (4×) | **getrennt lassen**, je Skill. Zusammengelegt waeren die Versionsstaende nicht mehr auseinanderzuhalten, und G11/G16 haengen daran. |
 | `reference/` (3×) | nach `skills/<name>/reference/`. Keine Ueberschneidung: probe hat `response_envelope.py`/`retry_backoff.py`, fidelity und transport je eigene `patterns.py`. |
-| `tests/` (4×) | **erledigt (2b-iv-d).** Mutationen je Suite unter `tests/suites/<name>.py`, Geruest und Runner einmal. Nicht vereinigt, sondern gefiltert: 98 von 192 Mutationen ziehen mit, der Rest gehoerte zu den absorbierten Pruefungen. Das Format ist EINES geworden (Funktionsname statt Pruefnummer), die Bausteine ebenfalls. |
+| `tests/` (4×) | **erledigt (2b-iv-d).** Mutationen je Suite unter `tests/suites/<name>.py`, Geruest und Runner einmal. Nicht vereinigt, sondern gefiltert: 98 von 192 Mutationen ziehen mit, der Rest gehoerte zu den absorbierten Pruefungen. (Umzugszahl — der Bestand steht seit 4.2o bei 101, siehe 4.2n.) Das Format ist EINES geworden (Funktionsname statt Pruefnummer), die Bausteine ebenfalls. |
 
 ## 5. Was die Zusammenfuehrung nachweislich einspart
 
@@ -989,7 +1000,7 @@ damit hier auf und nicht erst, wenn jemand den Skill installieren will.
 | **2b-iii-c** | G14 (Zaehlwerte, parametrisiert nach Einheit) | **erledigt** — gegen fuenf Baeume gruen, audit bekommt eine Pruefung dazu |
 | **2b-iv-a** | Suite `transport` vollstaendig, als Vorlage | **erledigt** — 6 Pruefungen, G11 erstmals gebunden |
 | **2b-iv-b** | Suiten `probe` und `fidelity` | **erledigt** — 10 + 6 Pruefungen, 37 Checks gesamt; Phase 4 faellt dabei heraus (4.2l) |
-| **2b-iv-d** | die Mutationssuiten der drei Companions umhaengen | **erledigt** — 98 Mutationen, drei stille Vorgaben dabei gefunden (4.2n) |
+| **2b-iv-d** | die Mutationssuiten der drei Companions umhaengen | **erledigt** — 101 Mutationen (98 umgezogen, 3 mit `transport/12` in 4.2o dazu), drei stille Vorgaben dabei gefunden (4.2n) |
 | **2b-iv-c** | die sechs READMEs der Companions neu fassen | **erledigt** — dazu die drei `SKILL.md`-Tabellen, `E501`/`W` im Lint, Companion-Verzeichnis aufgeloest (4.2m) |
 | **3a** | Die drei Companions per `git subtree` nach `skills/<name>/`, Historie erhalten | **erledigt** — drei `SKILL.md` am Platz, Frontmatter-`name` unveraendert, 1315 Tests gruen |
 | **3b** | Kette auf vier Skills umstellen (6.1), beide READMEs nachziehen | **erledigt** — `quality-chain.json` fuehrt vier Skills und zwei Repos, 1319 Tests gruen |

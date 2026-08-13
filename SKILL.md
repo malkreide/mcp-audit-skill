@@ -1140,7 +1140,7 @@ Wenn das PDF aktualisiert wird oder neue Best Practices auftauchen:
 1. Im Skill-Repo unter `checks/` neue `.md`-Datei mit nächster ID anlegen
 2. `evidence_required` und `applies_when` mit Care befüllen
 3. CHANGELOG-Eintrag im Repo-Root
-3b. **Das Skill-Paket neu bauen** — `bash scripts/build-skill.sh`, Ergebnis mitcommitten. Das eingecheckte `mcp-audit.skill` ist die Datei, die Nutzer bei Claude hochladen; ohne den Neubau enthält sie den Katalog von gestern, während README und Badge die neue Zahl nennen. Check 5 in `scripts/validate.sh` wird an dieser Stelle rot — das ist die Erinnerung, nicht der Fehler.
+3b. **Das Skill-Paket neu bauen** — `bash scripts/build-skill.sh`, Ergebnis mitcommitten. Das eingecheckte `mcp-audit.skill` ist die Datei, die Nutzer bei Claude hochladen; ohne den Neubau enthält sie den Katalog von gestern, während README und Badge die neue Zahl nennen. `audit/5` in der Harness wird an dieser Stelle rot — das ist die Erinnerung, nicht der Fehler.
 4. Bestehende Server, die schon ein Audit hatten, **nicht automatisch reauditiert** — sondern bei nächstem Refactoring oder geplantem Re-Audit
 5. **Re-Audit-Auslöser bei `critical` oder `high`** — vier Fälle, in denen ein bestehendes Audit-Ergebnis nicht mehr gilt:
    - **a) Severity angehoben.** Der Verstoss wiegt jetzt schwerer, als das Audit ihn geführt hat.
