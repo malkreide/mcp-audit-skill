@@ -1,6 +1,56 @@
 # Re-Audit-Warteschlange
 
-**Stand:** 2026-08-08 · **Letztes geprüftes Release:** `v2.3.0` (feuert zweimal — kippt kein Verdikt) · **Jüngste offene Auslöser:** `v2.1.0` · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+**Stand:** 2026-08-17 · **Letztes geprüftes Release:** `v3.0.0` (feuert nicht — der Katalog steht still) · **Jüngste offene Auslöser:** `v2.1.0` · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+
+---
+
+## `v3.0.0` — 2026-08-11 — der Katalog steht still, sein Fingerabdruck nicht
+
+### Was gefeuert hat
+
+**Nichts.** Derselbe Zweck wie beim leeren Abschnitt zu `v2.2.0` weiter unten: Ein Release, das hier gar nicht auftaucht, ist von einem Release ohne §5-Prüfung nicht zu unterscheiden. Bei einem **Major** wiegt das schwerer statt leichter — die Versionsnummer ist genau das Signal, bei dem jemand annimmt, es müsse etwas fällig sein.
+
+| Auslöser | §5-Prüfung | Ergebnis |
+|---|---|---|
+| **a)** Severity angehoben | `severity` über alle 120 Checks unverändert gegenüber `v2.3.0` | **feuert nicht** |
+| **b)** `applies_when` nach oben erweitert | `applies_when` über alle 120 unverändert | **feuert nicht** |
+| **c)** Prüfkriterium korrigiert | sieben Check-Dateien geändert, neun Stellen — **keine** davon unter `## Pass Criteria` | **feuert nicht** |
+| **d)** Adoptionsstufe promoviert | `adoption` bei allen 25 Checks, die das Feld tragen, unverändert | **feuert nicht** |
+| **e)** Spec-Baseline verengt | `spec_baseline` bei allen 20 Checks, die es tragen, unverändert; [§2.7](../SKILL.md#27-spec-baseline-welcher-protokollstand-gemessen-wird) nicht angefasst | **feuert nicht** |
+| Der Major-Bump selbst | §5 regelt Änderungen am **Katalog**. Bewegt hat sich das Repository darum herum: vier Skills statt einem, `tools/checks/` heisst `tools/suites/`, drei Herkunftsrepos archiviert. SemVer misst die Schnittstelle, §5 misst den Massstab — zwei verschiedene Gegenstände. | **feuert nicht** |
+
+Kein Check ist dazugekommen und keiner weggefallen: 120 vor und 120 nach dem Release. Punkt **4** der Katalog-Versionierung — «ein neuer Check ist ein neuer Vertrag» — kommt damit gar nicht erst zum Zug.
+
+### Was sich trotzdem bewegt hat, und wovon der CHANGELOG nichts sagt
+
+**Der Katalog-Hash.** Die sieben geänderten Dateien haben alle denselben Anlass: Die drei Companion-Skills sind in diesen Baum gezogen, also zeigen ihre Verweise nicht mehr nach `github.com/malkreide/mcp-…-skill`, sondern nach `../skills/…`. Inhaltlich ist das nichts. Für [§6.2](../SKILL.md#62-vergleich-mit-dem-vorlauf-nur-innerhalb-einer-katalog-epoche) ist es alles:
+
+| Stand | Katalog-Hash |
+|---|---|
+| `v2.3.0` | `2bbded9079fd2a69…` |
+| `v3.0.0` (= heutiger `main`) | `d09a60316c75040a…` |
+
+`hash_catalog()` hasht die **Dateien**, nicht die Kriterien, und das ist Absicht: Nicht zu wissen, ob der Massstab sich bewegt hat, ist nicht dasselbe wie zu wissen, dass er gleich blieb — die sichere Richtung ist die, die keine Linie zieht. Die Folge: **Jedes Audit gegen `v3.0.0` bekommt `comparable: false` gegen jeden Vorlauf aus der `v2.3.0`-Epoche.** Der Report druckt dann keine Delta-Tabelle, sondern beide Hashes und den Grund.
+
+Das ist **kein** Re-Audit-Auslöser. Kein Verdikt wird ungültig, kein `production_ready: true` fällt, und in die Warteschlange gehört es nicht. Es kostet aber jedem Server beim nächsten Lauf seine Trendlinie — für sieben Links. Wer den fehlenden Vergleich im nächsten Report sieht, findet die Erklärung hier, statt sie im Server zu suchen.
+
+Und es ist **wirksam, nicht theoretisch**: `mcp-continuous-auditor` zeigt in beiden READMEs auf `mcp-audit-skill/tree/v3.0.0`, gepinnt und von `tests/test_quality_chain_table.py` festgehalten. Der neue Hash ist der, gegen den das Portfolio ab jetzt misst.
+
+### Was diese Prüfung nicht abdeckt
+
+§5e nennt neben der Katalogseite den **Server**: Wechselt einer seine `mcp_spec_version`, ist das für sich ein Auslöser, ohne dass am Katalog etwas geändert sein muss. Ob seit dem 2026-08-08 ein Portfolio-Server migriert ist, ist von hier aus **nicht gemessen** — das steht im Tracker und in den Server-Repos, nicht in diesem Repository. Dieselbe Grenze wie bei den Zahlen zu `FID-006` weiter unten.
+
+### Herkunft der Zahlen
+
+| Zahl | Herkunft |
+|---|---|
+| 120 Checks vor und nach dem Release | **gemessen** — `git ls-tree -r --name-only <ref> -- checks/` auf `v2.3.0` und `HEAD`, `*.md` gezählt |
+| 0 Abweichungen in `id`, `title`, `category`, `severity`, `applies_when`, `adoption`, `spec_baseline` | **gemessen** — Frontmatter beider Stände geparst und Feld für Feld verglichen |
+| Gegenprobe zum leeren Ergebnis | **gemessen** — derselbe Parser findet auf `HEAD` 120× `severity` und `applies_when`, 25× `adoption`, 20× `spec_baseline`. Ohne diese Zahl wäre «keine Abweichung» von «kein Feld gelesen» nicht zu unterscheiden — der Fehler, den `OPS-010` an Tests misst |
+| sieben Dateien, neun Stellen, keine unter Pass Criteria | **gemessen** — `git diff --name-status -M v2.3.0..HEAD -- checks/`, dann je Hunk die nächste Überschrift darüber: siebenmal `## References`, einmal `## Description` (`OPS-010`), einmal `### Modus 3` (`SEC-028`) |
+| beide Katalog-Hashes | **gemessen** — `tools/audit_init.py::hash_catalog()` gegen die aus beiden Ständen ausgecheckten `checks/`-Bäume. `MANIFEST.txt` geht in beide Hashes ein und ist in beiden identisch, trägt zur Differenz also nichts bei |
+| Pin des Auditors auf `v3.0.0` | **gemessen** — `mcp-continuous-auditor` bei `9749234`, vier Verweise je README |
+| «kein Auslöser greift» | **unabhängig bestätigt** — der CHANGELOG-Eintrag zu `v3.0.0` sagt dasselbe. Die Zahlen oben sind daneben erhoben und nicht daraus abgeschrieben |
 
 ---
 

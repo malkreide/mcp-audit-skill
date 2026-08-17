@@ -6,6 +6,41 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — die Re-Audit-Warteschlange ist auf `v3.0.0` nachgezogen
+
+`docs/re-audit-queue.md` stand auf **Stand 2026-08-08** und führte `v2.3.0` als
+letztes geprüftes Release. Der `v3.0.0`-Eintrag weiter unten *behauptete*
+bereits, die Warteschlange bleibe leer — geschrieben stand sie dort nicht. Nach
+der Regel, die diese Datei selbst aufstellt, ist genau das der Ausfall: «Ein
+Release, das in dieser Datei gar nicht auftaucht, ist von einem Release ohne
+§5-Prüfung nicht zu unterscheiden.» Bei einem **Major** wiegt das schwerer statt
+leichter, und eine Zusage im CHANGELOG ersetzt den Nachweis in der Warteschlange
+nicht.
+
+Der Abschnitt steht jetzt dort, mit jedem der fünf Auslöser a–e einzeln gemessen
+statt zusammenfassend verneint: 120 Checks vor und nach dem Release, keine
+Abweichung in `severity`, `applies_when`, `adoption` oder `spec_baseline`, und
+die sieben geänderten Check-Dateien ändern neun Stellen — siebenmal unter
+`## References`, einmal `## Description`, einmal `### Modus 3`, **keine** unter
+`## Pass Criteria`. Zum leeren Ergebnis gehört die Gegenprobe, dass der Parser
+die Felder überhaupt liest: 120× `severity`, 25× `adoption`, 20×
+`spec_baseline`. Ohne sie wäre «keine Abweichung» von «kein Feld gelesen» nicht
+zu unterscheiden.
+
+**Und ein Befund, den der `v3.0.0`-Eintrag nicht nennt.** Der Katalog-Hash hat
+sich trotzdem bewegt, `2bbded90…` → `d09a6031…`. `hash_catalog()` hasht die
+Dateien und nicht die Kriterien, und die sieben Link-Umschreibungen der
+Zusammenführung sind Dateien. Für §5 folgt daraus nichts, kein Verdikt fällt.
+Für [§6.2](SKILL.md#62-vergleich-mit-dem-vorlauf-nur-innerhalb-einer-katalog-epoche)
+folgt daraus alles: Jedes Audit gegen `v3.0.0` bekommt `comparable: false` gegen
+jeden Vorlauf aus der `v2.3.0`-Epoche und druckt statt der Delta-Tabelle beide
+Hashes und den Grund. Der Auditor zeigt gepinnt auf `tree/v3.0.0` — das gilt
+also ab dem nächsten Lauf und nicht irgendwann. «Der Katalog ist unverändert»
+und «der Katalog-Stand ist derselbe» sind zwei Aussagen, und nur die erste war
+wahr.
+
+Das eingecheckte `mcp-audit.skill` ist mitgezogen; `audit/5` hat es eingefordert.
+
 ### Behoben — der Baum nannte zwei Zahlen, die nichts hielt
 
 Der Struktur-Abschnitt sagte «54 Dateien, 1713 Tests». Zwei Commits später
