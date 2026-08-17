@@ -6,6 +6,48 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — §5e ist jetzt gemessen, und zwei Server stehen darunter
+
+Der `v3.0.0`-Abschnitt der Warteschlange trug bis eben einen Absatz «nicht
+gemessen»: ob seit dem 2026-08-08 ein Portfolio-Server seine
+`mcp_spec_version` gewechselt hat. Er ist erhoben, über alle 43 Repos, und
+liefert zwei getrennte Antworten.
+
+**Für das Fenster: nein.** Jedes Repo bis vor den Stichtag vertieft und gegen
+`HEAD` gehalten — keine Änderung an einer Protokoll- oder Spec-Version. Der
+einzige Treffer ist ein README-Absatz in `swiss-cultural-heritage-mcp`, der
+festhält, dass der Server die Aushandlung ausdrücklich **nicht** übersteuert.
+
+**Ausserhalb des Fensters: zwei.** `amtsblatt-mcp` und
+`swiss-procurement-mcp` pinnen `MCP_PROTOCOL_VERSION = "2026-07-28"`, beide
+seit dem 2026-07-29 («migrate to mcp 2.x»). §5e hat mit der Reichweite «pro
+Server, bei seiner Migration» damit gefeuert — und stand in dieser Datei
+nirgends. Die beiden erscheinen bis heute nur unter «Nicht in der
+Warteschlange · Audit läuft noch». Ihr letztes Audit lief einen Tag nach der
+Migration, aber mit `skill_version: 1.0.0` gegen einen Katalog ohne
+Baseline-Achse: fünf Checks haben bei ihnen einen Gegenstand gemessen, den ihr
+Protokoll nicht mehr hat, elf wurden nie gestellt.
+
+**Warum es nirgends auffiel:** Kein einziges Audit im Portfolio führt
+`mcp_spec_version` — 85 Läufe in 31 von 43 Repos, keiner mit dem Feld. Der
+jüngste Lauf überhaupt datiert auf den 2026-07-30, die höchste aufgezeichnete
+`skill_version` ist 1.0.0, und Pflicht ist das Feld seit `v2.0.0`. Es gibt im
+Portfolio kein Audit, gegen das §5e sich prüfen liesse.
+
+**Die Falle in der Messung, ausgeschrieben:** Gesucht wurde nach Feld- und
+Konstantennamen, nicht nach dem Wert. `2026-07-28` ist hier auch ein
+gewöhnliches Datum — `swiss-environment-mcp` trägt
+`LSV_VERIFIED_ON = "2026-07-28"` als Probendatum. Ein Scan über die
+Zeichenkette hätte drei migrierte Server gemeldet statt zwei.
+
+Nicht gemessen bleibt der Notion-Tracker: Der Code-Pin belegt, welches
+Protokoll ein Server spricht, nicht was sein Profil behauptet. Nebenbefund
+dazu — `portfolio.json` führt `current_mcp_spec_baseline: "2025-11-25"` als
+**eine** Zahl fürs ganze Portfolio, `last_checked` einen Tag vor der
+Migration, und seine 44 Server-Einträge tragen kein eigenes
+`mcp_spec_version`, obwohl `required_report_metadata` es im selben Dokument
+verlangt.
+
 ### Geändert — die Re-Audit-Warteschlange ist auf `v3.0.0` nachgezogen
 
 `docs/re-audit-queue.md` stand auf **Stand 2026-08-08** und führte `v2.3.0` als

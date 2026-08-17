@@ -1,6 +1,6 @@
 # Re-Audit-Warteschlange
 
-**Stand:** 2026-08-17 · **Letztes geprüftes Release:** `v3.0.0` (feuert nicht — der Katalog steht still) · **Jüngste offene Auslöser:** `v2.1.0` · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+**Stand:** 2026-08-17 · **Letztes geprüftes Release:** `v3.0.0` (feuert nicht — der Katalog steht still) · **Jüngste offene Auslöser:** `v2.1.0`, dazu **§5e für 2 Server** (Migration 2026-07-29, releaseunabhängig) · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
 
 ---
 
@@ -36,9 +36,40 @@ Das ist **kein** Re-Audit-Auslöser. Kein Verdikt wird ungültig, kein `producti
 
 Und es ist **wirksam, nicht theoretisch**: `mcp-continuous-auditor` zeigt in beiden READMEs auf `mcp-audit-skill/tree/v3.0.0`, gepinnt und von `tests/test_quality_chain_table.py` festgehalten. Der neue Hash ist der, gegen den das Portfolio ab jetzt misst.
 
-### Was diese Prüfung nicht abdeckt
+### §5e, die Serverseite — für dieses Fenster gemessen
 
-§5e nennt neben der Katalogseite den **Server**: Wechselt einer seine `mcp_spec_version`, ist das für sich ein Auslöser, ohne dass am Katalog etwas geändert sein muss. Ob seit dem 2026-08-08 ein Portfolio-Server migriert ist, ist von hier aus **nicht gemessen** — das steht im Tracker und in den Server-Repos, nicht in diesem Repository. Dieselbe Grenze wie bei den Zahlen zu `FID-006` weiter unten.
+§5e nennt neben der Katalogseite den **Server**: Wechselt einer seine `mcp_spec_version`, ist das für sich ein Auslöser, ohne dass am Katalog etwas geändert sein muss. Für das Fenster **seit dem 2026-08-08** ist die Antwort **nein**, und zwar gemessen statt angenommen — über alle 43 Repos, jedes bis vor den 2026-08-08 zurück vertieft und gegen `HEAD` gehalten.
+
+| Frage | Ergebnis |
+|---|---|
+| Änderung an einer Protokoll- oder Spec-Version seit dem 2026-08-08 | **keine**, über alle 43 Repos |
+| Server, die heute den neuen Stand sprechen | **2** — `amtsblatt-mcp` und `swiss-procurement-mcp`, beide `MCP_PROTOCOL_VERSION = "2026-07-28"` |
+| seit wann | beide **2026-07-29**, derselbe Anlass («migrate to mcp 2.x») — also **vor** dem Fenster |
+
+**Gesucht wurde nach dem Feld- und Konstantennamen, nicht nach dem Wert**, und das ist hier kein Detail: `2026-07-28` ist in diesem Portfolio auch ein gewöhnliches Datum. `swiss-environment-mcp` trägt `LSV_VERIFIED_ON = "2026-07-28"` — ein Probendatum, kein Protokollstand. Ein Scan über die Zeichenkette hätte den Server als migriert gemeldet, und die Zahl in der Zeile darüber wäre **3** statt 2 gewesen.
+
+### Zwei Server stehen unter §5e, und es stand nirgends
+
+Der `v2.0.0`-Abschnitt weiter unten führt §5e als stehenden Auslöser mit der Reichweite «**pro Server, bei seiner Migration**». Beide oben genannten sind migriert, beide am 2026-07-29 — und in dieser Datei erscheinen sie bis heute nur einmal, unter «Nicht in der Warteschlange · Audit läuft noch». Der Auslöser hat also gefeuert und wurde nie aufgeschrieben.
+
+Die Umstände machen es nicht kleiner, sondern grösser. Beide wurden am 2026-07-29 beziehungsweise 2026-07-30 zuletzt auditiert, also **nach** ihrer Migration — aber mit `skill_version: 1.0.0`, gegen einen Katalog, der die Baseline-Achse noch gar nicht kannte. §2.7 kam erst mit `v2.0.0`. Heute teilt `v3.0.0` den Katalog so:
+
+| `spec_baseline` | Checks | für einen `2026-07-28`-Server |
+|---|---:|---|
+| `2025-11-25` | 5 | messen einen Gegenstand, den sein Protokoll **nicht mehr hat** |
+| `2026-07-28` | 11 | wurden bei ihm **nie gestellt** |
+| `beide`, ausgeschrieben | 4 | protokollunabhängig |
+| Feld fehlt → Default `beide` | 100 | protokollunabhängig |
+
+Die fünf sind `SCALE-002`, `SCALE-003`, `SCALE-007`, `SDK-004` und `SEC-009` — dieselben fünf, die §2.7 namentlich als verengt führt.
+
+**Und die Zahl, die das erklärt:** **Kein einziges Audit im Portfolio führt `mcp_spec_version`.** 85 Läufe in 31 von 43 Repos, keiner mit dem Feld — weder in `profile.yaml` noch in `audit-meta.json`, `summary.json` oder `verification-results.json`. Der Grund ist die Zeit und nicht die Sorgfalt: Der jüngste Lauf im **ganzen** Portfolio datiert auf den **2026-07-30**, und die höchste aufgezeichnete `skill_version` ist **1.0.0**. Pflichtfeld ist `MCP-Spec-Version` seit `v2.0.0`. Es gibt im Portfolio also kein Audit, gegen das §5e sich überhaupt prüfen liesse — die Frage «hat der Server seit seinem letzten Audit gewechselt?» hat auf keiner Seite eine aufgezeichnete Antwort.
+
+### Was auch jetzt nicht gemessen ist
+
+Der **Notion-Tracker**. `MCP-Spec-Version` ist dort das Pflichtfeld, und was für die beiden migrierten Server darin steht, ist von hier aus nicht zu sehen. Der Code-Pin ist ein Beleg dafür, welches Protokoll ein Server spricht, und nicht dafür, was das Profil behauptet — auseinanderlaufen können sie.
+
+Ein Nebenbefund dazu, gemessen: `portfolio.json` im Portfolio-Repo führt `current_mcp_spec_baseline: "2025-11-25"` als **eine** Zahl fürs ganze Portfolio, `last_checked: "2026-07-28"` — einen Tag vor der Migration. Seine 44 Server-Einträge tragen **kein** eigenes `mcp_spec_version`, obwohl `required_report_metadata` im selben Dokument es als Pflichtangabe jedes Reports nennt.
 
 ### Herkunft der Zahlen
 
@@ -51,6 +82,13 @@ Und es ist **wirksam, nicht theoretisch**: `mcp-continuous-auditor` zeigt in bei
 | beide Katalog-Hashes | **gemessen** — `tools/audit_init.py::hash_catalog()` gegen die aus beiden Ständen ausgecheckten `checks/`-Bäume. `MANIFEST.txt` geht in beide Hashes ein und ist in beiden identisch, trägt zur Differenz also nichts bei |
 | Pin des Auditors auf `v3.0.0` | **gemessen** — `mcp-continuous-auditor` bei `9749234`, vier Verweise je README |
 | «kein Auslöser greift» | **unabhängig bestätigt** — der CHANGELOG-Eintrag zu `v3.0.0` sagt dasselbe. Die Zahlen oben sind daneben erhoben und nicht daraus abgeschrieben |
+| 43 Repos, keine Spec-Änderung seit dem 2026-08-08 | **gemessen** — alle nicht-archivierten `*-mcp`-Repos unter `malkreide` flach geklont und bis vor den 2026-08-08 vertieft, dann `git diff <letzte Revision vor dem Stichtag>..HEAD` über `src/`, `pyproject.toml`, `README.md`, gefiltert auf die Feld- und Konstantennamen. Ein Treffer, und der ist ein README-Absatz in `swiss-cultural-heritage-mcp`, der ausdrücklich festhält, dass der Server die Aushandlung **nicht** übersteuert |
+| 2 Server auf `2026-07-28` | **gemessen** — Konstanten-Scan über alle `*/src/`, jeder Treffer einzeln am Quelltext nachgelesen. Der dritte Treffer auf die Zeichenkette (`swiss-environment-mcp`, `LSV_VERIFIED_ON`) ist ein Probendatum und wurde deshalb **nicht** gezählt |
+| Migrationsdatum 2026-07-29 | **gemessen** — `git log -S'MCP_PROTOCOL_VERSION' --all` in beiden Repos, bis zum einführenden Commit zurück (`e123539`, `4ed85f6`, beide «migrate to mcp 2.x») |
+| 85 Läufe in 31 von 43 Repos, jüngster 2026-07-30 | **gemessen** — alle Verzeichnisse unter `*/audits/`, die dem Run-ID-Muster entsprechen; `skill_version` aus `audit-meta.json` |
+| kein Lauf führt `mcp_spec_version` | **gemessen** — Suche nach dem **Feldnamen** (nicht dem Wert) in `profile.yaml`, `audit-meta.json`, `summary.json`, `verification-results.json` aller 85 Läufe. Die zwei Treffer auf `MCP-Spec-Version` im Portfolio sind Fliesstext in `ARCH-012`-Findings von `bakom-mcp`, kein Profilfeld |
+| 5 / 11 / 4 / 100 Checks je Baseline | **gemessen** — Frontmatter aller 120 Checks auf `HEAD`; dieselbe Aufteilung steht schon seit `v2.0.0` |
+| `portfolio.json`-Angaben | **gemessen** — `swiss-public-data-mcp/portfolio.json`, Stand des heutigen `HEAD` |
 
 ---
 
