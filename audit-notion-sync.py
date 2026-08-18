@@ -166,29 +166,28 @@ def build_profile(props: dict[str, Any]) -> dict[str, Any]:
     data_class = prop_select(props.get("Datenklasse", {})) or "Public Open Data"
     write_access = prop_select(props.get("Schreibzugriff", {})) or "read-only"
     deployment = prop_multi_select(props.get("Deployment", {})) or ["local-stdio"]
-    # Pflichtfeld seit v2.0.0. Anders als bei `sdk_language` ist der Default
-    # hier NICHT harmlos: Er entscheidet, welche Hälfte des Katalogs läuft —
-    # fünf Checks messen einen Gegenstand, den 2026-07-28 entfernt hat,
-    # vierzehn einen, den es davor nicht gab. Ein falscher Default tauscht die
-    # geprüfte Menge aus, ohne dass irgendwo etwas rot wird.
+    # Pflichtfeld seit v2.0.0, und SKILL.md §1.1 sagt dazu ausdrücklich, es
+    # «hat bewusst keinen Default». Hier stand trotzdem einer.
     #
-    # `2025-11-25` als Vorbelegung, weil die Migrationswellen A–D erst
-    # anlaufen. Er ist bewusst der konservative: Ein
-    # Server, der in Wahrheit migriert ist, bekommt dadurch zu wenige Checks
-    # und fällt beim ersten Migrations-Finding auf. Umgekehrt wäre der Fehler
-    # still — die alten Checks bestünden am neuen Protokoll vorbei.
+    # Warum die Regel so scharf ist: Das Feld entscheidet, welche Hälfte des
+    # Katalogs läuft. An `v3.0.0` gemessen sind das fünf Checks, die einen
+    # Gegenstand prüfen, den `2026-07-28` entfernt hat — `SCALE-002`,
+    # `SCALE-003`, `SCALE-007`, `SDK-004`, `SEC-009`, alle enforced und
+    # `SEC-009` critical —, und elf, die es davor nicht gab. Eine Vorbelegung
+    # beantwortet diese Frage für jedes Profil, das sie vergessen hat.
     #
-    # Die Notion-Property «MCP-Spec-Version» ist deshalb zu pflegen, sobald ein
-    # Server eine Welle durchlaufen hat. `validate_profile.py` lehnt jede
-    # andere Schreibweise ab.
-    mcp_spec_version = prop_select(props.get("MCP-Spec-Version", {})) or "2025-11-25"
+    # Kein Wert heisst deshalb **kein Schlüssel**, nicht «der alte Stand».
+    # `baseline_applies()` trennt dafür eigens `baseline-unresolved` von
+    # `baseline-mismatch`: Nicht zu wissen, welches Protokoll ein Server
+    # spricht, ist nicht dasselbe wie zu wissen, dass ein Check nicht auf ihn
+    # passt. `cmd_pull` bricht ab, bevor ein solches Profil geschrieben wird.
+    mcp_spec_version = prop_select(props.get("MCP-Spec-Version", {}))
 
     org_kontext = prop_multi_select(props.get("Org-Kontext", {}))
 
     profile: dict[str, Any] = {
         "transport": transport,
         "sdk_language": sdk_language,
-        "mcp_spec_version": mcp_spec_version,
         "auth_model": auth_model,
         "data_class": data_class,
         "write_capable": write_access == "write-capable",
@@ -198,6 +197,12 @@ def build_profile(props: dict[str, Any]) -> dict[str, Any]:
         # `deployment != "local-stdio"` list-vs-string comparison in 9 checks.
         "is_cloud_deployed": any(d != "local-stdio" for d in deployment),
     }
+    # Nur setzen, wenn die Zelle etwas hergab. Ein fehlender Schlüssel wird von
+    # `validate_profile` als `missing` gemeldet und von `baseline_applies()` als
+    # `baseline-unresolved` — beides laut. Ein geratener Wert wäre keins von
+    # beidem.
+    if mcp_spec_version:
+        profile["mcp_spec_version"] = mcp_spec_version
     profile.update(DEFAULT_TECH_FLAGS)
     for option_name, flag_name in ORG_CONTEXT_OPTIONS.items():
         profile[flag_name] = option_name in org_kontext
@@ -349,9 +354,9 @@ def cmd_health(_args: argparse.Namespace) -> None:
     for column, why in (
         (
             "MCP-Spec-Version",
-            "every server falls back to 2025-11-25, so the fourteen\n"
-            "  2026-07-28 checks never run for any of them. Add the column\n"
-            "  as a select with options: 2025-11-25, 2026-07-28.",
+            "no row can name its protocol revision, so `pull` refuses to\n"
+            "  write and the eleven 2026-07-28-only checks never run. Add the\n"
+            "  column as a select with options: 2025-11-25, 2026-07-28.",
         ),
         (
             "SDK-Sprache",
@@ -388,6 +393,27 @@ def cmd_pull(args: argparse.Namespace) -> None:
         print(f"No servers matched filter: {filt}", file=sys.stderr)
         sys.exit(2)
 
+    # SKILL.md §1.1: Fehlt ein Pflichtfeld, wird gestoppt — nicht gewarnt und
+    # trotzdem geschrieben. Für `MCP-Spec-Version` ist der Unterschied teuer.
+    # Die Warnung dafür stand unten und war korrekt formuliert; sie kam nur zu
+    # spät. Die Datei war da schon geschrieben, sie validiert sauber, und das
+    # Audit danach läuft über die geratene Katalog-Hälfte. In einem Batch-Pull
+    # über vierzig Zeilen ist eine stderr-Zeile das, was man scrollt.
+    #
+    # `SDK-Sprache` bleibt bewusst eine Warnung: Der Default dort ist Python,
+    # und ein falsch geratenes SDK fällt beim ersten SDK-Check auf, statt die
+    # geprüfte Menge auszutauschen.
+    blind = sorted(s["name"] for s in servers if "MCP-Spec-Version" in s["_defaulted"])
+    if blind:
+        namen = "\n  ".join(blind)
+        fail(
+            f"{len(blind)} von {len(servers)} Server-Zeile(n) tragen keine "
+            f"'MCP-Spec-Version'.\n  {namen}\n"
+            "Das Feld hat bewusst keinen Default (SKILL.md §1.1): Es entscheidet, "
+            "welche Hälfte\ndes Katalogs läuft. Setze die Spalte im Tracker und "
+            "ziehe erneut.\nEs wurde nichts geschrieben."
+        )
+
     yaml_text = emit_portfolio_yaml(servers)
     out_path.write_text(yaml_text, encoding="utf-8")
 
@@ -398,7 +424,10 @@ def cmd_pull(args: argparse.Namespace) -> None:
     # A guessed value produces a file that validates and an audit that runs.
     # Naming the servers is the difference between a number someone can act on
     # and a warning they scroll past.
-    for column in ("MCP-Spec-Version", "SDK-Sprache"):
+    #
+    # Nur noch `SDK-Sprache`: `MCP-Spec-Version` kommt hier nicht mehr an, weil
+    # der Lauf oben abgebrochen ist, bevor etwas geschrieben wurde.
+    for column in ("SDK-Sprache",):
         affected = sorted(
             s["name"] for s in servers if column in s.get("_defaulted", [])
         )
@@ -410,16 +439,6 @@ def cmd_pull(args: argparse.Namespace) -> None:
             file=sys.stderr,
         )
         print(f"  {', '.join(affected)}", file=sys.stderr)
-        if column == "MCP-Spec-Version":
-            print(
-                "  Those profiles are audited against the 2025-11-25 half of "
-                "the catalogue.\n"
-                "  For a server that has already migrated, that is the wrong "
-                "half — and nothing\n"
-                "  in the run says so. Set the column in the tracker and pull "
-                "again.",
-                file=sys.stderr,
-            )
 
 
 def find_page_by_name(token: str, db_id: str, server_name: str) -> str | None:

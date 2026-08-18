@@ -9,6 +9,7 @@ is_cloud_deployed), so a small unit test guards against drift.
 
 from __future__ import annotations
 
+import argparse
 import importlib.util
 from pathlib import Path
 
@@ -142,13 +143,38 @@ class TestSpecVersionIsCarriedAndItsAbsenceIsRecorded:
         profile = sync_mod.build_profile(_props(spec_version="2026-07-28"))
         assert profile["mcp_spec_version"] == "2026-07-28"
 
-    def test_an_empty_cell_falls_back_to_the_conservative_revision(self, sync_mod):
-        # Conservative on purpose: a migrated server gets too FEW checks and
-        # trips over the first migration finding. The opposite default would
-        # run the old checks past a protocol that no longer has them, and
-        # nothing would say so.
+    def test_an_empty_cell_leaves_the_key_out(self, sync_mod):
+        # SKILL.md §1.1: das Feld «hat bewusst keinen Default». Hier stand
+        # trotzdem `2025-11-25` — begruendet als die konservative Richtung.
+        # Konservativ ist sie nur, solange niemand migriert ist; danach misst
+        # sie einen migrierten Server gegen die Haelfte, die sein Protokoll
+        # nicht mehr hat. Kein Wert heisst deshalb kein Schluessel.
         profile = sync_mod.build_profile(_props(spec_version=None))
-        assert profile["mcp_spec_version"] == "2025-11-25"
+        assert "mcp_spec_version" not in profile
+
+    def test_the_missing_key_is_loud_downstream(self, sync_mod):
+        # Die Gegenprobe zum Weglassen: Ein fehlender Schluessel darf nicht
+        # bequemer sein als ein falscher. `validate_profile` muss ihn melden.
+        from tools.validate_profile import validate_profile
+
+        report = validate_profile(sync_mod.build_profile(_props(spec_version=None)))
+        assert report["consistent"] is False
+        assert "mcp_spec_version" in report["missing"]
+
+    def test_baseline_applies_calls_it_unresolved_not_mismatched(self, sync_mod):
+        # Und die zweite Haelfte derselben Zusage: «nicht gefragt» darf nicht
+        # wie «passt nicht» aussehen — §2.6, eine Ebene hoeher.
+        from tools.eval_applicability import (
+            REASON_BASELINE_UNRESOLVED,
+            baseline_applies,
+        )
+
+        profile = sync_mod.build_profile(_props(spec_version=None))
+        applies, reason = baseline_applies(
+            "2026-07-28", profile.get("mcp_spec_version")
+        )
+        assert applies is False
+        assert reason.startswith(REASON_BASELINE_UNRESOLVED)
 
     def test_the_fallback_is_recorded_not_swallowed(self, sync_mod):
         entry = sync_mod.build_server_entry(_page(spec_version=None))
@@ -181,3 +207,62 @@ class TestSpecVersionIsCarriedAndItsAbsenceIsRecorded:
         profile = sync_mod.build_profile(_props(spec_version="2026-07-28"))
         report = validate_profile(profile)
         assert report["consistent"] is True, report
+
+
+class TestPullStopsInsteadOfGuessing:
+    """Der Abbruch muss VOR dem Schreiben liegen, sonst ist er folgenlos.
+
+    Die alte Fassung warnte — korrekt formuliert, und zu spaet: Die Datei war
+    geschrieben, sie validiert sauber, und das Audit danach lief ueber die
+    geratene Katalog-Haelfte. In einem Batch-Pull ueber vierzig Zeilen ist eine
+    stderr-Zeile das, was man scrollt. Deshalb pruefen diese Tests nicht den
+    Text der Meldung, sondern ob die Datei existiert.
+    """
+
+    @staticmethod
+    def _harness(monkeypatch, sync_mod, tmp_path, pages):
+        monkeypatch.setattr(sync_mod, "get_token", lambda: "t")
+        monkeypatch.setattr(sync_mod, "get_db_id", lambda: "db")
+        monkeypatch.setattr(sync_mod, "query_database", lambda *a, **k: pages)
+        out = tmp_path / "portfolio.yaml"
+        args = argparse.Namespace(output=str(out), force=True, all=True)
+        return out, args
+
+    def test_a_row_without_the_column_stops_the_run(
+        self, sync_mod, monkeypatch, tmp_path
+    ):
+        out, args = self._harness(
+            monkeypatch, sync_mod, tmp_path, [_page(spec_version=None)]
+        )
+        with pytest.raises(SystemExit) as exc:
+            sync_mod.cmd_pull(args)
+        assert exc.value.code == 1
+        assert not out.exists(), "portfolio.yaml wurde trotz Abbruch geschrieben"
+
+    def test_the_stop_names_the_offending_server(
+        self, sync_mod, monkeypatch, tmp_path, capsys
+    ):
+        # Eine Zahl ohne Namen zwingt zum Suchen. Der alte Code hat das richtig
+        # gemacht; die Zusage darf beim Umbau nicht verloren gehen.
+        _, args = self._harness(
+            monkeypatch,
+            sync_mod,
+            tmp_path,
+            [_page(name="lindas-mcp", spec_version=None)],
+        )
+        with pytest.raises(SystemExit):
+            sync_mod.cmd_pull(args)
+        assert "lindas-mcp" in capsys.readouterr().err
+
+    def test_a_filled_column_still_writes(self, sync_mod, monkeypatch, tmp_path):
+        # Gegenprobe: Ohne sie wuerde ein Abbruch, der IMMER feuert, alle drei
+        # Zusagen oben gruen halten und `pull` waere tot.
+        out, args = self._harness(
+            monkeypatch,
+            sync_mod,
+            tmp_path,
+            [_page(spec_version="2026-07-28")],
+        )
+        sync_mod.cmd_pull(args)
+        assert out.exists()
+        assert "mcp_spec_version: 2026-07-28" in out.read_text(encoding="utf-8")
