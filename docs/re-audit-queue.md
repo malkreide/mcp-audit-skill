@@ -1,6 +1,61 @@
 # Re-Audit-Warteschlange
 
-**Stand:** 2026-08-17 · **Letztes geprüftes Release:** `v3.0.0` (feuert nicht — der Katalog steht still) · **Jüngste offene Auslöser:** `v2.1.0`, dazu **§5e für 2 Server** (Migration 2026-07-29, releaseunabhängig) · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+**Stand:** 2026-08-17 · **Letztes geprüftes Release:** `v3.0.0` (feuert nicht — der Katalog steht still) · **Jüngste offene Auslöser:** `v2.1.0`, dazu **§5e für 39 Server** (releaseunabhängig, siehe Nachtrag) · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+
+---
+
+## §5e, Nachtrag vom 2026-08-17 — die Zahl war zwei, gemessen sind es 39
+
+Der Abschnitt darunter nennt **zwei** Server unter §5e. Diese Zahl bleibt dort stehen, und sie ist auch nicht falsch — sie zählt etwas anderes, als sie zu zählen schien. Korrigiert wird sie hier, nicht dort: Eine Zahl zurückzudatieren macht den Irrtum unsichtbar, und die Datei lebt davon, dass man ihr ansieht, was wann bekannt war.
+
+### Was gezählt wurde und was hätte gezählt werden müssen
+
+| | Zahl | Was sie misst |
+|---|---:|---|
+| `MCP_PROTOCOL_VERSION = "2026-07-28"` im Quelltext | **2** | Server, die den Protokollstand **deklarieren**, gegen den sie getestet sind — das `ARCH-012`-Artefakt |
+| `mcp>=2.0.0,<3` in `pyproject.toml` | **39** | Server, die auf dem Stand **arbeiten**, weil das SDK ihn aushandelt |
+
+Der Abschnitt darunter schrieb «Server, die heute den neuen Stand **sprechen**: 2». Gezählt waren Deklarationen. Sprechen können ihn 39 — und welcher der beiden Sätze für `MCP-Spec-Version` gilt, entscheidet §2.7: gefragt ist der Protokollstand, gegen den gemessen wird, nicht die Anzahl der Selbstauskünfte.
+
+An der installierten `mcp 2.0.0` nachgesehen: `LATEST_PROTOCOL_VERSION = 2026-07-28`, `MODERN_PROTOCOL_VERSIONS = ('2026-07-28',)`, `SUPPORTED_PROTOCOL_VERSIONS` reicht von `2024-11-05` bis `2026-07-28`.
+
+**Die drei Ausnahmen sind keine Lücke.** `seco-labor-mcp`, `swiss-efv-mcp` und `swiss-food-safety-mcp` hängen an `fastmcp` 3.x, und das zieht laut dem Kommentar in `seco-labor-mcp` selbst `mcp<2.0` (aufgelöst 1.29.0). Sie erreichen `2026-07-28` nicht; ihr `2025-11-25` ist belegt und bleibt.
+
+### Der Tracker steht jetzt darauf
+
+Am 2026-08-17 gesetzt: **39 Zeilen auf `2026-07-28`**, 3 auf `2025-11-25`. Damit trägt §5e mit seiner Reichweite «pro Server, bei seiner Migration» nicht mehr zwei Server, sondern **39** — nicht weil sich etwas bewegt hätte, sondern weil ihr Eintrag jetzt sagt, worauf sie arbeiten. Ihr letztes Audit hat gegen die andere Katalog-Hälfte gemessen.
+
+**Was sich am Prüfumfang ändert, gemessen an `v3.0.0`:**
+
+| | Checks | |
+|---|---:|---|
+| fallen weg (`2025-11-25`-only) | 5 | `SCALE-002`, `SCALE-003`, `SCALE-007`, `SDK-004`, `SEC-009` — alle `enforced`, `SEC-009` `critical` |
+| kommen dazu (`2026-07-28`-only) | 11 | `ARCH-015`–`ARCH-018`, `ARCH-020`, `ARCH-021`, `HITL-006`, `SCALE-008`, `SCALE-010`, `SEC-025`, `SEC-027` |
+
+**Kein Verdikt kippt.** Alle elf neuen sind `adoption: advisory` — null davon `enforced` —, und ein Check, der wegfällt, kann ein `pass` nicht in ein `fail` verwandeln. Das ist dieselbe Begründung wie bei den vierzehn Migrations-Checks in `v2.0.0`: Was sich ändert, ist der Inhalt künftiger Findings, nicht die Gültigkeit vergangener Verdikte. Die Server stehen unter §5e, weil gegen die falsche Hälfte gemessen wurde — nicht, weil ein Verdikt fiele.
+
+### Zwei Messfallen, beide zugeschlagen
+
+Die erste steht im Abschnitt darunter: `2026-07-28` ist hier auch ein gewöhnliches Datum, und ein Scan über die Zeichenkette hätte `swiss-environment-mcp` (`LSV_VERIFIED_ON`) mitgezählt.
+
+Die zweite kam bei dieser Erhebung dazu. Ein Parser, der den `dependencies`-Block über `^dependencies\s*=\s*\[(.*?)^\]` schnitt, meldete **36** statt 37 Servern und schob `lindas-mcp` zu den `fastmcp`-Repos. Dessen Liste steht auf **einer Zeile** (`dependencies = ["mcp>=2.0.0,<3", …]`), es gibt also kein `]` am Zeilenanfang — der Server fiel still heraus. Aufgefallen ist es nur, weil zwei Läufe verschiedene Zahlen nannten und die Differenz nachgesehen statt gemittelt wurde. Gegengeprüft mit `tomllib` und einem rohen `grep`: beide sagen 39.
+
+### Nebenbei im Tracker behoben
+
+`swiss-housing-mcp` trug vier leere Pflichtfelder — `Transport`, `Auth-Modell`, `Schreibzugriff`, `Deployment` — bei `Audit-Status: Abgeschlossen` und 21 Findings. §1.1 verlangt, dass ein Audit bei fehlendem Pflichtfeld gestoppt wird; hier lief es. Die Werte sind aus dem Repo inferiert (Weg C) und eingetragen. Kontrollabfrage danach: 42 Zeilen, **0 mit leerem Pflichtfeld**.
+
+Beim `Deployment` steht eine Entscheidung drin, die man kennen muss: Deployment-Artefakte gibt es in dem Repo keine — kein Dockerfile, keine `render.yaml`, kein `Procfile`. `Render` und `Railway` stehen nur in der README. Eingetragen sind sie trotzdem, weil `is_cloud_deployed` daraus abgeleitet wird und neun Cloud-Checks daran hängen: `local-stdio` allein hätte sie still übersprungen, bei einem Server, der HTTP binden kann.
+
+### Herkunft der Zahlen
+
+| Zahl | Herkunft |
+|---|---|
+| 39 Server auf `mcp>=2.0.0,<3` | **gemessen** — `pyproject.toml` aller 43 Repos mit `tomllib` geparst, `project.dependencies` gefiltert. Gegenprobe mit einem rohen `grep` über dieselbe Menge: ebenfalls 39 |
+| 3 Server auf der 1.x-Linie | **gemessen** — dieselben Dateien, `fastmcp` statt `mcp` in den Dependencies; der Zusammenhang zu `mcp<2.0` steht im Kommentar von `seco-labor-mcp` |
+| SDK-Konstanten | **gemessen** — an der installierten `mcp 2.0.0` ausgelesen, nicht aus der Dokumentation zitiert |
+| 5 / 11 Checks je Baseline | **gemessen** — Frontmatter aller 120 Checks auf `HEAD` |
+| 0 der 11 sind `enforced` | **gemessen** — `adoption` derselben elf Checks; die Zahl entscheidet, ob dieser Eintrag Verdikte kippt, und wurde vor dem Tracker-Eingriff erhoben |
+| 39 / 3 im Tracker | **gemessen** — Abfrage gegen die Datenbank nach dem Schreiben, nicht die Absicht davor |
 
 ---
 

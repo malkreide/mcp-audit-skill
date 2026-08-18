@@ -6,6 +6,67 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben — `MCP-Spec-Version` hatte einen Default, den §1.1 ausschliesst
+
+SKILL.md §1.1 sagt, das Feld «hat bewusst keinen Default». In
+`audit-notion-sync.py` stand trotzdem `prop_select(…) or "2025-11-25"`.
+
+**Der Fallback war nicht still** — das gehört zur Sache dazu. `pull` schrieb
+danach eine Warnung auf stderr, nannte jede betroffene Zeile beim Namen und
+erklärte in drei Zeilen, dass die geschriebene `portfolio.yaml` gegen die
+falsche Katalog-Hälfte gemessen wird. `cmd_health` warnte zusätzlich, wenn die
+Spalte im Schema fehlte, und `_defaulted` hielt den Rückfall pro Zeile fest.
+Wer die Warnung las, wusste Bescheid.
+
+Falsch war der **Zeitpunkt**: Die Datei war da schon geschrieben. Sie
+validiert sauber, das Audit danach läuft, und in einem Batch-Pull über vierzig
+Zeilen ist eine stderr-Zeile das, was man scrollt. §1.1 verlangt nicht eine
+Warnung, sondern einen Stopp.
+
+Jetzt gilt: leere Zelle → **kein Schlüssel** im Profil, und `cmd_pull` bricht
+ab, **bevor** etwas geschrieben wird, mit denselben Namen in der Meldung. Ein
+fehlender Schlüssel ist dabei nicht die bequemere Variante: `validate_profile`
+meldet ihn als `missing`, und `baseline_applies()` gibt `baseline-unresolved`
+statt `baseline-mismatch` zurück — «nicht gefragt» sieht nicht aus wie «passt
+nicht», §2.6 eine Ebene höher.
+
+`SDK-Sprache` bleibt bewusst eine Warnung: Der Default dort ist Python, und ein
+falsch geratenes SDK fällt beim ersten SDK-Check auf, statt die geprüfte Menge
+auszutauschen.
+
+**Gegenprobe, beide Richtungen gefahren.** Abbruch entfernt → die zwei
+Stopp-Zusagen fallen. Default wieder eingesetzt → die drei Zusagen über den
+fehlenden Schlüssel fallen. Dazu `test_a_filled_column_still_writes`, damit ein
+Abbruch, der *immer* feuert, nicht alles grün hält.
+
+**Und eine Zahl korrigiert:** `cmd_health` sagte, ohne die Spalte liefen «die
+vierzehn 2026-07-28-Checks» für niemanden. Es sind **elf** — die vier `beide`
+laufen protokollunabhängig ohnehin.
+
+### Hinzugefügt — §5e trägt 39 Server, nicht zwei
+
+Nachtrag in `docs/re-audit-queue.md`. Der `v3.0.0`-Abschnitt zählte «Server,
+die den neuen Stand sprechen: 2» — gezählt waren **Deklarationen**
+(`MCP_PROTOCOL_VERSION` im Quelltext). Gemessen über alle 43 Repos fahren
+**39 von 42** `mcp>=2.0.0,<3` und arbeiten damit auf `2026-07-28`; die drei
+übrigen hängen über `fastmcp` 3.x an `mcp<2.0` und erreichen ihn nicht.
+
+Der Tracker steht seit dem 2026-08-17 darauf. Damit trägt §5e mit seiner
+Reichweite «pro Server, bei seiner Migration» 39 Server. Fünf `enforced`-Checks
+fallen bei ihnen weg, elf `advisory` kommen dazu — **kein Verdikt kippt**, null
+der elf sind `enforced`.
+
+Die alte Zahl bleibt an ihrer Stelle stehen und wird im Nachtrag korrigiert.
+Eine Zahl zurückzudatieren macht den Irrtum unsichtbar, und die Datei lebt
+davon, dass man ihr ansieht, was wann bekannt war.
+
+**Zweite Messfalle dokumentiert.** Ein Parser, der `dependencies` über
+`^dependencies\s*=\s*\[(.*?)^\]` schnitt, verschluckte `lindas-mcp` still:
+dessen Liste steht auf einer Zeile, es gibt kein `]` am Zeilenanfang. Aufgefallen
+nur, weil zwei Läufe 36 und 37 sagten und die Differenz nachgesehen statt
+gemittelt wurde.
+
+
 ### Hinzugefügt — §5e ist jetzt gemessen, und zwei Server stehen darunter
 
 Der `v3.0.0`-Abschnitt der Warteschlange trug bis eben einen Absatz «nicht
