@@ -6,6 +6,50 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Hinzugefügt — die §5e-Warteschlange hat jetzt eine Reihenfolge
+
+Der Nachtrag vom 2026-08-17 stellte fest, **dass** 39 Server unter §5e stehen,
+und sagte nichts darüber, in welcher Reihenfolge. Wie bei `v2.0.0` entscheidet
+damit nicht das *Ob*, sondern das *Wann* — §5 Punkt 4 verlangt ausdrücklich kein
+automatisches Reaudit.
+
+Fünf Stufen, sortiert nach gestapelten Auslösern: **4** Server tragen zusätzlich
+`SEC-003` (`Auth-Modell: API-Key`), **5** sind extern genutzt, **2** standen
+schon in `v2.0.0` unter «überholter Katalogstand», **28** tragen §5e allein,
+**3** fallen nicht darunter (`fastmcp` 3.x → `mcp<2.0`). Innerhalb einer Stufe
+nach offenen Findings, dann nach Audit-Alter.
+
+Bewusst nicht in der Sortierung: die Severity (bei allen 39 dieselbe, weil
+derselbe Auslöser greift) und der `Prio`-Wert aus dem Tracker (mischt Reife und
+Risiko für die *Erst*-Triage und beantwortet eine andere Frage).
+
+### Behoben — zwei Aussagen dieser Datei hielten der Messung nicht stand
+
+**`i14y-mcp` ist auditiert, zweimal.** Der `v2.0.0`-Abschnitt schliesst ihn mit
+«Noch nie auditiert — es gibt kein Ergebnis, das ungültig werden könnte» aus der
+Warteschlange aus. Im Repo liegen zwei Läufe vom 2026-07-23 und 2026-07-24, der
+zweite mit `production_ready: true` und 36 pass / 0 fail / 5 partial. Beide
+datieren **vor** dem 2026-08-04 — der Satz war nicht veraltet, sondern schon beim
+Schreiben falsch. Er stammte aus dem Tracker (`Triagiert`, Findings leer), und
+der war nicht gegen das Repo gehalten. Er steht jetzt in Stufe 4.
+
+**`seco-labor-mcp` hat gar keins.** Sein `audits/`-Verzeichnis enthält genau eine
+Datei: eine README mit dem Satz, dass ein Audit abgeschlossen sei und Reports
+hier abgelegt werden könnten. Tracker (`Abgeschlossen`, 0 Findings) und
+`portfolio.json` (`audit: published`) behaupten dasselbe. Kein §5-Auslöser — es
+gibt kein Ergebnis, das ungültig werden könnte —, sondern eine Lücke davor.
+
+### Und die Gegenprobe, die den Abschnitt gerettet hat
+
+Ein erster Lauf über die Audit-Verzeichnisse suchte nur `audits/`-Unterordner im
+Run-ID-Format und meldete **zwölf** Server als «nie auditiert». Alle zwölf haben
+Evidenz: Es gibt drei Verzeichnisnamen (`audits/` 40×, `docs/audit/` 2×,
+`audit/` 1×) und drei Layouts (`<datum>-<name>/`, Run-IDs, flache `.md`).
+Aufgefallen ist es, weil `portfolio.json` die Pfade selbst führt und die Zahl
+dagegen nicht stimmte. Die Verzeichnisse kommen seither aus dem Index statt aus
+einer Annahme.
+
+
 ### Behoben — `MCP-Spec-Version` hatte einen Default, den §1.1 ausschliesst
 
 SKILL.md §1.1 sagt, das Feld «hat bewusst keinen Default». In

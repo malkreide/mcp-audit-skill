@@ -1,6 +1,116 @@
 # Re-Audit-Warteschlange
 
-**Stand:** 2026-08-17 · **Letztes geprüftes Release:** `v3.0.0` (feuert nicht — der Katalog steht still) · **Jüngste offene Auslöser:** `v2.1.0`, dazu **§5e für 39 Server** (releaseunabhängig, siehe Nachtrag) · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+**Stand:** 2026-08-19 · **Letztes geprüftes Release:** `v3.0.0` (feuert nicht — der Katalog steht still) · **Jüngste offene Auslöser:** `v2.1.0`, dazu **§5e für 39 Server** (releaseunabhängig, siehe Nachtrag) · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+
+---
+
+## Reihenfolge zu §5e — 39 Server in fünf Stufen (2026-08-19)
+
+Der Nachtrag darunter stellt fest, **dass** 39 Server unter §5e stehen. Er sagt nichts darüber, in welcher Reihenfolge. Wie schon bei `v2.0.0` entscheidet damit nicht das *Ob*, sondern das *Wann*: §5 Punkt 4 verlangt ausdrücklich **kein** automatisches Reaudit, sondern «bei nächstem Refactoring oder geplantem Re-Audit».
+
+Sortiert ist nach **gestapelten Auslösern**, innerhalb einer Stufe nach offenen Findings, dann nach Audit-Alter. Alter gerechnet auf den 2026-08-19.
+
+Zwei Dinge stehen ausdrücklich **nicht** in der Sortierung. Severity: Sie ist bei allen 39 dieselbe, weil derselbe Auslöser greift. Und der `Prio`-Wert aus dem Tracker: Er mischt Reife und Risiko für die *Erst*-Triage und beantwortet eine andere Frage als «wessen bestehendes Verdikt trägt am wenigsten».
+
+### Stufe 1 — §5e **und** `SEC-003` (4)
+
+`Auth-Modell: API-Key`. Bei ihnen greift zusätzlich der weiter unten noch offene §5c-Auslöser aus `v2.0.0`: `SEC-003` kannte den `.well-known`-Discovery-Weg nach RFC 9728 nicht. Zwei Auslöser auf demselben Server, und der zweite betrifft die Auffindbarkeit des Autorisierungsservers.
+
+| Server | letztes Audit | Alter | offene Findings |
+|---|---|---:|---:|
+| `news-monitor-mcp` | 2026-05-13 | 98 d | 17 |
+| `amtsblatt-mcp` | 2026-07-30 | 20 d | 12 |
+| `register-mcp` | 2026-05-21 | 90 d | 0 |
+| `eth-library-mcp` | 2026-05-28 | 83 d | 0 |
+
+### Stufe 2 — §5e und **extern genutzt** (5)
+
+`Produktiv genutzt: ja-extern`. Nicht mehr Auslöser als Stufe 4, aber die grösste Reichweite, wenn ein Verdikt nicht trägt: Hier sitzt jemand ausserhalb des Portfolios auf dem Ergebnis.
+
+| Server | letztes Audit | Alter | offene Findings |
+|---|---|---:|---:|
+| `zurich-opendata-mcp` | 2026-05-10 | 101 d | 24 |
+| `sbb-opendata-mcp` | 2026-06-04 | 76 d | 10 |
+| `swiss-electricity-mcp` | 2026-06-03 | 77 d | 2 |
+| `swiss-courts-mcp` | 2026-05-29 | 82 d | 0 |
+| `swisstopo-mcp` | 2026-07-27 | 23 d | 0 |
+
+### Stufe 3 — §5e und überholter Katalogstand (2)
+
+Beide stehen schon in `v2.0.0` unter «Stufe 2 — Audit gegen einen überholten Katalogstand». §5e kommt jetzt obendrauf; bei ihnen ist es der dritte Auslöser.
+
+| Server | letztes Audit | Alter | offene Findings |
+|---|---|---:|---:|
+| `swiss-housing-mcp` | 2026-07-26 | 24 d | 21 |
+| `lindas-mcp` | 2026-07-26 | 24 d | 11 |
+
+### Stufe 4 — §5e allein (28)
+
+| Server | letztes Audit | Alter | offene Findings |
+|---|---|---:|---:|
+| `bag-health-mcp` | 2026-05-31 | 80 d | 40 |
+| `swiss-cultural-heritage-mcp` | 2026-06-02 | 78 d | 21 |
+| `hn-tech-signal-mcp` | 2026-05-12 | 99 d | 11 |
+| `srgssr-mcp` | 2026-05-05 | 106 d | 9 |
+| `swiss-holidays-mcp` | 2026-07-24 | 26 d | 8 |
+| `swiss-democracy-mcp` | 2026-06-02 | 78 d | 7 |
+| `swiss-environment-mcp` | 2026-07-25 | 25 d | 6 |
+| `swiss-procurement-mcp` | 2026-07-30 | 20 d | 6 |
+| `swiss-snb-mcp` | 2026-05-12 | 99 d | 4 |
+| `swiss-road-mobility-mcp` | 2026-06-03 | 77 d | 4 |
+| `openlex-mcp` | 2026-05-29 | 82 d | 2 |
+| `fedlex-mcp` | 2026-06-03 | 77 d | 2 |
+| `wsl-envidat-mcp` | 2026-05-28 | 83 d | 1 |
+| `swiss-energy-mcp` | 2026-06-03 | 77 d | 1 |
+| `swiss-transport-mcp` | 2026-06-03 | 77 d | 1 |
+| `bakom-mcp` | 2026-05-09 | 102 d | 0 |
+| `lobbywatch-mcp` | 2026-05-09 | 102 d | 0 |
+| `meteoswiss-mcp` | 2026-05-20 | 91 d | 0 |
+| `swiss-statistics-mcp` | 2026-05-20 | 91 d | 0 |
+| `global-education-mcp` | 2026-05-21 | 90 d | 0 |
+| `swiss-culture-mcp` | 2026-05-27 | 84 d | 0 |
+| `parlament-mcp` | 2026-05-30 | 81 d | 0 |
+| `zh-education-mcp` | 2026-05-30 | 81 d | 0 |
+| `swiss-ip-mcp` | 2026-06-03 | 77 d | 0 |
+| `swiss-academic-libraries-mcp` | 2026-07-20 | 30 d | 0 |
+| `termdat-mcp` | 2026-07-20 | 30 d | 0 |
+| `i14y-mcp` | 2026-07-24 | 26 d | — * |
+| `bag-epl-mcp` | 2026-07-26 | 24 d | 0 |
+
+\* `i14y-mcp` führt der Tracker als `Triagiert` mit leeren Findings — siehe die Korrektur unten.
+
+### Stufe 5 — kein §5e (3)
+
+`seco-labor-mcp`, `swiss-efv-mcp`, `swiss-food-safety-mcp` hängen über `fastmcp` 3.x an `mcp<2.0` und erreichen `2026-07-28` nicht. §5e greift bei ihnen nicht. Der §5c-Auslöser `OBS-001` aus `v2.0.0` gilt trotzdem — der hat `applies_when: always` und betrifft alle 42.
+
+---
+
+## Zwei Korrekturen an dieser Datei, aus derselben Erhebung
+
+### `i14y-mcp` ist auditiert, und zwar zweimal
+
+Der `v2.0.0`-Abschnitt führt ihn unter «Nicht in der Warteschlange» mit der Begründung «Noch nie auditiert — es gibt kein Ergebnis, das ungültig werden könnte». Im Repo liegen zwei Läufe: `2026-07-23T151450-Z-i14y-mcp` und `2026-07-24T091742-Z-i14y-mcp`, beide mit `skill_version: 1.0.0`, der zweite mit **`production_ready: true`** und 36 pass / 0 fail / 5 partial.
+
+Beide datieren **vor** dem 2026-08-04. Der Satz war also nicht veraltet, sondern schon beim Schreiben falsch. Der Tracker führt ihn bis heute als `Triagiert` mit leerem Findings-Feld; das ist die Quelle, aus der die Aussage stammt, und sie war nicht gegen das Repo gehalten.
+
+Er steht deshalb oben in Stufe 4 und nicht mehr aussen vor. Sein Verdikt ist genau die Sorte, die §5e trifft: ein `production_ready: true`, gemessen gegen die Katalog-Hälfte, die sein Protokoll nicht mehr beschreibt.
+
+### `seco-labor-mcp` hat gar kein Audit
+
+Der einzige Server ohne ermittelbares Audit-Datum, und der Grund ist kein Namensschema: Sein `audits/`-Verzeichnis enthält genau **eine** Datei, eine `README.md` mit dem Satz «At least one MCP server audit has been completed. Detailed audit reports, metadata, and remediation notes can be added here as Markdown files.»
+
+Drei Stellen behaupten ein Audit — der Tracker (`Abgeschlossen`, 0 Findings), `portfolio.json` (`audit: published`) und diese README —, und die Evidenz dazu ist ein Satz, der sagt, dass Evidenz hinzugefügt werden *könnte*. Das ist kein §5-Auslöser: Es gibt kein Ergebnis, das ungültig werden könnte. Fällig wäre ein **Erst**-Audit, und bis dahin ist `Abgeschlossen` eine Behauptung ohne Beleg.
+
+### Herkunft der Zahlen
+
+| Zahl | Herkunft |
+|---|---|
+| letztes Audit-Datum je Server | **gemessen** — über alle 42 Repos, Datum aus Verzeichnis- und Dateinamen im jeweiligen Audit-Verzeichnis, ersatzweise aus dem Kopf des Reports |
+| das Audit-Verzeichnis selbst | **gemessen** — aus `audit_evidence` in `portfolio.json`, nicht angenommen. Es gibt drei Namen (`audits/` 40×, `docs/audit/` 2×, `audit/` 1×) und drei Layouts (`<datum>-<name>/`, Run-ID-Verzeichnisse, flache `.md`-Dateien) |
+| **Gegenprobe dazu** | Ein erster Lauf suchte nur `audits/`-Unterverzeichnisse im Run-ID-Format und meldete **zwölf** Server als «nie auditiert». Alle zwölf haben Evidenz. Ein zu enges Muster findet nichts und sieht aus wie ein sauberes Ergebnis — dieselbe Klasse wie die Datumsfalle im Nachtrag darunter, und der Grund, warum die Verzeichnisse aus dem Index kommen statt aus einer Annahme |
+| Auth-Modell, Nutzung, Findings | **gemessen** — Abfrage gegen den Audit-Tracker am 2026-08-19 |
+| 39 / 3 auf den beiden Baselines | **gemessen** — siehe «Herkunft der Zahlen» im Nachtrag darunter |
+| `i14y-mcp`, `seco-labor-mcp` | **gemessen** — `summary.json` beider Läufe bzw. der vollständige Inhalt des `audits/`-Verzeichnisses |
 
 ---
 
