@@ -6,6 +6,36 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Behoben — der `seco-labor-mcp`-Absatz war schärfer als die Lage
+
+Der Abschnitt vom 2026-08-19 schrieb, drei Stellen behaupteten ein Audit und die
+Evidenz dazu sei ein Satz, der sagt, dass Evidenz hinzugefügt werden *könnte* —
+mit dem Schluss, fällig sei ein **Erst**-Audit.
+
+Der Beleg dagegen lag im Tracker, in einem Feld, das die Erhebung nicht
+abgefragt hatte. `Notizen` führt den Lauf aus: «Audit-Zyklus mit
+mcp-audit-skill abgeschlossen (2026-05-26). 13 Findings adressiert: 2 HIGH …
+4 MEDIUM … Geliefert über 6 PRs … Tests 34 → 69, alle CI-Runs grün, 0 Reverts.
+Release v0.3.0 auf PyPI.» Datum, Findings nach Severity, PR-Nummern,
+Testzahlen. `Abgeschlossen` mit 0 offenen Findings ist damit belegt und nicht
+behauptet.
+
+Die Lücke ist eine andere: Der Report wurde nie ins Repo gestellt, während
+`portfolio.json` den Server als `audit: published` führt und im selben Dokument
+`published_evidence_recommended: true` setzt. Ein Veröffentlichungsdefizit, kein
+fehlendes Audit — und nicht durch eine Statusänderung zu beheben.
+
+**Warum der Fehler möglich war**, und deshalb steht es in der «Herkunft der
+Zahlen»: Die Erhebung fragte den Tracker nur nach den Feldern, die in die
+Sortierung eingehen — `Auth-Modell`, `Findings`, `Produktiv genutzt`. `Notizen`
+war nicht in der Abfrage, und ein Feld, das man nicht abfragt, widerspricht auch
+nicht. Dieselbe Form wie die Verzeichnisfalle im selben Abschnitt: Die Erhebung
+fand nichts, weil sie an der Stelle nicht gesucht hat.
+
+Der alte Wortlaut ist im Absatz benannt, statt ersetzt zu werden — aus demselben
+Grund wie bei der «2 Server»-Zahl in `v3.0.0`.
+
+
 ### Hinzugefügt — die §5e-Warteschlange hat jetzt eine Reihenfolge
 
 Der Nachtrag vom 2026-08-17 stellte fest, **dass** 39 Server unter §5e stehen,

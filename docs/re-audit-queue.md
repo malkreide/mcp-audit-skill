@@ -95,11 +95,21 @@ Beide datieren **vor** dem 2026-08-04. Der Satz war also nicht veraltet, sondern
 
 Er steht deshalb oben in Stufe 4 und nicht mehr aussen vor. Sein Verdikt ist genau die Sorte, die §5e trifft: ein `production_ready: true`, gemessen gegen die Katalog-Hälfte, die sein Protokoll nicht mehr beschreibt.
 
-### `seco-labor-mcp` hat gar kein Audit
+### `seco-labor-mcp` — der Audit fand statt, veröffentlicht wurde er nie
 
 Der einzige Server ohne ermittelbares Audit-Datum, und der Grund ist kein Namensschema: Sein `audits/`-Verzeichnis enthält genau **eine** Datei, eine `README.md` mit dem Satz «At least one MCP server audit has been completed. Detailed audit reports, metadata, and remediation notes can be added here as Markdown files.»
 
-Drei Stellen behaupten ein Audit — der Tracker (`Abgeschlossen`, 0 Findings), `portfolio.json` (`audit: published`) und diese README —, und die Evidenz dazu ist ein Satz, der sagt, dass Evidenz hinzugefügt werden *könnte*. Das ist kein §5-Auslöser: Es gibt kein Ergebnis, das ungültig werden könnte. Fällig wäre ein **Erst**-Audit, und bis dahin ist `Abgeschlossen` eine Behauptung ohne Beleg.
+**Korrigiert am 2026-08-19.** Hier stand zuvor, drei Stellen behaupteten ein Audit und die Evidenz dazu sei ein Satz, der sagt, dass Evidenz hinzugefügt werden *könnte* — mit dem Schluss, fällig sei ein Erst-Audit. Das war voreilig, und der Beleg dagegen lag im Tracker, in einem Feld, das ich beim Schreiben nicht gelesen hatte. Das `Notizen`-Feld führt den Lauf aus:
+
+> «Audit-Zyklus mit mcp-audit-skill abgeschlossen (2026-05-26). 13 Findings adressiert: 2 HIGH (SDK-001 Lifespan/OBS-002 Masking, SEC-016 Loopback-Default), 4 MEDIUM (Datenintegrität ×2, SEC-004 SSRF, OBS-001 Error-Split), 3 LOW … und 4 Re-Audit-LOW … Geliefert über 6 PRs (#1–#7 …). Tests 34 → 69, alle CI-Runs grün, 0 Reverts. SSE bindet jetzt auf 127.0.0.1, Live-CSV-Parsing in 3 Tools mit Snapshot-Fallback, SSRF-Guard mit IP-Validierung + `follow_redirects=False`. Release v0.3.0 auf PyPI.»
+
+Datum, Findings nach Severity, PR-Nummern, Testzahlen. `Abgeschlossen` mit 0 offenen Findings ist damit **belegt** und nicht behauptet — 13 wurden gefunden und geschlossen. Ein Erst-Audit ist nicht fällig.
+
+**Die Lücke ist eine andere, und sie liegt nicht im Tracker.** Der Report aus dem Mai wurde nie ins Repo gestellt. `portfolio.json` führt den Server als `audit: published`, und dasselbe Dokument setzt `published_evidence_recommended: true` — die publizierte Evidenz fehlt trotzdem. Das ist ein Veröffentlichungsdefizit, kein fehlendes Audit, und es lässt sich nicht durch eine Statusänderung beheben, sondern nur dadurch, dass der Report nachgereicht wird.
+
+Kein §5-Auslöser bleibt es so oder so: Ein Ergebnis, das ungültig werden könnte, gibt es hier nicht — nicht weil keins existiert, sondern weil `seco-labor-mcp` über `fastmcp` 3.x an `mcp<2.0` hängt und §5e ihn nicht erreicht (Stufe 5).
+
+**Warum der Fehler möglich war:** Ich habe die Repos gemessen und den Tracker nur nach den Feldern gefragt, die in die Sortierung eingehen — `Auth-Modell`, `Findings`, `Produktiv genutzt`. `Notizen` war nicht in der Abfrage, und ein Feld, das man nicht abfragt, widerspricht auch nicht. Dieselbe Form wie die Verzeichnisfalle eine Ebene tiefer: Die Erhebung fand nichts, weil sie an der Stelle nicht gesucht hat.
 
 ### Herkunft der Zahlen
 
@@ -108,9 +118,10 @@ Drei Stellen behaupten ein Audit — der Tracker (`Abgeschlossen`, 0 Findings), 
 | letztes Audit-Datum je Server | **gemessen** — über alle 42 Repos, Datum aus Verzeichnis- und Dateinamen im jeweiligen Audit-Verzeichnis, ersatzweise aus dem Kopf des Reports |
 | das Audit-Verzeichnis selbst | **gemessen** — aus `audit_evidence` in `portfolio.json`, nicht angenommen. Es gibt drei Namen (`audits/` 40×, `docs/audit/` 2×, `audit/` 1×) und drei Layouts (`<datum>-<name>/`, Run-ID-Verzeichnisse, flache `.md`-Dateien) |
 | **Gegenprobe dazu** | Ein erster Lauf suchte nur `audits/`-Unterverzeichnisse im Run-ID-Format und meldete **zwölf** Server als «nie auditiert». Alle zwölf haben Evidenz. Ein zu enges Muster findet nichts und sieht aus wie ein sauberes Ergebnis — dieselbe Klasse wie die Datumsfalle im Nachtrag darunter, und der Grund, warum die Verzeichnisse aus dem Index kommen statt aus einer Annahme |
-| Auth-Modell, Nutzung, Findings | **gemessen** — Abfrage gegen den Audit-Tracker am 2026-08-19 |
+| Auth-Modell, Nutzung, Findings | **gemessen** — Abfrage gegen den Audit-Tracker am 2026-08-19. Abgefragt wurden nur die Felder, die in die Sortierung eingehen; `Notizen` war **nicht** dabei, und genau dort stand der Beleg, der den `seco-labor-mcp`-Absatz zuerst falsch machte |
 | 39 / 3 auf den beiden Baselines | **gemessen** — siehe «Herkunft der Zahlen» im Nachtrag darunter |
-| `i14y-mcp`, `seco-labor-mcp` | **gemessen** — `summary.json` beider Läufe bzw. der vollständige Inhalt des `audits/`-Verzeichnisses |
+| `i14y-mcp` | **gemessen** — `summary.json` beider Läufe: 44 Checks, 36/0/5/3, `production_ready: true`, fünf Findings mit Severity |
+| `seco-labor-mcp` | **gemessen, in zwei Schritten** — erst der vollständige Inhalt des `audits/`-Verzeichnisses (eine README), dann das `Notizen`-Feld des Trackers, das den Lauf vom 2026-05-26 mit Findings, PR-Nummern und Testzahlen ausführt. Der erste Schritt allein trug den Schluss nicht, den er zuerst getragen hat |
 
 ---
 
