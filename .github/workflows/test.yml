@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pyyaml ruff==0.16.1
+          pip install pytest pyyaml ruff==0.16.3
           pip install -r requirements-reference.txt
 
       - name: Run pytest (UTF-8 forced)

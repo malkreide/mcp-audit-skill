@@ -22,7 +22,7 @@ jobs:
       # ACHTUNG: Diese Version und die `rev` in .pre-commit-config.yaml muessen
       # uebereinstimmen. Check 1 im Schritt darunter prueft das, Check 2 haelt
       # den Pin zusaetzlich gegen die ruff, die gleich wirklich laeuft.
-      - run: pip install ruff==0.16.1
+      - run: pip install ruff==0.16.3
 
       # Die Laufzeit-Abhaengigkeiten der Vorlagen unter
       # `skills/mcp-data-source-probe/reference/`. `probe/3` importiert sie
