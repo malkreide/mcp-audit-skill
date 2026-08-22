@@ -94,10 +94,15 @@ def tree(tmp_path: pathlib.Path) -> pathlib.Path:
 
 def test_pin_sync_wird_rot_wenn_die_pins_auseinanderlaufen(tree):
     p = tree / ".pre-commit-config.yaml"
-    p.write_text(
-        p.read_text(encoding="utf-8").replace("rev: v0.16.1", "rev: v0.15.8"),
-        encoding="utf-8",
-    )
+    # Die Version NICHT woertlich nennen: der Baum traegt die echte Datei, und
+    # sobald der Pin steigt, trifft ein festes Literal nichts mehr. Die
+    # Mutation wird dann still zum No-op, der Baum bleibt gesund, und der Test
+    # faellt mit «DID NOT RAISE» — aus dem falschen Grund. Genau so ist er beim
+    # Anheben auf 0.16.3 gefallen.
+    alt = p.read_text(encoding="utf-8")
+    kaputt = re.sub(r"rev: v\d+\.\d+\.\d+", "rev: v0.15.8", alt)
+    assert kaputt != alt, "die Mutation griff nicht — der Baum ist gar nicht kaputt"
+    p.write_text(kaputt, encoding="utf-8")
     with pytest.raises(CheckFailed) as befund:
         CHECKS_BY_NAME["ruff_pin_sync"].run(tree)
     assert "0.15.8" in str(befund.value)
@@ -105,9 +110,12 @@ def test_pin_sync_wird_rot_wenn_die_pins_auseinanderlaufen(tree):
 
 def test_ANKER_pin_sync_ohne_pin_ist_ein_befund(tree):
     p = tree / ".github/workflows/lint.yml"
-    p.write_text(
-        p.read_text(encoding="utf-8").replace("ruff==0.16.1", "ruff"), encoding="utf-8"
-    )
+    # Gleiche Begruendung wie oben: den Pin ueber sein Muster entfernen, nicht
+    # ueber eine Version, die morgen eine andere ist.
+    alt = p.read_text(encoding="utf-8")
+    kaputt = re.sub(r"ruff==\d+\.\d+\.\d+", "ruff", alt)
+    assert kaputt != alt, "die Mutation griff nicht — der Pin steht noch da"
+    p.write_text(kaputt, encoding="utf-8")
     with pytest.raises(CheckFailed) as befund:
         CHECKS_BY_NAME["ruff_pin_sync"].run(tree)
     # Kein Pin heisst «nicht verglichen», nicht «bestanden».
