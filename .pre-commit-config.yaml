@@ -8,9 +8,10 @@
 # Einmalig pro Clone aktivieren:
 #     pip install pre-commit && pre-commit install
 #
-# ACHTUNG: `rev` unten und `pip install ruff==…` in lint.yml muessen dieselbe
-# Version nennen. Beim Anheben beide Stellen aendern — tools/check_ruff_pin.py
-# prueft es, im Hook wie in der CI.
+# ACHTUNG: `rev` unten muss die Version aus requirements-lint.txt nennen, der
+# einzigen Quelle des Pins (pre-commit kann die Datei nicht lesen). Beim
+# Anheben beide Stellen aendern — tools/check_ruff_pin.py prueft es, im Hook
+# wie in der CI.
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -24,10 +25,10 @@ repos:
       # Dritter Schritt des lint-Jobs. Reine Standardbibliothek, deshalb
       # `language: system` ohne eigene Umgebung.
       #
-      # `always_run`, weil die Abweichung aus jeder der beiden beteiligten
-      # Dateien entstehen kann und der Check billig ist.
+      # `always_run`, weil die Abweichung aus jeder der beteiligten Dateien
+      # entstehen kann und der Check billig ist.
       - id: ruff-pin-sync
-        name: Ruff-Pin-Sync (lint.yml ↔ .pre-commit-config.yaml)
+        name: Ruff-Pin-Sync (requirements-lint.txt ↔ Hook ↔ Workflows)
         entry: python3 tools/check_ruff_pin.py
         language: system
         pass_filenames: false

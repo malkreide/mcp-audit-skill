@@ -6,6 +6,38 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Geändert — der ruff-Pin hat eine Quelle: `requirements-lint.txt`
+
+Die Version stand dreimal im Repo: in `lint.yml`, in `test.yml` und in der
+`rev` des Pre-Commit-Hooks. Geprüft wurden davon zwei — Check 1 hielt `lint.yml`
+gegen den Hook. **Die Kopie in `test.yml` lief ungeprüft mit**; hätte jemand
+nur sie angehoben oder vergessen, hätte `transport/6` in der Test-Matrix mit
+einer anderen ruff gemessen als der lint-Job, und nichts hätte es gesagt.
+
+Neu steht die Zahl nur noch in `requirements-lint.txt`. Beide Workflows
+installieren mit `pip install -r requirements-lint.txt`; die `rev` bleibt, weil
+pre-commit eine eigene Umgebung baut und die Datei nicht lesen kann, und wird
+gegen die Quelle gehalten. Dieselbe Umstellung wie in `mcp-continuous-auditor`
+(#104) und die Regel aus `github-repo-skill` §8.1: die Kopien entfernen, statt
+sie zu bewachen.
+
+- **`tools/gates/toolchain.py`**: `compare()` nimmt Quelle, Hook und die
+  Workflow-Texte. Zwei neue Befunde, beide unabhängig vom Wert: `ZWEITE QUELLE`,
+  wenn ein Workflow selbst pinnt — auch mit der richtigen Zahl —, und
+  `NICHT VERDRAHTET`, wenn er nicht aus der Datei installiert. Jeder Befund wird
+  genannt, nicht nur der erste. Die Gates nehmen `pin_source` und `workflows`
+  statt `ci_workflow`.
+- **Check 1 und 2** (`mcp_audit`-Suite) lesen `requirements-lint.txt` und halten
+  `lint.yml` **und** `test.yml`.
+- **`tools/check_ruff_pin.py` / `check_ruff_version.py`**: Einstiege für Hook
+  und CLI auf dieselbe Quelle umgestellt.
+- **Vier READMEs der integrierten Skills** wiesen noch
+  `pip install ruff==0.16.1` an — eine veraltete Zahl in der Dokumentation, zwei
+  Versionen hinter dem Pin. Sie verweisen jetzt auf `-r requirements-lint.txt`.
+
+Die Version bleibt `0.16.3`. Sie anzuheben ist eine eigene, gemessene
+Entscheidung.
+
 ### Behoben — der `seco-labor-mcp`-Absatz war schärfer als die Lage
 
 Der Abschnitt vom 2026-08-19 schrieb, drei Stellen behaupteten ein Audit und die

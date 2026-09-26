@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.check_ruff_pin import workflow_pins
+from tools.check_ruff_pin import requirements_pin
 from tools.check_ruff_version import compare, parse_version
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -80,9 +80,8 @@ def test_parse_version(raw: str, erwartet: str) -> None:
 
 def test_echter_pin_ist_lesbar() -> None:
     """Der Guard darf nicht grün sein, weil er den echten Pin nicht findet."""
-    text = (REPO_ROOT / ".github/workflows/lint.yml").read_text(encoding="utf-8")
-    pins = workflow_pins(text)
-    assert pins, (
-        "lint.yml nennt kein `ruff==<version>` — dann prüft der "
-        "Ruff-Version-Guard im Ernstfall nichts."
+    text = (REPO_ROOT / "requirements-lint.txt").read_text(encoding="utf-8")
+    assert requirements_pin(text), (
+        "requirements-lint.txt nennt kein einzelnes `ruff==<version>` — dann "
+        "prüft der Ruff-Version-Guard im Ernstfall nichts."
     )

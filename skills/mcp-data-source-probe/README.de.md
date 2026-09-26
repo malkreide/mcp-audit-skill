@@ -180,7 +180,7 @@ die sie belegt.
 Vor einem Pull Request die Checks laufen lassen:
 
 ```bash
-pip install ruff==0.16.1 pytest pyyaml
+pip install -r requirements-lint.txt pytest pyyaml
 pip install -r requirements-reference.txt
 bash scripts/validate.sh
 ```

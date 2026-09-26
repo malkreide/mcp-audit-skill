@@ -1,4 +1,23 @@
-"""Der Ruff-Pin steht an drei Stellen. Sie muessen dasselbe sagen.
+"""Der Ruff-Pin hat EINE Quelle. Alles andere richtet sich nach ihr.
+
+SEIT DER UMSTELLUNG AUF `requirements-lint.txt` steht die Version nur noch
+dort. Die CI-Workflows installieren mit `pip install -r requirements-lint.txt`
+und nennen selbst keine Zahl; die `rev` des Pre-Commit-Hooks muss dieselbe
+Version nennen, weil pre-commit eine eigene Umgebung baut und die Datei nicht
+lesen kann. Vorher stand die Zahl in `lint.yml`, in `test.yml` und im Hook —
+und nur die ersten beiden der drei hielt eine Pruefung zusammen. Die Kopie in
+`test.yml` lief ungeprueft mit. Eine Zahl, die dreimal existiert, sind zwei
+Gelegenheiten zur Drift; die Kopien zu entfernen ist staerker, als sie zu
+bewachen. Dieselbe Umstellung wie in `mcp-continuous-auditor` (#104) und die
+Regel aus `github-repo-skill` §8.1.
+
+Dazu zwei neue Befunde, beide unabhaengig vom Wert: ZWEITE QUELLE, wenn ein
+Workflow ruff selbst pinnt — auch mit der richtigen Zahl, denn die Kopie ist
+der Fehler, nicht die Abweichung —, und NICHT VERDRAHTET, wenn ein Workflow
+nicht aus der Datei installiert.
+
+Der Text unten beschreibt die Zusammenfuehrung aus Phase 2; er bleibt als
+Herkunft stehen.
 
 Zusammengefuehrt aus den vier Fassungen in `mcp-audit-skill`,
 `mcp-data-source-probe-skill`, `mcp-data-fidelity-skill` und
@@ -54,14 +73,18 @@ import os
 import re
 import shutil
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 
 from tools.harness import CheckFailed
 
 DEFAULT_CI_WORKFLOW = ".github/workflows/lint.yml"
 DEFAULT_HOOKS_CONFIG = ".pre-commit-config.yaml"
+DEFAULT_PIN_SOURCE = "requirements-lint.txt"
 
 PIP_PIN = re.compile(r"\bruff\s*==\s*([0-9][^\s'\"]*)")
+# `pip install -r requirements-lint.txt`, auch `--requirement`.
+INSTALLS_FROM = re.compile(r"(?:-r|--requirement)[\s=]+\S*requirements-lint\.txt")
 RUFF_REPO_BLOCK = re.compile(
     r"^\s*-\s*repo:\s*\S*ruff-pre-commit\s*$(.*?)(?=^\s*-\s*repo:|\Z)",
     re.MULTILINE | re.DOTALL,
@@ -86,8 +109,24 @@ FEHLT_RUFF = (
 
 
 def workflow_pins(text: str) -> list[str]:
-    """Alle im Workflow gepinnten Ruff-Versionen."""
+    """Alle woertlich gepinnten Ruff-Versionen in einem Text."""
     return PIP_PIN.findall(text)
+
+
+def source_pins(text: str) -> list[str]:
+    """Jede verschiedene Ruff-Version in der Pin-Quelle, Kommentare ignoriert."""
+    zeilen = [z.split("#", 1)[0] for z in text.splitlines()]
+    return sorted(set(workflow_pins("\n".join(zeilen))))
+
+
+def requirements_pin(text: str) -> str | None:
+    """Die EINE Ruff-Version der Pin-Quelle, oder `None`.
+
+    Mehr als eine Version ist kein Pin, sondern ein Widerspruch, und kommt
+    ebenfalls als `None` zurueck; `compare()` unterscheidet die beiden Faelle.
+    """
+    pins = source_pins(text)
+    return pins[0] if len(pins) == 1 else None
 
 
 def precommit_pin(text: str) -> str | None:
@@ -118,17 +157,20 @@ def parse_version(raw: str) -> str | None:
 
 
 def compare(
-    workflow_text: str,
+    source_text: str,
     precommit_text: str,
+    workflows: Mapping[str, str] | None = None,
     *,
-    workflow_name: str = DEFAULT_CI_WORKFLOW,
+    source_name: str = DEFAULT_PIN_SOURCE,
     config_name: str = DEFAULT_HOOKS_CONFIG,
     required_hooks: tuple[str, ...] = (),
 ) -> tuple[bool, str]:
-    """Reine Vergleichsfunktion: `(stimmt_ueberein, Meldung)`.
+    """Reine Vergleichsfunktion: `(alles_stimmt, Meldung)`.
 
-    Ohne Datei- oder Netzzugriff, damit der Test nicht die eigene Annahme
-    ueber das Dateiformat abbildet, sondern das echte Verhalten prueft.
+    `workflows` bildet Namen auf Workflow-Texte ab. Ohne Datei- oder
+    Netzzugriff, damit der Test nicht die eigene Annahme ueber das Dateiformat
+    abbildet, sondern das echte Verhalten prueft. Jeder Befund wird genannt,
+    nicht nur der erste — sonst kostet jede Korrektur eine Runde.
 
     `required_hooks` ist leer per Vorgabe, und das ist Absicht: Die Menge der
     Hooks unterscheidet sich zwischen den Repos der Kette WIRKLICH, und zwar
@@ -144,30 +186,45 @@ def compare(
     erfundene — und der erste, der sie «erfuellt», braeche die Absicht des
     Repos, das sie nicht teilt. Wer die Menge zusichern will, nennt sie.
     """
-    pins = workflow_pins(workflow_text)
+    pin = requirements_pin(source_text)
     hook = precommit_pin(precommit_text)
+    befunde = []
 
-    if not pins:
-        return False, f"KEIN PIN: in {workflow_name} steht kein `ruff==<version>`."
+    if pin is None:
+        gefunden = source_pins(source_text)
+        if len(gefunden) > 1:
+            liste = ", ".join(repr(p) for p in gefunden)
+            befunde.append(f"DRIFT: {source_name} pinnt Ruff mehrfach: {liste}.")
+        else:
+            befunde.append(f"KEIN PIN: in {source_name} steht kein `ruff==<version>`.")
     if hook is None:
         missing = "fehlt das ruff-pre-commit-Repo oder dessen `rev:`."
-        return False, f"KEIN PIN: in {config_name} {missing}"
+        befunde.append(f"KEIN PIN: in {config_name} {missing}")
+    if pin is not None and hook is not None and hook != pin:
+        head = f"DRIFT: {source_name} pinnt Ruff auf {pin!r},"
+        befunde.append(f"{head} {config_name} auf {hook!r}.")
 
-    divergent = sorted({p for p in pins if p != hook})
-    if divergent:
-        others = ", ".join(repr(p) for p in divergent)
-        head = f"DRIFT: {config_name} pinnt Ruff auf {hook!r},"
-        return False, f"{head} {workflow_name} auf {others}."
+    for name, text in (workflows or {}).items():
+        literale = sorted(set(workflow_pins(text)))
+        if literale:
+            liste = ", ".join(repr(p) for p in literale)
+            rest = f"aus {source_name} installieren statt selbst pinnen."
+            befunde.append(f"ZWEITE QUELLE: {name} pinnt Ruff {liste} — {rest}")
+        if not INSTALLS_FROM.search(text):
+            rest = f"installiert nicht aus {source_name}."
+            befunde.append(f"NICHT VERDRAHTET: {name} {rest}")
 
     fehlend = sorted(set(required_hooks) - hook_ids(precommit_text))
     if fehlend:
-        return False, (
+        befunde.append(
             f"{config_name} fuehrt {fehlend} nicht mehr. Was lokal nicht "
             "laeuft, meldet der Commit gruen und erst die CI rot — dieselbe "
             "Bruchstelle wie ein abweichender Pin, eine Zeile weiter unten."
         )
 
-    return True, f"Ruff-Pin OK ({hook}; beide Stellen stimmen ueberein)."
+    if befunde:
+        return False, "\n".join(befunde)
+    return True, f"Ruff-Pin OK ({pin}; {source_name}, Hook und Workflows stimmen)."
 
 
 def compare_binary(
@@ -175,7 +232,7 @@ def compare_binary(
     raw: str,
     returncode: int,
     *,
-    workflow_name: str = DEFAULT_CI_WORKFLOW,
+    source_name: str = DEFAULT_PIN_SOURCE,
     shadowing: list[str] | None = None,
 ) -> tuple[bool, str]:
     """Haelt den Text gegen das laufende Programm — ohne PATH, ohne Prozess.
@@ -186,7 +243,7 @@ def compare_binary(
     """
     if pinned is None:
         return False, (
-            f"{workflow_name} nennt kein `ruff==<version>` — Anker weg. Ohne "
+            f"{source_name} nennt kein einzelnes `ruff==<version>` — Anker weg. Ohne "
             "ihn hat diese Pruefung nichts, wogegen sie die laufende ruff "
             "haelt, und haette genau deshalb Erfolg gemeldet."
         )
@@ -251,36 +308,38 @@ def ruffs_on_path() -> list[str]:
     return found
 
 
-def pinned_version(root: Path, *, ci_workflow: str) -> str | None:
-    """Die gepinnte Version aus dem CI-Workflow — die EINE Lesung.
+def pinned_version(root: Path, *, pin_source: str = DEFAULT_PIN_SOURCE) -> str | None:
+    """Die gepinnte Version aus der Pin-Quelle — die EINE Lesung.
 
     Geteilt zwischen beiden Gates: Hook und Binary werden gegen dieselbe
     Stelle gehalten, nicht gegen zwei Lesungen, die auseinanderlaufen koennen.
     """
-    pins = workflow_pins(_read(root, ci_workflow))
-    return pins[0] if pins else None
+    return requirements_pin(_read(root, pin_source))
 
 
 def ruff_pin_sync(
     root: Path,
     *,
-    ci_workflow: str = DEFAULT_CI_WORKFLOW,
+    pin_source: str = DEFAULT_PIN_SOURCE,
+    workflows: tuple[str, ...] = (DEFAULT_CI_WORKFLOW,),
     hooks_config: str = DEFAULT_HOOKS_CONFIG,
     required_hooks: tuple[str, ...] = (),
 ) -> str:
-    """G1 — der Pin im CI-Workflow und der im Pre-Commit-Hook sagen dasselbe."""
+    """G1 — eine Pin-Quelle; Hook und Workflows richten sich nach ihr."""
     ok, message = compare(
-        _read(root, ci_workflow),
+        _read(root, pin_source),
         _read(root, hooks_config),
-        workflow_name=ci_workflow,
+        {name: _read(root, name) for name in workflows},
+        source_name=pin_source,
         config_name=hooks_config,
         required_hooks=required_hooks,
     )
     if not ok:
         raise CheckFailed(
             f"{message}\n"
-            f"  Beide Stellen im selben Commit bumpen: `rev:` in "
-            f"{hooks_config} und `pip install ruff==…` in {ci_workflow}."
+            f"  Die Version steht nur in {pin_source}: dort und `rev:` in "
+            f"{hooks_config} im selben Commit anheben; die Workflows "
+            "installieren mit `pip install -r` und nennen keine Zahl."
         )
     return message
 
@@ -288,10 +347,10 @@ def ruff_pin_sync(
 def ruff_version_matches_pin(
     root: Path,
     *,
-    ci_workflow: str = DEFAULT_CI_WORKFLOW,
+    pin_source: str = DEFAULT_PIN_SOURCE,
 ) -> str:
     """G2 — der `ruff` auf dem PATH traegt die gepinnte Version."""
-    pinned = pinned_version(root, ci_workflow=ci_workflow)
+    pinned = pinned_version(root, pin_source=pin_source)
 
     # `shutil.which` und nicht irgendein Pfad: Genau so loesen die Ruff-Gates
     # den Namen auf, wenn sie `subprocess.run(["ruff", …])` starten. Eine
@@ -308,7 +367,7 @@ def ruff_version_matches_pin(
         pinned,
         done.stdout + done.stderr,
         done.returncode,
-        workflow_name=ci_workflow,
+        source_name=pin_source,
         shadowing=ruffs_on_path(),
     )
     if not ok:

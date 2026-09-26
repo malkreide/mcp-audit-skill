@@ -21,7 +21,7 @@ Exit-Codes:
 
   0  die laufende ruff trägt die gepinnte Version
   1  Abweichung, kein ruff auf dem PATH, oder der Pin fehlt
-  2  Aufruffehler (der Workflow ist nicht lesbar)
+  2  Aufruffehler (requirements-lint.txt ist nicht lesbar)
 
 Aufruf:
 
@@ -42,16 +42,16 @@ if str(_REPO_ROOT) not in sys.path:
 from tools.gates.toolchain import (  # noqa: E402
     VERSION_LINE,
     parse_version,
+    requirements_pin,
     ruffs_on_path,
-    workflow_pins,
 )
 from tools.gates.toolchain import compare_binary as compare  # noqa: E402
 from tools.path_utils import force_utf8_stdio  # noqa: E402
 
-LINT_WORKFLOW = Path(".github") / "workflows" / "lint.yml"
+PIN_SOURCE = Path("requirements-lint.txt")
 
 __all__ = [
-    "LINT_WORKFLOW",
+    "PIN_SOURCE",
     "VERSION_LINE",
     "compare",
     "main",
@@ -61,13 +61,12 @@ __all__ = [
 
 def main() -> int:
     force_utf8_stdio()
-    workflow = _REPO_ROOT / LINT_WORKFLOW
-    if not workflow.is_file():
-        print(f"Datei nicht lesbar: {workflow}", file=sys.stderr)
+    source = _REPO_ROOT / PIN_SOURCE
+    if not source.is_file():
+        print(f"Datei nicht lesbar: {source}", file=sys.stderr)
         return 2
 
-    pins = workflow_pins(workflow.read_text(encoding="utf-8"))
-    pinned = pins[0] if pins else None
+    pinned = requirements_pin(source.read_text(encoding="utf-8"))
 
     executable = shutil.which("ruff")
     if executable is None:

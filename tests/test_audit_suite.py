@@ -80,8 +80,10 @@ def tree(tmp_path: pathlib.Path) -> pathlib.Path:
     """
     dst = tmp_path / "repo"
     (dst / ".github" / "workflows").mkdir(parents=True)
-    shutil.copy2(REPO_ROOT / ".github/workflows/lint.yml", dst / ".github/workflows")
+    for name in ("lint.yml", "test.yml"):
+        shutil.copy2(REPO_ROOT / ".github/workflows" / name, dst / ".github/workflows")
     shutil.copy2(REPO_ROOT / ".pre-commit-config.yaml", dst)
+    shutil.copy2(REPO_ROOT / "requirements-lint.txt", dst)
     shutil.copy2(REPO_ROOT / "ruff.toml", dst)
     (dst / "beispiel.py").write_text("x = 1\n", encoding="utf-8")
     return dst
@@ -109,7 +111,7 @@ def test_pin_sync_wird_rot_wenn_die_pins_auseinanderlaufen(tree):
 
 
 def test_ANKER_pin_sync_ohne_pin_ist_ein_befund(tree):
-    p = tree / ".github/workflows/lint.yml"
+    p = tree / "requirements-lint.txt"
     # Gleiche Begruendung wie oben: den Pin ueber sein Muster entfernen, nicht
     # ueber eine Version, die morgen eine andere ist.
     alt = p.read_text(encoding="utf-8")

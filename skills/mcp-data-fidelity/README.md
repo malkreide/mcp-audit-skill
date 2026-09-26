@@ -170,7 +170,7 @@ comes only from a mock, it is not yet evidence.
 Before opening a pull request, run the checks:
 
 ```bash
-pip install ruff==0.16.1 pytest pyyaml
+pip install -r requirements-lint.txt pytest pyyaml
 bash scripts/validate.sh
 pytest
 ```
