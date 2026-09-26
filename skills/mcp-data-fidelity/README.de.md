@@ -172,7 +172,7 @@ der Beleg dafür nur aus einem Mock stammt, ist es noch kein Beleg.
 Vor einem Pull Request die Checks laufen lassen:
 
 ```bash
-pip install ruff==0.16.1 pytest pyyaml
+pip install -r requirements-lint.txt pytest pyyaml
 bash scripts/validate.sh
 pytest
 ```

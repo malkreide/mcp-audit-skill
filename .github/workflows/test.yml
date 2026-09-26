@@ -26,8 +26,10 @@ jobs:
       # eine Kopie des Arbeitsbaums, und zwei davon haengen an der Umgebung:
       #
       #   * `probe/3` importiert die Vorlagen WIRKLICH — `pydantic`, `httpx`.
-      #   * `transport/6` ruft `ruff` fuer die F821-Liste, gepinnt wie in
-      #     `lint.yml`, damit hier keine andere Version misst als dort.
+      #   * `transport/6` ruft `ruff` fuer die F821-Liste, aus derselben
+      #     requirements-lint.txt wie `lint.yml`, damit hier keine andere
+      #     Version misst als dort. Frueher stand hier eine eigene Zahl, die
+      #     keine Pruefung sah; jetzt meldet Check 1 sie als ZWEITE QUELLE.
       #
       # Beide melden ohne ihre Abhaengigkeit einen BEFUND und ueberspringen
       # nicht — «nicht gelaufen» als «bestanden» zu melden ist die eine
@@ -36,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pyyaml ruff==0.16.3
+          pip install pytest pyyaml -r requirements-lint.txt
           pip install -r requirements-reference.txt
 
       - name: Run pytest (UTF-8 forced)

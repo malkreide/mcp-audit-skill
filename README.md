@@ -469,7 +469,7 @@ pre-commit install
 
 The hooks in `.pre-commit-config.yaml` mirror the `lint` workflow, so what passes locally passes in CI. Two details worth knowing:
 
-- The hook runs Ruff at the version pinned in `.pre-commit-config.yaml`, in its own isolated environment — not whatever Ruff you happen to have installed. That pin and the `ruff==…` pin in `.github/workflows/lint.yml` must stay in sync; `tools/check_ruff_pin.py` enforces this, in the hook and in CI.
+- The hook runs Ruff at the version pinned in `.pre-commit-config.yaml`, in its own isolated environment — not whatever Ruff you happen to have installed. That pin must name the version in `requirements-lint.txt`, the single source the CI workflows install from; `tools/check_ruff_pin.py` enforces this, in the hook and in CI.
 - `ruff format` rewrites your files and then fails the commit. Stage the reformatted files and commit again; `ruff check` only reports.
 
 Run everything over the whole tree without committing:

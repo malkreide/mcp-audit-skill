@@ -12,11 +12,11 @@ Registry. Die Suite bindet sie und registriert das Ergebnis:
 
     from tools.gates import toolchain as gates
 
-    CI_WORKFLOW = ".github/workflows/lint.yml"
+    WORKFLOWS = (".github/workflows/lint.yml",)
 
     @register(1, "…", suite=SUITE)
     def ruff_pin_sync(root: Path) -> str:
-        return gates.ruff_pin_sync(root, ci_workflow=CI_WORKFLOW)
+        return gates.ruff_pin_sync(root, workflows=WORKFLOWS)
 
 Ausgeschrieben statt `functools.partial`: Der registrierte Name bleibt so
 stabil (`CHECKS_BY_NAME` in den Tests haengt daran), die Bindung ist an der

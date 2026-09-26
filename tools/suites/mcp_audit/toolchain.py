@@ -25,9 +25,13 @@ from tools.harness import register
 
 from ._suite import SUITE
 
-#: Der Pin steht hier in `lint.yml`, in den drei Schwesterrepos in `ci.yml` —
-#: der einzige Grund, warum diese Dateien je auseinanderliefen.
-CI_WORKFLOW = ".github/workflows/lint.yml"
+#: Die EINE Quelle des Pins. Frueher stand die Zahl in `lint.yml` — und
+#: ungeprueft ein zweites Mal in `test.yml`.
+PIN_SOURCE = "requirements-lint.txt"
+
+#: Die Workflows, die ruff installieren. Beide muessen aus `PIN_SOURCE` lesen
+#: und duerfen keine eigene Zahl tragen.
+WORKFLOWS = (".github/workflows/lint.yml", ".github/workflows/test.yml")
 
 #: Die Hooks, die dieses Repo lokal fahren MUSS. Ausdruecklich genannt und
 #: nicht geerbt: `mcp-transport-hardening-skill` fuehrt begruendet nur
@@ -38,22 +42,28 @@ REQUIRED_HOOKS = ("ruff-check", "ruff-format")
 
 
 @register(
-    1, "the ruff pin agrees between lint.yml and the pre-commit hook", suite=SUITE
+    1,
+    "the ruff pin has one source, and the hook and workflows follow it",
+    suite=SUITE,
 )
 def ruff_pin_sync(root: Path) -> str:
-    """Vergleicht ZWEI TEXTE — lint.yml und .pre-commit-config.yaml.
+    """Vergleicht TEXTE — requirements-lint.txt, den Hook, die Workflows.
 
-    Laufen sie auseinander, formatiert der Hook nach der einen und die CI
-    prueft nach der anderen Version: der Hook meldet gruen und die CI wird
+    Laeuft der Hook von der Quelle weg, formatiert er nach der einen und die
+    CI prueft nach der anderen Version: der Hook meldet gruen und die CI wird
     rot. Ein fehlender Pin ist ebenfalls ein Befund; dann hat der Vergleich
-    nicht stattgefunden.
+    nicht stattgefunden. Ebenso ein Workflow, der selbst pinnt oder nicht aus
+    der Datei installiert — die eine Quelle waere dann still keine mehr.
 
     Was diese Pruefung NICHT tut, ist der Grund fuer Check 2 daneben: Ob die
     ruff, die anschliessend die Gates faehrt, diese Version traegt, sagt sie
     nicht.
     """
     return gates.ruff_pin_sync(
-        root, ci_workflow=CI_WORKFLOW, required_hooks=REQUIRED_HOOKS
+        root,
+        pin_source=PIN_SOURCE,
+        workflows=WORKFLOWS,
+        required_hooks=REQUIRED_HOOKS,
     )
 
 
@@ -61,7 +71,7 @@ def ruff_pin_sync(root: Path) -> str:
 def ruff_version_matches_pin(root: Path) -> str:
     """Haelt den Text gegen das laufende Programm.
 
-    Check 1 belegt, dass lint.yml und der Hook dieselbe Zahl nennen — nicht,
+    Check 1 belegt, dass die Quelle und der Hook dieselbe Zahl nennen — nicht,
     dass die ruff, die gleich `ruff check` faehrt, diese Zahl traegt. Liegt
     eine andere weiter vorne im PATH, laufen die Gates auf einer Version, die
     niemand gepinnt hat.
@@ -72,4 +82,4 @@ def ruff_version_matches_pin(root: Path) -> str:
     Entwicklungsumgebungen, in denen eine 0.15.8 die installierte 0.16.1
     verdeckte.
     """
-    return gates.ruff_version_matches_pin(root, ci_workflow=CI_WORKFLOW)
+    return gates.ruff_version_matches_pin(root, pin_source=PIN_SOURCE)
