@@ -2,4 +2,4 @@
 # test.yml installieren mit `pip install -r`; die `rev` in
 # .pre-commit-config.yaml muss dieselbe Version nennen. tools/check_ruff_pin.py
 # haelt alles zusammen.
-ruff==0.16.3
+ruff==0.16.9
