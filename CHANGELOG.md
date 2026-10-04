@@ -6,6 +6,35 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v3.1.0] — 2026-10-04 — Was nicht abgefragt wird, widerspricht auch nicht
+
+Der Katalog ist **unverändert**: 120 Checks in zwölf Kategorien auf zwei
+Spec-Baselines. Keine Severity, keine Reichweite, kein Kriterium, keine
+Adoptionsstufe bewegt sich — kein Verdikt kippt, und §5 löst kein Re-Audit aus.
+
+Was sich bewegt hat, ist das, was dieses Repo über sich selbst und über das
+Portfolio **weiss**. Dreizehn der vierzehn Einträge unten haben dieselbe Form,
+und der Satz dafür steht im `seco-labor-mcp`-Absatz: *ein Feld, das man nicht
+abfragt, widerspricht auch nicht.*
+
+- Die Erhebung fragte den Tracker nach drei Feldern; `Notizen` war nicht
+  darunter und trug den Beleg.
+- Ein Lauf suchte Audit-Verzeichnisse nur unter `audits/` und meldete zwölf
+  Server als «nie auditiert» — es gibt drei Verzeichnisnamen und drei Layouts.
+- Ein Parser schnitt `dependencies` an einem `]` am Zeilenanfang und
+  verschluckte `lindas-mcp` still, weil dessen Liste auf einer Zeile steht.
+- Der ruff-Pin stand dreimal im Repo, geprüft waren zwei; die Kopie in
+  `test.yml` lief ungeprüft mit.
+- `MCP-Spec-Version` hatte einen Default, den SKILL.md §1.1 ausschliesst — mit
+  Warnung, aber **nach** dem Schreiben der Datei.
+- §5e stand mit «zwei Servern» da; gemessen sind es **39 von 42**.
+
+Keiner dieser Fälle war still im Sinne von «unbemerkt wegen eines Defekts».
+Jeder war still, weil an der Stelle niemand nachgefragt hat — und eine Lücke,
+die niemand abfragt, meldet sich nicht von selbst. Das ist dieselbe
+Fehlerklasse, gegen die im Katalog `FID`, `DRIFT` und `OPS-004` stehen,
+angewandt auf den Katalog selbst.
+
 ### Geändert — der ruff-Pin hat eine Quelle: `requirements-lint.txt`
 
 Die Version stand dreimal im Repo: in `lint.yml`, in `test.yml` und in der
@@ -3779,6 +3808,8 @@ v0.4.0) sind in diesem CHANGELOG dokumentiert, existieren aber nicht als
 separate Git-Tags — sie repräsentieren Iterationsstände während der
 initialen Skill-Entwicklung vor dem GitHub-Push.
 
-[Unreleased]: https://github.com/malkreide/mcp-audit-skill/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/malkreide/mcp-audit-skill/compare/v3.1.0...HEAD
+[v3.1.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v3.1.0
+[v3.0.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v3.0.0
 [v2.0.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v2.0.0
 [v0.5.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v0.5.0

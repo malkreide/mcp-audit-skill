@@ -2,7 +2,7 @@
 
 > Claude-Skill für systematische Audits von MCP-Servern gegen einen kuratierten Best-Practice-Standards-Korpus. **120 Checks**, 12 Kategorien, auf doppelter Spec-Baseline (`2025-11-25` und `2026-07-28`), mit Schweiz-Compliance-Layer für die öffentliche Verwaltung und Datentreue-Layer für Datenquellen-Server.
 
-[![Version](https://img.shields.io/badge/version-3.0.0-blue)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.1.0-blue)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Checks: 120](https://img.shields.io/badge/Checks-120-blue.svg)](./checks/)
 [![Coverage: A1–A9, B1–B12, C1–C4](https://img.shields.io/badge/Best--Practice%20Coverage-A1%E2%80%93A9%2C%20B1%E2%80%93B12%2C%20C1%E2%80%93C4-success)](./CHANGELOG.md)
@@ -435,7 +435,7 @@ In der Gegenrichtung prüft [`tools/check_quality_chain.py`](./tools/check_quali
 
 ## Status
 
-**Version:** v3.0.0 — Was die Fixture behauptet, hat niemand gemessen. CI auf Ubuntu + Windows × py3.11 + py3.13. Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
+**Version:** v3.1.0 — Was nicht abgefragt wird, widerspricht auch nicht. CI auf Ubuntu + Windows × py3.11 + py3.13. Siehe [CHANGELOG.md](./CHANGELOG.md) für die vollständige Release-History.
 
 **Vollständigkeit:**
 - ✅ Methodik (`SKILL.md`) und Templates (Finding, Audit-Report)
