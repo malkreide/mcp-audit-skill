@@ -83,7 +83,7 @@ Ist die publizierte Seite nicht erreichbar, ist das Ergebnis `todo`, nicht `pass
 
 ## Pass Criteria
 
-- [ ] `server.json → version` stimmt mit `pyproject.toml` überein
+- [ ] `server.json -> version` stimmt mit `pyproject.toml` überein
 - [ ] **Jeder** `packages[*].version` stimmt überein, nicht nur der erste
 - [ ] Ein CI-Check erzwingt das, nicht nur eine Konvention
 - [ ] Der Check läuft ohne Projekt-Installation (schlanker Lint-Job genügt)
@@ -111,15 +111,17 @@ Ist die publizierte Seite nicht erreichbar, ist das Ergebnis `todo`, nicht `pass
 `scripts/check_version_sync.py`, reine Standardbibliothek, im `lint`-Job:
 
 ```python
-found = [("server.json → version", server.get("version", ""))]
+found = [("server.json -> version", server.get("version", ""))]
 for i, pkg in enumerate(server.get("packages", [])):
-    found.append((f"server.json → packages[{i}].version", pkg.get("version", "")))
+    found.append((f"server.json -> packages[{i}].version", pkg.get("version", "")))
 
 mismatches = [(w, v) for w, v in found if v != version]
 if mismatches:
     ...
     sys.exit(1)
 ```
+
+Die Bezeichnungen tragen `->` und keinen Pfeil U+2192, weil Gate-Ausgaben in cp1252 kodierbar sein müssen: Unter Windows mit umgeleiteter Ausgabe (Pipe, pre-commit, Agent) endet ein Gate sonst an seiner eigenen Erfolgsmeldung mit `UnicodeEncodeError` und Exit 1 (`OPS-005`, siebte Ausprägung).
 
 **Einbau als Schritt in einen bestehenden Job, nicht als eigener Job.** Ein neuer Job erzeugt einen neuen Check-Namen und kann mit Branch-Rulesets kollidieren, die bestimmte Namen als erforderlich führen — im Sweep bei einem Repo real aufgetreten.
 
