@@ -38,6 +38,10 @@ from tools.path_utils import force_utf8_stdio
 force_utf8_stdio()   # idempotent, sicher mehrfach aufzurufen
 ```
 
+**Die Vorgabe gilt für die Werkzeuge dieses Skills, nicht für die Gates des Ziel-Repos.** `tools/*.py`, die Snippets aus den Checks und die eigenen Auswertungen laufen mit UTF-8. Die Skripte, die das Ziel-Repo selbst als Hook oder CI-Schritt fährt (`scripts/check_version_sync.py`, `scripts/check_ruff_pin.py` …), sind dagegen **Gegenstand** des Audits. Sie laufen so, wie das Repo sie aufruft, also ohne `PYTHONUTF8` und ohne `-X utf8`. `OPS-005` Modus 5 erzwingt dafür cp1252.
+
+Bricht ein Gate des Ziels an seiner eigenen Ausgabe ab (`UnicodeEncodeError`, Exit ≠ 0 bei bestandener Prüfung), ist das ein **Befund über das Repo**, kein Messartefakt. Falsch ist die Einordnung «UnicodeEncodeError unter cp1252, kein Befund über das Repo» mit anschliessender Wiederholung unter `-X utf8`. Der Absturz ist genau das, was der pre-commit-Hook unter Windows erlebt: Er gehört als Finding zu `OPS-005`. Der Lauf unter UTF-8 belegt nur, dass die Prüflogik stimmt, und das ist ein zweiter, getrennter Befund.
+
 ### 0.2 Pfad-Konventionen
 
 | Tool | Erwartetes Pfad-Format |
