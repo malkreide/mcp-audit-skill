@@ -6,6 +6,8 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v3.2.0] — 2026-11-21 — Grün unter der eigenen Laufzeit ist nicht grün
+
 Der Katalog bleibt bei 120 Checks. Drei Checks werden schärfer, und SKILL.md
 an zwei Stellen genauer. §5 löst kein Re-Audit aus, siehe
 [`docs/re-audit-queue.md`](docs/re-audit-queue.md).
@@ -3868,7 +3870,8 @@ v0.4.0) sind in diesem CHANGELOG dokumentiert, existieren aber nicht als
 separate Git-Tags — sie repräsentieren Iterationsstände während der
 initialen Skill-Entwicklung vor dem GitHub-Push.
 
-[Unreleased]: https://github.com/malkreide/mcp-audit-skill/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/malkreide/mcp-audit-skill/compare/v3.2.0...HEAD
+[v3.2.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v3.2.0
 [v3.1.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v3.1.0
 [v3.0.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v3.0.0
 [v2.0.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v2.0.0
