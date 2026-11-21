@@ -4,6 +4,23 @@
 
 ---
 
+## `[Unreleased]` — 2026-11-21 — `OPS-005` und `OPS-006` erweitert, `IDENT-003` ohne Pfeil
+
+### Was gefeuert hat
+
+**Nichts.** Der Abschnitt steht trotzdem hier: Eine Katalogänderung, die in dieser Datei fehlt, sähe aus wie eine, die niemand gegen §5 geprüft hat.
+
+| Änderung | §5-Prüfung | Ergebnis |
+|---|---|---|
+| `IDENT-003`: `->` statt Pfeil U+2192 in Vorlage und Pass-Kriterium | `severity: medium`. §5 greift nur bei `critical` oder `high` | **feuert nicht** |
+| `OPS-005`: siebte Ausprägung, Modus 5, neues Pass-Kriterium | Formal Fall **c)** bei einem `high`-Check, aber `adoption: advisory`: Ein Advisory-Finding blockiert nicht, also stützte sich kein `production_ready: true` darauf, dass es fehlte | **feuert nicht** |
+| `OPS-006`: fünfte Ausprägung, neues Pass-Kriterium | Dieselbe Lage: `high`, aber `advisory` | **feuert nicht** |
+| `applies_when`, `adoption`, `spec_baseline` | bei allen drei unverändert (a, b, d, e) | **feuert nicht** |
+
+**Welche Repos betroffen sind, steht hier nicht, und das ist Absicht.** Gemessen sind drei Fälle: `swiss-snb-mcp` und `swiss-cultural-heritage-mcp` (beide behoben) sowie `amtsblatt-mcp` (offen). Wie viele Server sonst ein Gate mit einem Pfeil U+2192 in der Ausgabe oder einen Gate-Rat ohne Zielumgebung führen, ist **nicht erhoben**. Die Liste folgt aus einem Sweep mit `OPS-005` Modus 5 und `OPS-006` Remediation-Schritt 6 über das Portfolio. Eine Liste, die vor dem Sweep hier stünde, wäre geschätzt und nicht gemessen. Bei einer Promotion auf `enforced` (§5d) ist genau diese Zahl zu erheben.
+
+---
+
 ## Reihenfolge zu §5e — 39 Server in fünf Stufen (2026-08-19)
 
 Der Nachtrag darunter stellt fest, **dass** 39 Server unter §5e stehen. Er sagt nichts darüber, in welcher Reihenfolge. Wie schon bei `v2.0.0` entscheidet damit nicht das *Ob*, sondern das *Wann*: §5 Punkt 4 verlangt ausdrücklich **kein** automatisches Reaudit, sondern «bei nächstem Refactoring oder geplantem Re-Audit».

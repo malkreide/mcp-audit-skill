@@ -6,6 +6,66 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+Der Katalog bleibt bei 120 Checks. Drei Checks werden schärfer, und SKILL.md
+an zwei Stellen genauer. §5 löst kein Re-Audit aus, siehe
+[`docs/re-audit-queue.md`](docs/re-audit-queue.md).
+
+### Geändert — `OPS-005`, siebte Ausprägung: der Check lief nur unter der eigenen Laufzeit
+
+Gate-Skripte, die in ihrer Ausgabe einen Pfeil U+2192 drucken, enden unter
+Windows mit Exit 1, obwohl die Prüfung bestanden hat. Das passiert, sobald die
+Ausgabe umgeleitet ist (Pipe, pre-commit, Agent). Dann schreibt Python stdout
+in cp1252, und das Zeichen löst einen `UnicodeEncodeError` aus. Im
+interaktiven Fenster fällt es nicht auf, und die Linux-CI ist grün. Gemessen
+in `swiss-snb-mcp` (#87), `swiss-cultural-heritage-mcp` (#111) und
+`amtsblatt-mcp` (`scripts/check_version_sync.py`, offen). Die zweite
+Ausprägung ist der Pfadtrenner: `relative_to()` druckt unter Windows `\`, der
+Test erwartet `/`. Die Gegenrichtung belegt `github-repo-skill` #33: Das
+Archiv war lokal 71'570 Bytes und auf dem Runner 71'299 Bytes gross, bei
+identischem Inhalt.
+
+Neu sind Modus 5 (`runtime_test`, jedes Gate einmal unter
+`PYTHONIOENCODING=cp1252`, verlangt sind kein Traceback und derselbe
+Exit-Code wie ohne), ein Pass-Kriterium, eine Common-Failure-Zeile,
+Remediation-Schritt 8 und ein Pass-Pattern als Verhaltenstest ohne
+Meldungstexte. Abgegrenzt ist zweierlei: Ein Zeichen, das Eingabedatum ist
+(Regex gegen Logs), ist kein Befund, und «im interaktiven Fenster grün» ist
+kein Pass. Das Pass-Pattern ist einmal real gelaufen, gegen eine Kopie von
+`amtsblatt-mcp`: mit dem Pfeil rot, mit `->` grün.
+
+### Geändert — `IDENT-003`: `->` statt Pfeil in Vorlage und Pass-Kriterium
+
+Die Remediation-Vorlage war die Quelle des Zeichens: Sie hat den Fehler über
+die Repos ausgerollt, die sie übernahmen. Vorlage und Pass-Kriterium
+schreiben jetzt `->`, und ein Satz begründet es: Gate-Ausgaben müssen in
+cp1252 kodierbar sein.
+
+### Geändert — `OPS-006`, fünfte Ausprägung: der Rat eines Gates nennt die Umgebung
+
+`check_ruff_pin.py` riet «Angleichen mit: `pip install -e ".[dev]"`». Ohne
+aktive Umgebung landet das im System-Python und überschreibt dort das ruff,
+gegen das andere Repos prüfen. Am 20.11.2026 wurde so aus 0.16.9 unbemerkt
+0.17.3. Neu sind die Ausprägung, ein Pass-Kriterium, eine Common-Failure-Zeile
+und Remediation-Schritt 6.
+
+### Geändert — SKILL.md 0.1: UTF-8 gilt für die Werkzeuge des Skills, nicht für die Gates des Ziels
+
+Ein Audit von `amtsblatt-mcp` gegen `OPS-005` hat den Fehler aus der siebten
+Ausprägung nicht gefunden, aus zwei Gründen. 0.1 schrieb UTF-8 für jeden
+Python-Aufruf vor, also liefen auch die Gates des Ziel-Repos im UTF-8-Modus
+durch. Und als eines trotzdem abstürzte, wurde das als «UnicodeEncodeError
+unter cp1252, kein Befund über das Repo» eingeordnet und mit `-X utf8`
+wiederholt. 0.1 grenzt jetzt ab: Die Vorgabe gilt für die Werkzeuge des
+Skills. Bricht ein Gate des Ziels an seiner eigenen Ausgabe ab, ist das ein
+Befund über das Repo und kein Messartefakt.
+
+### Behoben — SKILL.md, Katalog-Versionierung 3b nennt den Builder, der überall läuft
+
+3b nannte `bash scripts/build-skill.sh`, den bash-Wrapper, statt des Builders
+selbst. Den Builder ruft auch `release.yml` direkt auf, und er läuft ohne
+bash. 3b nennt jetzt `python tools/build_skill.py`. Der Wrapper bleibt
+bestehen, die READMEs nennen beide Wege.
+
 ## [v3.1.0] — 2026-10-04 — Was nicht abgefragt wird, widerspricht auch nicht
 
 Der Katalog ist **unverändert**: 120 Checks in zwölf Kategorien auf zwei
