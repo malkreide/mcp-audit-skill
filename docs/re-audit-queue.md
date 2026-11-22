@@ -4,6 +4,31 @@
 
 ---
 
+## `[Unreleased]` — 2026-11-22 — `OPS-005`, die Testvorlage aus Modus 5
+
+### Was gefeuert hat
+
+**Nichts.**
+
+| Änderung | §5-Prüfung | Ergebnis |
+|---|---|---|
+| Pass-Pattern: Ausnahmeliste `NICHT_GEFAHREN` mit Grund, Prüfung auf fehlende Datei | Formal Fall **c)** bei einem `high`-Check: Das alte Pattern meldete ein Gate, das es nicht gibt, als bestanden. `adoption: advisory` blockiert aber nicht, also stützte sich kein `production_ready: true` darauf | **feuert nicht** |
+| Pass-Kriterium: Ein Gate, das der Test nicht fahren kann, steht als Ausnahme mit Grund | Das Kriterium wird erfüllbar, nicht strenger | **feuert nicht** |
+| `severity`, `applies_when`, `adoption`, `spec_baseline` | unverändert (a, b, d, e) | **feuert nicht** |
+
+### Warum die Vorlage geändert ist
+
+Der Rollout-Plan im Abschnitt darunter hatte ihren zweiten Test als Hindernis genannt. Gemessen an Kopien aller 45 Repos:
+
+| | alte Vorlage | neue Vorlage |
+|---|---:|---:|
+| zweiter Test rot, obwohl alles eingeordnet wäre | 45 | 0 |
+| erster Test rot, solange der Pfeil steht | 40 | 40 |
+| erster Test rot, nachdem er ersetzt ist | 0 | 0 |
+| fehlendes Gate als bestanden gemeldet (`swiss-environment-mcp`, `check_ruff_pin.py`) | ja | nein |
+
+---
+
 ## cp1252-Sweep zu `OPS-005`, Modus 5 — in 42 von 45 Repos bricht ein Gate (2026-11-22)
 
 Der Abschnitt zu `v3.2.0` darunter liess offen, welche Repos betroffen sind. Erhoben hat es [`tools/sweeps/cp1252_sweep.py`](../tools/sweeps/cp1252_sweep.py) über 45 flache Klone. Der Sweep liefert eine Leseliste. Jeder der 236 Kandidaten ist von Hand nachgelesen, und die Einstufung unten ist die nach dem Nachlesen.
@@ -218,7 +243,7 @@ Ausgezählt:
 
 | Stufe | Repos | Was | Warum an dieser Stelle |
 |---|---|---|---|
-| 0 | dieses Repo | Vorlage aus `OPS-005` Modus 5 nachziehen | Ihr zweiter Test verlangt, dass jedes erwähnte Skript in der Liste steht. Er wäre in **45 von 45** Repos rot, meist wegen `classify_live_run.py` (40), das Argumente braucht |
+| 0 | dieses Repo | Vorlage aus `OPS-005` Modus 5 nachziehen — **erledigt am 2026-11-22**, siehe den Abschnitt darüber | Ihr zweiter Test verlangte, dass jedes erwähnte Skript in der Liste steht. Er war in **45 von 45** Repos rot, meist wegen `classify_live_run.py` (40), das Argumente braucht |
 | 1 | `amtsblatt-mcp` | Pilot: 3 Zeichenketten, Test, Gegenprobe | in `OPS-005` als offen genannt, und seine Datei steht für die grösste Familie |
 | 2 | die 22 übrigen der 23er-Familie, dazu `eth-library-mcp`, `swiss-statistics-mcp` | dieselben 3 Stellen | Der Code (ohne Docstrings) ist in den 23 identisch. Die zwei anderen weichen an den drei Stellen nicht ab |
 | 3 | `fedlex-mcp`, `hn-tech-signal-mcp`, `i14y-mcp`, `lindas-mcp`, `meteoswiss-mcp`, `swiss-academic-libraries-mcp`, `swiss-holidays-mcp`, `swiss-housing-mcp`, `swiss-procurement-mcp`, dazu `lobbywatch-mcp` | dieselben 3 Stellen, andere Zeilenform | zweite Familie. `lobbywatch-mcp` prüft die Datei in der CI bei allen vier Breiten |
@@ -226,7 +251,7 @@ Ausgezählt:
 | 5 | `discover-swiss-mcp`, `personakit-mcp`, `swiss-electricity-mcp`, `swiss-housing-mcp`, `zh-education-mcp` | `check_release_artifacts.py`, `validate_repo.py` | erst die Vorlage klären, sonst kommt das Zeichen mit der nächsten Kopie zurück |
 | — | `swiss-public-data-mcp`, `swiss-cultural-heritage-mcp`, `swiss-snb-mcp` | nichts an den Ausgabe-Strings | kein Abbruch |
 
-**Welcher Test dazukommt.** `tests/test_gates_cp1252.py` nach dem Pass-Pattern aus `OPS-005`, mit `GATES` gleich den betroffenen Gates des Repos, die ohne Argumente und Netz laufen. Je Repo gehört die Gegenprobe in den PR: mit dem alten Zeichen rot, mit dem neuen grün. Für `check_release_artifacts.py` braucht der Test ein Wegwerf-Wheel in `tmp_path`.
+**Welcher Test dazukommt.** `tests/test_gates_cp1252.py` nach dem Pass-Pattern aus `OPS-005`, mit `GATES` gleich den Gates des Repos, die ohne Argumente und Netz laufen und nichts schreiben, und `NICHT_GEFAHREN` für den Rest mit Grund. Die zwei Listen unterscheiden sich je Repo, der übrige Text nicht. Je Repo gehört die Gegenprobe in den PR: mit dem alten Zeichen rot, mit dem neuen grün. Für `check_release_artifacts.py` braucht der Test ein Wegwerf-Wheel in `tmp_path`.
 
 **Was der Trockenlauf zeigt.** Der Ersatz lief an Kopien ausserhalb des Checkouts, über alle 40 betroffenen `check_version_sync.py`:
 
@@ -236,12 +261,12 @@ Ausgezählt:
 | Gate nachher, UTF-8 / cp1252 | 40-mal Exit 0 / 40-mal Exit 0 |
 | `ruff format --check` und `ruff check` mit Pin und Konfiguration des Repos | 40 von 40 ohne Befund |
 | `ruff format --check` bei 88, 100, 110 und 120 | unverändert gegenüber vorher: 10 Dateien still, 26 rot bei 88, 4 rot bei 88, 110 und 120 |
-| Testvorlage bei 88, 100, 110, 120 unter 0.16.9, 0.16.10, 0.17.0, 0.17.3 | 16 von 16 ohne Befund |
+| Testvorlage bei 88, 100, 110, 120 unter 0.16.9, 0.16.10, 0.17.0, 0.17.3 | 16 von 16 ohne Befund, für die alte wie für die neue Fassung |
 | Tests, die den alten Meldungstext der Gates verlangen | keine |
 
 **Wie die Regeln aus [`SKILL.md`](../SKILL.md#portfolio-hygiene-ein-commit-33-repos) eingehalten werden:**
 
-- *Schmalste Breite.* Identisch ausgerollt wird nur die Testdatei, und sie hält alle vier Breiten. `check_version_sync.py` wird je Repo an Ort geändert und nicht kopiert. Die längste geänderte Zeile wächst von 90 auf 91 Spalten. 30 Dateien sind schon heute nicht kopiertauglich. Das ändert dieser Rollout nicht.
+- *Schmalste Breite.* Gemeinsam ausgerollt wird nur die Testdatei, und die Vorlage hält alle vier Breiten. Die Listen je Repo stehen mit einem Eintrag pro Zeile und Schlusskomma. Das bleibt bei jeder Breite stehen, weil kein Repo `skip-magic-trailing-comma` setzt. `check_version_sync.py` wird je Repo an Ort geändert und nicht kopiert. Die längste geänderte Zeile wächst von 90 auf 91 Spalten. 30 Dateien sind schon heute nicht kopiertauglich. Das ändert dieser Rollout nicht.
 - *Werkzeugversion.* Jedes Repo wird mit seinem eigenen Pin geprüft, aus seiner eigenen `.venv`. Der Rollout hebt keinen Pin.
 - *Mechanischer Nachweis.* Die Menge der Zeichenketten vor und nach der Änderung muss bis auf den Ersatz gleich sein. Im Trockenlauf galt das 40-mal.
 - *Getrennte Commits.* Ausgabe-Strings mit Test, Ratstext, alles Weitere je für sich.
@@ -262,7 +287,7 @@ Ausgezählt:
 
 ### Offene Entscheide
 
-1. **Vorlage in `OPS-005`:** Soll der zweite Test eine Ausnahmeliste mit Begründung bekommen, oder nur die Skripte prüfen, die ohne Argumente aufgerufen werden? Ohne Entscheid ist Stufe 2 nicht startbereit. Die Änderung am Check ist gegen §5 zu prüfen.
+1. **Vorlage in `OPS-005`:** entschieden am 2026-11-22 für die Ausnahmeliste mit Begründung und umgesetzt.
 2. **U+2713 und U+2717:** `OK` und `FEHLER`, oder `[ok]` und `[x]`? Betrifft fünf `check_release_artifacts.py` und zwei `validate_repo.py`.
 3. **`check_release_artifacts.py` und `validate_repo.py`:** zuerst im Skill `github-repo` ändern und neu kopieren, oder direkt in den fünf Repos?
 4. **Skripte ohne automatischen Aufruf:** mitnehmen oder lassen?

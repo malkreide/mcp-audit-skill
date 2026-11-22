@@ -29,6 +29,20 @@ wird geschrieben und nicht gelesen. Im Portfolio kommt der Fall nicht vor.
 Die eigene Ausgabe ist reines ASCII, und `tests/test_cp1252_sweep.py` fährt
 den Sweep in jedem Test gegen einen strikten cp1252-Strom.
 
+### Geändert — `OPS-005`, die Testvorlage aus Modus 5 ist einsetzbar
+
+Ihr zweiter Test verlangte, dass jedes in Workflows erwähnte Skript in `GATES`
+steht. Skripte, die Argumente oder das Netz brauchen, gehören dort aber nicht
+hin. An Kopien aller 45 Repos gefahren war er 45-mal rot. Neu gibt es
+`NICHT_GEFAHREN`, eine Ausnahmeliste mit Pflicht zum Grund. Ein neues Skript,
+eine veraltete Ausnahme, ein leerer Grund und ein doppelt geführtes Skript
+machen den Test rot. Die Ausnahme entlastet nicht, sie macht sichtbar, was
+ungeprüft ist.
+
+Der erste Test war für ein Gate, das es nicht gibt, grün: Beide Läufe enden mit
+Exit 2 und ohne Traceback. Er prüft jetzt zuerst, ob die Datei da ist. Das
+Pass-Kriterium nennt die Ausnahme. §5 feuert nicht (`advisory`).
+
 ### Dokumentation — Re-Audit-Warteschlange: der cp1252-Sweep über 45 Repos
 
 [`docs/re-audit-queue.md`](docs/re-audit-queue.md) führt das Ergebnis, jeden
@@ -39,8 +53,7 @@ bestätigt das Nachlesen 163, stuft 20 zurück und verwirft 53. `OPS-006` trifft
 
 Dazu ein Rollout-Plan ohne Ausführung. Ein Trockenlauf an Kopien belegt den
 Ersatz: 40-mal Exit 1 vorher, 40-mal Exit 0 nachher, ohne Befund von ruff. Er
-hat auch einen Mangel der Vorlage in `OPS-005` gezeigt: Ihr zweiter Test wäre
-in allen 45 Repos rot. Das steht bei den offenen Entscheiden.
+hat auch den Mangel der Vorlage in `OPS-005` gezeigt, der oben behoben ist.
 
 Der Abschnitt vom 21.11. heisst jetzt `v3.2.0` statt `[Unreleased]`, und die
 Kopfzeile nennt `v3.2.0` als letztes geprüftes Release.
