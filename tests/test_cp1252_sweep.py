@@ -42,12 +42,14 @@ BACKSLASH = chr(0x5C)
 KODIERUNG = {"PYTHONIOENCODING": "cp1252", "PYTHONUTF8": "0"}
 
 
-def rufe_sweep(wurzel: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
+def rufe_sweep(
+    wurzel: Path, *args: str, timeout: float = 120
+) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(
         [sys.executable, str(SWEEP), str(wurzel), *args],
         env={**os.environ, **KODIERUNG},
         capture_output=True,
-        timeout=120,
+        timeout=timeout,
     )
 
 
@@ -338,6 +340,14 @@ def test_pre_commit_hook_ist_gate(tmp_path):
     assert skript(tmp_path, "scripts/direkt.py")["gate"] is True
 
 
+def test_viele_schalter_halten_die_erkennung_nicht_auf(tmp_path):
+    """Passt ein Schalter auf zwei Zweige, verdoppelt jeder weitere die Arbeit."""
+    lege_ab(tmp_path, "a-mcp/scripts/gate.py", "x = 1\n")
+    workflow = WORKFLOW.format(befehl="python" + " -Xa" * 40 + " nichts")
+    lege_ab(tmp_path, "a-mcp/.github/workflows/ci.yml", workflow)
+    assert rufe_sweep(tmp_path, timeout=20).returncode == 0
+
+
 def test_unlesbarer_workflow_ist_nicht_erhoben(tmp_path):
     lege_ab(tmp_path, "a-mcp/scripts/gate.py", "x = 1\n")
     lege_ab(tmp_path, "a-mcp/.github/workflows/ci.yml", "jobs: [\n")
@@ -528,6 +538,22 @@ def test_sweep_schreibt_den_index_nicht_neu(tmp_path):
     vorher = (ziel / ".git" / "index").read_bytes()
     assert sweep(tmp_path)["repos"]["a-mcp"]["abweichungen_vom_commit"] == 0
     assert (ziel / ".git" / "index").read_bytes() == vorher
+
+
+def test_git_fuehrt_keinen_fsmonitor_aus(tmp_path):
+    """Die Konfiguration im Klon darf beim Lesen nichts starten."""
+    datei = lege_ab(tmp_path, "a-mcp/scripts/gate.py", "x = 1\n")
+    ziel = datei.parents[1]
+    git(ziel, "init", "-q")
+    git(ziel, "add", "-A")
+    git(ziel, "commit", "-q", "-m", "a")
+    spur = tmp_path / "gestartet"
+    git(ziel, "config", "core.fsmonitor", f"echo x > '{spur.as_posix()}' #")
+    git(ziel, "status")
+    assert spur.exists(), "die Attrappe wirkt nicht, der Test prüfte nichts"
+    spur.unlink()
+    sweep(tmp_path)
+    assert not spur.exists()
 
 
 def test_verzeichnis_ohne_git_erbt_keinen_fremden_commit(tmp_path):

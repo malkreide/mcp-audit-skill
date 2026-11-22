@@ -5,10 +5,12 @@ Aufruf:
 
     python tools/sweeps/cp1252_sweep.py <verzeichnis> [--lauf] [--zeitschranke S]
 
-`<verzeichnis>` enthält ein Unterverzeichnis je Repo, gelesen wird nur. Braucht
-PyYAML und `git`. Das Ergebnis ist JSON auf stdout und eine LESELISTE, kein
-Urteil. Jeder Kandidat ist von Hand nachzulesen, bevor er irgendwo als Befund
-steht.
+`<verzeichnis>` enthält ein Unterverzeichnis je Repo, gelesen wird nur. Gedacht
+ist es für frische Klone eigener Repos: `--lauf` führt deren Gates aus, und
+Filter aus `.git/config` schaltet der Sweep nicht ab. Braucht PyYAML und `git`.
+
+Das Ergebnis ist JSON auf stdout und eine LESELISTE, kein Urteil. Jeder Kandidat
+ist von Hand nachzulesen, bevor er irgendwo als Befund steht.
 
 Klassiert wird über den Syntaxbaum. Ein Pfeil in einem Kommentar kommt dort
 nicht vor und ist damit kein Fund, und eine Escape-Folge im Quelltext ist dort
@@ -282,11 +284,13 @@ WURZELMARKE = "@wurzel/"
 
 KOMMENTAR = re.compile(r"(?:^|(?<=\s))#.*$", re.MULTILINE)
 
+#: Die zwei Schalter-Zweige schliessen sich am ersten Buchstaben aus. Passte
+#: `-Xa` auf beide, verdoppelte jeder weitere Schalter die Arbeit.
 AUFRUF = re.compile(
     r"""
     (?: (?:^|[;&|(])\s*                                # direkt ausgeführt
       | [^\s"';&|(]*python[\d.]*"?                     # ein Python
-        (?:\s+-(?:[XW]\s*\S+|[A-Za-ln-z]+))*\s+        # mit Schaltern, ohne -m
+        (?:\s+-(?:[XW]\s*\S+|[A-VYZa-ln-z][A-Za-ln-z]*))*\s+  # Schalter, ohne -m
       | \buv\s+run(?:\s+-\S+)*\s+
     )
     (?: -m\s+(?P<modul>scripts\.\w+)
@@ -515,7 +519,9 @@ def git(repo: Path, *args: str) -> subprocess.CompletedProcess[bytes] | None:
         return None
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     # `--no-optional-locks`: `git status` schriebe sonst den Index neu.
-    befehl = ["git", "--no-optional-locks", "-C", str(repo), *args]
+    # `core.fsmonitor`: sonst führte git aus, was die Konfiguration des Klons nennt.
+    sicher = ["--no-optional-locks", "-c", "core.fsmonitor=false"]
+    befehl = ["git", *sicher, "-C", str(repo), *args]
     return subprocess.run(befehl, env=env, capture_output=True)
 
 
