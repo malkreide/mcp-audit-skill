@@ -57,6 +57,17 @@ Check-Datei und fährt ihn gegen ein Wegwerf-Repo. An Kopien aller 45 Repos
 meldet sie dieselben 40 Befunde wie der Sweep und ändert keine Datei. §5 feuert
 nicht (`advisory`).
 
+### Dokumentation — Re-Audit-Warteschlange: `v3.1.0` nachgetragen, Herkunft geklärt
+
+`v3.1.0` hatte in [`docs/re-audit-queue.md`](docs/re-audit-queue.md) keinen
+Abschnitt. Nachgetragen ist, dass nichts gefeuert hat: `checks/` ist in `v3.0.0`
+und `v3.1.0` derselbe Git-Baum. Die Serverseite von §5e ist für das Fenster
+nicht erhoben und steht so da.
+
+`check_release_artifacts.py` und `validate_repo.py` stammen aus dem Skill
+`github-repo`. Das war vermutet und ist jetzt verglichen. Die offenen Entscheide
+zum Rollout tragen je einen Vorschlag.
+
 ### Dokumentation — Re-Audit-Warteschlange: der cp1252-Sweep über 45 Repos
 
 [`docs/re-audit-queue.md`](docs/re-audit-queue.md) führt das Ergebnis, jeden

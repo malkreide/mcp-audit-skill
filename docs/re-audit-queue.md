@@ -242,7 +242,21 @@ Ausgezählt:
 - **Der Pfadtrenner**, die zweite Hälfte der siebten Ausprägung.
 - **ruff-Versionen in `uv.lock`.** Erhoben sind die deklarierten Pins.
 - **Wie sich die 24 Fassungen von Teil 1 unterscheiden.** Der Hash sagt nur, dass sie es tun. Die Überschrift zählt mit.
-- **Die Herkunft von `check_release_artifacts.py` und `validate_repo.py`.** Vermutlich stammen beide aus dem Skill `github-repo`. Sein Stand wurde nicht geprüft.
+
+### Herkunft der zwei kopierten Skripte (Nachtrag vom 2026-11-22)
+
+`check_release_artifacts.py` und `validate_repo.py` stammen aus dem Skill `github-repo`. Verglichen mit `main` von `github-repo-skill` (`afe2461`), Zeilenenden ausgenommen:
+
+| Datei | Repos | Verhältnis zum Skill |
+|---|---|---|
+| `check_release_artifacts.py` | `discover-swiss-mcp`, `swiss-housing-mcp`, `zh-education-mcp` | inhaltsgleich |
+| `check_release_artifacts.py` | `swiss-electricity-mcp` | inhaltsgleich bis auf sechs Docstring-Zeilen, die die Herkunft nennen |
+| `check_release_artifacts.py` | `personakit-mcp` | inhaltsgleich bis auf einen Zeilenumbruch von ruff |
+| `validate_repo.py` | `discover-swiss-mcp` (672 Zeilen), `personakit-mcp` (791) | andere Fassungen; `main` hat 841 |
+
+**Ein Test hält die Zeichen fest.** `swiss-electricity-mcp`, `tests/test_release_gate.py`, verlangt in sechs Asserts (Zeilen 99 bis 158) U+2713, U+2717 und U+2260 im Meldungstext. Stufe 5 muss sie im selben PR anpassen. In den übrigen 44 Repos verlangt kein Assert im Testcode der Skripte eines der ersetzten Zeichen. Die Tests im Skill selbst sind nicht geprüft.
+
+Auf `main` stehen die Zeichen in beiden Dateien noch. Wer nur die Kopien ändert, bekommt sie mit der nächsten Kopie zurück. `swiss-electricity-mcp` verlangt das im Docstring auch ausdrücklich: Wer die Logik ändert, ändert sie auch im Skill.
 
 ### Rollout-Plan (nicht ausgeführt)
 
@@ -255,7 +269,7 @@ Ausgezählt:
 | 2 | die 22 übrigen der 23er-Familie, dazu `eth-library-mcp`, `swiss-statistics-mcp` | dieselben 3 Stellen | Der Code (ohne Docstrings) ist in den 23 identisch. Die zwei anderen weichen an den drei Stellen nicht ab |
 | 3 | `fedlex-mcp`, `hn-tech-signal-mcp`, `i14y-mcp`, `lindas-mcp`, `meteoswiss-mcp`, `swiss-academic-libraries-mcp`, `swiss-holidays-mcp`, `swiss-housing-mcp`, `swiss-procurement-mcp`, dazu `lobbywatch-mcp` | dieselben 3 Stellen, andere Zeilenform | zweite Familie. `lobbywatch-mcp` prüft die Datei in der CI bei allen vier Breiten |
 | 4 | `swisstopo-mcp` (4 Stellen), `bakom-mcp`, `register-mcp`, `swiss-electricity-mcp`, `swiss-transport-mcp` (je 4 bis 6) | Einzelvarianten, von Hand | Die Labels der ruff-Pins gehen je nach Zweig nach stdout oder stderr |
-| 5 | `discover-swiss-mcp`, `personakit-mcp`, `swiss-electricity-mcp`, `swiss-housing-mcp`, `zh-education-mcp` | `check_release_artifacts.py`, `validate_repo.py` | erst die Vorlage klären, sonst kommt das Zeichen mit der nächsten Kopie zurück |
+| 5 | `discover-swiss-mcp`, `personakit-mcp`, `swiss-electricity-mcp`, `swiss-housing-mcp`, `zh-education-mcp` | `check_release_artifacts.py`, `validate_repo.py` | nach dem Skill `github-repo`, sonst kommt das Zeichen mit der nächsten Kopie zurück |
 | — | `swiss-public-data-mcp`, `swiss-cultural-heritage-mcp`, `swiss-snb-mcp` | nichts an den Ausgabe-Strings | kein Abbruch |
 
 **Welcher Test dazukommt.** `tests/test_gates_cp1252.py` nach dem Pass-Pattern aus `OPS-005`, mit `GATES` gleich den Gates des Repos, die ohne Argumente und Netz laufen und nichts schreiben, und `NICHT_GEFAHREN` für den Rest mit Grund. Die zwei Listen unterscheiden sich je Repo, der übrige Text nicht. Je Repo gehört die Gegenprobe in den PR: mit dem alten Zeichen rot, mit dem neuen grün. Für `check_release_artifacts.py` braucht der Test ein Wegwerf-Wheel in `tmp_path`.
@@ -269,7 +283,7 @@ Ausgezählt:
 | `ruff format --check` und `ruff check` mit Pin und Konfiguration des Repos | 40 von 40 ohne Befund |
 | `ruff format --check` bei 88, 100, 110 und 120 | unverändert gegenüber vorher: 10 Dateien still, 26 rot bei 88, 4 rot bei 88, 110 und 120 |
 | Testvorlage bei 88, 100, 110, 120 unter 0.16.9, 0.16.10, 0.17.0, 0.17.3 | 16 von 16 ohne Befund, für die alte wie für die neue Fassung |
-| Tests, die den alten Meldungstext der Gates verlangen | keine |
+| Tests, die den alten Meldungstext von `check_version_sync.py` verlangen | keine |
 
 **Wie die Regeln aus [`SKILL.md`](../SKILL.md#portfolio-hygiene-ein-commit-33-repos) eingehalten werden:**
 
@@ -295,13 +309,15 @@ Ausgezählt:
 ### Offene Entscheide
 
 1. **Vorlage in `OPS-005`:** entschieden am 2026-11-22 für die Ausnahmeliste mit Begründung und umgesetzt.
-2. **U+2713 und U+2717:** `OK` und `FEHLER`, oder `[ok]` und `[x]`? Betrifft fünf `check_release_artifacts.py` und zwei `validate_repo.py`.
-3. **`check_release_artifacts.py` und `validate_repo.py`:** zuerst im Skill `github-repo` ändern und neu kopieren, oder direkt in den fünf Repos?
-4. **Skripte ohne automatischen Aufruf:** mitnehmen oder lassen?
-5. **Ratstext im selben PR** oder als eigener Rollout über 41 Repos?
-6. **`CLAUDE.md` Teil 1:** eigener Auftrag, ja oder nein? Und gilt die Fassung aus `swiss-cultural-heritage-mcp` als Vorlage?
-7. **Umfang:** 42 PRs in einem Zug, oder nach dem Pilot pausieren?
-8. **`v3.1.0` hat in dieser Datei keinen Abschnitt.** `checks/` ist zwischen `v3.0.0` und `v3.1.0` unverändert, §5 kann also nicht gefeuert haben. Soll der leere Abschnitt nachgetragen werden?
+2. **U+2713 und U+2717:** `OK` und `FEHLER`, oder `[ok]` und `[x]`? Betrifft fünf `check_release_artifacts.py` und zwei `validate_repo.py`. *Vorschlag:* `OK` und `FEHLER`, lesbar ohne Legende.
+3. **`check_release_artifacts.py` und `validate_repo.py`:** zuerst im Skill `github-repo` ändern und neu kopieren, oder direkt in den fünf Repos? *Vorschlag:* zuerst im Skill; die Herkunft ist belegt (Nachtrag oben).
+4. **Skripte ohne automatischen Aufruf:** mitnehmen oder lassen? *Vorschlag:* lassen. Kein Gate, also kein `OPS-005`-Befund.
+5. **Ratstext im selben PR** oder als eigener Rollout über 41 Repos? *Vorschlag:* derselbe PR, eigener Commit; nur `swiss-cultural-heritage-mcp` und `swiss-snb-mcp` brauchen dafür einen eigenen PR.
+6. **`CLAUDE.md` Teil 1:** eigener Auftrag, ja oder nein? Und gilt die Fassung aus `swiss-cultural-heritage-mcp` als Vorlage? *Vorschlag:* eigener Auftrag; die Vorlagenfrage gehört dorthin.
+7. **Umfang:** 42 PRs in einem Zug, oder nach dem Pilot pausieren? *Vorschlag:* nach dem Pilot pausieren.
+8. **`v3.1.0` ohne Abschnitt:** am 2026-11-22 nachgetragen.
+
+Die Vorschläge sind keine Entscheide. Push, Pilot und Rollout sind nicht freigegeben.
 
 ### Herkunft der Zahlen
 
@@ -333,6 +349,22 @@ Ausgezählt:
 **Welche Repos betroffen sind, steht hier nicht, und das ist Absicht.** Gemessen sind drei Fälle: `swiss-snb-mcp` und `swiss-cultural-heritage-mcp` (beide behoben) sowie `amtsblatt-mcp` (offen). Wie viele Server sonst ein Gate mit einem Pfeil U+2192 in der Ausgabe oder einen Gate-Rat ohne Zielumgebung führen, ist **nicht erhoben**. Die Liste folgt aus einem Sweep mit `OPS-005` Modus 5 und `OPS-006` Remediation-Schritt 6 über das Portfolio. Eine Liste, die vor dem Sweep hier stünde, wäre geschätzt und nicht gemessen. Bei einer Promotion auf `enforced` (§5d) ist genau diese Zahl zu erheben.
 
 *Nachtrag 2026-11-22:* Erhoben für beide Checks, siehe den cp1252-Sweep im Abschnitt darüber. `amtsblatt-mcp` ist weiterhin offen.
+
+---
+
+## `v3.1.0` — 2026-10-04 — der Katalog ist derselbe (nachgetragen am 2026-11-22)
+
+### Was gefeuert hat
+
+**Nichts.** Der Abschnitt fehlte bis zum 2026-11-22. Ein Release, das hier nicht auftaucht, ist von einem Release ohne §5-Prüfung nicht zu unterscheiden.
+
+| Auslöser | §5-Prüfung | Ergebnis |
+|---|---|---|
+| **a)** bis **d)** Severity, Reichweite, Prüfkriterium, Adoptionsstufe | `checks/` ist in `v3.0.0` und `v3.1.0` derselbe Git-Baum (`e1cde2748398`), also Byte für Byte gleich | **feuert nicht** |
+| **e)** Spec-Baseline, Katalogseite | derselbe Baum; in `SKILL.md` haben sich drei Zeilen geändert (Versionszahl im Beispiel, `audit/5` statt Check 5, Qualitätskette), keine in [§2.7](../SKILL.md#27-spec-baseline-welcher-protokollstand-gemessen-wird) | **feuert nicht** |
+| **e)** Serverseite: Wechsel von `mcp_spec_version` | für das Fenster vom 2026-08-11 bis 2026-10-04 **nicht erhoben** | offen |
+
+Weil der Baum gleich ist, ist auch der Katalog-Hash gleich. Läufe gegen `v3.0.0` und `v3.1.0` bleiben vergleichbar.
 
 ---
 
