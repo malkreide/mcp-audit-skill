@@ -6,6 +6,83 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Neu — `tools/sweeps/cp1252_sweep.py`, Leseliste zu `OPS-005` Modus 5
+
+`OPS-005` beschreibt seit v3.2.0, dass Gates mit Zeichen ausserhalb von cp1252
+in der Ausgabe unter Windows abbrechen, sobald stdout umgeleitet ist. Welche
+Repos betroffen sind, war nicht erhoben. Der Sweep erhebt es über ein
+Verzeichnis mit einem Klon je Repo. Er klassiert jede Zeichenkette unter
+`scripts/` über den Syntaxbaum als Docstring, als Eingabedatum (Argument einer
+Regex-Funktion) oder als Kandidat und markiert, welche Skripte ein Workflow
+oder pre-commit aufruft. Ein Pfeil im Kommentar ist kein Fund, eine
+Escape-Folge im Quelltext ist einer.
+
+Mit `--lauf` fährt er `check_version_sync.py` und `check_ruff_pin.py` unter
+`PYTHONIOENCODING=cp1252`. Das kann einen Fund bestätigen, aber nicht
+entlasten, und so steht es im Docstring und im Ergebnis. Mitgezählt werden
+ruff-Pins, Zeilenbreite, der Rat aus `OPS-006`, `.gitignore` und `CLAUDE.md`.
+
+Vom Auftrag weicht eine Einordnung ab: Der Ersatztext von `re.sub` und
+`re.subn` gilt als Kandidat, obwohl er Argument einer Regex-Funktion ist. Er
+wird geschrieben und nicht gelesen. Im Portfolio kommt der Fall nicht vor.
+
+Die eigene Ausgabe ist reines ASCII, und `tests/test_cp1252_sweep.py` fährt
+den Sweep in jedem Test gegen einen strikten cp1252-Strom.
+
+### Geändert — `OPS-005`, die Testvorlage aus Modus 5 ist einsetzbar
+
+Ihr zweiter Test verlangte, dass jedes in Workflows erwähnte Skript in `GATES`
+steht. Skripte, die Argumente oder das Netz brauchen, gehören dort aber nicht
+hin. An Kopien aller 45 Repos gefahren war er 45-mal rot. Neu gibt es
+`NICHT_GEFAHREN`, eine Ausnahmeliste mit Pflicht zum Grund. Ein neues Skript,
+eine veraltete Ausnahme, ein leerer Grund und ein doppelt geführtes Skript
+machen den Test rot. Die Ausnahme entlastet nicht, sie macht sichtbar, was
+ungeprüft ist.
+
+Der erste Test war für ein Gate, das es nicht gibt, grün: Beide Läufe enden mit
+Exit 2 und ohne Traceback. Er prüft jetzt zuerst, ob die Datei da ist. Das
+Pass-Kriterium nennt die Ausnahme. §5 feuert nicht (`advisory`).
+
+### Behoben — `OPS-005`, die Bash-Schleife aus Modus 5 verändert das geprüfte Repo nicht mehr
+
+Sie führte jedes Skript aus, das ein Workflow oder pre-commit erwähnt, auch in
+einem Kommentar. In vier Repos gehört `record_fixtures.py` dazu, das ins Netz
+geht und Fixtures überschreibt. Dazu legte sie `err.txt` und `__pycache__` ins
+geprüfte Repo, und ein Gate, das es nicht gibt, galt als bestanden.
+
+Neu fährt sie nur Gates, die jemand nach dem Lesen einträgt. Der Rest erscheint
+als `UNGEPRUEFT`, eine fehlende Datei als `FEHLT`, und die Fehlerausgabe liegt
+ausserhalb des Repos. `tests/test_ops_005_mode5_loop.py` zieht den Block aus der
+Check-Datei und fährt ihn gegen ein Wegwerf-Repo. An Kopien aller 45 Repos
+meldet sie dieselben 40 Befunde wie der Sweep und ändert keine Datei. §5 feuert
+nicht (`advisory`).
+
+### Dokumentation — Re-Audit-Warteschlange: `v3.1.0` nachgetragen, Herkunft geklärt
+
+`v3.1.0` hatte in [`docs/re-audit-queue.md`](docs/re-audit-queue.md) keinen
+Abschnitt. Nachgetragen ist, dass nichts gefeuert hat: `checks/` ist in `v3.0.0`
+und `v3.1.0` derselbe Git-Baum. Die Serverseite von §5e ist für das Fenster
+nicht erhoben und steht so da.
+
+`check_release_artifacts.py` und `validate_repo.py` stammen aus dem Skill
+`github-repo`. Das war vermutet und ist jetzt verglichen. Die offenen Entscheide
+zum Rollout tragen je einen Vorschlag.
+
+### Dokumentation — Re-Audit-Warteschlange: der cp1252-Sweep über 45 Repos
+
+[`docs/re-audit-queue.md`](docs/re-audit-queue.md) führt das Ergebnis, jeden
+Kandidaten nach dem Nachlesen eingestuft. 43 Repos haben Kandidaten, in 42
+bricht mindestens ein Gate, 40 davon bestätigt der Lauf. Von 236 Kandidaten
+bestätigt das Nachlesen 163, stuft 20 zurück und verwirft 53. `OPS-006` trifft
+41 von 41 Repos mit `check_ruff_pin.py`. §5 feuert nicht.
+
+Dazu ein Rollout-Plan ohne Ausführung. Ein Trockenlauf an Kopien belegt den
+Ersatz: 40-mal Exit 1 vorher, 40-mal Exit 0 nachher, ohne Befund von ruff. Er
+hat auch den Mangel der Vorlage in `OPS-005` gezeigt, der oben behoben ist.
+
+Der Abschnitt vom 21.11. heisst jetzt `v3.2.0` statt `[Unreleased]`, und die
+Kopfzeile nennt `v3.2.0` als letztes geprüftes Release.
+
 ## [v3.2.0] — 2026-11-21 — Grün unter der eigenen Laufzeit ist nicht grün
 
 Der Katalog bleibt bei 120 Checks. Drei Checks werden schärfer, und SKILL.md
