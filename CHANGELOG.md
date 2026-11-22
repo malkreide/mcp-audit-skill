@@ -43,6 +43,20 @@ Der erste Test war für ein Gate, das es nicht gibt, grün: Beide Läufe enden m
 Exit 2 und ohne Traceback. Er prüft jetzt zuerst, ob die Datei da ist. Das
 Pass-Kriterium nennt die Ausnahme. §5 feuert nicht (`advisory`).
 
+### Behoben — `OPS-005`, die Bash-Schleife aus Modus 5 verändert das geprüfte Repo nicht mehr
+
+Sie führte jedes Skript aus, das ein Workflow oder pre-commit erwähnt, auch in
+einem Kommentar. In vier Repos gehört `record_fixtures.py` dazu, das ins Netz
+geht und Fixtures überschreibt. Dazu legte sie `err.txt` und `__pycache__` ins
+geprüfte Repo, und ein Gate, das es nicht gibt, galt als bestanden.
+
+Neu fährt sie nur Gates, die jemand nach dem Lesen einträgt. Der Rest erscheint
+als `UNGEPRUEFT`, eine fehlende Datei als `FEHLT`, und die Fehlerausgabe liegt
+ausserhalb des Repos. `tests/test_ops_005_mode5_loop.py` zieht den Block aus der
+Check-Datei und fährt ihn gegen ein Wegwerf-Repo. An Kopien aller 45 Repos
+meldet sie dieselben 40 Befunde wie der Sweep und ändert keine Datei. §5 feuert
+nicht (`advisory`).
+
 ### Dokumentation — Re-Audit-Warteschlange: der cp1252-Sweep über 45 Repos
 
 [`docs/re-audit-queue.md`](docs/re-audit-queue.md) führt das Ergebnis, jeden

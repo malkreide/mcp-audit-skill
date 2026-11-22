@@ -4,7 +4,7 @@
 
 ---
 
-## `[Unreleased]` — 2026-11-22 — `OPS-005`, die Testvorlage aus Modus 5
+## `[Unreleased]` — 2026-11-22 — `OPS-005`, Testvorlage und Schleife aus Modus 5
 
 ### Was gefeuert hat
 
@@ -14,7 +14,14 @@
 |---|---|---|
 | Pass-Pattern: Ausnahmeliste `NICHT_GEFAHREN` mit Grund, Prüfung auf fehlende Datei | Formal Fall **c)** bei einem `high`-Check: Das alte Pattern meldete ein Gate, das es nicht gibt, als bestanden. `adoption: advisory` blockiert aber nicht, also stützte sich kein `production_ready: true` darauf | **feuert nicht** |
 | Pass-Kriterium: Ein Gate, das der Test nicht fahren kann, steht als Ausnahme mit Grund | Das Kriterium wird erfüllbar, nicht strenger | **feuert nicht** |
+| Bash-Schleife aus Modus 5: fährt nur noch von Hand eingetragene Gates, meldet den Rest als `UNGEPRUEFT` und eine fehlende Datei als `FEHLT` | Formal ebenfalls Fall **c)**: Auch die alte Schleife meldete ein fehlendes Gate nicht. `advisory`, also wie oben | **feuert nicht** |
 | `severity`, `applies_when`, `adoption`, `spec_baseline` | unverändert (a, b, d, e) | **feuert nicht** |
+
+### Warum die Schleife geändert ist
+
+Sie führte im geprüften Repo jedes Skript aus, das ein Workflow oder pre-commit **erwähnt**, auch in einem Kommentar. In vier Repos gehört `record_fixtures.py` dazu, das ins Netz geht und Fixtures überschreibt. Ihre Fehlerausgabe legte sie als `err.txt` ins geprüfte Repo.
+
+Die neue Schleife, gemessen an Kopien aller 45 Repos: 40-mal `BEFUND` (alle `check_version_sync.py`, dieselbe Zahl wie der Sweep), keine veränderte Datei. `FEHLT` meldet sie siebenmal, viermal `check_ruff_pin.py` und dreimal `check_version_sync.py`, weil die Liste im Block für das ganze Portfolio gleich war. Je Repo wird sie von Hand gesetzt. Gegen die alte Schleife sind drei der sieben Tests in `tests/test_ops_005_mode5_loop.py` rot.
 
 ### Warum die Vorlage geändert ist
 
