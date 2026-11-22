@@ -29,6 +29,22 @@ wird geschrieben und nicht gelesen. Im Portfolio kommt der Fall nicht vor.
 Die eigene Ausgabe ist reines ASCII, und `tests/test_cp1252_sweep.py` fährt
 den Sweep in jedem Test gegen einen strikten cp1252-Strom.
 
+### Dokumentation — Re-Audit-Warteschlange: der cp1252-Sweep über 45 Repos
+
+[`docs/re-audit-queue.md`](docs/re-audit-queue.md) führt das Ergebnis, jeden
+Kandidaten nach dem Nachlesen eingestuft. 43 Repos haben Kandidaten, in 42
+bricht mindestens ein Gate, 40 davon bestätigt der Lauf. Von 236 Kandidaten
+bestätigt das Nachlesen 163, stuft 20 zurück und verwirft 53. `OPS-006` trifft
+41 von 41 Repos mit `check_ruff_pin.py`. §5 feuert nicht.
+
+Dazu ein Rollout-Plan ohne Ausführung. Ein Trockenlauf an Kopien belegt den
+Ersatz: 40-mal Exit 1 vorher, 40-mal Exit 0 nachher, ohne Befund von ruff. Er
+hat auch einen Mangel der Vorlage in `OPS-005` gezeigt: Ihr zweiter Test wäre
+in allen 45 Repos rot. Das steht bei den offenen Entscheiden.
+
+Der Abschnitt vom 21.11. heisst jetzt `v3.2.0` statt `[Unreleased]`, und die
+Kopfzeile nennt `v3.2.0` als letztes geprüftes Release.
+
 ## [v3.2.0] — 2026-11-21 — Grün unter der eigenen Laufzeit ist nicht grün
 
 Der Katalog bleibt bei 120 Checks. Drei Checks werden schärfer, und SKILL.md

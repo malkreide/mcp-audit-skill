@@ -1,10 +1,291 @@
 # Re-Audit-Warteschlange
 
-**Stand:** 2026-08-19 · **Letztes geprüftes Release:** `v3.0.0` (feuert nicht — der Katalog steht still) · **Jüngste offene Auslöser:** `v2.1.0`, dazu **§5e für 39 Server** (releaseunabhängig, siehe Nachtrag) · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+**Stand:** 2026-11-22 · **Letztes geprüftes Release:** `v3.2.0` (feuert nicht — drei Checks geschärft, keiner davon `enforced` und `high`) · **Jüngste offene Auslöser:** `v2.1.0`, dazu **§5e für 39 Server** (releaseunabhängig, siehe Nachtrag) · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
 
 ---
 
-## `[Unreleased]` — 2026-11-21 — `OPS-005` und `OPS-006` erweitert, `IDENT-003` ohne Pfeil
+## cp1252-Sweep zu `OPS-005`, Modus 5 — in 42 von 45 Repos bricht ein Gate (2026-11-22)
+
+Der Abschnitt zu `v3.2.0` darunter liess offen, welche Repos betroffen sind. Erhoben hat es [`tools/sweeps/cp1252_sweep.py`](../tools/sweeps/cp1252_sweep.py) über 45 flache Klone. Der Sweep liefert eine Leseliste. Jeder der 236 Kandidaten ist von Hand nachgelesen, und die Einstufung unten ist die nach dem Nachlesen.
+
+**§5 feuert nicht.** Am Katalog hat sich nichts geändert, und `OPS-005` ist `advisory`. Die Zahl ist aber die, die bei einer Promotion auf `enforced` (§5d) zu erheben wäre: Sie stünde heute bei 42 Repos.
+
+### Was gemessen wurde
+
+| | Zahl |
+|---|---:|
+| Repos gesamt | 45 |
+| Python-Skripte unter `scripts/` | 230 |
+| davon Gate (von Workflow oder pre-commit aufgerufen) | 164 |
+| Zeichenketten mit Zeichen ausserhalb von cp1252 | 246 |
+| davon Docstring / Eingabedatum / Kandidat | 7 / 3 / 236 |
+| Repos mit mindestens einem Kandidaten | 43 |
+| Repos mit bestätigtem Abbruch nach dem Nachlesen | **42** |
+| davon durch den Lauf bestätigt (`UnicodeEncodeError`, Exit 1) | **40** |
+
+Ohne Kandidaten sind `swiss-cultural-heritage-mcp` und `swiss-snb-mcp`, beide mit `tests/test_gates_cp1252.py`. `swiss-public-data-mcp` hat 23 Kandidaten und keinen Abbruch: Alle landen in Dateien, die mit `encoding="utf-8"` geschrieben werden. Die zwei Repos mit Abbruch ohne Lauf sind `discover-swiss-mcp` und `personakit-mcp`. Dort sind es `validate_repo.py` und `check_release_artifacts.py`, und die fährt der Sweep absichtlich nicht.
+
+**Das Nachlesen bestätigt 163 der 236 Kandidaten, stuft 20 zurück und verwirft 53:**
+
+| Einstufung | Zeichenketten | Bedeutung |
+|---|---:|---|
+| Abbruch | 163 | Der Text geht auf mindestens einem Pfad nach stdout. Bei `check_version_sync.py` steht er zusätzlich gemessen in der heutigen Ausgabe. Bei den nicht gefahrenen Skripten ist nicht erhoben, ob der Pfad heute erreicht wird |
+| Abbruch möglich | 20 | Nur `check_version_sync.py`: Der Text geht nach stdout, steht aber beim heutigen Stand des Repos nicht in der Ausgabe (kein Badge im README, mehr als ein ruff-Pin) |
+| Datei, UTF-8 | 26 | geschrieben wird eine Datei mit ausdrücklicher Kodierung |
+| Eingabedatum | 19 | Bestandteile eines Regex (Emoji-Bereiche) und Vergleiche mit dem BOM U+FEFF |
+| nur stderr | 8 | Python schreibt stderr immer mit `backslashreplace`; der Text wird hässlich, das Skript bricht nicht ab |
+
+Die 163 verteilen sich auf 149 Zeichenketten in 46 Gates (40-mal `check_version_sync.py`, 4-mal `check_release_artifacts.py`, 2-mal `validate_repo.py`) und 14 in vier Skripten, die niemand automatisch aufruft.
+
+**Ein Fund liegt ausserhalb der Kandidaten.** `meteoswiss-mcp`, `ingest_climate_normals.py`, Zeile 2 ist ein Docstring mit U+2192. Er wird über `description=__doc__` von `--help` gedruckt und bricht dort. Das Skript ist kein Gate. Die sechs übrigen Docstrings liest niemand aus.
+
+**Kein betroffenes Gate hängt an pre-commit.** Von den fünf Hook-Aufrufen eigener Skripte im Portfolio trifft keiner ein Skript mit Abbruch. Betroffen sind damit Läufe unter Windows mit umgeleiteter Ausgabe (Agent, Pipe, Protokolldatei). Die Linux-CI bleibt überall grün.
+
+### Was der Lauf sagt und was nicht
+
+Gefahren wurden `check_version_sync.py` (42 Repos) und `check_ruff_pin.py` (41 Repos) unter `PYTHONIOENCODING=cp1252`, `PYTHONUTF8=0` und `PYTHONDONTWRITEBYTECODE=1`, mit Python 3.13.18.
+
+| Gate | Läufe | `UnicodeEncodeError` | Exit 0 |
+|---|---:|---:|---:|
+| `check_version_sync.py` | 42 | 40 | 2 |
+| `check_ruff_pin.py` unter ruff 0.16.9 | 41 | 0 | 30 |
+
+**Ein Lauf ohne `UnicodeEncodeError` entlastet nicht.** Ein Gate, das vorher aus anderem Grund abbricht, erreicht die Zeile nicht. Elf `check_ruff_pin.py` enden unter 0.16.9 rot, weil ihr Repo eine andere Version pinnt. Deshalb lief der Sweep noch einmal mit 0.17.3 (10 grün) und mit 0.17.0 (1 grün). Jedes der 41 hat damit einmal seinen grünen Pfad erreicht, ohne `UnicodeEncodeError`. Ihr roter Pfad schreibt nach stderr. Kandidaten hat die Datei in keinem Repo.
+
+### Funde je Repo
+
+Zeichen stehen als Codepunkt. «Gate» heisst: von einem Workflow oder von pre-commit aufgerufen.
+
+| Repo | Datei | Gate | Zeilen | Zeichen | Einstufung | Lauf unter cp1252 |
+|---|---|---|---|---|---|---|
+| `amtsblatt-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `amtsblatt-mcp` | `measure_coverage_matrix.py` | nein | 236 | U+26A0, U+FE0F | Abbruch | nicht gefahren |
+| `bag-epl-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `bag-health-mcp` | `check_version_sync.py` | ja | 137, 139 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `bag-health-mcp` | `check_version_sync.py` | ja | 143 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `bakom-mcp` | `check_version_sync.py` | ja | 145, 147, 151 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `bakom-mcp` | `check_version_sync.py` | ja | 222, 239, 251 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `bakom-mcp` | `check_version_sync.py` | ja | 224 | U+2192 | nur stderr | Abbruch an anderer Zeile |
+| `discover-swiss-mcp` | `check_release_artifacts.py` | ja | 68, 86, 122, 126, 138, 146, 148 | U+2192, U+2260, U+2713, U+2717 | Abbruch | nicht gefahren |
+| `discover-swiss-mcp` | `p2_anchor_run.py` | nein | 83, 105, 114, 122 | U+2264, U+2265 | Abbruch | nicht gefahren |
+| `discover-swiss-mcp` | `validate_repo.py` | ja | 123, 129, 138, 139, 140, 141 | U+200D … U+1FAFF (52 verschiedene) | Eingabedatum | nicht gefahren |
+| `discover-swiss-mcp` | `validate_repo.py` | ja | 291, 354, 369, 401, 592, 661 | U+2192, U+2260, U+2717 | Abbruch | nicht gefahren |
+| `eth-library-mcp` | `check_version_sync.py` | ja | 166, 168, 172 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `fedlex-mcp` | `check_version_sync.py` | ja | 158, 160, 165 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `global-education-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `hn-tech-signal-mcp` | `check_version_sync.py` | ja | 158, 160, 165 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `i14y-mcp` | `check_version_sync.py` | ja | 158, 160 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `i14y-mcp` | `check_version_sync.py` | ja | 165 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `lindas-mcp` | `check_version_sync.py` | ja | 158, 160 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `lindas-mcp` | `check_version_sync.py` | ja | 165 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `lobbywatch-mcp` | `check_version_sync.py` | ja | 152, 154 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `lobbywatch-mcp` | `check_version_sync.py` | ja | 159 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `meteoswiss-mcp` | `check_version_sync.py` | ja | 158, 160 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `meteoswiss-mcp` | `check_version_sync.py` | ja | 165 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `meteoswiss-mcp` | `ingest_climate_normals.py` | nein | 201, 231 | U+2192 | nur stderr | nicht gefahren |
+| `meteoswiss-mcp` | `ingest_climate_normals.py` | nein | 271, 353 | U+2192, U+2264 | Abbruch | nicht gefahren |
+| `news-monitor-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `openlex-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `parlament-mcp` | `check_version_sync.py` | ja | 137, 139 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `parlament-mcp` | `check_version_sync.py` | ja | 143 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `personakit-mcp` | `check_release_artifacts.py` | nein | 68, 86, 117, 121, 133, 141, 143 | U+2192, U+2260, U+2713, U+2717 | Abbruch | nicht gefahren |
+| `personakit-mcp` | `validate_repo.py` | ja | 127, 132, 136, 137, 138, 139 | U+200D … U+1FAFF (52 verschiedene) | Eingabedatum | nicht gefahren |
+| `personakit-mcp` | `validate_repo.py` | ja | 289, 367, 382, 413, 701, 780 | U+2192, U+2260, U+2717 | Abbruch | nicht gefahren |
+| `register-mcp` | `check_version_sync.py` | ja | 161, 163, 167 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `register-mcp` | `check_version_sync.py` | ja | 238 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `register-mcp` | `check_version_sync.py` | ja | 240, 259 | U+2192 | nur stderr | Abbruch an anderer Zeile |
+| `sbb-opendata-mcp` | `check_version_sync.py` | ja | 137, 139 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `sbb-opendata-mcp` | `check_version_sync.py` | ja | 143 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `seco-labor-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `srgssr-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-academic-libraries-mcp` | `check_version_sync.py` | ja | 158, 160 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-academic-libraries-mcp` | `check_version_sync.py` | ja | 165 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `swiss-courts-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-culture-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-democracy-mcp` | `check_version_sync.py` | ja | 137, 139 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-democracy-mcp` | `check_version_sync.py` | ja | 143 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `swiss-democracy-mcp` | `record_fixtures.py` | nein | 56, 172, 173, 174 (5 Texte) | U+FEFF | Eingabedatum | nicht gefahren |
+| `swiss-efv-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-electricity-mcp` | `check_release_artifacts.py` | ja | 74, 92, 128, 132, 144, 152, 154 | U+2192, U+2260, U+2713, U+2717 | Abbruch | nicht gefahren |
+| `swiss-electricity-mcp` | `check_version_sync.py` | ja | 161, 163 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-electricity-mcp` | `check_version_sync.py` | ja | 167, 238 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `swiss-electricity-mcp` | `check_version_sync.py` | ja | 240, 259 | U+2192 | nur stderr | Abbruch an anderer Zeile |
+| `swiss-energy-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-environment-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-food-safety-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-food-safety-mcp` | `record_fixtures.py` | nein | 131 | U+FEFF | Eingabedatum | nicht gefahren |
+| `swiss-holidays-mcp` | `check_version_sync.py` | ja | 158, 160 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-holidays-mcp` | `check_version_sync.py` | ja | 165 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `swiss-housing-mcp` | `check_release_artifacts.py` | ja | 68, 86, 122, 126, 138, 146, 148 | U+2192, U+2260, U+2713, U+2717 | Abbruch | nicht gefahren |
+| `swiss-housing-mcp` | `check_version_sync.py` | ja | 158, 160, 165 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-ip-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-procurement-mcp` | `check_version_sync.py` | ja | 158, 160 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-procurement-mcp` | `check_version_sync.py` | ja | 165 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `swiss-procurement-mcp` | `record_fixtures.py` | nein | 552, 553, 554 | U+2192 | Datei, UTF-8 | nicht gefahren |
+| `swiss-public-data-mcp` | `generate_promotion.py` | ja | 33 | U+1F34E, U+1F3E0, U+1F40D, U+1F427, U+1FA9F | Datei, UTF-8 | nicht gefahren |
+| `swiss-public-data-mcp` | `generate_readme.py` | ja | 57, 64, 68, 69, 70, 105, 112, 116, 117, 118, 173, 175, 177, 254, 256, 260, 261, 262, 269, 270 (22 Texte) | U+2190 … U+1F9ED (11 verschiedene) | Datei, UTF-8 | nicht gefahren |
+| `swiss-road-mobility-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-statistics-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-transport-mcp` | `check_version_sync.py` | ja | 158, 160, 164, 235 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `swiss-transport-mcp` | `check_version_sync.py` | ja | 237 | U+2192 | nur stderr | Abbruch an anderer Zeile |
+| `swiss-transport-mcp` | `check_version_sync.py` | ja | 252, 264 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+| `swisstopo-mcp` | `check_version_sync.py` | ja | 188, 190, 194, 198 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `termdat-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `wsl-envidat-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `zh-education-mcp` | `check_release_artifacts.py` | ja | 68, 86, 122, 126, 138, 146, 148 | U+2192, U+2260, U+2713, U+2717 | Abbruch | nicht gefahren |
+| `zh-education-mcp` | `check_version_sync.py` | ja | 137, 139, 143 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `zh-education-mcp` | `record_fixtures.py` | nein | 121 | U+FEFF | Eingabedatum | nicht gefahren |
+| `zurich-opendata-mcp` | `check_version_sync.py` | ja | 137, 139 | U+2192 | Abbruch | Exit 1, `UnicodeEncodeError` |
+| `zurich-opendata-mcp` | `check_version_sync.py` | ja | 143 | U+2192 | Abbruch möglich | Abbruch an anderer Zeile |
+
+`swiss-cultural-heritage-mcp` und `swiss-snb-mcp` führen keinen Kandidaten und enden in beiden Gates ohne `UnicodeEncodeError`.
+
+### Zusatzwerte
+
+Drei Spalten fehlen in der Tabelle, weil sie überall gleich sind: `.gitignore` deckt `__pycache__` in **45 von 45** Repos ab. `skip-magic-trailing-comma` ist in **0 von 45** gesetzt. Und jeder der 45 Checkouts war ohne Abweichung von seinem Commit. «Rat blank» heisst: `scripts/check_ruff_pin.py` rät zu einem `pip install` ohne Zielumgebung (`OPS-006`, fünfte Ausprägung). «Nicht erhoben» steht dort, wo die Datei fehlt. «Breite» ist die `line-length` aus `pyproject.toml`, abweichende Quellen stehen in Klammern.
+
+| Repo | Commit | ruff-Pin | Pin-Quelle | Breite | Rat blank | cp1252-Test | `CLAUDE.md` | Teil 1 (sha256) |
+|---|---|---|---|---:|---|---|---:|---|
+| `amtsblatt-mcp` | `9fe4a6d997` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 401 | `243fa7db9afa` |
+| `bag-epl-mcp` | `2e7c443eda` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 354 | `00c55617e747` |
+| `bag-health-mcp` | `f9e8cbc40e` | 0.17.3 | pyproject.toml dev | 100 | ja | nein | 332 | `5dca43b01ac9` |
+| `bakom-mcp` | `ccb2cf1a51` | 0.16.9 | pyproject.toml dev; .pre-commit-config.yaml rev | 100 | ja | nein | 626 | `8d5edb182b96` |
+| `discover-swiss-mcp` | `63a394820e` | 0.16.9 | pyproject.toml dev | 100 | nicht erhoben | nein | fehlt | nicht erhoben |
+| `eth-library-mcp` | `d0328f1dee` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 405 | `27975459f7e5` |
+| `fedlex-mcp` | `7996a03862` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 353 | `5dca43b01ac9` |
+| `global-education-mcp` | `26f7cd2972` | 0.16.9 | pyproject.toml dev | 120 | ja | nein | 341 | `ea1371307933` |
+| `hn-tech-signal-mcp` | `466b237c3d` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 834 | `abcf3617397a` |
+| `i14y-mcp` | `b3648417b0` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 565 | `ce5b3d75e8d8` |
+| `lindas-mcp` | `b2eb274aee` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 468 | `1f62863199f0` |
+| `lobbywatch-mcp` | `5219951a50` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 351 | `27975459f7e5` |
+| `meteoswiss-mcp` | `e5cbc8b496` | 0.17.3 | pyproject.toml dev | 100 | ja | nein | 365 | nicht erhoben |
+| `news-monitor-mcp` | `13d36d02a5` | 0.16.9 | pyproject.toml dev | 120 | ja | nein | 353 | `09cadc08598b` |
+| `openlex-mcp` | `73d0360c15` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 457 | `ae3aea0346b1` |
+| `parlament-mcp` | `48a55f7102` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 382 | `480d4bfcfc65` |
+| `personakit-mcp` | `79576ea798` | 0.16.10 | requirements-lint.txt | 120 | nicht erhoben | nein | 34 | nicht erhoben |
+| `register-mcp` | `3c7afb3650` | 0.16.9 | pyproject.toml dev; .pre-commit-config.yaml rev | 100 | ja | nein | 487 | `16393ce606e4` |
+| `sbb-opendata-mcp` | `05743e843d` | 0.16.9 | pyproject.toml dev | 110 | ja | nein | 409 | `480d4bfcfc65` |
+| `seco-labor-mcp` | `06593cf3ce` | 0.17.0 | pyproject.toml dev | 100 | ja | nein | 493 | `d7f0445d27a1` |
+| `srgssr-mcp` | `113e86ef09` | 0.16.9 | pyproject.toml dev | 120 | ja | nein | 591 | `4d51ffe567be` |
+| `swiss-academic-libraries-mcp` | `3e96fada42` | 0.16.9 | pyproject.toml dev; .pre-commit-config.yaml rev | 110 | ja | nein | 507 | nicht erhoben |
+| `swiss-courts-mcp` | `7a1b7f4dc2` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 439 | nicht erhoben |
+| `swiss-cultural-heritage-mcp` | `44223412cb` | 0.17.3 | pyproject.toml dev | 100 | ja | ja | 133 | `eb07a9fef05d` |
+| `swiss-culture-mcp` | `f0248743be` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 459 | nicht erhoben |
+| `swiss-democracy-mcp` | `c0477a9480` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 460 | nicht erhoben |
+| `swiss-efv-mcp` | `6bcf7abc9d` | 0.17.3 | pyproject.toml dev | 100 | ja | nein | 340 | nicht erhoben |
+| `swiss-electricity-mcp` | `2c4cbd6c51` | 0.16.9 | pyproject.toml dev; .pre-commit-config.yaml rev | 100 | ja | nein | 429 | nicht erhoben |
+| `swiss-energy-mcp` | `119630a90e` | 0.17.3 | pyproject.toml dev | 100 | ja | nein | 343 | `5dca43b01ac9` |
+| `swiss-environment-mcp` | `127fcb7cf0` | 0.17.3 | pyproject.toml dev | 100 | nicht erhoben | nein | 572 | `ac537bcc4255` |
+| `swiss-food-safety-mcp` | `ad7c4b4464` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 332 | `5dca43b01ac9` |
+| `swiss-holidays-mcp` | `455887947a` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 366 | `5dca43b01ac9` |
+| `swiss-housing-mcp` | `416149ea5f` | 0.17.3 | pyproject.toml dev | 100 | ja | nein | 413 | `480d4bfcfc65` |
+| `swiss-ip-mcp` | `d6d2d4071d` | 0.16.9 | pyproject.toml dev | 120 | ja | nein | 589 | `36ca92961ad8` |
+| `swiss-procurement-mcp` | `43fd3b1b1f` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 438 | `7c7e43d11436` |
+| `swiss-public-data-mcp` | `c904d5513b` | 0.16.9 | lint.yml | 100 (ruff.toml) | nicht erhoben | nein | 199 | nicht erhoben |
+| `swiss-road-mobility-mcp` | `38cb288458` | 0.17.3 | pyproject.toml dev | 120 | ja | nein | 483 | `480d4bfcfc65` |
+| `swiss-snb-mcp` | `9d352343a7` | 0.16.9 | pyproject.toml dev; .pre-commit-config.yaml rev | 88 (Vorgabe von ruff) | ja | ja | 379 | `ff104004e6c5` |
+| `swiss-statistics-mcp` | `b3978e2573` | 0.17.3 | pyproject.toml dev | 100 | ja | nein | 352 | `67dcc662ae37` |
+| `swiss-transport-mcp` | `e7241bb0e6` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 408 | `daba6e3de00d` |
+| `swisstopo-mcp` | `020aede2d2` | 0.17.3 | pyproject.toml dev | 100 | ja | nein | 366 | `480d4bfcfc65` |
+| `termdat-mcp` | `59394baa94` | 0.16.9 | pyproject.toml dev | 110 | ja | nein | 323 | `5dca43b01ac9` |
+| `wsl-envidat-mcp` | `4c370e98fd` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 320 | `5dca43b01ac9` |
+| `zh-education-mcp` | `9a385916d7` | 0.17.3 | pyproject.toml dev | 100 | ja | nein | 376 | `6c76e5ce6401` |
+| `zurich-opendata-mcp` | `a3e3f642bc` | 0.16.9 | pyproject.toml dev | 100 | ja | nein | 436 | `20b3826793c7` |
+
+Ausgezählt:
+
+| | Verteilung |
+|---|---|
+| ruff-Pin | 32-mal 0.16.9, 11-mal 0.17.3, je einmal 0.16.10 (`personakit-mcp`) und 0.17.0 (`seco-labor-mcp`); in keinem Repo widersprechen sich zwei Quellen |
+| `line-length` | 35-mal 100, 6-mal 120, 3-mal 110, 1-mal 88 (`swiss-snb-mcp`, Vorgabe von ruff) |
+| Rat blank | 41 von 41 mit `check_ruff_pin.py`; vier Repos ohne die Datei |
+| `CLAUDE.md` | 44 Dateien, 34 bis 834 Zeilen; `discover-swiss-mcp` hat keine |
+| Teil 1 | 35 Dateien mit der Überschrift, **24 verschiedene Fassungen**; die grössten gleichen Gruppen haben sieben und fünf Repos. Neun Dateien führen keine Überschrift «Teil 1», auch `swiss-academic-libraries-mcp` nicht, das sie im Vorspann nennt |
+
+### Was nicht erhoben ist
+
+- **Zeichen, die erst zur Laufzeit entstehen:** gelesene Dateien, Ausgaben von Subprozessen, `chr(...)`. `validate_repo.py` druckt etwa Überschriften aus dem README, in denen es Emoji sucht.
+- **Texte ausserhalb von `scripts/` im Wurzelverzeichnis.** Das Unterprojekt `parlament-mcp/openparldata-mcp` hat ein eigenes `scripts/`. `src/` und Skripte in JavaScript zählen ebenfalls nicht dazu.
+- **Das Verhalten der Skripte, die der Sweep nicht fährt.** Für `check_release_artifacts.py`, `validate_repo.py` und die vier Skripte ohne automatischen Aufruf ist der Abbruch gelesen, nicht gelaufen.
+- **Der Pfadtrenner**, die zweite Hälfte der siebten Ausprägung.
+- **ruff-Versionen in `uv.lock`.** Erhoben sind die deklarierten Pins.
+- **Wie sich die 24 Fassungen von Teil 1 unterscheiden.** Der Hash sagt nur, dass sie es tun. Die Überschrift zählt mit.
+- **Die Herkunft von `check_release_artifacts.py` und `validate_repo.py`.** Vermutlich stammen beide aus dem Skill `github-repo`. Sein Stand wurde nicht geprüft.
+
+### Rollout-Plan (nicht ausgeführt)
+
+**Grundsatz.** Geändert werden nur Zeichenketten, die unter «Abbruch» oder «Abbruch möglich» stehen. Kein Suchen und Ersetzen über die Datei: Kommentare, Docstrings, Eingabedaten und UTF-8-Dateien bleiben. `->` ersetzt U+2192, `<=`, `>=` und `!=` ersetzen U+2264, U+2265 und U+2260. Für U+2713 und U+2717 ist ein Wort zu wählen (siehe offene Entscheide).
+
+| Stufe | Repos | Was | Warum an dieser Stelle |
+|---|---|---|---|
+| 0 | dieses Repo | Vorlage aus `OPS-005` Modus 5 nachziehen | Ihr zweiter Test verlangt, dass jedes erwähnte Skript in der Liste steht. Er wäre in **45 von 45** Repos rot, meist wegen `classify_live_run.py` (40), das Argumente braucht |
+| 1 | `amtsblatt-mcp` | Pilot: 3 Zeichenketten, Test, Gegenprobe | in `OPS-005` als offen genannt, und seine Datei steht für die grösste Familie |
+| 2 | die 22 übrigen der 23er-Familie, dazu `eth-library-mcp`, `swiss-statistics-mcp` | dieselben 3 Stellen | Der Code (ohne Docstrings) ist in den 23 identisch. Die zwei anderen weichen an den drei Stellen nicht ab |
+| 3 | `fedlex-mcp`, `hn-tech-signal-mcp`, `i14y-mcp`, `lindas-mcp`, `meteoswiss-mcp`, `swiss-academic-libraries-mcp`, `swiss-holidays-mcp`, `swiss-housing-mcp`, `swiss-procurement-mcp`, dazu `lobbywatch-mcp` | dieselben 3 Stellen, andere Zeilenform | zweite Familie. `lobbywatch-mcp` prüft die Datei in der CI bei allen vier Breiten |
+| 4 | `swisstopo-mcp` (4 Stellen), `bakom-mcp`, `register-mcp`, `swiss-electricity-mcp`, `swiss-transport-mcp` (je 4 bis 6) | Einzelvarianten, von Hand | Die Labels der ruff-Pins gehen je nach Zweig nach stdout oder stderr |
+| 5 | `discover-swiss-mcp`, `personakit-mcp`, `swiss-electricity-mcp`, `swiss-housing-mcp`, `zh-education-mcp` | `check_release_artifacts.py`, `validate_repo.py` | erst die Vorlage klären, sonst kommt das Zeichen mit der nächsten Kopie zurück |
+| — | `swiss-public-data-mcp`, `swiss-cultural-heritage-mcp`, `swiss-snb-mcp` | nichts an den Ausgabe-Strings | kein Abbruch |
+
+**Welcher Test dazukommt.** `tests/test_gates_cp1252.py` nach dem Pass-Pattern aus `OPS-005`, mit `GATES` gleich den betroffenen Gates des Repos, die ohne Argumente und Netz laufen. Je Repo gehört die Gegenprobe in den PR: mit dem alten Zeichen rot, mit dem neuen grün. Für `check_release_artifacts.py` braucht der Test ein Wegwerf-Wheel in `tmp_path`.
+
+**Was der Trockenlauf zeigt.** Der Ersatz lief an Kopien ausserhalb des Checkouts, über alle 40 betroffenen `check_version_sync.py`:
+
+| Nachweis | Ergebnis |
+|---|---|
+| Gate vorher, UTF-8 / cp1252 | 40-mal Exit 0 / 40-mal Exit 1 mit Traceback |
+| Gate nachher, UTF-8 / cp1252 | 40-mal Exit 0 / 40-mal Exit 0 |
+| `ruff format --check` und `ruff check` mit Pin und Konfiguration des Repos | 40 von 40 ohne Befund |
+| `ruff format --check` bei 88, 100, 110 und 120 | unverändert gegenüber vorher: 10 Dateien still, 26 rot bei 88, 4 rot bei 88, 110 und 120 |
+| Testvorlage bei 88, 100, 110, 120 unter 0.16.9, 0.16.10, 0.17.0, 0.17.3 | 16 von 16 ohne Befund |
+| Tests, die den alten Meldungstext der Gates verlangen | keine |
+
+**Wie die Regeln aus [`SKILL.md`](../SKILL.md#portfolio-hygiene-ein-commit-33-repos) eingehalten werden:**
+
+- *Schmalste Breite.* Identisch ausgerollt wird nur die Testdatei, und sie hält alle vier Breiten. `check_version_sync.py` wird je Repo an Ort geändert und nicht kopiert. Die längste geänderte Zeile wächst von 90 auf 91 Spalten. 30 Dateien sind schon heute nicht kopiertauglich. Das ändert dieser Rollout nicht.
+- *Werkzeugversion.* Jedes Repo wird mit seinem eigenen Pin geprüft, aus seiner eigenen `.venv`. Der Rollout hebt keinen Pin.
+- *Mechanischer Nachweis.* Die Menge der Zeichenketten vor und nach der Änderung muss bis auf den Ersatz gleich sein. Im Trockenlauf galt das 40-mal.
+- *Getrennte Commits.* Ausgabe-Strings mit Test, Ratstext, alles Weitere je für sich.
+- *Offene Pull Requests.* Die Änderung formatiert nichts um und hängt keinen offenen PR am Zielbranch ab. Konflikte sind nur dort zu erwarten, wo ein PR dieselben Zeilen anfasst.
+- *Standard-Branch.* Drei Klone stehen auf `master`.
+
+**Was sich mitnehmen lässt:**
+
+- **Ratstext von `check_ruff_pin.py`** (41 Repos): `uv pip install --python .venv -e ".[dev]"`. Derselbe PR, eigener Commit. In 39 Repos ist es eine einzelne Konstante `_INSTALL`, `meteoswiss-mcp` und `swiss-snb-mcp` haben je zwei Stellen. Kein Test verlangt den alten Rat. Auch `swiss-cultural-heritage-mcp` und `swiss-snb-mcp` sind hier betroffen, obwohl sie keinen Abbruch mehr haben.
+- **`.gitignore`**: nichts zu tun, 45 von 45 decken `__pycache__` ab.
+
+**Was besser getrennt bleibt:**
+
+- **Kurzform von `CLAUDE.md` Teil 1.** 24 Fassungen in 35 Repos sind kein mechanischer Eingriff. `swiss-cultural-heritage-mcp` führt bereits eine Kurzform mit `docs/claude/` (133 Zeilen) und kann als Vorlage dienen. Jede Fassung ist vorher auf eigenes Wissen zu lesen.
+- **Vereinheitlichen der ruff-Pins.** Ein Bump ist eine eigene, gemessene Entscheidung.
+- **Pfadtrenner** (`as_posix()`): zuerst erheben.
+- **Skripte ohne automatischen Aufruf** (`measure_coverage_matrix.py`, `p2_anchor_run.py`, `ingest_climate_normals.py`): kein Gate, also kein `OPS-005`-Befund.
+
+### Offene Entscheide
+
+1. **Vorlage in `OPS-005`:** Soll der zweite Test eine Ausnahmeliste mit Begründung bekommen, oder nur die Skripte prüfen, die ohne Argumente aufgerufen werden? Ohne Entscheid ist Stufe 2 nicht startbereit. Die Änderung am Check ist gegen §5 zu prüfen.
+2. **U+2713 und U+2717:** `OK` und `FEHLER`, oder `[ok]` und `[x]`? Betrifft fünf `check_release_artifacts.py` und zwei `validate_repo.py`.
+3. **`check_release_artifacts.py` und `validate_repo.py`:** zuerst im Skill `github-repo` ändern und neu kopieren, oder direkt in den fünf Repos?
+4. **Skripte ohne automatischen Aufruf:** mitnehmen oder lassen?
+5. **Ratstext im selben PR** oder als eigener Rollout über 41 Repos?
+6. **`CLAUDE.md` Teil 1:** eigener Auftrag, ja oder nein? Und gilt die Fassung aus `swiss-cultural-heritage-mcp` als Vorlage?
+7. **Umfang:** 42 PRs in einem Zug, oder nach dem Pilot pausieren?
+8. **`v3.1.0` hat in dieser Datei keinen Abschnitt.** `checks/` ist zwischen `v3.0.0` und `v3.1.0` unverändert, §5 kann also nicht gefeuert haben. Soll der leere Abschnitt nachgetragen werden?
+
+### Herkunft der Zahlen
+
+| Zahl | Herkunft |
+|---|---|
+| 45 Repos, 230 Skripte, 164 Gates, 7 / 3 / 236 | **gemessen** — Sweep über den lokalen Portfolio-Checkout, Commits in der Tabelle der Zusatzwerte |
+| Einstufungen, 163 / 20 / 26 / 19 / 8 | **gelesen** — jede Variante der Dateien einmal vollständig, Kopien über den Syntaxbaum ohne Docstrings gruppiert. «Abbruch möglich» bei `check_version_sync.py` gegen die heutige Ausgabe unter UTF-8 gehalten |
+| 40 bestätigte Läufe | **gemessen** — Exit-Code und stderr je Gate |
+| 41 grüne `check_ruff_pin.py` | **gemessen** — drei Läufe mit ruff 0.16.9, 0.17.3 und 0.17.0 |
+| Checkout unverändert | **gemessen** — Grösse und Änderungszeit aller 7481 Dateien samt `.git` vor dem ersten und nach dem letzten Lauf des Sweeps gleich. Ein `git status` je Klon vor dieser Messung kann deren `.git/index` aufgefrischt haben; Commits und Arbeitsbaum sind davon nicht berührt |
+| Trockenlauf | **gemessen** — an Kopien ausserhalb des Checkouts; er belegt den Ersatz, nicht die Testsuiten der Repos. Die liefen nicht |
+| 45 von 45 beim zweiten Vorlagentest | **gemessen** — der reguläre Ausdruck der Vorlage gegen die Workflows jedes Repos. Er zählt auch Kommentare |
+
+---
+
+## `v3.2.0` — 2026-11-21 — `OPS-005` und `OPS-006` erweitert, `IDENT-003` ohne Pfeil
 
 ### Was gefeuert hat
 
@@ -18,6 +299,8 @@
 | `applies_when`, `adoption`, `spec_baseline` | bei allen drei unverändert (a, b, d, e) | **feuert nicht** |
 
 **Welche Repos betroffen sind, steht hier nicht, und das ist Absicht.** Gemessen sind drei Fälle: `swiss-snb-mcp` und `swiss-cultural-heritage-mcp` (beide behoben) sowie `amtsblatt-mcp` (offen). Wie viele Server sonst ein Gate mit einem Pfeil U+2192 in der Ausgabe oder einen Gate-Rat ohne Zielumgebung führen, ist **nicht erhoben**. Die Liste folgt aus einem Sweep mit `OPS-005` Modus 5 und `OPS-006` Remediation-Schritt 6 über das Portfolio. Eine Liste, die vor dem Sweep hier stünde, wäre geschätzt und nicht gemessen. Bei einer Promotion auf `enforced` (§5d) ist genau diese Zahl zu erheben.
+
+*Nachtrag 2026-11-22:* Erhoben für beide Checks, siehe den cp1252-Sweep im Abschnitt darüber. `amtsblatt-mcp` ist weiterhin offen.
 
 ---
 
