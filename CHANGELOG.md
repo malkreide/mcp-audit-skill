@@ -6,6 +6,29 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+### Neu — `tools/sweeps/cp1252_sweep.py`, Leseliste zu `OPS-005` Modus 5
+
+`OPS-005` beschreibt seit v3.2.0, dass Gates mit Zeichen ausserhalb von cp1252
+in der Ausgabe unter Windows abbrechen, sobald stdout umgeleitet ist. Welche
+Repos betroffen sind, war nicht erhoben. Der Sweep erhebt es über ein
+Verzeichnis mit einem Klon je Repo. Er klassiert jede Zeichenkette unter
+`scripts/` über den Syntaxbaum als Docstring, als Eingabedatum (Argument einer
+Regex-Funktion) oder als Kandidat und markiert, welche Skripte ein Workflow
+oder pre-commit aufruft. Ein Pfeil im Kommentar ist kein Fund, eine
+Escape-Folge im Quelltext ist einer.
+
+Mit `--lauf` fährt er `check_version_sync.py` und `check_ruff_pin.py` unter
+`PYTHONIOENCODING=cp1252`. Das kann einen Fund bestätigen, aber nicht
+entlasten, und so steht es im Docstring und im Ergebnis. Mitgezählt werden
+ruff-Pins, Zeilenbreite, der Rat aus `OPS-006`, `.gitignore` und `CLAUDE.md`.
+
+Vom Auftrag weicht eine Einordnung ab: Der Ersatztext von `re.sub` und
+`re.subn` gilt als Kandidat, obwohl er Argument einer Regex-Funktion ist. Er
+wird geschrieben und nicht gelesen. Im Portfolio kommt der Fall nicht vor.
+
+Die eigene Ausgabe ist reines ASCII, und `tests/test_cp1252_sweep.py` fährt
+den Sweep in jedem Test gegen einen strikten cp1252-Strom.
+
 ## [v3.2.0] — 2026-11-21 — Grün unter der eigenen Laufzeit ist nicht grün
 
 Der Katalog bleibt bei 120 Checks. Drei Checks werden schärfer, und SKILL.md
