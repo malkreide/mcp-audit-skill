@@ -6,6 +6,14 @@ Versionierung: [Semantic Versioning](https://semver.org/lang/de/).
 
 ## [Unreleased]
 
+## [v3.3.0] — 2026-11-24 — Erwähnt heisst nicht ausführbar
+
+Der Katalog bleibt bei 120 Checks. Neu ist ein Werkzeug, der cp1252-Sweep.
+Die Bash-Schleife aus `OPS-005` Modus 5 führte seit v3.2.0 im geprüften Repo
+jedes Skript aus, das ein Workflow oder pre-commit erwähnt. Jetzt fährt sie nur noch
+eingetragene Gates, und die Testvorlage desselben Modus ist einsetzbar. §5
+löst kein Re-Audit aus, siehe [`docs/re-audit-queue.md`](docs/re-audit-queue.md).
+
 ### Neu — `tools/sweeps/cp1252_sweep.py`, Leseliste zu `OPS-005` Modus 5
 
 `OPS-005` beschreibt seit v3.2.0, dass Gates mit Zeichen ausserhalb von cp1252
@@ -3947,7 +3955,8 @@ v0.4.0) sind in diesem CHANGELOG dokumentiert, existieren aber nicht als
 separate Git-Tags — sie repräsentieren Iterationsstände während der
 initialen Skill-Entwicklung vor dem GitHub-Push.
 
-[Unreleased]: https://github.com/malkreide/mcp-audit-skill/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/malkreide/mcp-audit-skill/compare/v3.3.0...HEAD
+[v3.3.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v3.3.0
 [v3.2.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v3.2.0
 [v3.1.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v3.1.0
 [v3.0.0]: https://github.com/malkreide/mcp-audit-skill/releases/tag/v3.0.0
