@@ -1,10 +1,10 @@
 # Re-Audit-Warteschlange
 
-**Stand:** 2026-11-22 · **Letztes geprüftes Release:** `v3.2.0` (feuert nicht — drei Checks geschärft, keiner davon `enforced` und `high`) · **Jüngste offene Auslöser:** `v2.1.0`, dazu **§5e für 39 Server** (releaseunabhängig, siehe Nachtrag) · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
+**Stand:** 2026-11-24 · **Letztes geprüftes Release:** `v3.3.0` (feuert nicht — `OPS-005` Testvorlage und Schleife aus Modus 5, `advisory`) · **Jüngste offene Auslöser:** `v2.1.0`, dazu **§5e für 39 Server** (releaseunabhängig, siehe Nachtrag) · **Regel:** [`SKILL.md` §5](../SKILL.md#versionierung-des-check-katalogs)
 
 ---
 
-## `[Unreleased]` — 2026-11-22 — `OPS-005`, Testvorlage und Schleife aus Modus 5
+## `v3.3.0` — 2026-11-24 — `OPS-005`, Testvorlage und Schleife aus Modus 5
 
 ### Was gefeuert hat
 
